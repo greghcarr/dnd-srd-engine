@@ -131,6 +131,7 @@ exports[`feature-coverage matrix: conditions > wired conditions catalog is stabl
   "branding-smite-active",
   "bulls-strength-active",
   "cats-grace-active",
+  "cloak-of-the-bat-active",
   "cloud-giant-strength-potion-active",
   "crusaders-mantle-active",
   "cursed-attacks-active",
@@ -266,6 +267,7 @@ exports[`feature-coverage matrix: magic items > magic-item wire and charge state
   ],
   "withChargesIds": [
     "circlet-of-blasting",
+    "cloak-of-the-bat",
     "gem-of-brightness",
     "pearl-of-power",
     "pipes-of-haunting",

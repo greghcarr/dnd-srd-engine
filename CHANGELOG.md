@@ -4,6 +4,18 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content: Cloak of the Bat fly-speed Toggle wire (slice 289)**
+
+Closes the slice-227 deferred Cloak of the Bat fly-speed row. Composes three prior slices into one wired item: slice 240's `ApplyCondition` UseAction + slice 279's `bearer.lightLevel` Stealth gate + slice 288's `getEffectiveFlySpeed`. No new engine primitives needed.
+
+Content wired: Cloak of the Bat gains `charges: { max: 1, recharge: 'dawn' }` and `onUse: [{ kind: 'ApplyCondition', conditionId: 'cloak-of-the-bat-active' }]`. New `cloak-of-the-bat-active` condition carries `ModifySpeed fly set 40`. The slice-279 Stealth advantage stays independently wired on the cloak's passive `effects` array.
+
+RAW deviations: the "in an area of dim light or darkness" activation gate is consumer-managed — same shape as Pipes of Haunting's 30-ft scope (engine doesn't model scene lighting at activation time, and RAW most-naturally reads as "the buff lasts 1 hour from activation regardless of where you walk"). The 1-hour duration is consumer-managed (mirror of slice 236's ApplyCondition doc). The Polymorph-self-to-Bat arm stays deferred (needs a `CastSpell` UseAction variant dispatching to dedicated planPolymorph, parallel to slice-237).
+
+Pattern-check: this slice is the third post-alpha.7 composition of pre-existing primitives (slice 282 used slice 235 + 236; slice 284 used slice 76 + 90 + 235; slice 289 uses slice 240 + 279 + 288). The pattern that emerges: each Toggle UseAction wire ships once the prerequisite engine primitives are in place. The slice 281's "consumer-half tracking" gap row (engine half landed, consumer half pending) is the symmetric tracker.
+
+Audit: no engine changes — pure content slice. One new condition (1 effect entry) + one item config update + onUse array. tsc clean; 1778 tests across 261 files (was 1774). 4 cases pin: useItem emits charge + condition + ItemUsed; fly speed flips from 0 to 40 across the cast; second use throws on 0 charges; Stealth arm stays independent of fly activation. Coverage snapshot: `cloak-of-the-bat-active` joins conditions wired list; `cloak-of-the-bat` joins `withChargesIds` list.
+
 **Engine: non-walk speed derives (slice 288)**
 
 Closes the slice-263 pattern-check finding: ~30 in-pack `ModifySpeed` entries for fly / swim / climb / burrow modes projected to the effect stack but no consumer read them. Slice 288 ships `getEffectiveFlySpeed` / `getEffectiveSwimSpeed` / `getEffectiveClimbSpeed` / `getEffectiveBurrowSpeed` mode-parameterized off slice 77's walk algorithm.

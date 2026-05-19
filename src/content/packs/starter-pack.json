@@ -2332,7 +2332,7 @@
     },
     { "id": "headband-of-intellect", "itemKind": "magic", "name": "Headband of Intellect", "rarity": "uncommon", "requiresAttunement": true, "effects": [] },
     { "id": "boots-of-striding-and-springing", "itemKind": "magic", "name": "Boots of Striding and Springing", "rarity": "uncommon", "requiresAttunement": true, "effects": [] },
-    { "id": "cloak-of-the-bat", "itemKind": "magic", "name": "Cloak of the Bat", "rarity": "rare", "requiresAttunement": true, "description": "RAW: 'You have Advantage on Dexterity (Stealth) checks while wearing this cloak in an area of dim light or darkness.' (Plus a Magic-action fly speed + Polymorph-to-Bat in dim light or darkness, both still deferred — they need the slice-242 Toggle UseAction shape for the activate-as-action arms plus the dim-light gate.) Slice 279 wired the Stealth arm via the new `bearer.lightLevel` consumer-supplied predicate fact on `ComputeAbilityCheckInput`. The SetAdvantage gates on `any(eq path:'bearer.lightLevel' value:'dim', eq path:'bearer.lightLevel' value:'darkness')`. Same opt-in semantic as slice 263's Eyes of the Eagle sight-only Perception advantage: undefined lightLevel produces no advantage (consumer didn't tell us the scene state); the consumer (UI, encounter manager, future VTT) reports the value.", "effects": [{ "kind": "SetAdvantage", "on": { "kind": "skill", "skill": "stealth" }, "mode": "advantage", "condition": { "kind": "any", "terms": [{ "kind": "eq", "path": "bearer.lightLevel", "value": "dim" }, { "kind": "eq", "path": "bearer.lightLevel", "value": "darkness" }] } }] },
+    { "id": "cloak-of-the-bat", "itemKind": "magic", "name": "Cloak of the Bat", "rarity": "rare", "requiresAttunement": true, "charges": { "max": 1, "recharge": "dawn" }, "description": "RAW: 'You have Advantage on Dexterity (Stealth) checks while wearing this cloak in an area of dim light or darkness. While wearing this cloak in an area of dim light or darkness, you can use a Magic action to gain a Fly Speed of 40 feet for 1 hour. The cloak can't be used this way again until the next dawn.' Slice 279 wired the Stealth arm (SetAdvantage gated on slice-279's `bearer.lightLevel` consumer-supplied fact). Slice 289 wired the fly-speed arm: 1 charge / dawn recharge + ApplyCondition `cloak-of-the-bat-active` (carries `ModifySpeed fly 40`, now mechanically observable via slice-288's `getEffectiveFlySpeed`). The dim-light activation gate is consumer-managed (same shape as Pipes of Haunting's 30-ft scope — engine doesn't model scene lighting at activation time); once the buff is applied, it persists for an hour regardless of where the wearer walks. The Polymorph-self-to-Bat arm stays deferred (needs a `CastSpell` UseAction variant that dispatches to the dedicated planPolymorph, parallel to slice-237's Spell Scroll of Misty Step / Wish deferral).", "effects": [{ "kind": "SetAdvantage", "on": { "kind": "skill", "skill": "stealth" }, "mode": "advantage", "condition": { "kind": "any", "terms": [{ "kind": "eq", "path": "bearer.lightLevel", "value": "dim" }, { "kind": "eq", "path": "bearer.lightLevel", "value": "darkness" }] } }], "onUse": [{ "kind": "ApplyCondition", "conditionId": "cloak-of-the-bat-active" }] },
     { "id": "helm-of-telepathy", "itemKind": "magic", "name": "Helm of Telepathy", "rarity": "uncommon", "requiresAttunement": true, "effects": [] },
     { "id": "necklace-of-adaptation", "itemKind": "magic", "name": "Necklace of Adaptation", "rarity": "uncommon", "requiresAttunement": true, "effects": [] },
     { "id": "decanter-of-endless-water", "itemKind": "magic", "name": "Decanter of Endless Water", "rarity": "uncommon", "requiresAttunement": false, "effects": [] },
@@ -8523,6 +8523,16 @@
       "effects": [
         { "kind": "ModifySpeed", "mode": "walk", "op": "multiply", "value": 2 },
         { "kind": "ImposeDisadvantageOnAttackers", "condition": { "kind": "eq", "path": "event.isOpportunityAttack", "value": true } }
+      ]
+    },
+    {
+      "id": "cloak-of-the-bat-active",
+      "name": "Cloak of the Bat (active)",
+      "description": "Slice 289. Activated by the cloak's onUse ApplyCondition (1 charge/dawn). Grants fly speed 40 ft for 1 hour. RAW: 'While wearing this cloak in an area of dim light or darkness, you can use a Magic action to gain a Fly Speed of 40 feet for 1 hour.' The dim-light activation gate is consumer-managed; once the buff is applied, the fly speed persists for the duration regardless of where the wearer walks. The 1-hour duration is consumer-managed (same shape as slice 236's ApplyCondition doc comment). The fly speed surfaces mechanically via slice-288's `getEffectiveFlySpeed`.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "ModifySpeed", "mode": "fly", "op": "set", "value": 40 }
       ]
     },
     {
