@@ -4,6 +4,18 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine+content: Antitoxin + `event.savePreventsCondition` predicate fact (slice 291)**
+
+Closes the slice-239 Antitoxin deferred row. RAW: "Advantage on saving throws to avoid or end the Poisoned condition for 1 hour." Pre-291 the engine had no way to gate save advantage on the specific condition the save would prevent or end.
+
+Plumbing: new `savePreventsCondition?: string` field on [`ComputeSaveInput`](src/derive/save.ts) surfaces as the `event.savePreventsCondition` predicate fact. Cast-spell save resolution populates it from `mechanic.conditionOnFail` (poison-spell saves, Hold-shape saves, etc.). Recurring-save planner populates it from the bearer condition id when `recurringSave.onSuccess === 'removeCondition'` (so a Hold Person target's end-of-turn save would carry `savePreventsCondition: 'held-paralyzed'` etc.). Generic saves (Stunning Strike CON, multiattack save) leave the fact undefined and per-condition gates evaluate false.
+
+Content wired: new `antitoxin-active` condition with `SetAdvantage on:{kind:'save'}` (slice-266 wildcard) gated on `eq event.savePreventsCondition 'poisoned'`. Antitoxin consumable's `onConsume` becomes `[{ kind: 'ApplyCondition', conditionId: 'antitoxin-active' }]` (slice-236 ApplyCondition variant). 1-hour duration consumer-managed.
+
+Pattern-check: searched for sibling per-condition save-advantage buffs — none in SRD 5.2.1 today. The new fact is generic enough that future content (e.g. a buff that grants advantage on saves vs Charmed, or future Restoration potions) plugs in by gating on the same fact with a different condition id.
+
+Audit: input field + 2 planner threadings + 1 condition + 1 content wire. tsc clean; 1793 tests across 263 files (was 1787). 6 cases: drinking emits ConditionApplied; save with savePreventsCondition='poisoned' gets advantage; save with savePreventsCondition='frightened' does NOT; save with undefined does NOT; all 6 ability scores get advantage on poisoned-gating save (slice-266 wildcard); no-antitoxin baseline does not. Coverage snapshot: `antitoxin-active` joins conditions wired list.
+
 **Engine+content: ModifySpeed matchWalkSpeed op + Cloak of Arachnida + Spider Climb (slice 290)**
 
 Closes the slice-227 Cloak of Arachnida row. RAW: "Climb Speed equal to your walking speed" — Cloak of Arachnida + Slippers of Spider Climbing + Spider Climb spell all share this shape. Pre-290 the engine had no way to express it; all three shipped as `op: 'set', value: 30` approximations.

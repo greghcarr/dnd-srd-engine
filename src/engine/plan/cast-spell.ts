@@ -509,6 +509,12 @@ const planSaveMechanic = (
       // Slice 131: spells are magical sources. Magic Resistance and
       // other "advantage vs magical effects" sources fold in here.
       sourceIsMagical: true,
+      // Slice 291: surfaces the would-be-applied condition id for
+      // per-condition save-advantage buffs (Antitoxin). When the
+      // save mechanic has no conditionOnFail (pure damage saves like
+      // Fireball, no-condition saves like Acid Splash), this stays
+      // undefined and per-condition gates evaluate false.
+      ...(conditionOnFail !== undefined ? { savePreventsCondition: conditionOnFail } : {}),
     });
     // Slice 131: honor save advantage / disadvantage. Pre-slice 131
     // this path always rolled a single d20, silently ignoring effect-

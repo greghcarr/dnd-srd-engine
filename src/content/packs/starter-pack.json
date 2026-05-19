@@ -2634,7 +2634,7 @@
     { "id": "shovel", "itemKind": "gear", "name": "Shovel" },
     { "id": "acid", "itemKind": "consumable", "name": "Acid", "onConsume": [], "description": "Thrown as part of the Attack action (range 20 ft); target makes a Dexterity saving throw (DC 8 + Dexterity modifier + Proficiency Bonus) or takes 2d6 Acid damage." },
     { "id": "alchemists-fire", "itemKind": "consumable", "name": "Alchemist's Fire", "onConsume": [], "description": "Thrown as part of the Attack action (range 20 ft); target makes a Dexterity saving throw (DC 8 + Dexterity modifier + Proficiency Bonus) or takes 1d4 Fire damage and starts burning." },
-    { "id": "antitoxin", "itemKind": "consumable", "name": "Antitoxin", "onConsume": [], "description": "Drunk as a Bonus Action; the drinker has Advantage on saving throws to avoid or end the Poisoned condition for 1 hour." },
+    { "id": "antitoxin", "itemKind": "consumable", "name": "Antitoxin", "onConsume": [{ "kind": "ApplyCondition", "conditionId": "antitoxin-active" }], "description": "RAW (SRD 5.2.1): 'If you drink this vial of liquid, you have Advantage on saving throws to avoid or end the Poisoned condition for 1 hour.' Slice 291 wired via slice-236's ApplyCondition ConsumeAction + new antitoxin-active condition. The condition's SetAdvantage uses the slice-266 save-wildcard target plus a new `event.savePreventsCondition` predicate fact (populated by cast-spell and recurring-save planners). The 1-hour duration is consumer-managed (mirror of slice 236's ApplyCondition doc)." },
     { "id": "ball-bearings", "itemKind": "consumable", "name": "Ball Bearings", "onConsume": [], "description": "Spilled as a Utilize action over a 10-foot-square area within 10 ft; a creature entering the area for the first time on a turn makes a DC 10 Dexterity saving throw or has the Prone condition. Takes 10 minutes to recover." },
     { "id": "caltrops", "itemKind": "consumable", "name": "Caltrops", "onConsume": [], "description": "Spread as a Utilize action over a 5-foot-square area within 5 ft; a creature entering the area for the first time on a turn makes a DC 15 Dexterity saving throw or takes 1 Piercing damage and has its Speed reduced to 0 until the start of its next turn. Takes 10 minutes to recover." },
     { "id": "holy-water", "itemKind": "consumable", "name": "Holy Water", "onConsume": [], "description": "Thrown as part of the Attack action (range 20 ft); target makes a Dexterity saving throw (DC 8 + Dexterity modifier + Proficiency Bonus) or takes 2d8 Radiant damage if it is a Fiend or an Undead." },
@@ -8523,6 +8523,16 @@
       "effects": [
         { "kind": "ModifySpeed", "mode": "walk", "op": "multiply", "value": 2 },
         { "kind": "ImposeDisadvantageOnAttackers", "condition": { "kind": "eq", "path": "event.isOpportunityAttack", "value": true } }
+      ]
+    },
+    {
+      "id": "antitoxin-active",
+      "name": "Antitoxin (active)",
+      "description": "Slice 291. RAW: 'Advantage on saving throws to avoid or end the Poisoned condition for 1 hour.' Applied by the Antitoxin consumable's slice-236 ApplyCondition ConsumeAction. The SetAdvantage uses the slice-266 save wildcard + new slice-291 `event.savePreventsCondition` predicate fact: fires when the consumer's save would either apply 'poisoned' on fail (cast-spell save mechanic with `conditionOnFail: 'poisoned'`) or end an existing 'poisoned' condition on success (recurring save with `onSuccess: 'removeCondition'`). Generic saves leave the fact undefined and the gate evaluates false. The 1-hour duration is consumer-managed.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "SetAdvantage", "on": { "kind": "save" }, "mode": "advantage", "condition": { "kind": "eq", "path": "event.savePreventsCondition", "value": "poisoned" } }
       ]
     },
     {
