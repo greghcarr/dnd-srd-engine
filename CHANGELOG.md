@@ -4,6 +4,18 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Tests+infra: doc-size audit on front-door docs (slice 285)**
+
+Closes the recurring problem that bit slices 270 + 277: front-door docs (CHANGELOG.md, starter-pack-gaps.md) silently drifted over the single-Read ceiling between content slices, surfacing only when a fresh agent's Read tool errored out. New [tests/audit/doc-size.test.ts](tests/audit/doc-size.test.ts) audit asserts every front-door doc fits the documented ~60 KB ceiling. Runs as part of `npm test` so CI catches the drift at commit time, not next-agent-Read.
+
+**Implementation**: nine vitest cases. Seven per-file `expect` cases pin the fixed front-door docs (README.md, CHANGELOG.md, CLAUDE.md, docs/starter-pack-gaps.md, docs/status.md, docs/roadmap.md, docs/api-overview.md). One dynamic case enumerates `docs/changelog/*.md` archives and `docs/gaps-*.md` per-category catalogs so new archives are caught without test edits. One floor-count sanity case prevents a vacuously-green audit if the file list ever empties (path renames, dir moves).
+
+Threshold: 60,000 bytes per file. Matches CLAUDE.md's "Doc size discipline" documented hard ceiling ("anything safely under 60,000 bytes will fit"). Empirical verification at slice 285: the 59 KB and 56 KB archives ([archive-rollup-narrative-A.md](docs/changelog/archive-rollup-narrative-A.md) + [gaps-monsters-deferred-mechanics.md](docs/gaps-monsters-deferred-mechanics.md)) both Read cleanly; the 65 KB CHANGELOG at slice 277 pre-archive failed. 60 KB is the practical boundary for typical content density.
+
+**Failure message**: when a file exceeds the threshold, the assertion prints the file path, current byte count, and a one-line pointer to CLAUDE.md's split playbook. A developer / agent shipping a slice that pushes a doc over the limit sees the failure inline rather than hitting it next session.
+
+Audit: no engine / content changes. tsc clean; full vitest suite (1752 tests across 257 files, was 1743) green. 9 new cases. The audit itself is the test.
+
 **Engine+content: ApplyItemBuff ConsumeAction variant + Oil of Sharpness + Poison Basic (slice 284)**
 
 Third slice of the consumable-variant chain. Closes two slice-239 deferred rows with one new variant: Oil of Sharpness (+3 attack / +3 damage / counts as magical) and Poison Basic (1d4 poison rider) both wire as `ApplyItemBuff` ConsumeActions that stamp a `temporaryBuff` onto a target weapon via the slice-76 shape. The Poison Basic save-vs-Poisoned arm stays deferred (would need an on-hit-rider extension to the temporaryBuff shape or composition with slice-61).
