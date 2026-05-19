@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  AbilityScoreSchema,
   DamageTypeSchema,
   DiceExpressionSchema,
   RechargeSchema,
@@ -127,6 +128,30 @@ export const UseActionSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('Toggle'),
     conditionId: z.string(),
+    actionId: z.string().optional(),
+    chargesCost: z.number().int().min(0).optional(),
+  }),
+  // Slice 286. Item-fixed-DC save against a target list. Distinct
+  // from CastSpell (no spell is cast — the item has its own bespoke
+  // save mechanic at a fixed DC; the consumer's spell DC isn't
+  // involved). Canonical user: Pipes of Haunting (RAW: "Each
+  // creature of your choice within 30 feet of you must succeed on a
+  // DC 15 Wisdom saving throw or have the Frightened condition for
+  // 1 minute"). The targets are supplied by the consumer via the
+  // new `saveTargetIds` field on UseItemIntent (engine doesn't
+  // model positions, so the 30-foot scope is consumer territory).
+  // For each target the planner rolls a save, emits SaveRolled,
+  // and on failure emits ConditionApplied for `conditionOnFail`.
+  // The 1-minute duration is consumer-managed (mirror of slice
+  // 236's ApplyCondition doc comment); the recurring end-of-turn
+  // save is a future deferral that would need an `recurringSave`
+  // applied to the bearer condition.
+  z.object({
+    kind: z.literal('Save'),
+    saveAbility: AbilityScoreSchema,
+    saveDC: z.number().int().min(1),
+    conditionOnFail: z.string(),
+    sourceIsMagical: z.boolean().optional(),
     actionId: z.string().optional(),
     chargesCost: z.number().int().min(0).optional(),
   }),

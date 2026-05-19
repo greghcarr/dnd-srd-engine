@@ -4,6 +4,26 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine+content: Pipes of Haunting + Save UseAction variant (slice 286)**
+
+Closes the slice-241 deferred Pipes of Haunting row. RAW (SRD 5.2.1): "Each creature of your choice within 30 feet of you must succeed on a DC 15 Wisdom saving throw or have the Frightened condition for 1 minute." Pre-286 Pipes shipped with `effects: []` / `onUse: []` — charges were declared but no UseAction rolled the bespoke item-fixed-DC save. This slice adds the fourth variant to the slice-240 `UseActionSchema` (sibling to ApplyCondition, Toggle, CastSpell).
+
+**Plumbing**:
+
+- New `{ kind: 'Save', saveAbility, saveDC, conditionOnFail, sourceIsMagical? }` variant on [`UseActionSchema`](src/schemas/content/item.ts). Distinct from CastSpell because no spell is cast and no class spell-DC is involved — the item carries its own fixed DC. `sourceIsMagical` defaults to true (item-played effects are magical for Magic Resistance purposes).
+- New `saveTargetIds?: ReadonlyArray<string>` field on [`UseItemIntent`](src/engine/plan/use-item.ts). Required (non-empty) when the fired action is a Save; engine doesn't model positions, so the 30-foot scope is consumer territory.
+- planUseItem branch rolls one save per target via [`computeSavingThrow`](src/derive/save.ts) (mirrors the cast-spell save resolution: honors advantage / disadvantage from the target's effect stack; rolls 1 or 2 d20s as needed). Emits SaveRolled per target and ConditionApplied per failed target with `sourceCharacterId = item user`.
+
+**Content wired**:
+
+- **Pipes of Haunting**: `onUse: [{ kind: 'Save', saveAbility: 'WIS', saveDC: 15, conditionOnFail: 'frightened' }]`. Also fixed the recharge formula from a pre-285 stub of `1d4+1` to the RAW `1d3`. Description rewrites the RAW spec verbatim and enumerates the deferrals.
+
+**RAW deviations**: 30-ft scope is consumer territory; 1-minute duration is consumer-managed (mirror of slice 236's ApplyCondition doc); the RAW end-of-turn recurring save and 24-hour immunity-on-success are still deferred (would need a `recurringSave` shape applied via the planner and consumer-tracked per-target immunity state).
+
+**Pattern-check sweep**: searched the pack for sibling items with bespoke item-fixed-DC save mechanics — none currently wired. Wind Fan ships `effects: []` and would benefit from this same shape if RAW carries a save; other "save vs effect" items mostly route through CastSpell (the spell's save mechanic handles it). The variant is reusable for any future item that carries its own DC outside the spell pipeline.
+
+Audit: variant name follows the UseAction convention (`ApplyCondition`, `CastSpell`, `Toggle`, now `Save`). One new variant + one new intent field, one new planner branch, one content wire. tsc clean; full vitest suite (1758 tests across 258 files, was 1752) green. 6 cases: failed-save applies frightened; successful-save (seed-search loop) does not apply; multi-target preserves the per-target save↔condition relationship; charge gate fires; throws on missing / empty saveTargetIds. Coverage snapshot: `pipes-of-haunting` joins `wiredIds`.
+
 **Tests+infra: doc-size audit on front-door docs (slice 285)**
 
 Closes the recurring problem that bit slices 270 + 277: front-door docs (CHANGELOG.md, starter-pack-gaps.md) silently drifted over the single-Read ceiling between content slices, surfacing only when a fresh agent's Read tool errored out. New [tests/audit/doc-size.test.ts](tests/audit/doc-size.test.ts) audit asserts every front-door doc fits the documented ~60 KB ceiling. Runs as part of `npm test` so CI catches the drift at commit time, not next-agent-Read.
