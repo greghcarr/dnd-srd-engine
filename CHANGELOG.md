@@ -4,6 +4,18 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content: Armor + Ring of Resistance variant unroll (slice 295)**
+
+Closes the slice-224 deferred row that bundled Armor of Resistance + Ring of Resistance together (same chooser-at-creation pattern, same SRD 5.2.1 d10 damage-type table). The slice-229 Belt of Giant Strength variant-unroll pattern carries forward: one pack entry per damage type, single `GrantResistance` effect per variant.
+
+Content wired: 10 Armor of Resistance variants (`armor-of-resistance-<type>`, named "Armor of Resistance (Acid)" etc., rare + attunement-required per RAW) and 10 Ring of Resistance variants (`ring-of-resistance-<type>`, rare + no-attunement per slice-184 SRD-drift fix). Damage types: acid, cold, fire, force, lightning, necrotic, poison, psychic, radiant, thunder. The pre-slice single empty parent entries were removed (verified no consumers reference them via grep across src/ tests/ docs/).
+
+Pattern-check: searched for sibling chooser-at-creation magic items. Belt of Giant Strength variants already shipped (slice 229). Potion of Resistance is the next sibling on the same RAW pattern but stays deferred — it adds the additional dimension of needing 5 missing `protection-*-active` conditions (force, necrotic, poison, psychic, radiant) plus the ConsumeAction ApplyCondition wire. The 5 existing protection conditions cover only the Protection from Energy spell's RAW set (acid, cold, fire, lightning, thunder); the wider damage-type set for Potion of Resistance hadn't authored. Tracking left as a deferred row.
+
+Audit: pure content. No engine changes. tsc clean; 1804 tests across 265 files (unchanged count; coverage snapshot updated to include the 20 new wiredIds). Coverage snapshot diff verified: only the 10 armor-of-resistance-* + 10 ring-of-resistance-* IDs added to the magic-items wiredIds list. SRD drift audit passes (parent name "Armor of Resistance" / "Ring of Resistance" not in srdItems map for the variant ids, so rarity/attunement asserts silently skip — same as Belt of Giant Strength variants per the slice-229 doc).
+
+Doc updates: gaps-row closed (strikethrough + slice 295 closure note); Coverage-at-a-glance Items count refreshed (484 total → 502 total; +18 from the unroll net of 2 parent removals). The pre-slice "27 wired" count had drifted across slices 242-289; new count "58 wired" matches the coverage snapshot, with a parenthetical pointer to the drift for future readers.
+
 **Docs: consumer-coordinated fact-slot tracking section (slice 294)**
 
 Closes the slice-276 follow-up row that slice 280 introduced ("Consumer-half tracking for engine-half-only RAW fixes"). New "Consumer-coordinated fact slots" section in [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md) catalogs the three engine-half-landed slots (`bearerCanSeeFearSource`, `targetCanSeeAttacker`, `lightLevel`) plus their entry-point inputs (AttackIntent / ResolveAttackInput / ComputeAbilityCheckInput), the default-undefined semantic (default-apply vs opt-in), and what observable RAW behavior is gated. Includes a "when to use which semantic" rule for future consumer-coordinated facts.
