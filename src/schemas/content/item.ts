@@ -225,6 +225,26 @@ export const ConsumeActionSchema = z.discriminatedUnion('kind', [
     kind: z.literal('GrantTempHP'),
     amount: z.number().int().min(0),
   }),
+  // Slice 283. Remove every applied condition whose `conditionId` is
+  // in the list (no-op for ids the bearer doesn't carry). Distinct
+  // from ApplyCondition's inverse: the planner emits a separate
+  // ConditionRemoved for each matched applied-condition instance, so
+  // stacked / multiply-sourced conditions are all stripped. Canonical
+  // user: Potion of Vitality (RAW: "ends the Poisoned condition"),
+  // composed with RemoveExhaustion to cover the full clear.
+  z.object({
+    kind: z.literal('RemoveConditions'),
+    conditionIds: z.array(z.string()).min(1),
+  }),
+  // Slice 283. Zero out the bearer's exhaustion level (emits one
+  // ExhaustionChanged event from current → 0 when current > 0;
+  // no-op when already 0). Canonical user: Potion of Vitality
+  // ("removes any Exhaustion you are suffering"). Distinct from a
+  // future RAW shape that reduces exhaustion by N (Greater
+  // Restoration spell reduces by 1, not zeroes out).
+  z.object({
+    kind: z.literal('RemoveExhaustion'),
+  }),
 ]);
 export type ConsumeAction = z.infer<typeof ConsumeActionSchema>;
 

@@ -4,6 +4,20 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine+content: Potion of Vitality + RemoveConditions / RemoveExhaustion ConsumeAction variants (slice 283)**
+
+Second slice of the consumable-variant chain. Closes the first arm of the slice-239 Potion of Vitality row. RAW: "removes any Exhaustion you are suffering and cures any disease or Poison affecting you. For the next 24 hours, you regain the maximum number of Hit Points for any Hit Die you spend." The 24-hour max-HD-spend rider stays deferred (the engine doesn't model Hit Die spend max yet).
+
+Two variants instead of one combined "cleanse" because the shapes are mechanically distinct: RemoveConditions walks `character.appliedConditions` and emits ConditionRemoved per matched instance; RemoveExhaustion emits a single ExhaustionChanged from current → 0 on the numeric `exhaustion` field (a separate state slot, not a condition).
+
+**Plumbing**: two new variants on [`ConsumeActionSchema`](src/schemas/content/item.ts) — `{ kind: 'RemoveConditions', conditionIds: string[] }` and `{ kind: 'RemoveExhaustion' }`. [`planConsumeItem`](src/engine/plan/consume-item.ts) gains two branches. RemoveConditions walks the target's appliedConditions and emits ConditionRemoved per match (handles multiply-sourced conditions correctly). RemoveExhaustion no-ops cleanly when exhaustion is already 0 (no event emitted, audit trail stays clean).
+
+**Content wired**: Potion of Vitality's `onConsume` becomes `[{ kind: 'RemoveExhaustion' }, { kind: 'RemoveConditions', conditionIds: ['poisoned'] }]`. Description rewrites the RAW spec and notes the deferred HD-spend rider.
+
+**Pattern-check sweep**: RemoveExhaustion + RemoveConditions are reusable. Future canonical users: Greater Restoration spell (RAW reduces exhaustion by 1, not zeroes out — needs a different variant); Heroes' Feast (RAW: "cures all diseases and poison effects"). Both stay deferred — they're spell-driven, not consumable-driven. The variants land here for the consumable surface; future spell wiring may extend RemoveConditions or add siblings.
+
+Audit: variant names follow the ConsumeAction convention (`Heal`, `ApplyCondition`, `CastSpell`, `GrantTempHP`, `RemoveConditions`, `RemoveExhaustion`). Two new variants, two new planner branches, one content wire. tsc clean; full vitest suite (1737 tests across 255 files, was 1732) green. 5 cases: both cleared together; state-side verification; no-op when neither present; exhaustion-only; poisoned-only.
+
 **Engine+content: Potion of Heroism + GrantTempHP ConsumeAction variant (slice 282)**
 
 First slice of the consumable-variant chain. Closes the slice-239 deferred row for Potion of Heroism. RAW: "For 1 hour, the drinker gains 10 Temporary Hit Points and the Blessed condition." Pre-282 the potion shipped `onConsume: []` — the engine had no shape for "flat temp HP grant on consume." This slice adds the fourth variant to the slice-235 `ConsumeAction` discriminated union and wires its canonical user.

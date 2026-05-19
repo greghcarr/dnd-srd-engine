@@ -2,7 +2,13 @@ import type { CampaignState } from '../../schemas/runtime/campaign.js';
 import type { ResolvedContent } from '../../content/pack.js';
 import type { Event } from '../../schemas/events/index.js';
 import type { ItemConsumedEvent } from '../../schemas/events/inventory.js';
-import type { ConditionAppliedEvent, HealedEvent, TempHPGrantedEvent } from '../../schemas/events/combat.js';
+import type {
+  ConditionAppliedEvent,
+  ConditionRemovedEvent,
+  ExhaustionChangedEvent,
+  HealedEvent,
+  TempHPGrantedEvent,
+} from '../../schemas/events/combat.js';
 import { newAppliedConditionId } from '../../ids.js';
 import { planCastSpell } from './cast-spell.js';
 import type { RNG } from '../../rng/index.js';
@@ -100,6 +106,46 @@ export const planConsumeItem = (
         sourceCharacterId: intent.characterId as ULID,
       };
       events.push(condApplied);
+    } else if (action.kind === 'RemoveConditions') {
+      // Slice 283: strip each applied-condition instance whose
+      // conditionId is in the action's list. The reducer for
+      // ConditionRemoved is no-op when the condition isn't present,
+      // so ids the bearer doesn't carry produce zero events. Walk
+      // the target's current appliedConditions to emit one event
+      // per matched instance (handles multiply-sourced conditions
+      // correctly).
+      const target = state.characters[targetId];
+      if (target) {
+        const idSet = new Set(action.conditionIds);
+        for (const applied of target.appliedConditions) {
+          if (idSet.has(applied.conditionId)) {
+            const removed: ConditionRemovedEvent = {
+              id: newEventId() as ULID,
+              at,
+              type: 'ConditionRemoved',
+              targetId: targetId as ULID,
+              conditionId: applied.conditionId,
+            };
+            events.push(removed);
+          }
+        }
+      }
+    } else if (action.kind === 'RemoveExhaustion') {
+      // Slice 283: zero out exhaustion. Emits one ExhaustionChanged
+      // from current → 0 only when current > 0 (no-op event when
+      // already zero would be misleading audit noise).
+      const target = state.characters[targetId];
+      if (target && target.exhaustion > 0) {
+        const changed: ExhaustionChangedEvent = {
+          id: newEventId() as ULID,
+          at,
+          type: 'ExhaustionChanged',
+          targetId: targetId as ULID,
+          fromLevel: target.exhaustion,
+          toLevel: 0,
+        };
+        events.push(changed);
+      }
     } else if (action.kind === 'GrantTempHP') {
       // Slice 282: flat temp HP grant. The existing applyTempHPGranted
       // reducer (slice 75 origin) enforces RAW max-not-additive
