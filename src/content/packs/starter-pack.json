@@ -2314,7 +2314,7 @@
     { "id": "hide-armor", "itemKind": "armor", "name": "Hide Armor", "category": "medium", "baseAC": 12, "dexCap": 2, "stealthDisadvantage": false, "weight": 12, "cost": { "amount": 10, "currency": "gp" } },
     { "id": "goggles-of-night", "itemKind": "magic", "name": "Goggles of Night", "rarity": "uncommon", "requiresAttunement": false, "effects": [{ "kind": "GrantSense", "sense": "darkvision", "range": 60 }] },
     { "id": "cloak-of-elvenkind", "itemKind": "magic", "name": "Cloak of Elvenkind", "rarity": "uncommon", "requiresAttunement": true, "effects": [] },
-    { "id": "slippers-of-spider-climbing", "itemKind": "magic", "name": "Slippers of Spider Climbing", "rarity": "uncommon", "requiresAttunement": true, "effects": [{ "kind": "ModifySpeed", "mode": "climb", "op": "set", "value": 30 }] },
+    { "id": "slippers-of-spider-climbing", "itemKind": "magic", "name": "Slippers of Spider Climbing", "rarity": "uncommon", "requiresAttunement": true, "description": "RAW: 'While you wear these slippers, you have a Climb Speed equal to your walking speed.' Slice 290 wired the matchWalkSpeed semantics via the new ModifySpeed `op: 'matchWalkSpeed'` (replaced the pre-slice approximation `op: 'set', value: 30`). The climb speed now scales with the wearer's effective walking speed (Fast Movement / Unarmored Movement etc. fold in).", "effects": [{ "kind": "ModifySpeed", "mode": "climb", "op": "matchWalkSpeed", "value": 0 }] },
     { "id": "brooch-of-shielding", "itemKind": "magic", "name": "Brooch of Shielding", "rarity": "uncommon", "requiresAttunement": true, "effects": [{ "kind": "GrantResistance", "damageType": "force" }] },
     { "id": "periapt-of-wound-closure", "itemKind": "magic", "name": "Periapt of Wound Closure", "rarity": "uncommon", "requiresAttunement": true, "effects": [] },
     { "id": "ring-of-swimming", "itemKind": "magic", "name": "Ring of Swimming", "rarity": "uncommon", "requiresAttunement": false, "effects": [{ "kind": "ModifySpeed", "mode": "swim", "op": "set", "value": 40 }] },
@@ -2767,7 +2767,7 @@
     {"id": "carpet-of-flying", "itemKind": "magic", "name": "Carpet of Flying", "rarity": "very-rare", "requiresAttunement": false, "effects": []},
     {"id": "censer-of-controlling-air-elementals", "itemKind": "magic", "name": "Censer of Controlling Air Elementals", "rarity": "rare", "requiresAttunement": false, "effects": []},
     {"id": "chime-of-opening", "itemKind": "magic", "name": "Chime of Opening", "rarity": "rare", "requiresAttunement": false, "effects": []},
-    {"id": "cloak-of-arachnida", "itemKind": "magic", "name": "Cloak of Arachnida", "rarity": "very-rare", "requiresAttunement": true, "effects": [{ "kind": "GrantResistance", "damageType": "poison" }, { "kind": "ModifySpeed", "mode": "climb", "op": "set", "value": 30 }]},
+    {"id": "cloak-of-arachnida", "itemKind": "magic", "name": "Cloak of Arachnida", "rarity": "very-rare", "requiresAttunement": true, "description": "RAW: 'You have Resistance to Poison damage. You have a Climb Speed equal to your walking speed and can move up and down vertical surfaces and along ceilings while leaving your hands free. You have Advantage on Strength (Athletics) checks made to climb. You can communicate with Spiders and use an action to cast Web (save DC 13).' Slice 290 wired the climb-speed-equal-to-walk arm via the new ModifySpeed `op: 'matchWalkSpeed'` (was `op: 'set', value: 30` approximation before slice 290, but the slice 227 row was originally tagged as deferred because the engine had no non-walk speed derive — both blockers are now closed). Resistance arm already wired. RAW deviations carried forward: Athletics-climb advantage stays deferred (Athletics sub-action gate via slice 274's `athleticsSubAction` exists, but Cloak of Arachnida's clause isn't wired today); 'communicate with spiders' is narrative; Web cast as item action is deferred (would compose with slice-241's CastSpell UseAction variant + the existing web spell).", "effects": [{ "kind": "GrantResistance", "damageType": "poison" }, { "kind": "ModifySpeed", "mode": "climb", "op": "matchWalkSpeed", "value": 0 }]},
     {"id": "cloak-of-invisibility", "itemKind": "magic", "name": "Cloak of Invisibility", "rarity": "legendary", "requiresAttunement": true, "effects": []},
     {"id": "crystal-ball", "itemKind": "magic", "name": "Crystal Ball", "rarity": "very-rare", "requiresAttunement": true, "effects": []},
     {"id": "crystal-ball-of-mind-reading", "itemKind": "magic", "name": "Crystal Ball of Mind Reading", "rarity": "legendary", "requiresAttunement": true, "effects": []},
@@ -8175,11 +8175,11 @@
     {
       "id": "spider-climbing-active",
       "name": "Spider Climbing",
-      "description": "Gains a climb speed equal to walking speed; can move along vertical surfaces and ceilings hands-free. Approximated as 30 ft climb speed (typical walking speed); the engine's speed planner doesn't yet read this effect into movement calculations.",
+      "description": "Spider Climb spell / Potion of Climbing buff. RAW (SRD 5.2.1 Spider Climb): 'The target gains the ability to move up, down, and across vertical surfaces and upside down along ceilings, while leaving its hands free. The target also gains a Climb Speed equal to its Speed.' Slice 290 wired the matchWalkSpeed semantics via the new ModifySpeed `op: 'matchWalkSpeed'`; slice 288 ships the non-walk derive that surfaces it. Pre-290 the entry was approximated as `op: 'set', value: 30`.",
       "stackable": false,
       "endsOn": [],
       "effects": [
-        { "kind": "ModifySpeed", "mode": "climb", "op": "set", "value": 30 }
+        { "kind": "ModifySpeed", "mode": "climb", "op": "matchWalkSpeed", "value": 0 }
       ]
     },
     {

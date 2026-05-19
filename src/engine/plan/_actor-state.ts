@@ -124,6 +124,13 @@ const getEffectiveSpeedForMode = (
   let highestSet: number | undefined;
   let zeroSet = false;
   let highestMultiplier = 1;
+  // Slice 290. `matchWalkSpeed` entries say "set this mode's speed to
+  // the bearer's effective walk speed" (RAW: Cloak of Arachnida and
+  // Spider Climb both grant "Climb Speed equal to your walking
+  // Speed"). Records that a matchWalkSpeed entry was seen; the actual
+  // walk-speed resolution happens after the loop. The op is no-op for
+  // walk mode itself (would be circular); silently skip.
+  let matchWalkSeen = false;
   for (const e of effects) {
     if (e.kind !== 'ModifySpeed') continue;
     if (e.mode !== mode) continue;
@@ -134,9 +141,21 @@ const getEffectiveSpeedForMode = (
       else if (highestSet === undefined || e.value > highestSet) highestSet = e.value;
     } else if (e.op === 'multiply') {
       if (e.value > highestMultiplier) highestMultiplier = e.value;
+    } else if (e.op === 'matchWalkSpeed') {
+      if (mode !== 'walk') matchWalkSeen = true;
     }
   }
   if (zeroSet) return 0;
+  // matchWalkSpeed treated as a set-to-walk-speed: a non-zero set
+  // wins over the natural base + add (same precedence rule as
+  // `op: 'set'`). When both an explicit `set` and `matchWalkSpeed`
+  // are present, the larger value wins (RAW: highest set wins).
+  if (matchWalkSeen) {
+    const walkSpeed = getEffectiveSpeedForMode(input, 'walk');
+    if (highestSet === undefined || walkSpeed > highestSet) {
+      highestSet = walkSpeed;
+    }
+  }
   const base = baseSpeedForMode(character, content, mode);
   const natural = highestSet ?? base + addSum;
   const scaled = Math.floor(natural * highestMultiplier);

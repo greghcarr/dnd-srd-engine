@@ -4,6 +4,21 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine+content: ModifySpeed matchWalkSpeed op + Cloak of Arachnida + Spider Climb (slice 290)**
+
+Closes the slice-227 Cloak of Arachnida row. RAW: "Climb Speed equal to your walking speed" — Cloak of Arachnida + Slippers of Spider Climbing + Spider Climb spell all share this shape. Pre-290 the engine had no way to express it; all three shipped as `op: 'set', value: 30` approximations.
+
+Plumbing: new `op: 'matchWalkSpeed'` on `ModifySpeed` (Zod enum extension + TS union update). `getEffectiveSpeedForMode` recurses once into walk-mode resolution to find the effective walk speed, then treats it as a `set` for the non-walk mode (so Fast Movement / Unarmored Movement / Haste's ×2 fold in). Walk mode itself ignores `matchWalkSpeed` (would be circular). `value` is required by the union but ignored for this op; content ships `value: 0`.
+
+Content re-wired (3 entries; same observable for human/30 base, dynamic across faster bases):
+- Cloak of Arachnida (very-rare): `ModifySpeed climb matchWalkSpeed`. Description rewrites the RAW spec and enumerates remaining deferrals (Athletics-climb advantage; Web spell-cast).
+- Slippers of Spider Climbing (uncommon): same.
+- `spider-climbing-active` condition (Spider Climb spell + Potion of Climbing): same. Description drops the "approximated as 30 ft" caveat.
+
+Pattern-check: the three users share the same RAW phrasing and the same primitive — clean three-canonical-users-in-one-slice closure. No sibling shapes need the same op (climb-only RAW; no swim/fly variants today). The Athletics-climb-advantage arm of Cloak of Arachnida would gate on slice-274's `athleticsSubAction='climb'` if a future slice wires it.
+
+Audit: schema + resolver + 3 content wires. tsc clean; 1787 tests across 262 files (was 1778). 9 cases in new [tests/unit/engine/match-walk-speed.test.ts](tests/unit/engine/match-walk-speed.test.ts): human walk 30 → climb 30; Barbarian L5 Fast Movement walk 40 → climb 40; hasted Barbarian walk 80 → climb 80 (multiplier folds); Cloak of Arachnida attuned 40, unattuned 0; Slippers climb 30 (human) / 40 (Barbarian L5); walk-mode-ignores-matchWalkSpeed regression. Coverage snapshot unchanged (no wiredIds membership flips).
+
 **Content: Cloak of the Bat fly-speed Toggle wire (slice 289)**
 
 Closes the slice-227 deferred Cloak of the Bat fly-speed row. Composes three prior slices into one wired item: slice 240's `ApplyCondition` UseAction + slice 279's `bearer.lightLevel` Stealth gate + slice 288's `getEffectiveFlySpeed`. No new engine primitives needed.

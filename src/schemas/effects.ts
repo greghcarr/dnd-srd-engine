@@ -176,7 +176,7 @@ export interface ChoiceOptionShape {
 export type Effect =
   | { kind: 'GrantProficiency'; target: 'skill' | 'tool' | 'weapon' | 'armor' | 'save' | 'language'; id: string; level: ProficiencyLevel }
   | { kind: 'GrantSense'; sense: Sense; range: number }
-  | { kind: 'ModifySpeed'; mode: MovementMode; op: 'set' | 'add' | 'multiply'; value: number }
+  | { kind: 'ModifySpeed'; mode: MovementMode; op: 'set' | 'add' | 'multiply' | 'matchWalkSpeed'; value: number }
   | { kind: 'AddModifier'; target: ModifierTarget; value: number | Formula; condition?: Predicate }
   | { kind: 'SetAdvantage'; on: RollTarget; mode: 'advantage' | 'disadvantage' | 'auto-crit' | 'auto-fail'; condition?: Predicate }
   // Direction-filtered advantage: only applies when the roll's target
@@ -430,7 +430,11 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
     z.object({
       kind: z.literal('ModifySpeed'),
       mode: MovementModeSchema,
-      op: z.enum(['set', 'add', 'multiply']),
+      op: z.enum(['set', 'add', 'multiply', 'matchWalkSpeed']),
+      // `value` is unused for `op: 'matchWalkSpeed'` (the entry says
+      // "set this mode's speed to the bearer's effective walk speed").
+      // Kept required across all ops to avoid a discriminated-union
+      // expansion; `matchWalkSpeed` entries should ship `value: 0`.
       value: z.number(),
     }),
     z.object({
