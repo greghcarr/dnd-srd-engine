@@ -191,6 +191,23 @@ export const MagicItemSchema = ItemBaseSchema.extend({
   effects: z.array(EffectSchema).default([]),
   onUse: z.array(UseActionSchema).default([]),
   destructionRoll: DestructionRollSchema.optional(),
+  // Slice 293. Cumulative time-budget on toggle-able items that
+  // RAW-cap their activation duration per long rest (Boots of Speed:
+  // 10 min/LR; Winged Boots: 4 hr/LR; etc.). Distinct from `charges`
+  // (per-use integer count) and round-based auto-expiry (slice 102 /
+  // 109 — source-keyed, encounter-scoped): a continuous time pool
+  // that drains while the toggled condition is active and resets on
+  // long rest. The engine doesn't model in-fiction elapsed minutes
+  // between activations; the consumer reports `minutesElapsed` on the
+  // toggle-off intent. The instance's `minutesUsed` (slice 293) is
+  // the cumulative draw; when it reaches `maxMinutesPerLongRest`,
+  // `planUseItem` rejects further toggle-on attempts until a long
+  // rest resets the counter via `applyLongRestEnded`.
+  timeBudget: z
+    .object({
+      maxMinutesPerLongRest: z.number().int().min(1),
+    })
+    .optional(),
 });
 export type MagicItem = z.infer<typeof MagicItemSchema>;
 

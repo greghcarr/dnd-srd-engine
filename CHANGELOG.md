@@ -4,6 +4,29 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine+content: Boots of Speed time-budget cap (slice 293)**
+
+Closes the slice-242 deferred row that had been open since the initial Toggle UseAction landed. RAW (SRD 5.2.1): "When the boots' property has been used for a total of 10 minutes, the magic ceases to function until you finish a Long Rest." A continuous, cumulative minutes-per-LR pool distinct from `charges` (per-use integer count) and round-based auto-expiry (slice 102).
+
+Plumbing: new optional `timeBudget: { maxMinutesPerLongRest: number }` field on `MagicItemSchema` + `minutesUsed?: number` counter on `ItemInstance`. New `ItemTimeBudgetConsumed` event (carries `instanceId`, `amountMinutes`, `byCharacterId`). `UseItemIntent` gains `minutesElapsed?: number`. `planUseItem`'s Toggle branch validates `minutesUsed < max` on toggle-on (throws "exhausted ... finish a Long Rest to reset" past the cap) and emits `ItemTimeBudgetConsumed` on toggle-off when the consumer reports elapsed minutes. `applyLongRestEnded` walks each participant's inventory and resets `minutesUsed` to 0 on instances that carry the counter (undefined → undefined; never been activated stays pristine).
+
+Consumer contract: the engine doesn't model real-time elapsed-while-toggled (would require continuous clock or per-tick state) — the consumer reports cumulative elapsed minutes on the toggle-off intent. This mirrors the engine's general consumer-coordinated stance (positions, scene state, RAW LoS).
+
+Content wired: Boots of Speed gains `timeBudget: { maxMinutesPerLongRest: 10 }`. Same shape applies to Winged Boots' "4 hours per day, can be used in 1-min increments" (still wires-only; same primitive, different cap + reset cadence).
+
+Pattern-check: searched MagicItemSchema callers for sibling "minutes-per-cadence" shapes — Winged Boots is the only match in 2024 RAW. Future content (e.g. a Cloak of Invisibility-style "2 hours total before sundown") would plug into the same field with a different cap and possibly a different reset event (DawnReset, ShortRestEnded). The current cadence is "long-rest reset only"; future variants can split.
+
+Audit:
+- Names: `timeBudget`, `minutesUsed`, `minutesElapsed`, `ItemTimeBudgetConsumed` — each names a distinct thing (the def's spec, the instance's counter, the consumer's per-use report, the event). The `amountMinutes` event field mirrors slice-261's `amount` naming on ItemChargeConsumed.
+- DRY: reset-on-LR walks the inventory inline in `applyLongRestEnded` rather than a helper — 6 lines, single call site, below the abstraction threshold. If a second cadence (DawnReset, ShortRestEnded) ever lands, factor then.
+- SRP: planner gate (validation + emit), reducer (state mutation), rest-reset (lifecycle hook) each do one thing.
+- Magic numbers: `maxMinutesPerLongRest: 10` lives in the content pack (Boots-specific), not in engine code. The gate uses the def's value, no hardcoding.
+- at-threading: planner resolves `at = intent.at ?? nowIso()` once; ItemTimeBudgetConsumed inherits it from the same call.
+- Mechanical outcomes: 5 tests pin (1) emit on toggle-off-with-minutesElapsed, (2) no emit on toggle-off-without-minutesElapsed (rounds-only use), (3) cumulative accumulation across cycles, (4) toggle-on-after-cap throws, (5) long-rest resets + re-enables toggle-on.
+- Tests: prevent regression of the budget gate, the cumulative semantic, the LR reset, and the no-op-when-not-reported case (would silently drop a feature if reversed).
+
+tsc clean; 1804 tests across 265 files (was 1799 across 264). No coverage snapshot change (no `wiredIds` flips). Transcript formatter gains a one-line case for `ItemTimeBudgetConsumed`.
+
 **Content: Perfume + perfumed-active condition (slice 292)**
 
 Closes the slice-239 Perfume deferred row. The original row miscategorized the gap — the skill-discriminated SetAdvantage target `on: { kind: 'skill', skill: Skill }` had been in the schema since slices 263 / 274 (canonical users at the time: Eyes of the Eagle Perception, Gloves of Swimming Athletics, slice 279 Cloak of the Bat Stealth). Perfume is the canonical Persuasion user; pure content slice on top of existing primitives.

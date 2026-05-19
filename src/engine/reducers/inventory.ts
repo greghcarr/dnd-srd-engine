@@ -8,6 +8,7 @@ import type {
   ItemConsumedEvent,
   ItemDestroyedEvent,
   ItemEquippedEvent,
+  ItemTimeBudgetConsumedEvent,
   ItemUnattunedEvent,
   ItemUnequippedEvent,
   ItemUsedEvent,
@@ -153,6 +154,21 @@ export const applyItemUsed = (
     state.itemInstances[event.instanceId] !== undefined,
     `Item instance ${event.instanceId} not found`,
   );
+};
+
+// Slice 293. Increments the instance's `minutesUsed` field against
+// the definition's `timeBudget.maxMinutesPerLongRest` pool. Emitted
+// by `planUseItem`'s Toggle branch when the consumer reports
+// `minutesElapsed` on the toggle-off intent. `applyLongRestEnded`
+// resets `minutesUsed` to 0 for participants' inventory. Boots of
+// Speed (10 min/LR) is the canonical user.
+export const applyItemTimeBudgetConsumed = (
+  state: Draft<CampaignState>,
+  event: ItemTimeBudgetConsumedEvent,
+): void => {
+  const instance = state.itemInstances[event.instanceId];
+  invariant(instance !== undefined, `Item instance ${event.instanceId} not found`);
+  instance.minutesUsed = (instance.minutesUsed ?? 0) + event.amountMinutes;
 };
 
 // Slice 256. Retires a magic item destroyed by a degradation roll.

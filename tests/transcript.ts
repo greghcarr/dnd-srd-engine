@@ -277,6 +277,11 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       const item = content.items.get(event.definitionId)?.name ?? event.definitionId;
       return `${item} crumbles to ashes (degradation roll: ${event.rollResult} on d${event.rollDie}). **${owner}** loses the item.`;
     }
+    case 'ItemTimeBudgetConsumed': {
+      const user = characterName(stateBefore, event.byCharacterId);
+      const item = itemName(stateBefore, content, event.instanceId);
+      return `**${user}** uses ${item} for ${event.amountMinutes} minute${event.amountMinutes === 1 ? '' : 's'} (cumulative time budget).`;
+    }
     case 'PartyCreated': {
       const members = event.memberIds.length === 0
         ? 'no members'

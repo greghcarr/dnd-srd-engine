@@ -117,3 +117,19 @@ export const ItemDestroyedEventSchema = EventEnvelopeSchema.extend({
   rollResult: z.number().int().positive(),
 });
 export type ItemDestroyedEvent = z.infer<typeof ItemDestroyedEventSchema>;
+
+// Slice 293. Records consumer-reported minutes of activation time
+// drawn against an item's `timeBudget.maxMinutesPerLongRest` pool.
+// Emitted by `planUseItem`'s Toggle branch when the consumer
+// reports `minutesElapsed` on the toggle-off intent. The reducer
+// increments the instance's `minutesUsed` field. Canonical user:
+// Boots of Speed (RAW: 10-min-per-long-rest cumulative budget;
+// "the magic ceases to function until you finish a Long Rest"
+// once the budget is exhausted).
+export const ItemTimeBudgetConsumedEventSchema = EventEnvelopeSchema.extend({
+  type: z.literal('ItemTimeBudgetConsumed'),
+  instanceId: ULIDSchema,
+  amountMinutes: z.number().int().min(1),
+  byCharacterId: ULIDSchema,
+});
+export type ItemTimeBudgetConsumedEvent = z.infer<typeof ItemTimeBudgetConsumedEventSchema>;

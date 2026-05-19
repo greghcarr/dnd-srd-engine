@@ -3,6 +3,7 @@ import type { ResolvedContent } from '../../content/pack.js';
 import type { Event } from '../../schemas/events/index.js';
 import type {
   ItemDestroyedEvent,
+  ItemTimeBudgetConsumedEvent,
   ItemUsedEvent,
 } from '../../schemas/events/inventory.js';
 import type {
@@ -154,6 +155,18 @@ export interface UseItemIntent {
   // Required (non-empty) when the fired action is a Save; ignored
   // for other action kinds.
   readonly saveTargetIds?: ReadonlyArray<string>;
+  // Slice 293. Cumulative activation time the consumer is reporting
+  // on this use, drawn against the item definition's
+  // `timeBudget.maxMinutesPerLongRest` pool. Boots of Speed
+  // (10 min/LR) is the canonical user: the consumer reports
+  // `minutesElapsed` on the toggle-off intent, the planner emits
+  // ItemTimeBudgetConsumed, and the reducer increments the
+  // instance's `minutesUsed` field. On toggle-on, the planner
+  // validates `minutesUsed < max` and throws when the budget is
+  // exhausted (RAW: "the magic ceases to function until you finish
+  // a Long Rest"). Ignored for items without `timeBudget` and for
+  // action kinds other than Toggle.
+  readonly minutesElapsed?: number;
   readonly at?: string;
 }
 
@@ -293,6 +306,23 @@ export const planUseItem = (
       const target = state.characters[targetId];
       const alreadyApplied =
         target?.appliedConditions.some((c) => c.conditionId === action.conditionId) ?? false;
+      // Slice 293. Time-budget gate. When the def carries a
+      // `timeBudget`, toggle-on is blocked once cumulative
+      // `minutesUsed` reaches the cap (Boots of Speed: 10 min/LR).
+      // On toggle-off, the consumer-reported `minutesElapsed`
+      // emits ItemTimeBudgetConsumed which increments the
+      // counter; the reducer applies the increment and the next
+      // toggle-on rechecks the gate. Long Rest resets the counter
+      // for all participants' inventory.
+      if (def.timeBudget !== undefined) {
+        const used = instance.minutesUsed ?? 0;
+        const max = def.timeBudget.maxMinutesPerLongRest;
+        if (!alreadyApplied && used >= max) {
+          throw new Error(
+            `Item ${def.id} has exhausted its ${max}-minute-per-long-rest budget (used ${used}); finish a Long Rest to reset`,
+          );
+        }
+      }
       if (alreadyApplied) {
         const removed: ConditionRemovedEvent = {
           id: newEventId() as ULID,
@@ -302,6 +332,21 @@ export const planUseItem = (
           conditionId: action.conditionId,
         };
         events.push(removed);
+        if (
+          def.timeBudget !== undefined &&
+          intent.minutesElapsed !== undefined &&
+          intent.minutesElapsed > 0
+        ) {
+          const tb: ItemTimeBudgetConsumedEvent = {
+            id: newEventId() as ULID,
+            at,
+            type: 'ItemTimeBudgetConsumed',
+            instanceId: intent.instanceId as ULID,
+            amountMinutes: intent.minutesElapsed,
+            byCharacterId: intent.characterId as ULID,
+          };
+          events.push(tb);
+        }
       } else {
         const condApplied: ConditionAppliedEvent = {
           id: newEventId() as ULID,

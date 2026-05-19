@@ -47,5 +47,13 @@ export const ItemInstanceSchema = z.object({
     })
     .optional(),
   temporaryBuff: ItemTemporaryBuffSchema.optional(),
+  // Slice 293. Cumulative activation time consumed against the
+  // definition's `timeBudget.maxMinutesPerLongRest`. Boots of Speed
+  // (10 min/LR) is the canonical user. `planUseItem`'s Toggle branch
+  // rejects toggle-on when `minutesUsed >= max`; the consumer reports
+  // elapsed minutes on toggle-off via `UseItemIntent.minutesElapsed`,
+  // which emits `ItemTimeBudgetConsumed` and increments this field.
+  // `applyLongRestEnded` resets it to 0 for participants' inventory.
+  minutesUsed: z.number().int().min(0).optional(),
 });
 export type ItemInstance = z.infer<typeof ItemInstanceSchema>;
