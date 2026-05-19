@@ -4,6 +4,18 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine+content: Potion of Heroism + GrantTempHP ConsumeAction variant (slice 282)**
+
+First slice of the consumable-variant chain. Closes the slice-239 deferred row for Potion of Heroism. RAW: "For 1 hour, the drinker gains 10 Temporary Hit Points and the Blessed condition." Pre-282 the potion shipped `onConsume: []` — the engine had no shape for "flat temp HP grant on consume." This slice adds the fourth variant to the slice-235 `ConsumeAction` discriminated union and wires its canonical user.
+
+**Plumbing**: new `{ kind: 'GrantTempHP', amount }` variant on [`ConsumeActionSchema`](src/schemas/content/item.ts). [`planConsumeItem`](src/engine/plan/consume-item.ts) gains a branch that emits a `TempHPGranted` event with the action's `amount` and a `source: 'item:<def-id>'` tag. The existing slice-75 `applyTempHPGranted` reducer enforces RAW max-not-additive semantics; no reducer changes needed.
+
+**Content wired**: Potion of Heroism's `onConsume` becomes `[{ kind: 'GrantTempHP', amount: 10 }, { kind: 'ApplyCondition', conditionId: 'blessed' }]`. The Bless half uses the existing slice-236 ApplyCondition variant pointing at the pre-existing `blessed` condition (Bless spell shares the same condition). The 1-hour duration is consumer-managed per the ConsumeAction doc comment.
+
+**Pattern-check sweep**: searched the pack for other consumables that need flat temp HP grants — none in the SRD 5.2.1 consumables catalog beyond Potion of Heroism. Potion of Vitality grants HP differently (full restore + remove conditions); Potion of Healing variants use the slice-235 Heal action. Future monster ability descriptions that grant temp HP on consume (rare) would plug in by reusing this variant.
+
+Audit: variant name follows the kebab-case ConsumeAction convention (`Heal`, `ApplyCondition`, `CastSpell`, now `GrantTempHP`). One new variant, one new planner branch, one content wire. tsc clean; full vitest suite (1732 tests across 254 files, was 1728) green. 4 cases: emits TempHPGranted + ConditionApplied + ItemConsumed in correct shape; instance retires from inventory; drinker carries 10 temp HP + blessed; ally-feed via targetId override grants the ally, not the drinker.
+
 **Release: bump to 0.1.0-alpha.7 (slice 281)**
 
 Promotes the slice 269-280 cohort to a tagged release. `package.json` version bumped from `0.1.0-alpha.6` to `0.1.0-alpha.7`; `package-lock.json` regenerated via `npm install --package-lock-only`. The previous `## Unreleased` heading becomes `## 0.1.0-alpha.7 - 2026-05-19` immediately below.

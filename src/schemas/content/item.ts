@@ -213,6 +213,18 @@ export const ConsumeActionSchema = z.discriminatedUnion('kind', [
     slotLevel: z.number().int().min(0),
     castingClassId: z.string().optional(),
   }),
+  // Slice 282. Flat temporary HP grant on consume. Canonical user:
+  // Potion of Heroism (RAW: "gains 10 Temporary Hit Points and the
+  // Blessed condition for 1 hour"). Distinct from Heal (which
+  // restores current HP); the engine's existing applyTempHPGranted
+  // reducer enforces max-not-additive semantics so multiple grants
+  // don't stack. Compose with the slice-236 ApplyCondition variant
+  // when the same potion also applies a condition (Heroism uses
+  // both arms).
+  z.object({
+    kind: z.literal('GrantTempHP'),
+    amount: z.number().int().min(0),
+  }),
 ]);
 export type ConsumeAction = z.infer<typeof ConsumeActionSchema>;
 

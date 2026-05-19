@@ -2357,7 +2357,7 @@
       ],
       "description": "Enlarge effect (as the Enlarge/Reduce spell, enlarge option) for 1d4 hours when consumed. (Duration consumer-managed.)"
     },
-    { "id": "potion-of-heroism", "itemKind": "consumable", "name": "Potion of Heroism", "onConsume": [], "description": "Grants 10 temporary hit points and the effects of Bless (no concentration required) for 1 hour. Deferred: needs a flat-temp-HP ConsumeAction variant + a Bless-style condition shape." },
+    { "id": "potion-of-heroism", "itemKind": "consumable", "name": "Potion of Heroism", "description": "RAW: 'For 1 hour, the drinker gains 10 Temporary Hit Points and the Blessed condition.' Slice 282 wired both arms via the slice-235 ConsumeAction union: new `GrantTempHP { amount }` variant for the 10 temp HP, plus the existing slice-236 `ApplyCondition { conditionId: 'blessed' }` variant for the Bless effect. The 1-hour duration is consumer-managed per the ConsumeAction doc comment (the engine's auto-expiry is round-based + source-keyed).", "onConsume": [{ "kind": "GrantTempHP", "amount": 10 }, { "kind": "ApplyCondition", "conditionId": "blessed" }] },
     {
       "id": "potion-of-mind-reading",
       "itemKind": "consumable",

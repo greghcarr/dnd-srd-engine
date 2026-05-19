@@ -2,7 +2,7 @@ import type { CampaignState } from '../../schemas/runtime/campaign.js';
 import type { ResolvedContent } from '../../content/pack.js';
 import type { Event } from '../../schemas/events/index.js';
 import type { ItemConsumedEvent } from '../../schemas/events/inventory.js';
-import type { ConditionAppliedEvent, HealedEvent } from '../../schemas/events/combat.js';
+import type { ConditionAppliedEvent, HealedEvent, TempHPGrantedEvent } from '../../schemas/events/combat.js';
 import { newAppliedConditionId } from '../../ids.js';
 import { planCastSpell } from './cast-spell.js';
 import type { RNG } from '../../rng/index.js';
@@ -100,6 +100,21 @@ export const planConsumeItem = (
         sourceCharacterId: intent.characterId as ULID,
       };
       events.push(condApplied);
+    } else if (action.kind === 'GrantTempHP') {
+      // Slice 282: flat temp HP grant. The existing applyTempHPGranted
+      // reducer (slice 75 origin) enforces RAW max-not-additive
+      // semantics so a smaller subsequent grant doesn't override a
+      // larger one, and the new value replaces only when strictly
+      // greater. Source field tags the audit trail back to the item.
+      const tempHPGranted: TempHPGrantedEvent = {
+        id: newEventId() as ULID,
+        at,
+        type: 'TempHPGranted',
+        targetId: targetId as ULID,
+        amount: action.amount,
+        source: `item:${def.id}`,
+      };
+      events.push(tempHPGranted);
     } else if (action.kind === 'CastSpell') {
       // Slice 237: spell-scroll consumption. Delegate to planCastSpell
       // with noSlotCost (slice 219) and ignorePreparation (slice 220):
