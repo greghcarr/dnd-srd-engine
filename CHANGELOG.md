@@ -4,6 +4,16 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Docs: consumer-coordinated fact-slot tracking section (slice 294)**
+
+Closes the slice-276 follow-up row that slice 280 introduced ("Consumer-half tracking for engine-half-only RAW fixes"). New "Consumer-coordinated fact slots" section in [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md) catalogs the three engine-half-landed slots (`bearerCanSeeFearSource`, `targetCanSeeAttacker`, `lightLevel`) plus their entry-point inputs (AttackIntent / ResolveAttackInput / ComputeAbilityCheckInput), the default-undefined semantic (default-apply vs opt-in), and what observable RAW behavior is gated. Includes a "when to use which semantic" rule for future consumer-coordinated facts.
+
+Why this is its own slice: future consumers (dndbnb, web demo, VTT integrations) need a single canonical reference for which engine inputs to populate from their scene state. Before this slice, the information was scattered across slice 276 / 278 / 279 commit bodies + per-condition wires + inline doc comments. The new section is the front-door reference, and future slices append to its table as new slots land.
+
+Pattern-check: the row was opened slice 280 alongside the doc-size CI check row; that one closed slice 285. Both came from the same "we have a deferred meta-task; we need a concrete artifact" reframe. Future cross-cutting tracking gaps follow the same shape — open a row when noticed, close it when the artifact exists.
+
+Audit: pure doc slice — no engine changes. tsc clean (no source touched); 1804 tests across 265 files (unchanged). The doc-size audit passes for the updated starter-pack-gaps.md (44 KB, under the 60 KB ceiling). No new tests; the artifact's value is reference content for consumers, not a behavior to assert.
+
 **Engine+content: Boots of Speed time-budget cap (slice 293)**
 
 Closes the slice-242 deferred row that had been open since the initial Toggle UseAction landed. RAW (SRD 5.2.1): "When the boots' property has been used for a total of 10 minutes, the magic ceases to function until you finish a Long Rest." A continuous, cumulative minutes-per-LR pool distinct from `charges` (per-use integer count) and round-based auto-expiry (slice 102).
