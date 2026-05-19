@@ -4,6 +4,22 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content: Potion of Resistance variant unroll + 5 missing protection-*-active conditions (slice 296)**
+
+Closes the slice-239 deferred row, sibling of slice 295's Armor / Ring of Resistance unroll (same SRD 5.2.1 d10 damage-type table). Same variant-unroll pattern, but Potion of Resistance has the extra dimension of needing 5 new conditions since the existing `protection-*-active` set (acid, cold, fire, lightning, thunder) only covered the 5 elemental types Protection from Energy targets in RAW.
+
+Content wired:
+- 5 new conditions: `protection-force-active`, `protection-necrotic-active`, `protection-poison-active`, `protection-psychic-active`, `protection-radiant-active`. Each is dead-simple: one `GrantResistance` for the matching damage type. Mirrors the existing 5 from Protection from Energy.
+- 10 Potion of Resistance variants (`potion-of-resistance-<type>`, named "Potion of Resistance (<Type>)"). Each carries a single `ApplyCondition` ConsumeAction pointing at the matching `protection-<type>-active` condition. Single empty parent entry removed.
+
+RAW deviations: 1-hour duration is consumer-managed (mirror of slice 236's ApplyCondition doc); no engine-side auto-expiry. Protection from Energy's RAW spell scope (only the 5 elemental types) is unchanged — the new 5 conditions are not added to its caster-chooses-variant list.
+
+Pattern-check: this slice + slice 295 form the natural pair (both bound by SRD 5.2.1's "1d10 damage type" chooser-at-creation). Belt of Giant Strength (slice 229) was the earlier canonical pattern. No other sibling chooser-at-creation magic items in 2024 RAW today.
+
+Audit: pure content. tsc clean; 1804 tests across 265 files (unchanged count; conditions coverage snapshot updated for the 5 new `protection-*-active` IDs). SRD drift audit passes (variant names not in srdItems map → rarity asserts silently skip, same as slice 295).
+
+Doc updates: gaps-row closed; Coverage-at-a-glance Items count refreshed (502 → 511 total; consumables 42 → 52); Conditions count refreshed (98 → 117; prior count had drifted across slices 263-296).
+
 **Content: Armor + Ring of Resistance variant unroll (slice 295)**
 
 Closes the slice-224 deferred row that bundled Armor of Resistance + Ring of Resistance together (same chooser-at-creation pattern, same SRD 5.2.1 d10 damage-type table). The slice-229 Belt of Giant Strength variant-unroll pattern carries forward: one pack entry per damage type, single `GrantResistance` effect per variant.

@@ -2367,7 +2367,16 @@
       ],
       "description": "Cast Detect Thoughts (save DC 13) for 10 minutes when consumed. Detect Thoughts is currently schema-only in the engine, so the cast records a SpellCastDeclared but no mechanical save/probe chain fires; the consumer narrates the in-fiction outcome."
     },
-    { "id": "potion-of-resistance", "itemKind": "consumable", "name": "Potion of Resistance", "onConsume": [], "description": "Resistance to one damage type (acid, cold, fire, force, lightning, necrotic, poison, psychic, radiant, or thunder) chosen at consume time, for 1 hour." },
+    { "id": "potion-of-resistance-acid", "itemKind": "consumable", "name": "Potion of Resistance (Acid)", "onConsume": [{ "kind": "ApplyCondition", "conditionId": "protection-acid-active" }], "description": "Resistance to Acid damage for 1 hour. RAW (SRD 5.2.1): the type is chosen at item creation from the d10 table (acid, cold, fire, force, lightning, necrotic, poison, psychic, radiant, thunder). Slice 296 ships the 10 variants as a unroll. 1-hour duration is consumer-managed (mirror of slice 236's ApplyCondition doc)." },
+    { "id": "potion-of-resistance-cold", "itemKind": "consumable", "name": "Potion of Resistance (Cold)", "onConsume": [{ "kind": "ApplyCondition", "conditionId": "protection-cold-active" }], "description": "Resistance to Cold damage for 1 hour. Slice 296 variant of Potion of Resistance." },
+    { "id": "potion-of-resistance-fire", "itemKind": "consumable", "name": "Potion of Resistance (Fire)", "onConsume": [{ "kind": "ApplyCondition", "conditionId": "protection-fire-active" }], "description": "Resistance to Fire damage for 1 hour. Slice 296 variant of Potion of Resistance." },
+    { "id": "potion-of-resistance-force", "itemKind": "consumable", "name": "Potion of Resistance (Force)", "onConsume": [{ "kind": "ApplyCondition", "conditionId": "protection-force-active" }], "description": "Resistance to Force damage for 1 hour. Slice 296 variant of Potion of Resistance." },
+    { "id": "potion-of-resistance-lightning", "itemKind": "consumable", "name": "Potion of Resistance (Lightning)", "onConsume": [{ "kind": "ApplyCondition", "conditionId": "protection-lightning-active" }], "description": "Resistance to Lightning damage for 1 hour. Slice 296 variant of Potion of Resistance." },
+    { "id": "potion-of-resistance-necrotic", "itemKind": "consumable", "name": "Potion of Resistance (Necrotic)", "onConsume": [{ "kind": "ApplyCondition", "conditionId": "protection-necrotic-active" }], "description": "Resistance to Necrotic damage for 1 hour. Slice 296 variant of Potion of Resistance." },
+    { "id": "potion-of-resistance-poison", "itemKind": "consumable", "name": "Potion of Resistance (Poison)", "onConsume": [{ "kind": "ApplyCondition", "conditionId": "protection-poison-active" }], "description": "Resistance to Poison damage for 1 hour. Slice 296 variant of Potion of Resistance." },
+    { "id": "potion-of-resistance-psychic", "itemKind": "consumable", "name": "Potion of Resistance (Psychic)", "onConsume": [{ "kind": "ApplyCondition", "conditionId": "protection-psychic-active" }], "description": "Resistance to Psychic damage for 1 hour. Slice 296 variant of Potion of Resistance." },
+    { "id": "potion-of-resistance-radiant", "itemKind": "consumable", "name": "Potion of Resistance (Radiant)", "onConsume": [{ "kind": "ApplyCondition", "conditionId": "protection-radiant-active" }], "description": "Resistance to Radiant damage for 1 hour. Slice 296 variant of Potion of Resistance." },
+    { "id": "potion-of-resistance-thunder", "itemKind": "consumable", "name": "Potion of Resistance (Thunder)", "onConsume": [{ "kind": "ApplyCondition", "conditionId": "protection-thunder-active" }], "description": "Resistance to Thunder damage for 1 hour. Slice 296 variant of Potion of Resistance." },
     { "id": "gloves-of-missile-snaring", "itemKind": "magic", "name": "Gloves of Missile Snaring", "rarity": "uncommon", "requiresAttunement": true, "effects": [] },
     { "id": "lantern-of-revealing", "itemKind": "magic", "name": "Lantern of Revealing", "rarity": "uncommon", "requiresAttunement": false, "effects": [] },
     { "id": "robe-of-useful-items", "itemKind": "magic", "name": "Robe of Useful Items", "rarity": "uncommon", "requiresAttunement": false, "effects": [] },
@@ -8827,6 +8836,46 @@
       "stackable": false,
       "endsOn": [],
       "effects": [{ "kind": "GrantResistance", "damageType": "thunder" }]
+    },
+    {
+      "id": "protection-force-active",
+      "name": "Protection: Force",
+      "description": "Resistance to Force damage. Slice 296 added this condition to support the Potion of Resistance variant unroll (RAW 5.2.1 covers 10 damage types; the existing Protection from Energy spell only covers 5 of those — acid, cold, fire, lightning, thunder — so the 5 additional types needed their own conditions). Not currently used by any spell mechanic; Potion of Resistance (Force) is the canonical user.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [{ "kind": "GrantResistance", "damageType": "force" }]
+    },
+    {
+      "id": "protection-necrotic-active",
+      "name": "Protection: Necrotic",
+      "description": "Resistance to Necrotic damage. Slice 296 sibling of `protection-force-active`. Canonical user: Potion of Resistance (Necrotic).",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [{ "kind": "GrantResistance", "damageType": "necrotic" }]
+    },
+    {
+      "id": "protection-poison-active",
+      "name": "Protection: Poison",
+      "description": "Resistance to Poison damage. Slice 296 sibling of `protection-force-active`. Canonical user: Potion of Resistance (Poison). Distinct from the existing `poisoned` condition (which is a status effect imposing disadvantage); this condition strictly grants damage resistance.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [{ "kind": "GrantResistance", "damageType": "poison" }]
+    },
+    {
+      "id": "protection-psychic-active",
+      "name": "Protection: Psychic",
+      "description": "Resistance to Psychic damage. Slice 296 sibling of `protection-force-active`. Canonical user: Potion of Resistance (Psychic).",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [{ "kind": "GrantResistance", "damageType": "psychic" }]
+    },
+    {
+      "id": "protection-radiant-active",
+      "name": "Protection: Radiant",
+      "description": "Resistance to Radiant damage. Slice 296 sibling of `protection-force-active`. Canonical user: Potion of Resistance (Radiant).",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [{ "kind": "GrantResistance", "damageType": "radiant" }]
     },
     {
       "id": "healing-blocked-active",
