@@ -245,6 +245,28 @@ export const ConsumeActionSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('RemoveExhaustion'),
   }),
+  // Slice 284. Apply a temporary buff to a target weapon via the
+  // existing slice-76 `ItemInstance.temporaryBuff` shape. Canonical
+  // users: Oil of Sharpness (+3 attack / +3 damage / counts as
+  // magical for 1 hour) and Poison Basic (+1d4 poison damage rider
+  // for 1 minute). Mirrors the four temporaryBuff fields so the
+  // attack planner picks them up automatically. The buff stamps a
+  // fresh synthetic effect-instance id (consumable-applied buffs
+  // aren't linked to concentration; the id serves as a unique tag
+  // for future "remove this specific buff" semantics). The
+  // consumer specifies the target weapon via the
+  // `targetWeaponInstanceId` field on ConsumeItemIntent (defaults
+  // to the actor's equipped main hand). RAW deviations: the
+  // engine doesn't gate on weapon type (RAW: piercing / slashing
+  // only) and doesn't auto-expire on the RAW time / first-hit
+  // trigger (consumer-managed duration).
+  z.object({
+    kind: z.literal('ApplyItemBuff'),
+    attackBonus: z.number().int().optional(),
+    damageBonus: z.number().int().optional(),
+    extraDamageDice: z.string().optional(),
+    extraDamageType: DamageTypeSchema.optional(),
+  }),
 ]);
 export type ConsumeAction = z.infer<typeof ConsumeActionSchema>;
 

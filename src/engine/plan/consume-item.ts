@@ -1,7 +1,7 @@
 import type { CampaignState } from '../../schemas/runtime/campaign.js';
 import type { ResolvedContent } from '../../content/pack.js';
 import type { Event } from '../../schemas/events/index.js';
-import type { ItemConsumedEvent } from '../../schemas/events/inventory.js';
+import type { ItemBuffAppliedEvent, ItemConsumedEvent } from '../../schemas/events/inventory.js';
 import type {
   ConditionAppliedEvent,
   ConditionRemovedEvent,
@@ -9,7 +9,7 @@ import type {
   HealedEvent,
   TempHPGrantedEvent,
 } from '../../schemas/events/combat.js';
-import { newAppliedConditionId } from '../../ids.js';
+import { newAppliedConditionId, newEffectInstanceId } from '../../ids.js';
 import { planCastSpell } from './cast-spell.js';
 import type { RNG } from '../../rng/index.js';
 import { rollExpression } from '../../rng/dice.js';
@@ -30,6 +30,13 @@ export interface ConsumeItemIntent {
   // action, defaults to [characterId] (useful for self-buff
   // scrolls like Greater Invisibility).
   readonly castTargetIds?: ReadonlyArray<string>;
+  // Slice 284. Used by `ApplyItemBuff` ConsumeActions to specify
+  // which weapon instance receives the buff (Oil of Sharpness onto
+  // a longsword, Poison Basic onto a dagger, etc.). When omitted,
+  // defaults to the actor's `equipped.mainHand`. The instance must
+  // exist in state.itemInstances and the definition must be a
+  // weapon; the planner throws otherwise.
+  readonly targetWeaponInstanceId?: string;
   readonly at?: string;
 }
 
@@ -161,6 +168,43 @@ export const planConsumeItem = (
         source: `item:${def.id}`,
       };
       events.push(tempHPGranted);
+    } else if (action.kind === 'ApplyItemBuff') {
+      // Slice 284: stamp a temporaryBuff on the target weapon via
+      // ItemBuffApplied. The consumer specifies the weapon via
+      // intent.targetWeaponInstanceId; defaults to the actor's
+      // equipped.mainHand. Fresh synthetic sourceEffectInstanceId
+      // tags the buff so a future "remove this specific oil"
+      // semantic could find it; the engine doesn't auto-expire
+      // the buff today (consumer manages the 1h / 1min duration).
+      const weaponInstanceId = intent.targetWeaponInstanceId ?? character.equipped.mainHand;
+      if (weaponInstanceId === undefined) {
+        throw new Error(
+          `Cannot apply ${def.id}: no target weapon (set intent.targetWeaponInstanceId or equip a main-hand weapon)`,
+        );
+      }
+      const weaponInstance = state.itemInstances[weaponInstanceId];
+      if (weaponInstance === undefined) {
+        throw new Error(`Unknown weapon instance ${weaponInstanceId} for ${def.id}`);
+      }
+      const weaponDef = content.items.get(weaponInstance.definitionId);
+      if (weaponDef === undefined || weaponDef.itemKind !== 'weapon') {
+        throw new Error(
+          `Cannot apply ${def.id} to ${weaponInstance.definitionId}: target is not a weapon`,
+        );
+      }
+      const buffApplied: ItemBuffAppliedEvent = {
+        id: newEventId() as ULID,
+        at,
+        type: 'ItemBuffApplied',
+        instanceId: weaponInstanceId as ULID,
+        attackBonus: action.attackBonus ?? 0,
+        damageBonus: action.damageBonus ?? 0,
+        ...(action.extraDamageDice !== undefined ? { extraDamageDice: action.extraDamageDice } : {}),
+        ...(action.extraDamageType !== undefined ? { extraDamageType: action.extraDamageType } : {}),
+        sourceEffectInstanceId: newEffectInstanceId() as ULID,
+        source: `item:${def.id}`,
+      };
+      events.push(buffApplied);
     } else if (action.kind === 'CastSpell') {
       // Slice 237: spell-scroll consumption. Delegate to planCastSpell
       // with noSlotCost (slice 219) and ignorePreparation (slice 220):

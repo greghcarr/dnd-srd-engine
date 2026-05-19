@@ -4,6 +4,27 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine+content: ApplyItemBuff ConsumeAction variant + Oil of Sharpness + Poison Basic (slice 284)**
+
+Third slice of the consumable-variant chain. Closes two slice-239 deferred rows with one new variant: Oil of Sharpness (+3 attack / +3 damage / counts as magical) and Poison Basic (1d4 poison rider) both wire as `ApplyItemBuff` ConsumeActions that stamp a `temporaryBuff` onto a target weapon via the slice-76 shape. The Poison Basic save-vs-Poisoned arm stays deferred (would need an on-hit-rider extension to the temporaryBuff shape or composition with slice-61).
+
+**Plumbing**:
+
+- New `{ kind: 'ApplyItemBuff', attackBonus?, damageBonus?, extraDamageDice?, extraDamageType? }` variant on [`ConsumeActionSchema`](src/schemas/content/item.ts). Field shape mirrors `ItemTemporaryBuff` so the attack planner picks up the buff automatically (slice 76's attack-bonus / damage-bonus path; slice 90's elemental-rider path for extra dice).
+- New `targetWeaponInstanceId?: string` field on [`ConsumeItemIntent`](src/engine/plan/consume-item.ts). Defaults to the actor's `equipped.mainHand`. Throws if the target isn't a weapon or no main hand is set.
+- planConsumeItem emits `ItemBuffApplied` with a fresh synthetic `sourceEffectInstanceId` (consumable-applied buffs aren't linked to concentration; the id tags the buff for any future "remove this specific oil" semantics).
+
+**Content wired (2 consumables)**:
+
+- **Oil of Sharpness**: `onConsume: [{ kind: 'ApplyItemBuff', attackBonus: 3, damageBonus: 3 }]`. The "counts as magical" arm is free — slice 112's `isMagicWeaponAttack` returns true for any temporaryBuff-bearing item.
+- **Poison Basic**: `onConsume: [{ kind: 'ApplyItemBuff', extraDamageDice: '1d4', extraDamageType: 'poison' }]`.
+
+**RAW deviations** (both items): engine doesn't gate on weapon type (RAW: piercing / slashing only) or auto-expire after the narrative duration (1 hour / 1 minute or first-hit). Consumer-managed.
+
+**Pattern-check sweep**: searched for other consumables that apply weapon buffs — none in SRD 5.2.1. Drow Poison and similar future content would extend with on-hit-save composition (deferred).
+
+Audit: variant name follows the ConsumeAction convention. One new variant + one new intent field, one new planner branch, two content wires. tsc clean; full vitest suite (1743 tests across 256 files, was 1737) green. 6 cases in two describes + an error-paths describe: Oil emits +3/+3 on equipped main hand; weapon state carries the buff after consume; explicit targetWeaponInstanceId overrides main hand; Poison Basic emits 1d4 poison rider; throws when no target weapon; throws when target isn't a weapon.
+
 **Engine+content: Potion of Vitality + RemoveConditions / RemoveExhaustion ConsumeAction variants (slice 283)**
 
 Second slice of the consumable-variant chain. Closes the first arm of the slice-239 Potion of Vitality row. RAW: "removes any Exhaustion you are suffering and cures any disease or Poison affecting you. For the next 24 hours, you regain the maximum number of Hit Points for any Hit Die you spend." The 24-hour max-HD-spend rider stays deferred (the engine doesn't model Hit Die spend max yet).
