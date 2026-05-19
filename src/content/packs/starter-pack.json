@@ -2708,7 +2708,7 @@
     },
     { "id": "potion-of-poison", "itemKind": "consumable", "name": "Potion of Poison", "onConsume": [], "description": "Appears as a Potion of Healing or another beneficial potion (Identify reveals its true nature). On drinking: 4d6 Poison damage and DC 13 Constitution saving throw or have the Poisoned condition for 1 hour." },
     { "id": "potion-of-vitality", "itemKind": "consumable", "name": "Potion of Vitality", "description": "RAW: 'When you drink this potion, it removes any Exhaustion you are suffering and cures any disease or Poison affecting you. For the next 24 hours, you regain the maximum number of Hit Points for any Hit Die you spend.' Slice 283 wired the first arm via two new ConsumeAction variants: `RemoveExhaustion` (zeroes out the bearer's exhaustion level) + `RemoveConditions { conditionIds: ['poisoned'] }`. The 24-hour max-HD-spend rider stays deferred (the engine doesn't model Hit Die spend max yet).", "onConsume": [{ "kind": "RemoveExhaustion" }, { "kind": "RemoveConditions", "conditionIds": ["poisoned"] }] },
-    { "id": "perfume", "itemKind": "consumable", "name": "Perfume", "onConsume": [], "description": "A 4-ounce vial. After applying Perfume to yourself, the bearer has Advantage on Charisma (Persuasion) checks made to influence an Indifferent Humanoid within 5 ft for 1 hour." },
+    { "id": "perfume", "itemKind": "consumable", "name": "Perfume", "onConsume": [{ "kind": "ApplyCondition", "conditionId": "perfumed-active" }], "description": "RAW (SRD 5.2.1 Equipment 'Perfume'): 'For 1 hour after applying Perfume to yourself, you have Advantage on Charisma (Persuasion) checks made to influence an Indifferent Humanoid within 5 feet of yourself.' Slice 292 wired via the slice-236 ApplyCondition ConsumeAction + new `perfumed-active` condition that grants `SetAdvantage on:{kind:'skill', skill:'persuasion'} mode:'advantage'` (skill target was already in the schema since slice 263 / 274; this slice ships the canonical Persuasion user). RAW deviations carried forward: 'Indifferent Humanoid' target-attitude gate is consumer-managed (engine doesn't model attitude); 5-ft range is consumer-managed; 1-hour duration is consumer-managed (mirror of slice 236)." },
     { "id": "alchemists-supplies", "itemKind": "tool", "name": "Alchemist's Supplies", "category": "artisan" },
     { "id": "brewers-supplies", "itemKind": "tool", "name": "Brewer's Supplies", "category": "artisan" },
     { "id": "carpenters-tools", "itemKind": "tool", "name": "Carpenter's Tools", "category": "artisan" },
@@ -8523,6 +8523,16 @@
       "effects": [
         { "kind": "ModifySpeed", "mode": "walk", "op": "multiply", "value": 2 },
         { "kind": "ImposeDisadvantageOnAttackers", "condition": { "kind": "eq", "path": "event.isOpportunityAttack", "value": true } }
+      ]
+    },
+    {
+      "id": "perfumed-active",
+      "name": "Perfumed (active)",
+      "description": "Slice 292. Applied by the Perfume consumable's slice-236 ApplyCondition ConsumeAction. Grants Advantage on Charisma (Persuasion) checks for 1 hour. RAW also requires the target be an Indifferent Humanoid within 5 ft; those gates are consumer-managed (engine doesn't model attitude or position). The slice-265 skill-check inheritance + slice-274 ability-check derive pick up the skill-discriminated SetAdvantage automatically; no new engine work needed.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "SetAdvantage", "on": { "kind": "skill", "skill": "persuasion" }, "mode": "advantage" }
       ]
     },
     {

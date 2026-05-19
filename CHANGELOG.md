@@ -4,6 +4,16 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content: Perfume + perfumed-active condition (slice 292)**
+
+Closes the slice-239 Perfume deferred row. The original row miscategorized the gap — the skill-discriminated SetAdvantage target `on: { kind: 'skill', skill: Skill }` had been in the schema since slices 263 / 274 (canonical users at the time: Eyes of the Eagle Perception, Gloves of Swimming Athletics, slice 279 Cloak of the Bat Stealth). Perfume is the canonical Persuasion user; pure content slice on top of existing primitives.
+
+Content wired: new `perfumed-active` condition with `SetAdvantage on:{kind:'skill', skill:'persuasion'} mode:'advantage'`. Perfume's `onConsume` becomes `[ApplyCondition perfumed-active]` (slice-236 ApplyCondition variant).
+
+RAW deviations: "Indifferent Humanoid" target-attitude gate is consumer-managed (engine doesn't model attitude); 5-ft range is consumer-managed; 1-hour duration is consumer-managed (mirror of slice 236).
+
+Audit: pure content. tsc clean; 1799 tests across 264 files (was 1793). 6 cases: cast emits ConditionApplied; CHA(Persuasion) advantage; CHA(Deception) no advantage; raw CHA no advantage; WIS(Persuasion) advantage (skill-discriminated, ability-agnostic); baseline no advantage. Coverage: `perfumed-active` joins conditions wired list.
+
 **Engine+content: Antitoxin + `event.savePreventsCondition` predicate fact (slice 291)**
 
 Closes the slice-239 Antitoxin deferred row. RAW: "Advantage on saving throws to avoid or end the Poisoned condition for 1 hour." Pre-291 the engine had no way to gate save advantage on the specific condition the save would prevent or end.
