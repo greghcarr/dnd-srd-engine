@@ -87,7 +87,7 @@ Each entry below is one engine primitive: a focused engine slice that, once land
 
 | Primitive | Spells unblocked | Notes |
 |---|---|---|
-| **Transformation handler** (spell variant) | ~2 (alter-self, gaseous-form) | Spell-side transformation; piggybacks on the existing `wildShape` / `polymorph` pattern but with spell-defined target shapes. |
+| **Alter Self** (spell wiring) | 1 (alter-self) | Slice 287 refrained the original "Transformation handler" row: RAW for both alter-self and gaseous-form is buff-condition shaped, not statblock-swap shaped, so no wildShape/polymorph-style planner is needed. Gaseous Form shipped slice 287 via the existing slice-73 buff mechanic. Alter Self stays deferred — all three of its arms need primitives the engine doesn't have: Aquatic Adaptation needs the non-walk speed derive + a "matchWalkSpeed" `ModifySpeed` op (same blocker as Cloak of Arachnida climb speed); Natural Weapons needs unarmed-strike attack replacement (1d6 of caster-chosen type + use spellcasting mod instead of STR + counts as magical); Change Appearance is pure narrative (no engine work). Re-purpose this row as the per-arm tracker once the prerequisite primitives land. |
 
 Slice 270 archived the ~30 shipped engine-slice primitives from this table to [gaps-engine-slices-shipped.md](gaps-engine-slices-shipped.md). The live table above carries only the unshipped rows; reach for the archive when you need the historical view of what each shipped primitive landed.
 

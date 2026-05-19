@@ -4,6 +4,14 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content: Gaseous Form wired through existing primitives (slice 287)**
+
+Closes one of two spells on the slice-241 "Transformation handler" row. RAW reframing: both alter-self and gaseous-form are buff-condition shaped (not statblock-swap), so no wildShape/polymorph-style planner is needed. Gaseous Form wires through the slice-73 buff mechanic + new `gaseous-form-active` condition: `OverrideACFormula base 11`, `GrantResistance` for B/P/S, `GrantConditionImmunity prone`, `SetAdvantage` on STR/DEX/CON saves, declarative `ModifySpeed fly set 10`.
+
+Alter Self stays deferred — all three arms need missing primitives (Aquatic: non-walk speed derive + `matchWalkSpeed` op; Natural Weapons: unarmed-strike attack replacement; Change Appearance: pure narrative). Gap row reframed as "Alter Self (spell wiring)" with per-arm prerequisites.
+
+Audit: no engine changes. tsc clean; 1766 tests across 259 files (was 1758). 8 cases pin cast chain + AC override + B/P/S resistance + prone immunity + per-ability save advantage. Coverage: `gaseous-form-active` joins conditions wired list.
+
 **Engine+content: Pipes of Haunting + Save UseAction variant (slice 286)**
 
 Closes the slice-241 deferred Pipes of Haunting row. RAW (SRD 5.2.1): "Each creature of your choice within 30 feet of you must succeed on a DC 15 Wisdom saving throw or have the Frightened condition for 1 minute." Pre-286 Pipes shipped with `effects: []` / `onUse: []` — charges were declared but no UseAction rolled the bespoke item-fixed-DC save. This slice adds the fourth variant to the slice-240 `UseActionSchema` (sibling to ApplyCondition, Toggle, CastSpell).

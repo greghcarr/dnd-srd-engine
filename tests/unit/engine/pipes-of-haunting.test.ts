@@ -26,7 +26,8 @@ import { newCharacterId } from '../../../src/ids.js';
 import type { CharacterCreatedEvent } from '../../../src/schemas/events/progression.js';
 import type { ConditionAppliedEvent } from '../../../src/schemas/events/combat.js';
 import type { SaveRolledEvent } from '../../../src/schemas/events/checks.js';
-import type { ItemChargeConsumedEvent, ItemUsedEvent } from '../../../src/schemas/events/inventory.js';
+import type { ItemUsedEvent } from '../../../src/schemas/events/inventory.js';
+import type { ItemChargeConsumedEvent } from '../../../src/schemas/events/charges.js';
 import { eventId, isoTimestamp, makeItemInstance } from '../../fixtures/index.js';
 
 const PACK = loadStarterPack();

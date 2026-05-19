@@ -2061,7 +2061,7 @@
     { "id": "daylight", "name": "Daylight", "level": 3, "school": "evocation", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "1 hour", "concentration": false, "ritual": false, "classes": ["cleric", "druid", "paladin", "ranger", "sorcerer"], "mechanicalEffects": [] },
     { "id": "elemental-weapon", "name": "Elemental Weapon", "level": 3, "school": "transmutation", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 hour", "concentration": true, "ritual": false, "classes": ["paladin", "druid"], "mechanicalEffects": [] },
     { "id": "fly", "name": "Fly", "level": 3, "school": "transmutation", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a feather" }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["sorcerer", "warlock", "wizard"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "flying-active" }] },
-    { "id": "gaseous-form", "name": "Gaseous Form", "level": 3, "school": "transmutation", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a bit of gauze" }, "duration": "Concentration, up to 1 hour", "concentration": true, "ritual": false, "classes": ["sorcerer", "warlock", "wizard"], "mechanicalEffects": [] },
+    { "id": "gaseous-form", "name": "Gaseous Form", "level": 3, "school": "transmutation", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a bit of gauze" }, "duration": "Concentration, up to 1 hour", "concentration": true, "ritual": false, "classes": ["sorcerer", "warlock", "wizard"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "gaseous-form-active" }] },
     { "id": "glyph-of-warding", "name": "Glyph of Warding", "level": 3, "school": "abjuration", "castingTime": "1 hour", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "powdered diamond worth 200+ GP, which the spell consumes" }, "duration": "Until dispelled or triggered", "concentration": false, "ritual": false, "classes": ["bard", "cleric", "wizard"], "mechanicalEffects": [{ "kind": "trap", "saveAbility": "DEX", "damageDice": "5d8", "casterChoosesDamageType": { "allowed": ["acid", "cold", "fire", "lightning", "thunder"] }, "halfOnSuccess": true, "charges": 1, "label": "Explosive Runes" }] },
     { "id": "haste", "name": "Haste", "level": 3, "school": "transmutation", "castingTime": "Action", "range": "30 feet", "components": { "verbal": true, "somatic": true, "material": "a shaving of licorice root" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["sorcerer", "wizard"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "hasted-active" }] },
     { "id": "hunger-of-hadar", "name": "Hunger of Hadar", "level": 3, "school": "conjuration", "castingTime": "Action", "range": "150 feet", "components": { "verbal": true, "somatic": true, "material": "a pickled octopus tentacle" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["warlock"], "targeting": { "shape": "sphere", "size": 20 }, "mechanicalEffects": [{ "kind": "aura-damage", "trigger": "on-enter", "rangeFeet": 20, "damageDice": "2d6", "damageType": "cold" }, { "kind": "aura-damage", "trigger": "on-turn-end", "rangeFeet": 20, "saveAbility": "DEX", "damageDice": "2d6", "damageType": "acid", "halfOnSuccess": true }] },
@@ -8523,6 +8523,24 @@
       "effects": [
         { "kind": "ModifySpeed", "mode": "walk", "op": "multiply", "value": 2 },
         { "kind": "ImposeDisadvantageOnAttackers", "condition": { "kind": "eq", "path": "event.isOpportunityAttack", "value": true } }
+      ]
+    },
+    {
+      "id": "gaseous-form-active",
+      "name": "Gaseous Form (active)",
+      "description": "Concentration, up to 1 hour (Gaseous Form spell). RAW: 'A willing creature you touch shape-shifts, along with everything it's wearing and carrying, into a misty cloud for the duration. While in this form, the target's only method of movement is a Fly Speed of 10 feet, and it can hover. The target can enter and occupy the space of another creature. The target has Resistance to Bludgeoning, Piercing, and Slashing damage; it has Immunity to the Prone condition; and it has Advantage on Strength, Dexterity, and Constitution saving throws. The target can pass through narrow openings, but it treats liquids as though they were solid surfaces.' Slice 287 wired the mechanical arms via existing primitives: OverrideACFormula sets AC to a flat 11 (RAW: the cloud has AC 11), GrantResistance covers B/P/S, GrantConditionImmunity on prone, SetAdvantage on STR/DEX/CON saves. RAW deviations carried forward: the Fly Speed 10 ft is declarative-only (slice 263's pattern-check finding: 0 consumers read non-walk ModifySpeed entries — needs slice-227-row's non-walk speed derive to surface mechanically); 'can't speak, manipulate objects, attack, or cast spells' is consumer-managed (the engine doesn't auto-restrict the cast / attack surface based on a transmutation buff); the 'spell ends if target drops to 0 HP' clause stays consumer-managed; 'can pass through narrow openings' is narrative.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "OverrideACFormula", "base": 11, "abilityModifiers": [], "priority": 100 },
+        { "kind": "GrantResistance", "damageType": "bludgeoning" },
+        { "kind": "GrantResistance", "damageType": "piercing" },
+        { "kind": "GrantResistance", "damageType": "slashing" },
+        { "kind": "GrantConditionImmunity", "conditionId": "prone" },
+        { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "STR" }, "mode": "advantage" },
+        { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "DEX" }, "mode": "advantage" },
+        { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "CON" }, "mode": "advantage" },
+        { "kind": "ModifySpeed", "mode": "fly", "op": "set", "value": 10 }
       ]
     },
     {
