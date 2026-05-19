@@ -4,6 +4,20 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content: Elvenkind Stealth wires (slice 297)**
+
+Two simple wires picked up on the way past — both items had `effects: []` since the original starter-pack authoring even though the slice-263 skill-discriminated `SetAdvantage on:{kind:'skill', skill:'stealth'}` primitive (originally landed for Eyes of the Eagle) covers their bearer-side arms.
+
+Content wired:
+- Boots of Elvenkind (uncommon, no attunement): RAW grants Stealth advantage unconditionally + silent steps. The silent-steps arm is narrative (engine doesn't model sound); the Stealth advantage wires as a single SetAdvantage.
+- Cloak of Elvenkind (uncommon, attunement-required): RAW grants Stealth advantage (hood-up gated) + imposes disadvantage on third-party Perception checks against the wearer. Slice 297 wires arm 1 (the hood-up gate is consumer-managed, mirroring slice 289's Cloak of the Bat dim-light gate); arm 2 stays deferred since it needs a per-skill-roll-from-another-creature's-perspective primitive the engine doesn't carry yet (same blocker as Cloak of Displacement's third-party attack-disadvantage arm).
+
+Pattern-check: searched for sibling unwired items with bearer-side skill advantage covered by existing primitives. Found these two (and Cloak of the Bat's Stealth arm already wired at slice 279; Eyes of the Eagle's sight-Perception arm at slice 263). No remaining bearer-side skill-advantage wires await a missing primitive.
+
+Audit: pure content. tsc clean; 1810 tests across 266 files (was 1804 / 265; +6 in new [tests/unit/derive/elvenkind-stealth.test.ts](tests/unit/derive/elvenkind-stealth.test.ts)). Coverage snapshot updated for the 2 new `boots-of-elvenkind` + `cloak-of-elvenkind` wiredIds. SRD drift audit passes (rarity/attunement unchanged).
+
+Doc updates: [docs/gaps-items-batches-1.1-1.10.md](docs/gaps-items-batches-1.1-1.10.md) "Conditional advantage / disadvantage grant" bullet refreshed to note arm-1 closure on both items + remaining arm-2 deferral on the cloak.
+
 **Content: Potion of Resistance variant unroll + 5 missing protection-*-active conditions (slice 296)**
 
 Closes the slice-239 deferred row, sibling of slice 295's Armor / Ring of Resistance unroll (same SRD 5.2.1 d10 damage-type table). Same variant-unroll pattern, but Potion of Resistance has the extra dimension of needing 5 new conditions since the existing `protection-*-active` set (acid, cold, fire, lightning, thunder) only covered the 5 elemental types Protection from Energy targets in RAW.
