@@ -8085,63 +8085,6 @@
       ]
     },
     {
-      "id": "wrathful-smite-active",
-      "name": "Wrathful Smite Active",
-      "description": "Caster's next weapon hit deals +1d6 psychic damage; the spell ends after that hit.",
-      "stackable": false,
-      "endsOn": [],
-      "effects": [
-        {
-          "kind": "OnEvent",
-          "id": "wrathful-smite-rider",
-          "trigger": {
-            "eventType": "AttackRolled",
-            "filter": { "kind": "all", "terms": [{ "kind": "eq", "path": "event.attackerIsSelf", "value": true }, { "kind": "eq", "path": "event.hit", "value": true }] }
-          },
-          "actions": [{ "kind": "AddDamage", "dice": "1d6", "damageType": "psychic" }],
-          "consumeOnTrigger": true
-        }
-      ]
-    },
-    {
-      "id": "thunderous-smite-active",
-      "name": "Thunderous Smite Active",
-      "description": "Caster's next weapon hit deals +2d6 thunder damage; the spell ends after that hit.",
-      "stackable": false,
-      "endsOn": [],
-      "effects": [
-        {
-          "kind": "OnEvent",
-          "id": "thunderous-smite-rider",
-          "trigger": {
-            "eventType": "AttackRolled",
-            "filter": { "kind": "all", "terms": [{ "kind": "eq", "path": "event.attackerIsSelf", "value": true }, { "kind": "eq", "path": "event.hit", "value": true }] }
-          },
-          "actions": [{ "kind": "AddDamage", "dice": "2d6", "damageType": "thunder" }],
-          "consumeOnTrigger": true
-        }
-      ]
-    },
-    {
-      "id": "branding-smite-active",
-      "name": "Branding Smite Active",
-      "description": "Caster's next weapon hit deals +2d6 radiant damage; the spell ends after that hit.",
-      "stackable": false,
-      "endsOn": [],
-      "effects": [
-        {
-          "kind": "OnEvent",
-          "id": "branding-smite-rider",
-          "trigger": {
-            "eventType": "AttackRolled",
-            "filter": { "kind": "all", "terms": [{ "kind": "eq", "path": "event.attackerIsSelf", "value": true }, { "kind": "eq", "path": "event.hit", "value": true }] }
-          },
-          "actions": [{ "kind": "AddDamage", "dice": "2d6", "damageType": "radiant" }],
-          "consumeOnTrigger": true
-        }
-      ]
-    },
-    {
       "id": "aura-of-courage-active",
       "name": "Aura of Courage Active",
       "description": "Frightened immunity granted by a nearby Paladin's L10+ Aura of Courage.",
@@ -8159,16 +8102,6 @@
       "endsOn": [],
       "effects": [
         { "kind": "GrantConditionImmunity", "conditionId": "frightened" }
-      ]
-    },
-    {
-      "id": "earthbound-active",
-      "name": "Earthbound",
-      "description": "Flying speed reduced to 0. If the target is airborne when the spell is cast, they fall (consumer applies the descent / falling damage).",
-      "stackable": false,
-      "endsOn": [],
-      "effects": [
-        { "kind": "ModifySpeed", "mode": "fly", "op": "set", "value": 0 }
       ]
     },
     {
@@ -8771,24 +8704,6 @@
       ]
     },
     {
-      "id": "holy-weapon-active",
-      "name": "Holy Weapon Active",
-      "description": "Caster's weapon attacks deal +2d8 radiant damage on hit while the spell lasts.",
-      "stackable": false,
-      "endsOn": [],
-      "effects": [
-        {
-          "kind": "OnEvent",
-          "id": "holy-weapon-rider",
-          "trigger": {
-            "eventType": "AttackRolled",
-            "filter": { "kind": "all", "terms": [{ "kind": "eq", "path": "event.attackerIsSelf", "value": true }, { "kind": "eq", "path": "event.hit", "value": true }] }
-          },
-          "actions": [{ "kind": "AddDamage", "dice": "2d8", "damageType": "radiant" }]
-        }
-      ]
-    },
-    {
       "id": "protection-acid-active",
       "name": "Protection from Energy: Acid",
       "description": "Resistance to Acid damage while the spell lasts. One of the five Protection from Energy variants picked by the caster at cast time. The resistance flows through the existing mitigateDamage pipeline (slice 95 ships the content only; GrantResistance with a specific damageType was already supported by the engine).",
@@ -8984,16 +8899,6 @@
       "effects": [
         { "kind": "GrantConditionImmunity", "conditionId": "charmed" },
         { "kind": "GrantImmunity", "damageType": "psychic" }
-      ]
-    },
-    {
-      "id": "invulnerable-active",
-      "name": "Invulnerable",
-      "description": "Concentration up to 10 minutes (Invulnerability spell): caster takes no damage from any source.",
-      "stackable": false,
-      "endsOn": [],
-      "effects": [
-        { "kind": "GrantImmunity", "damageType": "all" }
       ]
     },
     {

@@ -135,19 +135,13 @@ describe('pack integrity: conditions with effects are reachable', () => {
   // BOTH content refs and the engine source. Two allowlists encode
   // the two legitimate "unreferenced by a static scan" cases.
 
-  // Dead 2014-era conditions: no SRD 5.2.1 spell carrier exists. These
-  // SHOULD eventually be removed (tracked in starter-pack-gaps.md). If
-  // a future slice wires one (adds the spell), drop it from this list;
-  // if a cleanup slice removes the condition, drop it too. Either way
-  // this test guides the edit.
-  const KNOWN_DEAD_ORPHANS: ReadonlySet<string> = new Set([
-    'wrathful-smite-active',
-    'thunderous-smite-active',
-    'branding-smite-active',
-    'holy-weapon-active',
-    'invulnerable-active',
-    'earthbound-active',
-  ]);
+  // Dead 2014-era conditions: no SRD 5.2.1 spell carrier exists. Slice
+  // 304 removed all six (wrathful/thunderous/branding-smite,
+  // holy-weapon, invulnerable, earthbound) from the pack, so this list
+  // is now empty. If a future slice adds an unwired condition, prefer
+  // wiring it; only add to this allowlist with a tracked
+  // starter-pack-gaps.md row explaining why it can't be wired yet.
+  const KNOWN_DEAD_ORPHANS: ReadonlySet<string> = new Set([]);
 
   // Applied at runtime via string interpolation, so a static source
   // scan cannot see the literal id. `planAbsorbElements` builds

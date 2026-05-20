@@ -48,6 +48,26 @@ import type { CharacterCreatedEvent } from '../../../src/schemas/events/progress
 const PACK = loadStarterPack();
 const CONTENT = resolveContent([PACK]);
 
+// Slice 304: the "zero-set wins" case below used to lean on the
+// `earthbound-active` condition (fly set 0), a dead 2014-era orphan
+// removed from the shipped pack in slice 304. The behavior it
+// exercises (a ModifySpeed `set 0` overriding a non-walk speed
+// source) is still worth pinning, so the fly-set-0 fixture now lives
+// in a test-local pack rather than in the consumer-facing content.
+const FLY_GROUNDED_FIXTURE = 'test-fly-grounded-fixture';
+const FIXTURE_PACK = (() => {
+  const p = loadStarterPack();
+  p.conditions.push({
+    id: FLY_GROUNDED_FIXTURE,
+    name: 'Test Fixture: Fly Grounded',
+    stackable: false,
+    endsOn: [],
+    effects: [{ kind: 'ModifySpeed', mode: 'fly', op: 'set', value: 0 }],
+  });
+  return p;
+})();
+const FIXTURE_CONTENT = resolveContent([FIXTURE_PACK]);
+
 const buildHuman = (): Character =>
   CharacterSchema.parse({
     id: newCharacterId(),
@@ -68,8 +88,8 @@ const applyCondition = (targetId: string, conditionId: string) => ({
   appliedConditionId: newAppliedConditionId(),
 });
 
-const seed = (character: Character, conditions: string[] = []) => {
-  const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(288) });
+const seed = (character: Character, conditions: string[] = [], pack = PACK) => {
+  const engine = createEngine({ contentPacks: [pack], rng: seededRNG(288) });
   let campaign = engine.createCampaign({ name: 'non-walk' });
   campaign = commit(campaign, [
     { id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: character } satisfies CharacterCreatedEvent,
@@ -157,12 +177,15 @@ describe('slice 288: non-walk speed derives', () => {
   });
 
   describe('zero-speed wins (ModifySpeed set 0 overrides everything)', () => {
-    it('a flying creature that gains earthbound-active has fly speed 0', () => {
-      // The earthbound-active condition (slice 78 Earthbind) carries
-      // ModifySpeed fly set 0. Combined with a fly-speed source, the
-      // zero-set takes precedence.
-      const human = seed(buildHuman(), ['gaseous-form-active', 'earthbound-active']);
-      expect(getEffectiveFlySpeed(speedInput(human))).toBe(0);
+    it('a fly-speed source plus a fly-set-0 source resolves to 0', () => {
+      // Gaseous Form sets fly 10; the test-local fly-grounded fixture
+      // sets fly 0. The zero-set takes precedence regardless of order.
+      const human = seed(
+        buildHuman(),
+        ['gaseous-form-active', FLY_GROUNDED_FIXTURE],
+        FIXTURE_PACK,
+      );
+      expect(getEffectiveFlySpeed({ character: human, content: FIXTURE_CONTENT, itemInstances: {} })).toBe(0);
     });
   });
 

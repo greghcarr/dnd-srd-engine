@@ -4,6 +4,16 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content cleanup: remove 6 dead 2014-era orphan conditions (slice 304)**
+
+Closes the slice-301 deferred row, now guided by the slice-303 pack-integrity audit. Removed all six conditions that carried effects but had no SRD 5.2.1 spell carrier (all 2014 PHB leftovers): `wrathful-smite-active`, `thunderous-smite-active`, `branding-smite-active` (named-smite spells, replaced by 2024's Divine Smite feature), `holy-weapon-active` (Holy Weapon), `invulnerable-active` (Invulnerability), `earthbound-active` (Earthbind). None are in the spells catalog; the conditions were stranded when the IP cleanup / SRD 5.2.1 migration dropped the carrier spells.
+
+Test fixture preserved: `effective-non-walk-speed.test.ts`'s "zero-set wins" case leaned on `earthbound-active` (fly set 0) to prove a `ModifySpeed set 0` overrides a non-walk speed source. That coverage stays — the fly-set-0 fixture moved into a test-local pack (`test-fly-grounded-fixture`) so it exercises the engine path without shipping a dead condition to consumers.
+
+Audit allowlist emptied: `KNOWN_DEAD_ORPHANS` in [tests/audit/pack-integrity.test.ts](tests/audit/pack-integrity.test.ts) is now `new Set([])`. The orphan-condition audit enforces zero orphans going forward (a new unwired condition fails the test; the fix is to wire it, not allowlist it).
+
+Audit: content removal + 1 test-fixture refactor + 1 audit allowlist edit. tsc clean; 1864 tests across 271 files (unchanged count). Conditions coverage snapshot dropped exactly the 6 removed ids (verified diff). Doc updates: gaps-row struck through closed; Conditions count 117 → 115; the slice-78 shipped-primitives doc note updated to record the Earthbind retirement.
+
 **Tests+infra: pack-integrity audits + pattern-check norm update (slice 303)**
 
 Promotes two ad-hoc pattern-check sweeps (slices 298 + 301) to a permanent audit harness, and documents the promotion path + the false-positive lesson in CLAUDE.md. Same path as srd-drift (slice 195) and doc-size (slice 285): when a sweep is script-checkable, it belongs in `tests/audit/` so CI catches regressions at commit time.
