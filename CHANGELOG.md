@@ -4,6 +4,26 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+_No unreleased changes yet._
+
+## 0.1.0-alpha.10 - 2026-05-20
+
+Promotes the post-alpha.9 cohort (slices 315-328) to a tagged release. `package.json` bumped from `0.1.0-alpha.9` to `0.1.0-alpha.10`; `package-lock.json` regenerated via `npm install --package-lock-only`. Per-slice detail for slices 315-322 is archived to [docs/changelog/archive-slices-315-322.md](docs/changelog/archive-slices-315-322.md) (slice 326). Cohort summary:
+
+- **Magic equipment became real equipment** (stages 1-3, slices 315-317): single-base magic armor `magic`→`armor`, single-base magic weapons `magic`→`weapon`, and multi-base magic equipment via the `enchantmentDefinitionId` enchantment overlay. The AC derive, attack planner, effect projection, and magicality detector all read the overlay.
+- **On-hit weapon-rider trigger family** (slices 318-325): an `onHit` rider can carry extra `dice`, a target-gated `condition` predicate, a `save` arm (`conditionOnFail` / `conditionOnSuccess` / `destroyOnFail` / `hpThreshold`), an unconditional `applyConditionId`, an unconditional `destroy` arm, and a `requiresCritical` crit-gate — all composable. A new `CreatureDestroyed` event models instant death bypassing death saves. Canonical users: Sun Blade, Mace of Disruption (destroy-or-Frighten), Ghoul's Claw, Couatl's Bite, the Wyvern / Ettercap / Merrow poison sweep, Sword of Life Stealing (crit), Mace of Smiting (crit + Construct auto-destroy). Slice 320 unified all four save-roll sites on a shared `rollSaveAgainstDC` helper.
+- **Doc hygiene** (slices 326-327): archived the 315-322 per-slice detail when the live CHANGELOG approached the 60 KB single-Read ceiling; refreshed the README + status.md counts to current state.
+
+Net across the cohort: 1908 → 1951 tests across 288 files; item recategorization (weapons 39 → 52, armor 13 → 22, consumables 52 → 69, magic items 292 → 258 as single-/multi-base magic equipment moved to their real categories); one new event type (`CreatureDestroyed`); `EFFECT_KINDS` unchanged at 51 (50 primitives + `Custom`). tsc clean; full suite green; doc-size + SRD-drift + pack-integrity + RAW-compliance audits all green.
+
+**Release: bump to 0.1.0-alpha.10 (slice 328)**
+
+Version bump + this CHANGELOG release block + tag `v0.1.0-alpha.10`. No code change. The previous `## Unreleased` heading became `## 0.1.0-alpha.10 - 2026-05-20`; a fresh empty `## Unreleased` sits above for the next cohort.
+
+**Docs: refresh README + status.md numbers to current state (slice 327)**
+
+Accuracy pass: corrected stale counts that had drifted across the magic-equipment + rider work — test count (1833/268 → 1951/288), item totals (weapons 39 → 52, armor 13 → 22, consumables 52 → 69, magic 292 → 258), magic-item wiring (~86/292 → ~91/258), spell wiring (reconciled the 147-vs-160 inconsistency to the actual 164 via `mechanicalEffects`), conditions (reconciled the 102-vs-98 inconsistency to 116 = 15 RAW + 101 rider), and the `EFFECT_KINDS` off-by-one (50 primitives + `Custom` = 51 entries). Docs only; doc-size audit green.
+
 **Docs: archive slices 315-322 per-slice detail (slice 326)**
 
 The live CHANGELOG had climbed to 48 KB (approaching the 60 KB single-Read ceiling) across the post-alpha.9 cohort. Per the doc-size discipline playbook, the per-slice detail for the magic-equipment + on-hit-rider arc (slices 315-322) moved to [docs/changelog/archive-slices-315-322.md](docs/changelog/archive-slices-315-322.md); the live file keeps a cohort summary + pointer (below) and the most recent three slices (323-325) inline. The archive pointer-block index gained the new file. No code or content change; docs only. doc-size audit green; live CHANGELOG back to ~27 KB.
