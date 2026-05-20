@@ -4,7 +4,11 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
-Post-alpha.8 cohort (slices 301-312). Per-slice detail is archived to [docs/changelog/archive-slices-301-312.md](docs/changelog/archive-slices-301-312.md) (moved in slice 313 below). Cohort summary:
+_No unreleased changes since 0.1.0-alpha.9._
+
+## 0.1.0-alpha.9 - 2026-05-19
+
+Promotes the post-alpha.8 cohort (slices 301-314) to a tagged release. `package.json` bumped from `0.1.0-alpha.8` to `0.1.0-alpha.9`; `package-lock.json` regenerated via `npm install --package-lock-only`. Per-slice detail for slices 301-312 is archived to [docs/changelog/archive-slices-301-312.md](docs/changelog/archive-slices-301-312.md) (slice 313 = the archive split; slice 314 = this version bump + tag). Cohort summary:
 
 - **Buff-shape spell sweep (301-302)**: wired True Seeing, Warding Bond (3/4 arms), Heroes' Feast, Wind Walk via existing primitives. Surfaced + tracked the dead-2014-orphan-conditions row and the Warding Bond damage-sharing deferral.
 - **pack-integrity audit + dead-orphan cleanup (303-304)**: promoted the slice-298/301 sweeps to [tests/audit/pack-integrity.test.ts](tests/audit/pack-integrity.test.ts) (duplicate-id, wired/empty name-group, orphan-condition checks); removed the 6 dead 2014-era orphan conditions; added two CLAUDE.md pattern-check norms (promote-sweeps-to-audits; under-walking-references false-positive trap).
