@@ -4,6 +4,18 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content: Hunter Colossus Slayer (first Tier-B subclass feature) (slice 348)**
+
+First subclass feature needing engine work. **Hunter's Prey** (Ranger Hunter L3) wired as an `OfferChoice` (Colossus Slayer / Horde Breaker). The **Colossus Slayer** option is an `OnEvent` AttackRolled rider (`oncePer: turn`, `AddDamage 1d8`) gated on a new `event.targetMissingHp` fact, mirroring Sneak Attack's structure. **Horde Breaker** stays a deferred stub (needs an extra-attack-against-a-different-target primitive), the same wired/deferred split as Defensive Tactics.
+
+Engine: `buildEventFacts` ([src/engine/triggers/dispatch.ts](src/engine/triggers/dispatch.ts)) now sets `event.targetMissingHp` (= `target.hp.current < target.hp.max`) on AttackRolled. The AttackRolled trigger dispatch runs on the post-AttackRolled / pre-DamageApplied state, so the fact reflects whether the target was *already* wounded (RAW: the extra die applies to an already-injured target, not one this hit just brought below max). This fact also unblocks the L11 Superior Hunter's Prey follow-up.
+
+The 1d8 damage type is a fixed `piercing` approximation of "the weapon's type" (same convention the pack already uses for Sneak Attack). Closes the fourth of the original twelve L3 `effects: []` stubs (now eight); only Hunter's Lore remains a Hunter L3 stub (intentionally narrative).
+
+New [tests/unit/engine/slice-348-colossus-slayer.test.ts](tests/unit/engine/slice-348-colossus-slayer.test.ts): the offered choice (Colossus Slayer wired, Horde Breaker stub), the rider fires on a hit against an already-wounded target, and does not fire against a full-HP target.
+
+Uncle Bob audit: **Names** `event.targetMissingHp` reads as the RAW gate; `colossus-slayer` rider id matches the feature. **DRY** reuses the entire OnEvent / `oncePer: turn` / AddDamage rider machinery (Sneak Attack's shape) and the OfferChoice wired/stub pattern (Defensive Tactics); the only new code is one fact line. **SRP** the fact is computed where the target is already resolved for `targetCreatureType`; no new lookup. **Magic numbers** 1d8 RAW-cited in content, not code. **at-threading** unchanged (no new events; the rider folds into the existing attack damage). **Mechanical outcomes asserted** the fact's pre-damage timing (wounded vs full target), once-per-turn via the shared mechanism, and the offered option shape. **Tests** prevent the rider firing on a full-HP target (the timing bug) and the choice shape regressing. No em/en dashes. Full suite + `tsc --noEmit` to follow.
+
 **Content: wire Evoker Evocation Savant (slice 347)**
 
 Last clean Tier-A subclass spell-grant. **Evocation Savant** (Evoker L3) wired as an `OfferChoice oneOf:2` over the ten L1-2 evocation wizard spells in the pack (Burning Hands, Chromatic Orb, Magic Missile, Thunderwave, Acid Arrow, Continual Flame, Darkness, Gust of Wind, Scorching Ray, Shatter); each option grants its spell with `preparation: 'known'` (added to the spellbook). Resolving the choice (`ChoiceResolved`) folds the two picked spells into the effect stack's granted-spell list.

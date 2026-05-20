@@ -377,6 +377,7 @@ exports[`feature-coverage matrix: subclasses > wired subclass features catalog i
   "fiend-patron L7 fiend-spells-l7",
   "fiend-patron L9 fiend-spells-l9",
   "fiend-patron L10 fiendish-resilience",
+  "hunter L3 hunters-prey",
   "hunter L7 defensive-tactics",
   "life-domain L3 disciple-of-life",
   "life-domain L3 life-domain-armor-training",

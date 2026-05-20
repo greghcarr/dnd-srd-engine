@@ -88,6 +88,13 @@ const buildEventFacts = (
     const target = state.characters[event.targetId];
     if (target !== undefined) {
       facts.set('event.targetCreatureType', getCreatureType(target, content));
+      // Slice 348: "target is missing any Hit Points" gate (Hunter
+      // Colossus Slayer). The AttackRolled trigger dispatch runs on the
+      // post-AttackRolled / pre-DamageApplied state, so this reflects
+      // the target's HP *before* the current hit's damage, i.e. whether
+      // it was already wounded (RAW: the extra die applies to an
+      // already-injured target, not one this hit just brought below max).
+      facts.set('event.targetMissingHp', target.hp.current < target.hp.max);
     }
   } else if (event.type === 'DamageApplied') {
     facts.set('event.targetIsSelf', event.targetId === characterId);

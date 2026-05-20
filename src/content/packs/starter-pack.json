@@ -1015,7 +1015,41 @@
           {
             "id": "hunters-prey",
             "name": "Hunter's Prey",
-            "effects": []
+            "effects": [
+              {
+                "kind": "OfferChoice",
+                "choiceId": "hunters-prey",
+                "prompt": "Choose Colossus Slayer (when you hit a creature that is already missing Hit Points, the weapon deals an extra 1d8 damage, once per turn) or Horde Breaker (deferred-stub: once per turn, a second weapon attack against a different nearby creature; needs an extra-attack-vs-different-target primitive the engine doesn't expose).",
+                "oneOf": 1,
+                "when": "onAcquire",
+                "options": [
+                  {
+                    "id": "colossus-slayer",
+                    "label": "Colossus Slayer",
+                    "effects": [
+                      {
+                        "kind": "OnEvent",
+                        "id": "colossus-slayer",
+                        "trigger": {
+                          "eventType": "AttackRolled",
+                          "filter": {
+                            "kind": "all",
+                            "terms": [
+                              { "kind": "eq", "path": "event.attackerIsSelf", "value": true },
+                              { "kind": "eq", "path": "event.hit", "value": true },
+                              { "kind": "eq", "path": "event.targetMissingHp", "value": true }
+                            ]
+                          }
+                        },
+                        "actions": [{ "kind": "AddDamage", "dice": "1d8", "damageType": "piercing" }],
+                        "oncePer": "turn"
+                      }
+                    ]
+                  },
+                  { "id": "horde-breaker", "label": "Horde Breaker", "effects": [] }
+                ]
+              }
+            ]
           }
         ],
         "7": [
