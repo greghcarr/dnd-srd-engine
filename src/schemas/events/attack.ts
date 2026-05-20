@@ -44,6 +44,23 @@ export const AttackRolledEventSchema = EventEnvelopeSchema.extend({
   // event logs (pre-slice 206); reducers and predicates treat the
   // missing case as `false`.
   isOpportunityAttack: z.boolean().optional(),
+  // Slice 330: per-roll bonus dice rolled into this attack (Bless +1d4 /
+  // Bane -1d4 via the AddBonusDie effect). Each entry's `total` is the
+  // signed contribution and is already folded into `attackBonus` (so
+  // `total === usedD20 + attackBonus` still holds); the dice detail is
+  // surfaced here for transcripts/auditing. Absent when no bonus dice
+  // applied (the common case).
+  bonusDice: z
+    .array(
+      z.object({
+        dice: z.string(),
+        rolls: z.array(z.number().int()),
+        subtract: z.boolean(),
+        source: z.string(),
+        total: z.number().int(),
+      }),
+    )
+    .optional(),
 });
 export type AttackRolledEvent = z.infer<typeof AttackRolledEventSchema>;
 

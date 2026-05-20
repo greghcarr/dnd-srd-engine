@@ -184,6 +184,15 @@ export type Effect =
   | { kind: 'GrantSense'; sense: Sense; range: number }
   | { kind: 'ModifySpeed'; mode: MovementMode; op: 'set' | 'add' | 'multiply' | 'matchWalkSpeed'; value: number }
   | { kind: 'AddModifier'; target: ModifierTarget; value: number | Formula; condition?: Predicate }
+  // Slice 330: a bonus die rolled fresh on each affected roll (RAW
+  // "add 1d4 to the attack roll or save", Bless / Bane / Guidance /
+  // Resistance / Bardic Inspiration). Distinct from AddModifier's
+  // static `value`: the die is rolled in the planner (RNG only lives
+  // there) and baked into the emitted roll event, so apply() stays
+  // RNG-free. `subtract` flips the sign (Bane). `target` reuses the
+  // ModifierTarget vocabulary (attack / { kind: 'save' } / { kind:
+  // 'check' } and their per-ability/skill forms).
+  | { kind: 'AddBonusDie'; target: ModifierTarget; dice: DiceExpression; subtract?: boolean; condition?: Predicate }
   | { kind: 'SetAdvantage'; on: RollTarget; mode: 'advantage' | 'disadvantage' | 'auto-crit' | 'auto-fail'; condition?: Predicate }
   // Direction-filtered advantage: only applies when the roll's target
   // (e.g. the attack's target creature) equals the bearing applied
@@ -461,6 +470,13 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       condition: PredicateSchema.optional(),
     }),
     z.object({
+      kind: z.literal('AddBonusDie'),
+      target: ModifierTargetSchema,
+      dice: DiceExpressionSchema,
+      subtract: z.boolean().optional(),
+      condition: PredicateSchema.optional(),
+    }),
+    z.object({
       kind: z.literal('SetAdvantage'),
       on: RollTargetSchema,
       mode: z.enum(['advantage', 'disadvantage', 'auto-crit', 'auto-fail']),
@@ -715,6 +731,7 @@ export const EFFECT_KINDS = [
   'GrantSense',
   'ModifySpeed',
   'AddModifier',
+  'AddBonusDie',
   'SetAdvantage',
   'SetAdvantageVsSource',
   'GrantAdvantageVsBearersOfMyCondition',

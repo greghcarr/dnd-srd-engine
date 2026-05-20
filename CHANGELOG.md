@@ -4,6 +4,22 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content: `AddBonusDie` primitive + Bless/Bane attack arm (slice 330)**
+
+Fixes a long-standing RAW deviation: Bless/Bane were approximated as a flat +2/−2, but RAW is "add (or subtract) 1d4." A bonus *die* (unlike `AddModifier`'s static value) must be rolled fresh per affected roll, so it has to be consumed in the planner (where RNG lives) and baked into the emitted roll event — `apply()` stays RNG-free.
+
+Engine:
+- New `AddBonusDie { target: ModifierTarget; dice; subtract?; condition? }` effect kind (`EFFECT_KINDS` 51 → 52 entries = 51 primitives + `Custom`). `target` reuses the `ModifierTarget` vocabulary (attack / `{kind:'save'}` / `{kind:'check'}` and per-ability/skill forms); `subtract` flips the sign (Bane).
+- `EffectAccumulator` gains a `bonusDice` collector + `bonusDiceFor(target, facts)` query (mirrors `modifierSum`, including the slice-299 `save:*`/`check:*` wildcard merge and predicate gating).
+- New `rollBonusDice` planner helper ([src/engine/plan/_bonus-dice.ts](src/engine/plan/_bonus-dice.ts)) rolls each contribution and returns the signed total + per-die detail.
+- The attack planner rolls the attack-target bonus dice after the d20(s), folds the signed total into `attackBonus` (so `total === usedD20 + attackBonus` still holds), and records the dice on the new optional `AttackRolled.bonusDice` field (transcript shows e.g. `d20(1) + 8 [+1d4=2 condition] = 9`). No RNG is consumed when no bonus dice apply, so unblessed attacks keep their exact stream.
+
+Content: **Bless**/**Bane** attack arms re-wired from flat `AddModifier` to `AddBonusDie 1d4` (Bane `subtract: true`).
+
+Scope / deferral: only the **attack** arm is RAW now. The **save** arm stays the flat +2/−2 approximation (no regression) because a per-roll save die needs every save-roll site to consume `AddBonusDie`, and the engine has ~13 inline save-roll sites (only 4 share the slice-320 `rollSaveAgainstDC` helper). The tracked follow-up — centralize the remaining ~9 save sites through that helper, then add `bonusDiceFor({kind:'save'})` to it — makes Bless/Bane saves RAW **and** unblocks the siblings the primitive already supports (Guidance, Resistance, Bardic Inspiration).
+
+Uncle Bob audit: **Names** — `AddBonusDie` / `bonusDiceFor` / `rollBonusDice` say what they are; `subtract` mirrors the RAW sign. **DRY** — `bonusDiceFor` reuses the modifier key + wildcard-merge helpers; the roll helper is the single bonus-die roller (attack uses it now, saves/checks will). **SRP** — schema / accumulator / roll-helper / planner each in their own layer. **Magic numbers** — 1d4 is RAW-cited on the conditions. **at-threading** — unchanged; the die rolls in the planner, baked into `AttackRolled`. **Mechanical outcomes asserted** — a plain attack has no `bonusDice` and `total === d20 + attackBonus`; Bless adds exactly one 1d4 (1-4) folded into the bonus; Bane subtracts a 1d4; same seed shows the d20 unchanged and the die added on top. **Tests** — 3 new ([tests/unit/engine/slice-330-add-bonus-die.test.ts](tests/unit/engine/slice-330-add-bonus-die.test.ts)); full suite green (1954 passed), tsc clean. The showcase transcript was regenerated (Bless now rolls a 1d4, shifting the seeded stream from that point — replay-equivalence + RNG-capture still hold). Docs: README / status.md / api-overview EFFECT_KINDS count 51 → 52; gaps backlog row (attack arm closed, save arm + siblings tracked).
+
 **Docs: fix the SRD-compliance aggregate contradiction + sweep remaining stale numbers (slice 329)**
 
 Follow-up accuracy pass. The status.md "SRD-compliance ~85%" headline row contradicted its own wired rows (it claimed "the remaining 15% is mechanical wiring depth" while the table shows spells ~47% / magic items ~35% / subclasses ~33% wired) and carried a stale "~195 spells schema-only" figure. Relabeled the row to **"SRD pack-presence + architecture"** — explicitly a presence-and-readiness number, not a mechanical-wiring number — with a pointer to the per-row wired figures for "how much does the engine actually execute." Then swept the rest of the live docs for stale counts:

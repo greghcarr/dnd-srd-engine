@@ -29,6 +29,7 @@ import { isMagicWeaponAttack } from '../../derive/magicality.js';
 import { resolveEnchantment } from '../../derive/enchantment.js';
 import { evaluatePredicate } from '../../effects/predicate.js';
 import { rollSaveAgainstDC } from './_save-roll.js';
+import { rollBonusDice } from './_bonus-dice.js';
 import {
   findMirrorImage,
   mirrorImageThreshold,
@@ -617,7 +618,14 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
       : advantage === 'disadvantage'
         ? Math.min(...rolls)
         : (rolls[0] ?? 0);
-  const total = usedRoll + attackBonusResult.total;
+  // Slice 330: per-roll bonus dice (Bless +1d4 / Bane -1d4 via
+  // AddBonusDie). Rolled here, after the d20(s), and folded into the
+  // attack bonus so `total === usedRoll + attackBonus` still holds; the
+  // per-die detail is recorded on the event. No RNG consumed when none
+  // apply (the common case), so unblessed attacks keep their RNG stream.
+  const attackBonusDice = rollBonusDice(attackerEffects.bonusDiceFor('attack', attackerFacts), rng);
+  const effectiveAttackBonus = attackBonusResult.total + attackBonusDice.total;
+  const total = usedRoll + effectiveAttackBonus;
   const naturalHit = usedRoll === NAT_20;
   const naturalMiss = usedRoll === NAT_1;
   const hit = !naturalMiss && (naturalHit || total >= acResult.total);
@@ -661,12 +669,23 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     weaponInstanceId: input.weaponInstanceId,
     d20: rolls,
     used: advantage,
-    attackBonus: attackBonusResult.total,
+    attackBonus: effectiveAttackBonus,
     total,
     targetAC: acResult.total,
     hit,
     critical,
     attackKind: weaponDef.attackKind,
+    ...(attackBonusDice.rolls.length > 0
+      ? {
+          bonusDice: attackBonusDice.rolls.map((b) => ({
+            dice: b.dice,
+            rolls: [...b.rolls],
+            subtract: b.subtract,
+            source: b.source,
+            total: b.total,
+          })),
+        }
+      : {}),
     ...(attackerHasAllyAdjacentToTarget !== undefined
       ? { attackerHasAllyAdjacentToTarget }
       : {}),

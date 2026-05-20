@@ -180,7 +180,13 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
         : event.hit
           ? 'hit'
           : 'miss';
-      return `**${attacker}** attacks **${target}**${advLabel}: d20(${rollLabel}) + ${event.attackBonus} = ${event.total} vs AC ${event.targetAC} -> ${verdict}.`;
+      const bonusDiceLabel =
+        event.bonusDice === undefined
+          ? ''
+          : event.bonusDice
+              .map((b) => ` [${b.subtract ? '-' : '+'}${b.dice}=${b.rolls.join(',')} ${b.source}]`)
+              .join('');
+      return `**${attacker}** attacks **${target}**${advLabel}: d20(${rollLabel}) + ${event.attackBonus}${bonusDiceLabel} = ${event.total} vs AC ${event.targetAC} -> ${verdict}.`;
     }
     case 'DamageRolled': {
       const parts = event.rolls.map(
