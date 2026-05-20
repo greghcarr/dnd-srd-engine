@@ -4,6 +4,7 @@ import type { PendingChoice } from '../schemas/runtime/pending-choice.js';
 import type { Effect } from '../schemas/effects.js';
 import type { ResolvedContent } from '../content/pack.js';
 import { EffectAccumulator, applyEffectToBuilder } from '../effects/builder.js';
+import { resolveEnchantment } from './enchantment.js';
 import type { FormulaContext } from '../effects/formula.js';
 import { computeTotalLevel } from '../schemas/runtime/character.js';
 import { proficiencyBonus } from './ability.js';
@@ -102,13 +103,44 @@ const collectItemEffects = (
     const inst = itemInstances[instanceId];
     if (!inst) return;
     const def = content.items.get(inst.definitionId);
-    if (def === undefined || def.itemKind !== 'magic') return;
-    if (requireNonAttunement && def.requiresAttunement) return;
-    seen.add(instanceId);
-    effects.push(...def.effects);
+    if (def === undefined) return;
+    let pushed = false;
+    // Slice 132: magic items. Slice 315/316: magic armor / weapon
+    // (itemKind 'armor' / 'weapon' with optional `effects`) project
+    // under the same rule, so a magic shield's GrantMagicResistance, a
+    // magic armor's resistance, or a magic weapon's STR floor reaches
+    // the effect stack. Mundane armor/weapons have no `effects` (no-op).
+    if (def.itemKind === 'magic' || def.itemKind === 'armor' || def.itemKind === 'weapon') {
+      const baseEffects = def.itemKind === 'magic' ? def.effects : (def.effects ?? []);
+      if (baseEffects.length > 0 && !(requireNonAttunement && def.requiresAttunement)) {
+        effects.push(...baseEffects);
+        pushed = true;
+      }
+    }
+    // Slice 317: enchantment-overlay effects (Frost Brand's fire
+    // resistance on an enchanted base weapon), gated on the
+    // enchantment's own attunement requirement.
+    const ench = resolveEnchantment(inst, content);
+    if (ench !== undefined && ench.effects.length > 0 && !(requireNonAttunement && ench.requiresAttunement)) {
+      effects.push(...ench.effects);
+      pushed = true;
+    }
+    if (pushed) seen.add(instanceId);
   };
   for (const instanceId of character.equipped.attuned) {
     fold(instanceId, false);
+  }
+  // Slice 315/316: worn magic armor/shield and held magic weapons
+  // project even if not separately listed in inventory. Requires-
+  // attunement items still only project via the attuned loop above
+  // (requireNonAttunement gate here).
+  for (const instanceId of [
+    character.equipped.armor,
+    character.equipped.shield,
+    character.equipped.mainHand,
+    character.equipped.offHand,
+  ]) {
+    if (instanceId !== undefined) fold(instanceId, true);
   }
   for (const instanceId of character.inventory) {
     fold(instanceId, true);

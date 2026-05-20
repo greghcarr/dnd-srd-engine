@@ -4,6 +4,7 @@ import type {
   ConditionAppliedEvent,
   ConditionRemovedEvent,
   CreaturePushedEvent,
+  CreatureDestroyedEvent,
   DamageAppliedEvent,
   DeathSaveRolledEvent,
   ExhaustionChangedEvent,
@@ -256,6 +257,25 @@ export const applyStabilized = (
   const character = requireCharacter(state, event.targetId);
   resetDeathSaves(character.deathSaves);
   character.deathSaves.stable = true;
+};
+
+// Slice 323: instant death, bypassing the death-save sequence. Sets
+// HP to 0 and death-save failures to the kill threshold, so derivations
+// that read "dead" via death saves see a dead creature. RAW "dying
+// immediately ends Concentration", so a destroyed concentrator drops
+// its effect (mirrors the massive-damage / newly-downed paths above).
+export const applyCreatureDestroyed = (
+  state: Draft<CampaignState>,
+  event: CreatureDestroyedEvent,
+): void => {
+  const character = requireCharacter(state, event.targetId);
+  character.hp.current = 0;
+  character.deathSaves.failures = DEATH_SAVE_FAILURES_TO_DIE;
+  character.deathSaves.successes = 0;
+  character.deathSaves.stable = false;
+  if (character.concentrationEffectId !== undefined) {
+    clearConcentrationEffect(state, character.concentrationEffectId);
+  }
 };
 
 export const applyHPMaxBonusChanged = (

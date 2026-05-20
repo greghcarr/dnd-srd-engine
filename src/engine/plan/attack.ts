@@ -6,12 +6,17 @@ import type {
   DamageRolledEvent,
   DamageRoll,
 } from '../../schemas/events/attack.js';
-import type { DamageAppliedEvent, ConditionRemovedEvent } from '../../schemas/events/combat.js';
+import type {
+  DamageAppliedEvent,
+  ConditionRemovedEvent,
+  ConditionAppliedEvent,
+  CreatureDestroyedEvent,
+} from '../../schemas/events/combat.js';
 import type { MirrorImageDeflectedEvent } from '../../schemas/events/mirror-image.js';
 import type { ItemTemporaryBuff } from '../../schemas/runtime/item-instance.js';
 import type { RNG } from '../../rng/index.js';
 import { rollDie, parseDiceExpression } from '../../rng/dice.js';
-import { newEventId } from '../../ids.js';
+import { newEventId, newAppliedConditionId } from '../../ids.js';
 import { computeAttackBonus } from '../../derive/attack.js';
 import { computeAC } from '../../derive/ac.js';
 import { buildEffectStack } from '../../derive/effect-stack.js';
@@ -21,6 +26,9 @@ import { computeActionEconomyBudget } from '../../derive/action-economy.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { isMagicWeaponAttack } from '../../derive/magicality.js';
+import { resolveEnchantment } from '../../derive/enchantment.js';
+import { evaluatePredicate } from '../../effects/predicate.js';
+import { rollSaveAgainstDC } from './_save-roll.js';
 import {
   findMirrorImage,
   mirrorImageThreshold,
@@ -43,24 +51,28 @@ const REACH_PROPERTY_FEET = 10;
 // Rolls an item buff's per-hit extra-damage rider (Elemental Weapon:
 // +1d4/2d4/3d4 of the caster-chosen type). Returns undefined when the
 // buff has no extra damage configured. Crits double the dice per RAW.
+const rollExtraDamageDice = (
+  dice: string,
+  damageType: DamageRoll['type'],
+  rng: RNG,
+  critical: boolean,
+): DamageRoll => {
+  const parsed = parseDiceExpression(dice);
+  const totalDice = critical ? parsed.count * 2 : parsed.count;
+  const rolls: number[] = [];
+  for (let i = 0; i < totalDice; i++) {
+    rolls.push(rollDie(parsed.die, rng));
+  }
+  return { expression: dice, rolls, modifier: parsed.modifier, type: damageType };
+};
+
 const buildBuffExtraDamageRoll = (
   buff: ItemTemporaryBuff | undefined,
   rng: RNG,
   critical: boolean,
 ): DamageRoll | undefined => {
   if (buff?.extraDamageDice === undefined || buff.extraDamageType === undefined) return undefined;
-  const parsed = parseDiceExpression(buff.extraDamageDice);
-  const totalDice = critical ? parsed.count * 2 : parsed.count;
-  const rolls: number[] = [];
-  for (let i = 0; i < totalDice; i++) {
-    rolls.push(rollDie(parsed.die, rng));
-  }
-  return {
-    expression: buff.extraDamageDice,
-    rolls,
-    modifier: parsed.modifier,
-    type: buff.extraDamageType,
-  };
+  return rollExtraDamageDice(buff.extraDamageDice, buff.extraDamageType, rng, critical);
 };
 
 // Slice 124. Builds the event tail for a Mirror Image-deflected
@@ -729,6 +741,14 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   // the generic effect-stack 'damage' modifier because the buff is
   // weapon-specific to this exact instance.
   const weaponBuffDamageBonus = weaponInstance.temporaryBuff?.damageBonus ?? 0;
+  // Slice 316: intrinsic magic-weapon enhancement damage bonus.
+  const intrinsicWeaponDamageBonus = weaponDef.damageBonus ?? 0;
+  // Slice 317: enchantment-overlay damage bonus + damage-type override
+  // + onHit riders (a base weapon instance carrying a multi-base
+  // enchantment like Frost Brand / Flame Tongue).
+  const enchantment = resolveEnchantment(weaponInstance, content);
+  const enchantmentDamageBonus = enchantment?.damageBonus ?? 0;
+  const effectiveDamageType = enchantment?.weaponDamageType ?? weaponDef.damageType;
   // Slice 117: consume the effect stack's 'damage' modifier sum.
   // Predicate-gated entries (Dueling: melee + off-hand-no-weapon;
   // Frenzy: melee) use the facts populated below. Predicate-less
@@ -760,8 +780,8 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   const damageRollPayload: DamageRoll = {
     expression: damageExpression,
     rolls: damageRolls,
-    modifier: damageAbilityMod + parsed.modifier + weaponBuffDamageBonus + damageModifierBonus,
-    type: weaponDef.damageType,
+    modifier: damageAbilityMod + parsed.modifier + weaponBuffDamageBonus + intrinsicWeaponDamageBonus + enchantmentDamageBonus + damageModifierBonus,
+    type: effectiveDamageType,
   };
 
   // Item-buff extra-damage rider (Elemental Weapon: +1d4/2d4/3d4 of
@@ -769,6 +789,34 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   // resolution event and the replay path is RNG-free. Crits double the
   // extra dice per RAW.
   const extraDamageRoll = buildBuffExtraDamageRoll(weaponInstance.temporaryBuff, rng, critical);
+  // Slice 316: intrinsic magic-weapon on-hit riders (Thunderous
+  // Greatclub: +1d8 thunder to any creature it hits). Permanent on the
+  // weapon definition, distinct from the consumable temporaryBuff rider.
+  // Conditional riders (Sun Blade's +1d8 radiant vs Undead) stay
+  // deferred — these fire on every hit.
+  // Slice 317: enchantment onHit riders (Frost Brand +1d6 cold) fire
+  // alongside any intrinsic weapon-def riders.
+  // Slice 318: a rider may carry a target-gated `condition` (Sun Blade's
+  // +1d8 radiant vs Undead). Evaluate it against target facts at hit
+  // time; unconditional riders always fire.
+  // Slice 319: `target.speciesId` lets a rider gate on lineage (the
+  // Ghoul's Claw fires "if the target isn't an Undead or elf"); the
+  // creatureType fact alone can't express the elf exclusion.
+  const riderFacts = new Map<string, unknown>([
+    ['target.creatureType', getCreatureType(target, content)],
+    ['target.speciesId', target.speciesId],
+  ]);
+  // Slice 324: a rider gated `requiresCritical` fires only on a crit.
+  const applicableRiders = [...(weaponDef.onHit ?? []), ...(enchantment?.onHit ?? [])].filter(
+    (r) =>
+      (r.requiresCritical !== true || critical) &&
+      (r.condition === undefined || evaluatePredicate(r.condition, { facts: riderFacts })),
+  );
+  const onHitRiderRolls = applicableRiders.flatMap((r) =>
+    r.dice !== undefined && r.damageType !== undefined
+      ? [rollExtraDamageDice(r.dice, r.damageType, rng, critical)]
+      : [],
+  );
 
   const damageRolled: DamageRolledEvent = {
     id: newEventId() as ULID,
@@ -777,26 +825,39 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     attackerId: input.attackerId,
     targetId: input.targetId,
     weaponInstanceId: input.weaponInstanceId,
-    rolls: extraDamageRoll === undefined ? [damageRollPayload] : [damageRollPayload, extraDamageRoll],
+    rolls: [
+      damageRollPayload,
+      ...(extraDamageRoll === undefined ? [] : [extraDamageRoll]),
+      ...onHitRiderRolls,
+    ],
     critical,
     causedByEventId: attackRolled.id,
   };
 
   const damageTotal = damageRolls.reduce((s, v) => s + v, 0) + damageRollPayload.modifier;
   const rawComponents: { amount: number; type: typeof weaponDef.damageType }[] = [
-    { amount: Math.max(0, damageTotal), type: weaponDef.damageType },
+    { amount: Math.max(0, damageTotal), type: effectiveDamageType },
   ];
   if (extraDamageRoll !== undefined) {
     const extraTotal = extraDamageRoll.rolls.reduce((s, v) => s + v, 0) + extraDamageRoll.modifier;
     rawComponents.push({ amount: Math.max(0, extraTotal), type: extraDamageRoll.type });
   }
+  for (const rider of onHitRiderRolls) {
+    const riderTotal = rider.rolls.reduce((s, v) => s + v, 0) + rider.modifier;
+    rawComponents.push({ amount: Math.max(0, riderTotal), type: rider.type });
+  }
+  const attackIsMagical = isMagicWeaponAttack(
+    weaponInstance,
+    weaponDef,
+    attackerEffects.hasUnarmedAsMagical(),
+  );
   const mitigatedComponents = mitigateDamage({
     character: target,
     itemInstances: state.itemInstances,
     content,
     rawComponents,
     characters: state.characters,
-    sourceIsMagical: isMagicWeaponAttack(weaponInstance, weaponDef, attackerEffects.hasUnarmedAsMagical()),
+    sourceIsMagical: attackIsMagical,
   });
   // Slice 111: simulate prior-rider damage so the Death Ward intercept
   // sees the target's HP at the moment the main damage event commits.
@@ -838,12 +899,82 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     at,
   });
 
+  // On-hit condition riders, resolved after the damage chain (the hit
+  // lands, then the rider resolves). Only riders whose `condition` gate
+  // already passed (filtered into applicableRiders above) reach here.
+  // Two shapes:
+  //   - slice 319 save: roll a save (RNG in the planner so replay stays
+  //     deterministic); on failure apply `conditionOnFail`.
+  //   - slice 321 applyConditionId: apply the condition unconditionally
+  //     (no save) — the 2024 poison-bite shape (Couatl's Bite).
+  const onHitRiderEvents: Event[] = [];
+  const applyRiderCondition = (conditionId: string): void => {
+    onHitRiderEvents.push({
+      id: newEventId() as ULID,
+      at,
+      type: 'ConditionApplied',
+      targetId: input.targetId as ULID,
+      conditionId,
+      appliedConditionId: newAppliedConditionId(),
+      sourceCharacterId: input.attackerId as ULID,
+    } satisfies ConditionAppliedEvent);
+  };
+  const destroyTarget = (): void => {
+    onHitRiderEvents.push({
+      id: newEventId() as ULID,
+      at,
+      type: 'CreatureDestroyed',
+      targetId: input.targetId as ULID,
+      sourceCharacterId: input.attackerId as ULID,
+    } satisfies CreatureDestroyedEvent);
+  };
+  // Slice 323/325: HP threshold gates (save-gated destroy and the
+  // unconditional destroy arm) read the target's HP AFTER this hit's
+  // full damage chain — including the rider's own extra-damage component.
+  const postDamageHp = stateAfterDamage.characters[input.targetId]?.hp.current ?? 0;
+  const hpWithin = (threshold: number | undefined): boolean =>
+    threshold === undefined || postDamageHp <= threshold;
+  for (const rider of applicableRiders) {
+    if (rider.save !== undefined) {
+      const save = rider.save;
+      // Slice 323: the save fires only inside its HP threshold (Mace of
+      // Disruption: target has <= 25 HP after the radiant rider).
+      if (hpWithin(save.hpThreshold)) {
+        const saveResult = rollSaveAgainstDC({
+          state,
+          content,
+          targetId: input.targetId,
+          ability: save.ability,
+          dc: save.dc,
+          sourceIsMagical: save.sourceIsMagical ?? false,
+          rng,
+          at,
+        });
+        if (saveResult !== undefined) {
+          onHitRiderEvents.push(saveResult.event);
+          if (saveResult.success) {
+            if (save.conditionOnSuccess !== undefined) applyRiderCondition(save.conditionOnSuccess);
+          } else if (save.destroyOnFail === true) {
+            destroyTarget();
+          } else if (save.conditionOnFail !== undefined) {
+            applyRiderCondition(save.conditionOnFail);
+          }
+        }
+      }
+    }
+    if (rider.applyConditionId !== undefined) applyRiderCondition(rider.applyConditionId);
+    // Slice 325: unconditional (no-save) destroy arm (Mace of Smiting's
+    // Construct destroy when post-damage HP is at or below the threshold).
+    if (rider.destroy !== undefined && hpWithin(rider.destroy.hpThreshold)) destroyTarget();
+  }
+
   return [
     attackRolled,
     ...attackTriggers,
     damageRolled,
     damageApplied,
     ...damageTriggers,
+    ...onHitRiderEvents,
     ...intercept.extraEvents,
     ...concentrationBreak,
   ];

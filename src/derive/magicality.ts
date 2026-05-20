@@ -18,16 +18,21 @@ import type { ItemDefinition } from '../schemas/content/item.js';
 //    magical. Callers pass `attackerHasUnarmedAsMagical: true` when
 //    that's the case.
 //
-// "+1 / +2 / +3" enhancement-bonus weapons aren't yet modeled in
-// content. When they land, the detector either gains a fourth branch
-// or the modeling collapses one of the existing branches.
+// Slice 316: single-base magic weapons now ship as itemKind 'weapon'
+// with a `rarity` (Sun Blade, Dwarven Thrower, etc.), so a fourth
+// branch counts those as magical. Multi-base magic weapons that remain
+// itemKind 'magic' still match branch 2.
 export const isMagicWeaponAttack = (
   instance: ItemInstance,
   def: ItemDefinition,
   attackerHasUnarmedAsMagical: boolean = false,
 ): boolean => {
   if (instance.temporaryBuff !== undefined) return true;
+  // Slice 317: a base weapon instance carrying a multi-base enchantment
+  // (Frost Brand, "+1 weapon") counts as magical.
+  if (instance.enchantmentDefinitionId !== undefined) return true;
   if (def.itemKind === 'magic') return true;
+  if (def.itemKind === 'weapon' && def.rarity !== undefined) return true;
   if (def.id === 'unarmed-strike' && attackerHasUnarmedAsMagical) return true;
   return false;
 };

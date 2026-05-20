@@ -109,13 +109,13 @@ Pick the doc that matches what you want:
 
 ## Status
 
-**Alpha.** Architecturally complete and content-substantial. **1833 tests across 268 files**; the engine compiles and builds (ESM + CJS + `.d.ts`); the load-bearing invariants (event-sourcing, plan/commit, RNG capture, replay equivalence, branded IDs, effect primitives) are locked and proven. The 48-probe RAW-compliance audit at [tests/audit/raw-compliance.test.ts](tests/audit/raw-compliance.test.ts) passes in full. **SRD 5.2.1 pack-presence is complete across every category** (spells, monsters, magic items, species, feats, backgrounds, conditions); what's still growing is mechanical wiring depth, not catalog coverage.
+**Alpha.** Architecturally complete and content-substantial. **1951 tests across 288 files**; the engine compiles and builds (ESM + CJS + `.d.ts`); the load-bearing invariants (event-sourcing, plan/commit, RNG capture, replay equivalence, branded IDs, effect primitives) are locked and proven. The 48-probe RAW-compliance audit at [tests/audit/raw-compliance.test.ts](tests/audit/raw-compliance.test.ts) passes in full. **SRD 5.2.1 pack-presence is complete across every category** (spells, monsters, magic items, species, feats, backgrounds, conditions); what's still growing is mechanical wiring depth, not catalog coverage.
 
 At a glance:
 
 - **Engine architecture**: 100%. Locked.
 - **Effect-primitive vocabulary**: ~75% of the planned `EFFECT_KINDS` shipped (50 primitives + `Custom` escape hatch); the rest of the backlog enumerated in [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md).
-- **Classes / species / backgrounds / feats / conditions / spells / monsters / magic items**: SRD 5.2.1 catalog complete in every category. Spell mechanical wiring ~46% (160/351); magic-item mechanical wiring ~29% (86/292) with consumables at ~81% (42/52).
+- **Classes / species / backgrounds / feats / conditions / spells / monsters / magic items**: SRD 5.2.1 catalog complete in every category. Spell mechanical wiring ~47% (164/351); magic-item mechanical wiring ~35% (~91/258, after single-base magic weapons/armor were re-modeled into the weapon/armor categories in slices 315-317); consumables ~65% (~45/69).
 - **Variant rules**: `grittyRest` + `heroPoints` enforce; `sanity` + `massCombat` toggle but don't enforce.
 
 For the full coverage table, per-category breakdown, known gaps (engine, content, test infrastructure), and severity ranking, see **[docs/status.md](docs/status.md)**.

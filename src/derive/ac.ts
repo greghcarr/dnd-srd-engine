@@ -4,6 +4,7 @@ import type { ResolvedContent } from '../content/pack.js';
 import type { AbilityScore } from '../schemas/primitives.js';
 import { abilityModifier, effectiveAbilityScore } from './ability.js';
 import { buildEffectStack } from './effect-stack.js';
+import { resolveEnchantment } from './enchantment.js';
 import type { EffectAccumulator } from '../effects/builder.js';
 
 const UNARMORED_BASE = 10;
@@ -39,6 +40,16 @@ const computeArmorAC = (
       if (armorDef.category !== 'heavy') {
         breakdown.push({ source: 'DEX', value: dexContribution });
       }
+      // Slice 315: magic-armor enhancement bonus (Dragon Scale Mail +1).
+      if (armorDef.acBonus !== undefined && armorDef.acBonus !== 0) {
+        breakdown.push({ source: `armor-bonus:${armorDef.id}`, value: armorDef.acBonus });
+      }
+      // Slice 317: enchantment-overlay AC bonus (a base armor instance
+      // carrying a multi-base enchantment like "+1 armor" / Adamantine).
+      const ench = resolveEnchantment(armorInstance, content);
+      if (ench?.acBonus !== undefined && ench.acBonus !== 0) {
+        breakdown.push({ source: `armor-enchantment:${ench.id}`, value: ench.acBonus });
+      }
     } else {
       breakdown.push({ source: 'unarmored-base', value: UNARMORED_BASE });
       breakdown.push({ source: 'DEX', value: dexMod });
@@ -54,6 +65,15 @@ const computeArmorAC = (
     const shieldDef = shieldInstance ? content.items.get(shieldInstance.definitionId) : undefined;
     if (shieldDef && shieldDef.itemKind === 'armor' && shieldDef.category === 'shield') {
       breakdown.push({ source: `shield:${shieldDef.id}`, value: shieldDef.baseAC });
+      // Slice 315: magic-shield enhancement bonus (Shield +1/+2/+3).
+      if (shieldDef.acBonus !== undefined && shieldDef.acBonus !== 0) {
+        breakdown.push({ source: `shield-bonus:${shieldDef.id}`, value: shieldDef.acBonus });
+      }
+      // Slice 317: enchantment-overlay AC bonus on a base shield.
+      const ench = resolveEnchantment(shieldInstance, content);
+      if (ench?.acBonus !== undefined && ench.acBonus !== 0) {
+        breakdown.push({ source: `shield-enchantment:${ench.id}`, value: ench.acBonus });
+      }
     }
   }
   return breakdown;

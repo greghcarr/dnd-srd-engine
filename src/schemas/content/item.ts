@@ -8,6 +8,7 @@ import {
   WeaponPropertySchema,
 } from '../primitives.js';
 import { EffectSchema } from '../effects.js';
+import { PredicateSchema } from '../predicate.js';
 
 const ItemBaseSchema = z.object({
   id: z.string(),
@@ -21,6 +22,138 @@ const ItemBaseSchema = z.object({
     .optional(),
 });
 
+// Shared across MagicItemSchema and the magic-equipment fields on
+// WeaponSchema / ArmorSchema (slice 315). A magic weapon or armor ships
+// as itemKind 'weapon' / 'armor' (so the attack / AC consumers
+// recognize it as wielded / worn) plus optional magic fields below.
+const MagicRaritySchema = z.enum([
+  'common',
+  'uncommon',
+  'rare',
+  'very-rare',
+  'legendary',
+  'artifact',
+]);
+
+// Slice 315/316/317: magic-equipment overlay fields, shared between the
+// single-base inline forms (WeaponSchema / ArmorSchema, where the magic
+// item IS the weapon/armor) and the multi-base enchantment form
+// (MagicItemSchema, applied to a base instance via
+// ItemInstance.enchantmentDefinitionId). `weaponEnhancementFields`:
+// `attackBonus` / `damageBonus` flat enhancements + `onHit` per-hit
+// extra-damage riders. `armorEnhancementFields`: `acBonus`.
+// Slice 319: on-hit-save arm. A rider may carry a saving throw at a
+// fixed DC; on a failed save the target gains `conditionOnFail`. RAW
+// canonical user: a Ghoul's Claw ("Constitution Saving Throw: DC 10.
+// Failure: the target has the Paralyzed condition"). The save fires
+// only when the enclosing rider's `condition` gate passes (the Ghoul's
+// "if the target isn't an Undead or elf"), so the gate and the save
+// compose. Condition durations are consumer-managed (mirror of the
+// slice-286 Save UseAction), and `sourceIsMagical` defaults to false
+// (monster natural-weapon saves are nonmagical) so the target's Magic
+// Resistance doesn't apply unless the rider opts in.
+//
+// Slice 323: three more arms for the destroy-or-condition shape (Mace
+// of Disruption: "If the target has 25 HP or fewer after taking this
+// damage, DC 15 WIS save or be destroyed; on a success it's Frightened
+// until the end of your next turn").
+//   - `hpThreshold`: the save fires only when the target's HP AFTER the
+//     hit's damage is at or below this value; otherwise no save at all.
+//   - `destroyOnFail`: on a failed save the target is destroyed (a
+//     CreatureDestroyed event), bypassing death saves. Takes precedence
+//     over `conditionOnFail`.
+//   - `conditionOnSuccess`: a condition applied on a SUCCESSFUL save.
+// `conditionOnFail` is optional (Mace of Disruption destroys on fail and
+// applies nothing-but-fear on success); the refine requires the save to
+// have at least one outcome.
+const onHitSaveSchema = z
+  .object({
+    ability: AbilityScoreSchema,
+    dc: z.number().int().min(1),
+    conditionOnFail: z.string().optional(),
+    conditionOnSuccess: z.string().optional(),
+    destroyOnFail: z.boolean().optional(),
+    hpThreshold: z.number().int().min(1).optional(),
+    sourceIsMagical: z.boolean().optional(),
+  })
+  .refine(
+    (s) =>
+      s.conditionOnFail !== undefined ||
+      s.conditionOnSuccess !== undefined ||
+      s.destroyOnFail === true,
+    {
+      message:
+        'onHit save must have an outcome (conditionOnFail, conditionOnSuccess, or destroyOnFail)',
+    },
+  );
+const onHitRiderSchema = z
+  .object({
+    // Slice 319: dice/damageType are now optional and paired. A rider
+    // carries extra damage (dice + damageType), a save (below), or
+    // both. A pure-save rider (Ghoul's Claw: no extra dice, just the
+    // save) omits dice/damageType entirely.
+    dice: DiceExpressionSchema.optional(),
+    damageType: DamageTypeSchema.optional(),
+    // Slice 318: optional target-gated condition. When present, the rider
+    // only fires on a hit whose target satisfies the predicate, evaluated
+    // against target facts at hit time (`target.creatureType` and
+    // `target.speciesId` for "vs Undead / Giants / Constructs", or the
+    // Ghoul's "isn't an Undead or elf"). Unconditional riders (Thunderous
+    // Greatclub's +1d8 thunder) omit it and fire on every hit.
+    condition: PredicateSchema.optional(),
+    save: onHitSaveSchema.optional(),
+    // Slice 321: unconditional on-hit condition application (no save).
+    // The 2024 RAW shape for most poison/venom natural attacks: "Hit:
+    // ... and the target has the Poisoned condition" (Couatl's Bite,
+    // Assassin's Shortsword, Bearded Devil's Beard). On a hit where the
+    // rider's `condition` gate passes, the planner emits ConditionApplied
+    // (sourced by the attacker). Distinct from `save.conditionOnFail`,
+    // which gates the condition behind a failed save. Duration is
+    // consumer-managed (mirror of slice 286 / 319).
+    applyConditionId: z.string().optional(),
+    // Slice 324: crit-gate. When true, the whole rider fires only on a
+    // critical hit (the 2024 "When you roll a 20 on the attack roll, the
+    // target takes an extra ..." shape). Composes with `condition`:
+    // Sword of Life Stealing is crit-gated AND vs-non-Construct/Undead.
+    // Flat crit damage is the dice field as a `0d6+N` constant (slice
+    // 122) so the crit-doubling leaves the flat amount unchanged (RAW
+    // doubles dice, not flat bonuses). Future users: Sword of Sharpness
+    // (+14 slashing), Vorpal (decapitation via the slice-323 destroy
+    // arm, once a head/too-big immunity fact exists).
+    requiresCritical: z.boolean().optional(),
+    // Slice 325: unconditional (no-save) destroy arm. When the rider
+    // fires (its gates pass) and the target's HP AFTER the hit's damage
+    // is at or below `hpThreshold` (or always, when omitted), the target
+    // is destroyed (CreatureDestroyed, bypassing death saves). RAW: Mace
+    // of Smiting's "If a Construct has 25 Hit Points or fewer after
+    // taking this damage, it is destroyed" — the unconditional sibling
+    // of the slice-323 save-gated `save.destroyOnFail`.
+    destroy: z
+      .object({ hpThreshold: z.number().int().min(1).optional() })
+      .optional(),
+  })
+  .refine((r) => (r.dice === undefined) === (r.damageType === undefined), {
+    message: 'onHit rider dice and damageType must be set together',
+  })
+  .refine(
+    (r) =>
+      r.dice !== undefined ||
+      r.save !== undefined ||
+      r.applyConditionId !== undefined ||
+      r.destroy !== undefined,
+    {
+      message: 'onHit rider must carry extra damage (dice), a save, an applied condition, or a destroy arm',
+    },
+  );
+const weaponEnhancementFields = {
+  attackBonus: z.number().int().optional(),
+  damageBonus: z.number().int().optional(),
+  onHit: z.array(onHitRiderSchema).optional(),
+} as const;
+const armorEnhancementFields = {
+  acBonus: z.number().int().optional(),
+} as const;
+
 export const WeaponSchema = ItemBaseSchema.extend({
   itemKind: z.literal('weapon'),
   category: z.enum(['simple', 'martial']),
@@ -32,6 +165,23 @@ export const WeaponSchema = ItemBaseSchema.extend({
   mastery: WeaponMasterySchema.optional(),
   rangeNormal: z.number().int().optional(),
   rangeLong: z.number().int().optional(),
+  // Slice 316: optional magic-weapon fields. A magic weapon with a
+  // single base (Sun Blade = Longsword) ships as itemKind 'weapon' with
+  // the base stats + these fields, so the attack planner wields it and
+  // applies the enhancement. `attackBonus` / `damageBonus` are the flat
+  // enhancement bonuses (Sun Blade +2). `onHit` is a list of intrinsic
+  // per-hit extra-damage riders rolled fresh on every hit (Thunderous
+  // Greatclub +1d8 thunder), distinct from the slice-76 temporaryBuff
+  // rider (which is consumable-applied). `effects` project to the
+  // wielder's effect stack while the weapon is held + attuned (slice
+  // 132 rule, broadened). A magic weapon counts as magical for the
+  // resistance-bypass check (isMagicWeaponAttack). Multi-base magic
+  // weapons ("any of N") stay itemKind 'magic' (deferred).
+  rarity: MagicRaritySchema.optional(),
+  requiresAttunement: z.boolean().optional(),
+  attunementCondition: z.string().optional(),
+  ...weaponEnhancementFields,
+  effects: z.array(EffectSchema).optional(),
 });
 export type Weapon = z.infer<typeof WeaponSchema>;
 
@@ -42,6 +192,19 @@ export const ArmorSchema = ItemBaseSchema.extend({
   dexCap: z.number().int().optional(),
   strRequirement: z.number().int().optional(),
   stealthDisadvantage: z.boolean().default(false),
+  // Slice 315: optional magic-armor fields. A magic armor / shield with
+  // a single base (Dragon Scale Mail = Scale Mail, the magic shields =
+  // Shield) ships as itemKind 'armor' so the AC derive applies its
+  // baseAC + DEX, plus these fields. `acBonus` is the enhancement bonus
+  // to AC (Dragon Scale Mail +1). `effects` project to the wearer's
+  // effect stack under the same equipped + attunement rule as magic
+  // items (slice 132). Multi-base magic armor ("any medium or heavy")
+  // stays itemKind 'magic' (deferred) — it has no single base AC.
+  rarity: MagicRaritySchema.optional(),
+  requiresAttunement: z.boolean().optional(),
+  attunementCondition: z.string().optional(),
+  ...armorEnhancementFields,
+  effects: z.array(EffectSchema).optional(),
 });
 export type Armor = z.infer<typeof ArmorSchema>;
 
@@ -178,7 +341,7 @@ export type DestructionRoll = z.infer<typeof DestructionRollSchema>;
 
 export const MagicItemSchema = ItemBaseSchema.extend({
   itemKind: z.literal('magic'),
-  rarity: z.enum(['common', 'uncommon', 'rare', 'very-rare', 'legendary', 'artifact']),
+  rarity: MagicRaritySchema,
   requiresAttunement: z.boolean().default(false),
   attunementCondition: z.string().optional(),
   charges: z
@@ -191,6 +354,16 @@ export const MagicItemSchema = ItemBaseSchema.extend({
   effects: z.array(EffectSchema).default([]),
   onUse: z.array(UseActionSchema).default([]),
   destructionRoll: DestructionRollSchema.optional(),
+  // Slice 317: enchantment-overlay fields. When this magic item is a
+  // multi-base equipment enchantment (Frost Brand, "+1 weapon", "+1
+  // armor"), a base weapon/armor instance references it via
+  // ItemInstance.enchantmentDefinitionId, and the attack planner / AC
+  // derive overlay these onto the base. `weaponDamageType` overrides the
+  // base weapon's damage type (Flame Tongue → fire). `effects` (above)
+  // also project from an equipped enchanted base.
+  ...weaponEnhancementFields,
+  ...armorEnhancementFields,
+  weaponDamageType: DamageTypeSchema.optional(),
   // Slice 293. Cumulative time-budget on toggle-able items that
   // RAW-cap their activation duration per long rest (Boots of Speed:
   // 10 min/LR; Winged Boots: 4 hr/LR; etc.). Distinct from `charges`

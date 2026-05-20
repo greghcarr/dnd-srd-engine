@@ -112,6 +112,22 @@ export const StabilizedEventSchema = EventEnvelopeSchema.extend({
 });
 export type StabilizedEvent = z.infer<typeof StabilizedEventSchema>;
 
+// Slice 323: instant-death outcome that bypasses the death-save
+// sequence. Models RAW "destroyed" / "dies instantly" effects (Mace of
+// Disruption's destroy-on-failed-save against a low-HP Fiend/Undead, and
+// future crit-gated decapitation like the Vorpal Sword). The reducer
+// sets hp.current to 0 and death-save failures to the kill threshold, so
+// anything reading "dead" via death saves sees a dead creature with no
+// intervening death-save rolls. Distinct from DamageApplied: no damage
+// is dealt or mitigated; the creature simply dies.
+export const CreatureDestroyedEventSchema = EventEnvelopeSchema.extend({
+  type: z.literal('CreatureDestroyed'),
+  targetId: ULIDSchema,
+  sourceCharacterId: ULIDSchema.optional(),
+  source: z.string().optional(),
+});
+export type CreatureDestroyedEvent = z.infer<typeof CreatureDestroyedEventSchema>;
+
 export const HPMaxBonusChangedEventSchema = EventEnvelopeSchema.extend({
   type: z.literal('HPMaxBonusChanged'),
   targetId: ULIDSchema,

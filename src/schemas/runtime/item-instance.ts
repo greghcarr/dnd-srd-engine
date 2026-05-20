@@ -47,6 +47,19 @@ export const ItemInstanceSchema = z.object({
     })
     .optional(),
   temporaryBuff: ItemTemporaryBuffSchema.optional(),
+  // Slice 317: multi-base magic equipment ("enchantment overlay"). A
+  // base weapon / armor instance (`definitionId` = the base, e.g.
+  // 'longsword' / 'plate') references a magic enchantment definition
+  // (itemKind 'magic' carrying the magic-equipment fields, e.g.
+  // 'frost-brand' / 'weapon-plus-1') applied to it. The attack planner,
+  // AC derive, effect projection, and magicality detector read the
+  // enchantment as an overlay on the base (parallel to `temporaryBuff`,
+  // but permanent and not concentration-bound). Used for the multi-base
+  // items whose base is chosen at creation (Frost Brand = any of 6
+  // weapons, "+1 armor" = any armor), which can't ship as a single
+  // itemKind 'weapon'/'armor' definition the way slice 315/316's
+  // single-base items do.
+  enchantmentDefinitionId: z.string().optional(),
   // Slice 293. Cumulative activation time consumed against the
   // definition's `timeBudget.maxMinutesPerLongRest`. Boots of Speed
   // (10 min/LR) is the canonical user. `planUseItem`'s Toggle branch

@@ -233,7 +233,6 @@ exports[`feature-coverage matrix: magic items > magic-item wire and charge state
 {
   "wiredIds": [
     "amulet-of-health",
-    "armor-of-invulnerability",
     "armor-of-resistance-acid",
     "armor-of-resistance-cold",
     "armor-of-resistance-fire",
@@ -286,7 +285,6 @@ exports[`feature-coverage matrix: magic items > magic-item wire and charge state
     "periapt-of-health",
     "periapt-of-proof-against-poison",
     "pipes-of-haunting",
-    "quarterstaff-of-the-acrobat",
     "ring-of-feather-falling",
     "ring-of-free-action",
     "ring-of-protection",
@@ -307,9 +305,7 @@ exports[`feature-coverage matrix: magic items > magic-item wire and charge state
     "robe-of-the-archmagi",
     "rod-of-alertness",
     "scarab-of-protection",
-    "sentinel-shield",
     "slippers-of-spider-climbing",
-    "spellguard-shield",
     "staff-of-fire",
     "staff-of-frost",
     "staff-of-healing",
@@ -403,22 +399,29 @@ exports[`feature-coverage matrix: weapon masteries > mastery → weapon mapping 
   ],
   "Nick": [
     "dagger",
+    "dagger-of-venom",
     "light-hammer",
     "scimitar",
+    "scimitar-of-speed",
     "sickle",
   ],
   "Push": [
     "crossbow-heavy",
+    "dwarven-thrower",
     "greatclub",
     "pike",
+    "thunderous-greatclub",
     "warhammer",
   ],
   "Sap": [
     "flail",
     "longsword",
     "mace",
+    "mace-of-disruption",
+    "mace-of-smiting",
     "morningstar",
     "spear",
+    "sun-blade",
     "war-pick",
   ],
   "Slow": [
@@ -434,6 +437,7 @@ exports[`feature-coverage matrix: weapon masteries > mastery → weapon mapping 
     "lance",
     "maul",
     "quarterstaff",
+    "quarterstaff-of-the-acrobat",
     "trident",
   ],
   "Vex": [
