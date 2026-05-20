@@ -29,7 +29,7 @@ Every planner returns `{ events: Event[] }` (or `{ events, ...outcome }` for the
 
 **Combat (defense-side)**: `dodge`, `shield`, `absorbElements`, `sanctuaryWardSave`, `protection`, `consumeGuidance`, `cuttingWords`. Each is a dedicated reaction planner the consumer calls after observing the trigger event. `sanctuaryWardSave` is the inverse direction: called BEFORE an attack against a sanctuary-warded creature, rolling the attacker's WIS save and emitting `SanctuaryProtected` on failure so the consumer drops the attack. `protection` (slice 120, Protection Fighting Style) rolls a fresh d20 the consumer pairs with the original AttackRolled.d20 as disadvantage; gates on `GrantProtectionFightingStyle` + shield equipped + reaction available; position / vision preconditions stay consumer-side.
 
-**Class-specific actions**: `sacredWeapon` (Paladin Devotion), `recklessAttack` (Barbarian), `stunningStrike` (Monk), `flurryOfBlows` (Monk: spend 1 Focus Point → two Unarmed Strikes as a Bonus Action, three at L10+), `frenzy` (Barbarian Berserker), `metamagic` (Sorcerer), `wildCompanion` (Druid).
+**Class-specific actions**: `sacredWeapon` (Paladin Devotion), `recklessAttack` (Barbarian), `stunningStrike` (Monk), `flurryOfBlows` (Monk: spend 1 Focus Point → two Unarmed Strikes as a Bonus Action, three at L10+), `patientDefense` (Monk: Disengage as a Bonus Action, or 1 Focus for Disengage + Dodge, +temp HP at L10+), `frenzy` (Barbarian Berserker), `metamagic` (Sorcerer), `wildCompanion` (Druid).
 
 **Movement**: `move`, `dash`, `disengage`, `mistyStep`, `thunderStep` (slice 128: action, teleport caster + one willing ally within 5 ft up to 90 ft, AoE 3d10 thunder on origin with CON save half, +1d10 per slot above 3rd).
 

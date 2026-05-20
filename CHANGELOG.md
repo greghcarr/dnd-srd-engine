@@ -4,6 +4,17 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine: Patient Defense planner (slice 334)**
+
+Second of the three Monk's Focus bonus-action planners, and the Patient Defense arm of L10 Heightened Focus.
+
+- New `planPatientDefense` ([src/engine/plan/patient-defense.ts](src/engine/plan/patient-defense.ts)) + `engine.plan.patientDefense`: as a Bonus Action, a Monk (level ≥ 2) takes the **Disengage** action; or with `spendFocusPoint: true`, spends 1 Focus Point to take both **Disengage and Dodge**. At Monk level 10+ (Heightened Focus), spending the Focus Point also grants **Temporary Hit Points equal to two rolls of the Martial Arts die**. Reuses the existing `Disengaged` event + `dodged` condition under a Bonus Action; the Martial Arts die helper was exported from the attack planner.
+- Requires the monk to be the active combatant in an active encounter (Disengage/Dodge are combat-positioning actions, mirroring `planDodge` / `planDisengage`); consumes the Bonus Action and (focus mode) 1 Focus Point. Free mode works regardless of Focus Points.
+
+Scope: closes the **Patient Defense** arm of Heightened Focus. Only `planStepOfTheWind` remains; once it lands the deferred main-class-feature count reaches 0.
+
+Uncle Bob audit: **Names** — `planPatientDefense` / `PatientDefenseIntent` / `spendFocusPoint` are intention-revealing. **DRY** — reuses the `Disengaged` event + `dodged` condition (the `planDisengage`/`planDodge` shapes) and the exported `martialArtsDie` rather than re-deriving; bonus-action + ki-spend shapes match the slice-333 Flurry planner. **SRP** — the planner orchestrates economy + resource + the two sub-actions + the L10 temp-HP roll. **Magic numbers** — the L2/L10 thresholds and the two-dice temp-HP count are named constants, RAW-cited. **at-threading** — single `nowIso()` to every event; the temp-HP dice are the only RNG (focus mode at L10+), baked into `TempHPGranted`. **Mechanical outcomes asserted** — free mode emits `Disengaged` + a bonusAction consume with no Focus Point spent (works at 0 ki); focus mode (L5) spends 1 ki + applies `dodged` with no temp HP (replay + RNG-capture hold); L10 focus mode grants temp HP in [2,16]; throws on no-Focus-in-focus-mode and out-of-encounter. **Tests** — 5 new ([tests/unit/engine/slice-334-patient-defense.test.ts](tests/unit/engine/slice-334-patient-defense.test.ts)); full suite green (1964 passed), tsc clean. Docs: api-overview class-action list, status.md + gaps Heightened Focus rows (Patient Defense arm closed).
+
 **Engine: Flurry of Blows planner (slice 333)**
 
 First of the three Monk's Focus bonus-action planners, and the Flurry arm of the L10 Heightened Focus feature (the last partly-deferred SRD main-class feature).

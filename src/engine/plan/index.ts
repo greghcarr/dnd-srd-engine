@@ -93,6 +93,7 @@ export { planElementalWeapon, type ElementalWeaponIntent } from './elemental-wea
 export { planRecklessAttack, type RecklessAttackIntent } from './reckless-attack.js';
 export { planStunningStrike, type StunningStrikeIntent } from './stunning-strike.js';
 export { planFlurryOfBlows, type FlurryOfBlowsIntent } from './flurry-of-blows.js';
+export { planPatientDefense, type PatientDefenseIntent } from './patient-defense.js';
 export { planFrenzy, type FrenzyIntent } from './frenzy.js';
 export {
   planCuttingWords,

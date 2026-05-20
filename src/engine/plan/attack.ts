@@ -269,7 +269,7 @@ const chooseDamageAbility = (
 // Monk class feature: Martial Arts die scaling (PHB 2024 Monk table).
 // L1: 1d6, L5: 1d8, L11: 1d10, L17: 1d12. Pre-L1 (non-Monk or
 // multiclass with 0 Monk levels) returns undefined.
-const martialArtsDie = (monkLevel: number): string | undefined => {
+export const martialArtsDie = (monkLevel: number): string | undefined => {
   if (monkLevel >= 17) return '1d12';
   if (monkLevel >= 11) return '1d10';
   if (monkLevel >= 5) return '1d8';
