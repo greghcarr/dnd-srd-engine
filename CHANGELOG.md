@@ -4,6 +4,34 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content + bug-fix: simple wires sweep + Stone of Good Luck dedup (slice 298)**
+
+Sweep of unwired magic items using existing primitives, with a bug-pattern audit that surfaced one duplicate. Per the slice-261 pattern-check norm, the audit found that 3 items (Cloak of Protection, Ring of Protection, Stone of Good Luck) and 3 conditions (blessed, baned, aura-of-protection-active) all ship 6 per-ability AddModifier entries to model universal save bonuses — wireable today via slice-266's wildcard pattern extended to AddModifier (deferred to a focused primitive slice). The wider sweep also surfaced one pack-data bug fixed here.
+
+Bug fix: Stone of Good Luck duplicate. The pack carried two entries — `stone-of-good-luck` (wired with 12 save+check AddModifier entries, name "Stone of Good Luck") and `stone-of-good-luck-luckstone` (empty, name "Stone of Good Luck (Luckstone)"). SRD 5.2.1 canonical name is "Stone of Good Luck (Luckstone)" so the wired entry's name silently mismatched and the SRD drift audit silently skipped it. Resolution: renamed the wired entry to the SRD-canonical name, deleted the empty duplicate. Net pack delta: -1 entry. ID stability: kept `stone-of-good-luck` (the wired id).
+
+Content wired:
+- **Eyes of Minute Seeing** — `SetAdvantage on:{kind:'skill', skill:'investigation'}` (slice-263 primitive). "Within 1 foot" gate is consumer-managed; the 1-foot Darkvision arm is narrative (engine doesn't reason about sub-5-foot vision).
+- **Headband of Intellect** — `OverrideAbilityScore { ability:'INT', value: 19 }` (slice-229 primitive, floor semantics).
+- **Necklace of Adaptation** (arm 2) — `SetAdvantage on:{kind:'save'} condition: eq event.savePreventsCondition 'poisoned'` (slice-291 fact, bearer-side passive form rather than consumable-applied). The "breathe in any environment" arm 1 stays deferred (needs the `GrantBreathlessness` marker from the slice-224 backlog).
+- **Periapt of Health** (arm 2) — same shape as Necklace of Adaptation. The 1/dawn self-heal arm 1 stays deferred (UseActionSchema lacks a Heal variant).
+
+Pattern-check sweep results:
+- **Universal save bonus (6-ability AddModifier unroll)**: 6 occurrences across pack (3 items + 3 conditions). Symptom of a missing wildcard primitive in AddModifier. Tracked as a future "AddModifier save/check wildcard + canonical user" slice. Existing wires are correct but verbose.
+- **Duplicate pack entries**: ran a normalize-by-name audit across the full items list. Stone of Good Luck was the only true duplicate. Resistance variant groups (Armor / Ring / Potion) are intentional unrolls per slice 295/296. "Greatclub (Ogre)" is a weapon variant for the Ogre monster, not a magic item duplicate.
+- **Poisoned-save advantage**: searched SRD for sibling items. Found Necklace of Adaptation + Periapt of Health (wired here), Periapt of Proof against Poison (already wired with full immunity), Belt of Dwarvenkind (deferred — multi-arm with creature-type "if not dwarf or duergar" gate that needs a `bearer.species` predicate the engine doesn't have).
+
+Audit:
+- Names: descriptive ids; the renamed Stone of Good Luck keeps its original id (less churn) while updating name to match SRD.
+- DRY: each wire is one effect entry; no copy-paste.
+- SRP: each wire targets one observable behavior.
+- Magic numbers: 19 (Headband INT floor) cited to RAW + slice-229 primitive doc.
+- Mechanical outcomes: 14 tests pin the 4 wires + the dedup invariant (only one Stone entry exists; canonical name matches SRD; 12-entry effect array preserved).
+
+tsc clean; 1824 tests across 267 files (was 1810 / 266; +14 in new [tests/unit/derive/slice-298-wires.test.ts](tests/unit/derive/slice-298-wires.test.ts)). Coverage snapshot updated for the 4 new wiredIds. SRD drift audit now silently SKIPS Stone of Good Luck via the new name (the SRD entry name still doesn't map to an `srdItems.get` hit because the audit's name parser doesn't match parenthetical canonicals — same as Belt of Giant Strength variants); rarity + attunement assertions still pass.
+
+Doc updates: Items count refreshed (511 → 510; 58 → 62 wired); deferred-primitives backlog gains a tracked row for the universal-save-bonus wildcard primitive (AddModifier save/check wildcard).
+
 **Content: Elvenkind Stealth wires (slice 297)**
 
 Two simple wires picked up on the way past — both items had `effects: []` since the original starter-pack authoring even though the slice-263 skill-discriminated `SetAdvantage on:{kind:'skill', skill:'stealth'}` primitive (originally landed for Eyes of the Eagle) covers their bearer-side arms.
