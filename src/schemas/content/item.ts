@@ -48,16 +48,44 @@ const MagicRaritySchema = z.enum([
 // Failure: the target has the Paralyzed condition"). The save fires
 // only when the enclosing rider's `condition` gate passes (the Ghoul's
 // "if the target isn't an Undead or elf"), so the gate and the save
-// compose. The condition's duration is consumer-managed (mirror of the
+// compose. Condition durations are consumer-managed (mirror of the
 // slice-286 Save UseAction), and `sourceIsMagical` defaults to false
 // (monster natural-weapon saves are nonmagical) so the target's Magic
 // Resistance doesn't apply unless the rider opts in.
-const onHitSaveSchema = z.object({
-  ability: AbilityScoreSchema,
-  dc: z.number().int().min(1),
-  conditionOnFail: z.string(),
-  sourceIsMagical: z.boolean().optional(),
-});
+//
+// Slice 323: three more arms for the destroy-or-condition shape (Mace
+// of Disruption: "If the target has 25 HP or fewer after taking this
+// damage, DC 15 WIS save or be destroyed; on a success it's Frightened
+// until the end of your next turn").
+//   - `hpThreshold`: the save fires only when the target's HP AFTER the
+//     hit's damage is at or below this value; otherwise no save at all.
+//   - `destroyOnFail`: on a failed save the target is destroyed (a
+//     CreatureDestroyed event), bypassing death saves. Takes precedence
+//     over `conditionOnFail`.
+//   - `conditionOnSuccess`: a condition applied on a SUCCESSFUL save.
+// `conditionOnFail` is optional (Mace of Disruption destroys on fail and
+// applies nothing-but-fear on success); the refine requires the save to
+// have at least one outcome.
+const onHitSaveSchema = z
+  .object({
+    ability: AbilityScoreSchema,
+    dc: z.number().int().min(1),
+    conditionOnFail: z.string().optional(),
+    conditionOnSuccess: z.string().optional(),
+    destroyOnFail: z.boolean().optional(),
+    hpThreshold: z.number().int().min(1).optional(),
+    sourceIsMagical: z.boolean().optional(),
+  })
+  .refine(
+    (s) =>
+      s.conditionOnFail !== undefined ||
+      s.conditionOnSuccess !== undefined ||
+      s.destroyOnFail === true,
+    {
+      message:
+        'onHit save must have an outcome (conditionOnFail, conditionOnSuccess, or destroyOnFail)',
+    },
+  );
 const onHitRiderSchema = z
   .object({
     // Slice 319: dice/damageType are now optional and paired. A rider

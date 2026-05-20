@@ -11,6 +11,7 @@ import {
   applyExhaustionChanged,
   applyHealed,
   applyStabilized,
+  applyCreatureDestroyed,
   applyHPMaxBonusChanged,
   applyTempHPGranted,
 } from './reducers/combat.js';
@@ -216,6 +217,9 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
         break;
       case 'Stabilized':
         applyStabilized(draft, event);
+        break;
+      case 'CreatureDestroyed':
+        applyCreatureDestroyed(draft, event);
         break;
       case 'HPMaxBonusChanged':
         applyHPMaxBonusChanged(draft, event);

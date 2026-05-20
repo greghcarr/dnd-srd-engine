@@ -4,6 +4,20 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content: instant-destroy primitive + Mace of Disruption destroy-or-Frighten (slice 323)**
+
+Adds the instant-death outcome the on-hit-save rider needed for Mace of Disruption (and the shared primitive future Vorpal-style decapitation will reuse). "Destroyed" / "dies instantly" is a real RAW outcome distinct from damage: the creature dies, bypassing the death-save sequence.
+
+Engine:
+- New `CreatureDestroyed` event ([combat.ts](src/schemas/events/combat.ts)) + reducer `applyCreatureDestroyed`: sets `hp.current` to 0 and `deathSaves.failures` to the kill threshold (so anything reading "dead" via death saves sees a dead creature), clears the destroyed creature's concentration (RAW: dying ends Concentration). Wired into [apply.ts](src/engine/apply.ts), the events barrel (5 registration sites), and the transcript formatter.
+- The `onHit` rider's `save` arm gains three fields: `hpThreshold` (the save fires only when the target's HP AFTER this hit's damage is at or below it — read from the post-damage state the planner already computes), `destroyOnFail` (emit `CreatureDestroyed` on a failed save, taking precedence over `conditionOnFail`), and `conditionOnSuccess` (a condition applied on a successful save). `conditionOnFail` is now optional; a refine requires the save to have at least one outcome.
+
+Content (canonical user): **Mace of Disruption**'s existing +2d6-radiant-vs-Fiend/Undead rider now also carries the save — RAW "If the target has 25 HP or fewer after taking this damage, DC 15 WIS save or be destroyed; on a success it's Frightened until the end of your next turn." (`hpThreshold: 25, destroyOnFail: true, conditionOnSuccess: 'frightened', sourceIsMagical: true`.) Closes the slice-319 follow-up for this item.
+
+Deferred: the Frightened "until the end of your next turn" duration is consumer-managed (mirror of slices 286/319/321); the Light emanation stays unmodeled. Vorpal-style crit-gated decapitation will reuse `CreatureDestroyed` once the crit-gate rider trigger lands.
+
+Uncle Bob audit: **Names** — `CreatureDestroyed` / `destroyOnFail` / `hpThreshold` / `conditionOnSuccess` say what they are. **DRY** — the reducer reuses the existing massive-damage death representation (failures = kill threshold) and `clearConcentrationEffect`; the planner reuses `applyRiderCondition` for both success and fail conditions; the HP gate reads the already-computed `stateAfterDamage`. **SRP** — event/reducer/planner/schema each in their own layer; the reducer does one thing (mark dead). **Magic numbers** — DC 15 / 25 HP / WIS / Frightened are RAW-cited on the content item; the kill threshold is the existing `DEATH_SAVE_FAILURES_TO_DIE` constant. **at-threading** — `CreatureDestroyed` carries the planner's single resolved `at`; the save's RNG rolls in the planner, apply stays RNG-free. **Mechanical outcomes asserted** — a failed save against a sub-25-HP Undead emits `CreatureDestroyed` and leaves the target dead (hp 0, 3 failures) with replay-equivalence + RNG-capture holding; a successful save Frightens instead; a 200-HP Undead rolls no save (over threshold) but still takes radiant; a Humanoid gets neither save nor radiant (vs-Fiend/Undead gate). **Tests** — 6 new (2 reducer [tests/unit/reducers/creature-destroyed.test.ts](tests/unit/reducers/creature-destroyed.test.ts) + 4 integration [tests/unit/engine/slice-323-destroy-rider.test.ts](tests/unit/engine/slice-323-destroy-rider.test.ts)); full suite green (1944 passed), tsc clean. Coverage snapshot unchanged. Docs: api-overview event list, gaps + slice-319 follow-up closure.
+
 **Content: poison natural-weapon sweep — combined damage + condition riders (slice 322)**
 
 Pure content slice (no engine work) exercising the now-complete on-hit-rider family. Adds three iconic poison natural weapons, two of which carry a single `onHit` rider holding **both** extra poison damage (slice 316 `dice`) and an unconditional Poisoned (slice 321 `applyConditionId`) — a combination the prior slices' tests hadn't pinned.
@@ -57,7 +71,7 @@ Content (canonical user): **Ghoul's Claw** (`ghoul-claws`, a Ghoul natural weapo
 
 Open follow-ups:
 - ~~The three legacy inlined save-roll blocks (use-item `Save`, recurring-save, breath-weapon) should route through the new `rollSaveAgainstDC` helper.~~ **Closed by slice 320.**
-- Magic-weapon on-hit-save users with extra gating stay deferred as content: Mace of Disruption's destroy-or-Frighten (low-HP-gated) and Dagger of Venom's poison (coat-gated, once/long-rest). The mechanism now exists; only their bespoke gates remain.
+- Magic-weapon on-hit-save users with extra gating stay deferred as content: ~~Mace of Disruption's destroy-or-Frighten (low-HP-gated)~~ **Closed by slice 323** (added the post-damage HP-threshold gate + `destroyOnFail` + `conditionOnSuccess` arms). Dagger of Venom's poison (coat-gated, once/long-rest) is **still open** — its gate is the consumable coat-the-blade action, not an HP threshold.
 - Poison Basic's DC 10 CON save vs Poisoned arm is still deferred: the save lives on the static weapon-def/enchantment `onHit` rider, not on the slice-76 `temporaryBuff` (consumable) shape. A future slice would add a `save` slot to `temporaryBuff`.
 
 RAW deviation: the Paralyzed condition's "until the end of its next turn" duration is consumer-managed (the planner emits `ConditionApplied` without `expiresOnRound`), mirroring the slice-286 `Save` UseAction.

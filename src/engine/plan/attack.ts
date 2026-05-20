@@ -10,6 +10,7 @@ import type {
   DamageAppliedEvent,
   ConditionRemovedEvent,
   ConditionAppliedEvent,
+  CreatureDestroyedEvent,
 } from '../../schemas/events/combat.js';
 import type { MirrorImageDeflectedEvent } from '../../schemas/events/mirror-image.js';
 import type { ItemTemporaryBuff } from '../../schemas/runtime/item-instance.js';
@@ -917,19 +918,41 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   };
   for (const rider of applicableRiders) {
     if (rider.save !== undefined) {
-      const saveResult = rollSaveAgainstDC({
-        state,
-        content,
-        targetId: input.targetId,
-        ability: rider.save.ability,
-        dc: rider.save.dc,
-        sourceIsMagical: rider.save.sourceIsMagical ?? false,
-        rng,
-        at,
-      });
-      if (saveResult !== undefined) {
-        onHitRiderEvents.push(saveResult.event);
-        if (!saveResult.success) applyRiderCondition(rider.save.conditionOnFail);
+      const save = rider.save;
+      // Slice 323: HP-threshold gate (Mace of Disruption: the save fires
+      // only if the target has <= 25 HP AFTER this hit's damage). Read
+      // the post-damage HP from the state that already applied the
+      // damage chain (including this rider's extra damage component).
+      const postDamageHp = stateAfterDamage.characters[input.targetId]?.hp.current ?? 0;
+      const thresholdMet = save.hpThreshold === undefined || postDamageHp <= save.hpThreshold;
+      if (thresholdMet) {
+        const saveResult = rollSaveAgainstDC({
+          state,
+          content,
+          targetId: input.targetId,
+          ability: save.ability,
+          dc: save.dc,
+          sourceIsMagical: save.sourceIsMagical ?? false,
+          rng,
+          at,
+        });
+        if (saveResult !== undefined) {
+          onHitRiderEvents.push(saveResult.event);
+          if (saveResult.success) {
+            if (save.conditionOnSuccess !== undefined) applyRiderCondition(save.conditionOnSuccess);
+          } else if (save.destroyOnFail === true) {
+            // Slice 323: instant death, bypassing death saves.
+            onHitRiderEvents.push({
+              id: newEventId() as ULID,
+              at,
+              type: 'CreatureDestroyed',
+              targetId: input.targetId as ULID,
+              sourceCharacterId: input.attackerId as ULID,
+            } satisfies CreatureDestroyedEvent);
+          } else if (save.conditionOnFail !== undefined) {
+            applyRiderCondition(save.conditionOnFail);
+          }
+        }
       }
     }
     if (rider.applyConditionId !== undefined) applyRiderCondition(rider.applyConditionId);

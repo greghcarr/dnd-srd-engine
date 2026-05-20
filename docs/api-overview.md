@@ -100,7 +100,7 @@ Every state transition is an event. The discriminated union `Event` lives at `Ev
 
 Grouped by category:
 
-- **Combat**: `DamageApplied`, `Healed`, `TempHPGranted`, `HPMaxBonusChanged`, `ConditionApplied` (carries optional `sourceEffectInstanceId` since slice 110 so rider-applied conditions can be swept when their parent concentration ends), `ConditionRemoved`, `CreaturePushed`, `DeathSaveRolled`, `Stabilized`, `ExhaustionChanged`, `AttackRolled`, `DamageRolled`, `WeaponLoaded`, `SaveRolled`, `AbilityCheckRolled`.
+- **Combat**: `DamageApplied`, `Healed`, `TempHPGranted`, `HPMaxBonusChanged`, `ConditionApplied` (carries optional `sourceEffectInstanceId` since slice 110 so rider-applied conditions can be swept when their parent concentration ends), `ConditionRemoved`, `CreaturePushed`, `DeathSaveRolled`, `Stabilized`, `CreatureDestroyed` (slice 323: instant death bypassing death saves), `ExhaustionChanged`, `AttackRolled`, `DamageRolled`, `WeaponLoaded`, `SaveRolled`, `AbilityCheckRolled`.
 - **Spellcasting**: `SpellCastDeclared`, `SpellSlotConsumed`, `PactSlotConsumed`, `ConcentrationStarted`, `ConcentrationBroken`, `TriggerFired`.
 - **Reactive spells**: `SpellCountered`, `SpellDispelled`, `ItemIdentified`, `ShieldCast`, `AbsorbElementsCast`, `SanctuaryProtected`, `ProtectionUsed`, `GuidanceUsed`.
 - **Mirror Image** (slice 124): `MirrorImageDeflected` — emitted by `planAttack` / `planOffHandAttack` when an incoming attack is redirected to a Mirror Image duplicate. Reducer decrements the bearer's `mirror-image-active` AppliedCondition.level when `duplicateHit` is true; planner follows up with `ConditionRemoved` at level 0.

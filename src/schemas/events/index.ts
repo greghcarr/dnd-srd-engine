@@ -9,6 +9,7 @@ import {
   ExhaustionChangedEventSchema,
   DeathSaveRolledEventSchema,
   StabilizedEventSchema,
+  CreatureDestroyedEventSchema,
   HPMaxBonusChangedEventSchema,
 } from './combat.js';
 import {
@@ -206,6 +207,7 @@ export const EventSchema = z.discriminatedUnion('type', [
   ExhaustionChangedEventSchema,
   DeathSaveRolledEventSchema,
   StabilizedEventSchema,
+  CreatureDestroyedEventSchema,
   HPMaxBonusChangedEventSchema,
   ResourceSpentEventSchema,
   ResourceRestoredEventSchema,
@@ -348,6 +350,7 @@ export const EVENT_TYPES = [
   'ExhaustionChanged',
   'DeathSaveRolled',
   'Stabilized',
+  'CreatureDestroyed',
   'HPMaxBonusChanged',
   'ResourceSpent',
   'ResourceRestored',
@@ -483,6 +486,7 @@ export type {
   ExhaustionChangedEvent,
   DeathSaveRolledEvent,
   StabilizedEvent,
+  CreatureDestroyedEvent,
   HPMaxBonusChangedEvent,
 } from './combat.js';
 export type {
@@ -524,6 +528,7 @@ export {
   ExhaustionChangedEventSchema,
   DeathSaveRolledEventSchema,
   StabilizedEventSchema,
+  CreatureDestroyedEventSchema,
   HPMaxBonusChangedEventSchema,
 } from './combat.js';
 export {
