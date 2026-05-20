@@ -43,24 +43,28 @@ const REACH_PROPERTY_FEET = 10;
 // Rolls an item buff's per-hit extra-damage rider (Elemental Weapon:
 // +1d4/2d4/3d4 of the caster-chosen type). Returns undefined when the
 // buff has no extra damage configured. Crits double the dice per RAW.
+const rollExtraDamageDice = (
+  dice: string,
+  damageType: DamageRoll['type'],
+  rng: RNG,
+  critical: boolean,
+): DamageRoll => {
+  const parsed = parseDiceExpression(dice);
+  const totalDice = critical ? parsed.count * 2 : parsed.count;
+  const rolls: number[] = [];
+  for (let i = 0; i < totalDice; i++) {
+    rolls.push(rollDie(parsed.die, rng));
+  }
+  return { expression: dice, rolls, modifier: parsed.modifier, type: damageType };
+};
+
 const buildBuffExtraDamageRoll = (
   buff: ItemTemporaryBuff | undefined,
   rng: RNG,
   critical: boolean,
 ): DamageRoll | undefined => {
   if (buff?.extraDamageDice === undefined || buff.extraDamageType === undefined) return undefined;
-  const parsed = parseDiceExpression(buff.extraDamageDice);
-  const totalDice = critical ? parsed.count * 2 : parsed.count;
-  const rolls: number[] = [];
-  for (let i = 0; i < totalDice; i++) {
-    rolls.push(rollDie(parsed.die, rng));
-  }
-  return {
-    expression: buff.extraDamageDice,
-    rolls,
-    modifier: parsed.modifier,
-    type: buff.extraDamageType,
-  };
+  return rollExtraDamageDice(buff.extraDamageDice, buff.extraDamageType, rng, critical);
 };
 
 // Slice 124. Builds the event tail for a Mirror Image-deflected
@@ -729,6 +733,8 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   // the generic effect-stack 'damage' modifier because the buff is
   // weapon-specific to this exact instance.
   const weaponBuffDamageBonus = weaponInstance.temporaryBuff?.damageBonus ?? 0;
+  // Slice 316: intrinsic magic-weapon enhancement damage bonus.
+  const intrinsicWeaponDamageBonus = weaponDef.damageBonus ?? 0;
   // Slice 117: consume the effect stack's 'damage' modifier sum.
   // Predicate-gated entries (Dueling: melee + off-hand-no-weapon;
   // Frenzy: melee) use the facts populated below. Predicate-less
@@ -760,7 +766,7 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   const damageRollPayload: DamageRoll = {
     expression: damageExpression,
     rolls: damageRolls,
-    modifier: damageAbilityMod + parsed.modifier + weaponBuffDamageBonus + damageModifierBonus,
+    modifier: damageAbilityMod + parsed.modifier + weaponBuffDamageBonus + intrinsicWeaponDamageBonus + damageModifierBonus,
     type: weaponDef.damageType,
   };
 
@@ -769,6 +775,14 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   // resolution event and the replay path is RNG-free. Crits double the
   // extra dice per RAW.
   const extraDamageRoll = buildBuffExtraDamageRoll(weaponInstance.temporaryBuff, rng, critical);
+  // Slice 316: intrinsic magic-weapon on-hit riders (Thunderous
+  // Greatclub: +1d8 thunder to any creature it hits). Permanent on the
+  // weapon definition, distinct from the consumable temporaryBuff rider.
+  // Conditional riders (Sun Blade's +1d8 radiant vs Undead) stay
+  // deferred — these fire on every hit.
+  const onHitRiderRolls = (weaponDef.onHit ?? []).map((r) =>
+    rollExtraDamageDice(r.dice, r.damageType, rng, critical),
+  );
 
   const damageRolled: DamageRolledEvent = {
     id: newEventId() as ULID,
@@ -777,7 +791,11 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     attackerId: input.attackerId,
     targetId: input.targetId,
     weaponInstanceId: input.weaponInstanceId,
-    rolls: extraDamageRoll === undefined ? [damageRollPayload] : [damageRollPayload, extraDamageRoll],
+    rolls: [
+      damageRollPayload,
+      ...(extraDamageRoll === undefined ? [] : [extraDamageRoll]),
+      ...onHitRiderRolls,
+    ],
     critical,
     causedByEventId: attackRolled.id,
   };
@@ -789,6 +807,10 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   if (extraDamageRoll !== undefined) {
     const extraTotal = extraDamageRoll.rolls.reduce((s, v) => s + v, 0) + extraDamageRoll.modifier;
     rawComponents.push({ amount: Math.max(0, extraTotal), type: extraDamageRoll.type });
+  }
+  for (const rider of onHitRiderRolls) {
+    const riderTotal = rider.rolls.reduce((s, v) => s + v, 0) + rider.modifier;
+    rawComponents.push({ amount: Math.max(0, riderTotal), type: rider.type });
   }
   const mitigatedComponents = mitigateDamage({
     character: target,

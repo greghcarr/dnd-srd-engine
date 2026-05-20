@@ -387,7 +387,7 @@ describe.runIf(SRD_AVAILABLE)('SRD 5.2.1 drift audit', () => {
     it('rarity matches SRD', () => {
       const drift: string[] = [];
       for (const it of pack.items) {
-        if (it.itemKind !== 'magic' && it.itemKind !== 'armor') continue;
+        if (it.itemKind !== 'magic' && it.itemKind !== 'armor' && it.itemKind !== 'weapon') continue;
         const s = srd.get(it.name as string);
         if (!s || !s.rarity) continue;
         if (it.rarity !== s.rarity) {
@@ -400,7 +400,7 @@ describe.runIf(SRD_AVAILABLE)('SRD 5.2.1 drift audit', () => {
     it('attunement requirement matches SRD', () => {
       const drift: string[] = [];
       for (const it of pack.items) {
-        if (it.itemKind !== 'magic' && it.itemKind !== 'armor') continue;
+        if (it.itemKind !== 'magic' && it.itemKind !== 'armor' && it.itemKind !== 'weapon') continue;
         const s = srd.get(it.name as string);
         if (!s) continue;
         const packAttune = !!it.requiresAttunement;

@@ -4,6 +4,22 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content: magic-equipment modeling, stage 2 — magic weapons (slice 316)**
+
+Second half of the magic-equipment modeling (stage 1 was magic armor, slice 315). Magic weapons were `itemKind: 'magic'`, so the attack planner (which requires `itemKind === 'weapon'`) couldn't wield them — they were decorative catalog entries with no link to an attack. This slice models single-base magic weapons as `itemKind: 'weapon'`, which also lands the on-hit elemental rider primitive (the original goal that kicked off this whole thread).
+
+Engine:
+- `WeaponSchema` gains optional magic fields: `rarity`, `requiresAttunement`, `attunementCondition`, `attackBonus`, `damageBonus`, `onHit` (a list of per-hit `{ dice, damageType }` riders), `effects`.
+- `computeAttackBonus` adds the intrinsic `attackBonus` (Sun Blade +2) alongside the existing temporaryBuff path.
+- The attack planner adds `damageBonus` to the damage modifier and rolls each `onHit` rider fresh on a hit (crit-doubling the dice, baked into the `DamageRolled` event so replay stays RNG-free) — generalized from the slice-90 temporaryBuff rider via a shared `rollExtraDamageDice` helper.
+- `collectItemEffects` broadened to project `weapon` effects (and to walk the `equipped.mainHand` / `offHand` slots), so a magic weapon's passive effect (Thunderous Greatclub's STR-20 floor) reaches the wielder.
+- `isMagicWeaponAttack` gains a branch: a weapon with a `rarity` counts as magical (resistance bypass).
+- srd-drift rarity/attunement checks broadened to `itemKind: 'weapon'`.
+
+Content (7 conversions, `magic` → `weapon`): Sun Blade (Longsword→Radiant, +2), Dwarven Thrower (Warhammer, +3), Dagger of Venom (Dagger, +1), Scimitar of Speed (Scimitar, +2), Mace of Smiting (Mace, +1), **Thunderous Greatclub** (Greatclub; the canonical `onHit` rider user — +1d8 thunder on every hit — plus a STR-20 floor effect), Quarterstaff of the Acrobat (Quarterstaff, +2, retaining its slice-312 Acrobatics advantage). Conditional riders (vs Undead/Giants/Constructs), charged/reaction arms, and multi-base magic weapons (Frost Brand, Flame Tongue, "Weapon +N", etc.) stay deferred.
+
+Uncle Bob audit: **Names** — `attackBonus`/`damageBonus`/`onHit` parallel the existing weapon-buff fields; `rollExtraDamageDice` names the extracted shared roller. **DRY** — `buildBuffExtraDamageRoll` and the new `onHit` path both call the one `rollExtraDamageDice`; the projection/audit/magicality changes mirror the slice-315 armor shapes. **SRP** — schema, attack-bonus derive, damage assembly, effect projection, magicality, audit each changed in their own layer. **Magic numbers** — base weapon dice/properties/masteries copied from the SRD base weapon; the +N values RAW-cited per item. **at-threading** — the onHit riders roll in the planner and bake into `DamageRolled` (apply stays RNG-free). **Mechanical outcomes asserted** — Sun Blade +2 attack-bonus delta + breakdown source; a real Thunderous Greatclub hit emits a thunder damage component; STR-20 floor + Acrobatics advantage project from the held weapon; a magic weapon counts as magical (mundane does not). **Tests** — 5 new ([tests/unit/engine/slice-316-magic-weapons.test.ts](tests/unit/engine/slice-316-magic-weapons.test.ts)); full suite green (1918 passed), tsc clean. Coverage snapshot: the 7 weapons left the magic-item catalog and now appear in the weapon-mastery catalog. Docs: gaps Items breakdown (weapons 39 → 46, magic 266 → 259), api-overview WeaponSchema note.
+
 **Engine + content: magic-equipment modeling, stage 1 — magic armor (slice 315)**
 
 First half of making magic equipment behave as equipment, not just effect-projectors. Magic armor and shields were `itemKind: 'magic'`, so the AC derive (which keys on `itemKind === 'armor'`) didn't recognize them — even a Spellguard / Sentinel Shield granted no AC. This slice models single-base magic armor as `itemKind: 'armor'`.

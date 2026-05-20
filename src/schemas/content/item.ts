@@ -45,6 +45,27 @@ export const WeaponSchema = ItemBaseSchema.extend({
   mastery: WeaponMasterySchema.optional(),
   rangeNormal: z.number().int().optional(),
   rangeLong: z.number().int().optional(),
+  // Slice 316: optional magic-weapon fields. A magic weapon with a
+  // single base (Sun Blade = Longsword) ships as itemKind 'weapon' with
+  // the base stats + these fields, so the attack planner wields it and
+  // applies the enhancement. `attackBonus` / `damageBonus` are the flat
+  // enhancement bonuses (Sun Blade +2). `onHit` is a list of intrinsic
+  // per-hit extra-damage riders rolled fresh on every hit (Thunderous
+  // Greatclub +1d8 thunder), distinct from the slice-76 temporaryBuff
+  // rider (which is consumable-applied). `effects` project to the
+  // wielder's effect stack while the weapon is held + attuned (slice
+  // 132 rule, broadened). A magic weapon counts as magical for the
+  // resistance-bypass check (isMagicWeaponAttack). Multi-base magic
+  // weapons ("any of N") stay itemKind 'magic' (deferred).
+  rarity: MagicRaritySchema.optional(),
+  requiresAttunement: z.boolean().optional(),
+  attunementCondition: z.string().optional(),
+  attackBonus: z.number().int().optional(),
+  damageBonus: z.number().int().optional(),
+  onHit: z
+    .array(z.object({ dice: DiceExpressionSchema, damageType: DamageTypeSchema }))
+    .optional(),
+  effects: z.array(EffectSchema).optional(),
 });
 export type Weapon = z.infer<typeof WeaponSchema>;
 

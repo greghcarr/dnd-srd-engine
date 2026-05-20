@@ -105,6 +105,13 @@ export const computeAttackBonus = (input: ComputeAttackInput): AttackResult => {
     });
   }
 
+  // Slice 316: intrinsic magic-weapon enhancement bonus (Sun Blade +2,
+  // Dwarven Thrower +3). Permanent on the definition, distinct from the
+  // consumable temporaryBuff above.
+  if (weapon.attackBonus !== undefined && weapon.attackBonus !== 0) {
+    breakdown.push({ source: `magic-weapon:${weapon.id}`, value: weapon.attackBonus });
+  }
+
   const total = breakdown.reduce((acc, e) => acc + e.value, 0);
   return { total, breakdown };
 };
