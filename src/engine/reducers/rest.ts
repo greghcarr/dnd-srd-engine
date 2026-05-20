@@ -119,6 +119,18 @@ export const applyLongRestEnded = (
     }
     character.spellSlotsUsed = {};
     character.pactSlotsUsed = 0;
+    // Slice 293. Reset per-long-rest item time budgets (Boots of
+    // Speed's 10-min/LR cumulative activation pool). The field is
+    // optional; only instances that have been activated since the
+    // last LR carry a non-undefined `minutesUsed`. Resetting only
+    // those preserves the "never been used" undefined state for
+    // newly-acquired items.
+    for (const instanceId of character.inventory) {
+      const instance = state.itemInstances[instanceId];
+      if (instance?.minutesUsed !== undefined) {
+        instance.minutesUsed = 0;
+      }
+    }
   }
   clearLongRestCountersForCharacters(state, session.participantIds);
 };

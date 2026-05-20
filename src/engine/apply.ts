@@ -43,6 +43,7 @@ import {
   applyItemConsumed,
   applyItemDestroyed,
   applyItemEquipped,
+  applyItemTimeBudgetConsumed,
   applyItemUnattuned,
   applyItemUnequipped,
   applyItemUsed,
@@ -355,6 +356,9 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
         break;
       case 'ItemDestroyed':
         applyItemDestroyed(draft, event);
+        break;
+      case 'ItemTimeBudgetConsumed':
+        applyItemTimeBudgetConsumed(draft, event);
         break;
       case 'PartyCreated':
         applyPartyCreated(draft, event);

@@ -34,8 +34,14 @@ export type ModifierTarget =
   | 'hpMax'
   | 'speed'
   | 'passivePerception'
-  | { kind: 'save'; ability: AbilityScore }
-  | { kind: 'check'; ability: AbilityScore }
+  // Slice 299: `ability` made optional on `save` and `check` (mirror
+  // of slice-266 RollTarget wildcard). Canonical user: Stone of Good
+  // Luck ("+1 to ability checks and saving throws") wires as two
+  // entries (`{save}` + `{check}`) instead of 12 per-ability entries.
+  // Sibling cleanups: Cloak/Ring of Protection (6 → 1), blessed /
+  // baned / aura-of-protection-active (6 → 1).
+  | { kind: 'save'; ability?: AbilityScore }
+  | { kind: 'check'; ability?: AbilityScore }
   | { kind: 'skill'; skill: Skill };
 
 export const ModifierTargetSchema: z.ZodType<ModifierTarget> = z.union([
@@ -48,8 +54,8 @@ export const ModifierTargetSchema: z.ZodType<ModifierTarget> = z.union([
   z.literal('hpMax'),
   z.literal('speed'),
   z.literal('passivePerception'),
-  z.object({ kind: z.literal('save'), ability: AbilityScoreSchema }),
-  z.object({ kind: z.literal('check'), ability: AbilityScoreSchema }),
+  z.object({ kind: z.literal('save'), ability: AbilityScoreSchema.optional() }),
+  z.object({ kind: z.literal('check'), ability: AbilityScoreSchema.optional() }),
   z.object({ kind: z.literal('skill'), skill: SkillSchema }),
 ]);
 
@@ -176,7 +182,7 @@ export interface ChoiceOptionShape {
 export type Effect =
   | { kind: 'GrantProficiency'; target: 'skill' | 'tool' | 'weapon' | 'armor' | 'save' | 'language'; id: string; level: ProficiencyLevel }
   | { kind: 'GrantSense'; sense: Sense; range: number }
-  | { kind: 'ModifySpeed'; mode: MovementMode; op: 'set' | 'add' | 'multiply'; value: number }
+  | { kind: 'ModifySpeed'; mode: MovementMode; op: 'set' | 'add' | 'multiply' | 'matchWalkSpeed'; value: number }
   | { kind: 'AddModifier'; target: ModifierTarget; value: number | Formula; condition?: Predicate }
   | { kind: 'SetAdvantage'; on: RollTarget; mode: 'advantage' | 'disadvantage' | 'auto-crit' | 'auto-fail'; condition?: Predicate }
   // Direction-filtered advantage: only applies when the roll's target
@@ -430,7 +436,11 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
     z.object({
       kind: z.literal('ModifySpeed'),
       mode: MovementModeSchema,
-      op: z.enum(['set', 'add', 'multiply']),
+      op: z.enum(['set', 'add', 'multiply', 'matchWalkSpeed']),
+      // `value` is unused for `op: 'matchWalkSpeed'` (the entry says
+      // "set this mode's speed to the bearer's effective walk speed").
+      // Kept required across all ops to avoid a discriminated-union
+      // expansion; `matchWalkSpeed` entries should ship `value: 0`.
       value: z.number(),
     }),
     z.object({

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  AbilityScoreSchema,
   DamageTypeSchema,
   DiceExpressionSchema,
   RechargeSchema,
@@ -130,6 +131,30 @@ export const UseActionSchema = z.discriminatedUnion('kind', [
     actionId: z.string().optional(),
     chargesCost: z.number().int().min(0).optional(),
   }),
+  // Slice 286. Item-fixed-DC save against a target list. Distinct
+  // from CastSpell (no spell is cast — the item has its own bespoke
+  // save mechanic at a fixed DC; the consumer's spell DC isn't
+  // involved). Canonical user: Pipes of Haunting (RAW: "Each
+  // creature of your choice within 30 feet of you must succeed on a
+  // DC 15 Wisdom saving throw or have the Frightened condition for
+  // 1 minute"). The targets are supplied by the consumer via the
+  // new `saveTargetIds` field on UseItemIntent (engine doesn't
+  // model positions, so the 30-foot scope is consumer territory).
+  // For each target the planner rolls a save, emits SaveRolled,
+  // and on failure emits ConditionApplied for `conditionOnFail`.
+  // The 1-minute duration is consumer-managed (mirror of slice
+  // 236's ApplyCondition doc comment); the recurring end-of-turn
+  // save is a future deferral that would need an `recurringSave`
+  // applied to the bearer condition.
+  z.object({
+    kind: z.literal('Save'),
+    saveAbility: AbilityScoreSchema,
+    saveDC: z.number().int().min(1),
+    conditionOnFail: z.string(),
+    sourceIsMagical: z.boolean().optional(),
+    actionId: z.string().optional(),
+    chargesCost: z.number().int().min(0).optional(),
+  }),
 ]);
 export type UseAction = z.infer<typeof UseActionSchema>;
 
@@ -166,6 +191,23 @@ export const MagicItemSchema = ItemBaseSchema.extend({
   effects: z.array(EffectSchema).default([]),
   onUse: z.array(UseActionSchema).default([]),
   destructionRoll: DestructionRollSchema.optional(),
+  // Slice 293. Cumulative time-budget on toggle-able items that
+  // RAW-cap their activation duration per long rest (Boots of Speed:
+  // 10 min/LR; Winged Boots: 4 hr/LR; etc.). Distinct from `charges`
+  // (per-use integer count) and round-based auto-expiry (slice 102 /
+  // 109 — source-keyed, encounter-scoped): a continuous time pool
+  // that drains while the toggled condition is active and resets on
+  // long rest. The engine doesn't model in-fiction elapsed minutes
+  // between activations; the consumer reports `minutesElapsed` on the
+  // toggle-off intent. The instance's `minutesUsed` (slice 293) is
+  // the cumulative draw; when it reaches `maxMinutesPerLongRest`,
+  // `planUseItem` rejects further toggle-on attempts until a long
+  // rest resets the counter via `applyLongRestEnded`.
+  timeBudget: z
+    .object({
+      maxMinutesPerLongRest: z.number().int().min(1),
+    })
+    .optional(),
 });
 export type MagicItem = z.infer<typeof MagicItemSchema>;
 
@@ -212,6 +254,60 @@ export const ConsumeActionSchema = z.discriminatedUnion('kind', [
     spellId: z.string(),
     slotLevel: z.number().int().min(0),
     castingClassId: z.string().optional(),
+  }),
+  // Slice 282. Flat temporary HP grant on consume. Canonical user:
+  // Potion of Heroism (RAW: "gains 10 Temporary Hit Points and the
+  // Blessed condition for 1 hour"). Distinct from Heal (which
+  // restores current HP); the engine's existing applyTempHPGranted
+  // reducer enforces max-not-additive semantics so multiple grants
+  // don't stack. Compose with the slice-236 ApplyCondition variant
+  // when the same potion also applies a condition (Heroism uses
+  // both arms).
+  z.object({
+    kind: z.literal('GrantTempHP'),
+    amount: z.number().int().min(0),
+  }),
+  // Slice 283. Remove every applied condition whose `conditionId` is
+  // in the list (no-op for ids the bearer doesn't carry). Distinct
+  // from ApplyCondition's inverse: the planner emits a separate
+  // ConditionRemoved for each matched applied-condition instance, so
+  // stacked / multiply-sourced conditions are all stripped. Canonical
+  // user: Potion of Vitality (RAW: "ends the Poisoned condition"),
+  // composed with RemoveExhaustion to cover the full clear.
+  z.object({
+    kind: z.literal('RemoveConditions'),
+    conditionIds: z.array(z.string()).min(1),
+  }),
+  // Slice 283. Zero out the bearer's exhaustion level (emits one
+  // ExhaustionChanged event from current → 0 when current > 0;
+  // no-op when already 0). Canonical user: Potion of Vitality
+  // ("removes any Exhaustion you are suffering"). Distinct from a
+  // future RAW shape that reduces exhaustion by N (Greater
+  // Restoration spell reduces by 1, not zeroes out).
+  z.object({
+    kind: z.literal('RemoveExhaustion'),
+  }),
+  // Slice 284. Apply a temporary buff to a target weapon via the
+  // existing slice-76 `ItemInstance.temporaryBuff` shape. Canonical
+  // users: Oil of Sharpness (+3 attack / +3 damage / counts as
+  // magical for 1 hour) and Poison Basic (+1d4 poison damage rider
+  // for 1 minute). Mirrors the four temporaryBuff fields so the
+  // attack planner picks them up automatically. The buff stamps a
+  // fresh synthetic effect-instance id (consumable-applied buffs
+  // aren't linked to concentration; the id serves as a unique tag
+  // for future "remove this specific buff" semantics). The
+  // consumer specifies the target weapon via the
+  // `targetWeaponInstanceId` field on ConsumeItemIntent (defaults
+  // to the actor's equipped main hand). RAW deviations: the
+  // engine doesn't gate on weapon type (RAW: piercing / slashing
+  // only) and doesn't auto-expire on the RAW time / first-hit
+  // trigger (consumer-managed duration).
+  z.object({
+    kind: z.literal('ApplyItemBuff'),
+    attackBonus: z.number().int().optional(),
+    damageBonus: z.number().int().optional(),
+    extraDamageDice: z.string().optional(),
+    extraDamageType: DamageTypeSchema.optional(),
   }),
 ]);
 export type ConsumeAction = z.infer<typeof ConsumeActionSchema>;

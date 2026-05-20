@@ -3,6 +3,7 @@ import type { ResolvedContent } from '../../content/pack.js';
 import type { Event } from '../../schemas/events/index.js';
 import type {
   ItemDestroyedEvent,
+  ItemTimeBudgetConsumedEvent,
   ItemUsedEvent,
 } from '../../schemas/events/inventory.js';
 import type {
@@ -10,9 +11,12 @@ import type {
   ConditionRemovedEvent,
 } from '../../schemas/events/combat.js';
 import type { ItemChargeConsumedEvent } from '../../schemas/events/charges.js';
+import type { SaveRolledEvent } from '../../schemas/events/checks.js';
+import { D20_SIDES } from '../../internal/constants.js';
 import { newAppliedConditionId, newEventId } from '../../ids.js';
 import { nowIso } from '../../internal/clock.js';
 import { planCastSpell } from './cast-spell.js';
+import { computeSavingThrow } from '../../derive/save.js';
 import type { RNG } from '../../rng/index.js';
 import { rollDie } from '../../rng/dice.js';
 import type { UseAction } from '../../schemas/content/item.js';
@@ -144,6 +148,25 @@ export interface UseItemIntent {
   // charge debit is `chargesCost`, replacing the default of 1 per
   // fired action.
   readonly chargesCost?: number;
+  // Slice 286. Target list for the `Save` UseAction variant (Pipes
+  // of Haunting and similar item-fixed-DC save actions). RAW: "each
+  // creature of your choice within 30 feet" — the engine doesn't
+  // model positions, so the 30-foot scope is consumer territory.
+  // Required (non-empty) when the fired action is a Save; ignored
+  // for other action kinds.
+  readonly saveTargetIds?: ReadonlyArray<string>;
+  // Slice 293. Cumulative activation time the consumer is reporting
+  // on this use, drawn against the item definition's
+  // `timeBudget.maxMinutesPerLongRest` pool. Boots of Speed
+  // (10 min/LR) is the canonical user: the consumer reports
+  // `minutesElapsed` on the toggle-off intent, the planner emits
+  // ItemTimeBudgetConsumed, and the reducer increments the
+  // instance's `minutesUsed` field. On toggle-on, the planner
+  // validates `minutesUsed < max` and throws when the budget is
+  // exhausted (RAW: "the magic ceases to function until you finish
+  // a Long Rest"). Ignored for items without `timeBudget` and for
+  // action kinds other than Toggle.
+  readonly minutesElapsed?: number;
   readonly at?: string;
 }
 
@@ -283,6 +306,23 @@ export const planUseItem = (
       const target = state.characters[targetId];
       const alreadyApplied =
         target?.appliedConditions.some((c) => c.conditionId === action.conditionId) ?? false;
+      // Slice 293. Time-budget gate. When the def carries a
+      // `timeBudget`, toggle-on is blocked once cumulative
+      // `minutesUsed` reaches the cap (Boots of Speed: 10 min/LR).
+      // On toggle-off, the consumer-reported `minutesElapsed`
+      // emits ItemTimeBudgetConsumed which increments the
+      // counter; the reducer applies the increment and the next
+      // toggle-on rechecks the gate. Long Rest resets the counter
+      // for all participants' inventory.
+      if (def.timeBudget !== undefined) {
+        const used = instance.minutesUsed ?? 0;
+        const max = def.timeBudget.maxMinutesPerLongRest;
+        if (!alreadyApplied && used >= max) {
+          throw new Error(
+            `Item ${def.id} has exhausted its ${max}-minute-per-long-rest budget (used ${used}); finish a Long Rest to reset`,
+          );
+        }
+      }
       if (alreadyApplied) {
         const removed: ConditionRemovedEvent = {
           id: newEventId() as ULID,
@@ -292,6 +332,21 @@ export const planUseItem = (
           conditionId: action.conditionId,
         };
         events.push(removed);
+        if (
+          def.timeBudget !== undefined &&
+          intent.minutesElapsed !== undefined &&
+          intent.minutesElapsed > 0
+        ) {
+          const tb: ItemTimeBudgetConsumedEvent = {
+            id: newEventId() as ULID,
+            at,
+            type: 'ItemTimeBudgetConsumed',
+            instanceId: intent.instanceId as ULID,
+            amountMinutes: intent.minutesElapsed,
+            byCharacterId: intent.characterId as ULID,
+          };
+          events.push(tb);
+        }
       } else {
         const condApplied: ConditionAppliedEvent = {
           id: newEventId() as ULID,
@@ -303,6 +358,77 @@ export const planUseItem = (
           sourceCharacterId: intent.characterId as ULID,
         };
         events.push(condApplied);
+      }
+    } else if (action.kind === 'Save') {
+      // Slice 286. Item-fixed-DC save action (Pipes of Haunting).
+      // The consumer specifies targets via intent.saveTargetIds
+      // (engine doesn't model positions, so the 30-ft scope is
+      // consumer territory). For each target the planner rolls
+      // a save, emits SaveRolled, and on failure emits
+      // ConditionApplied for action.conditionOnFail with
+      // sourceCharacterId = the item's user. The 1-minute / 24-
+      // hour-immunity duration is consumer-managed.
+      const targetIds = intent.saveTargetIds;
+      if (targetIds === undefined || targetIds.length === 0) {
+        throw new Error(
+          `Item ${def.id}: Save action requires UseItemIntent.saveTargetIds (>= 1 target)`,
+        );
+      }
+      const sourceIsMagical = action.sourceIsMagical ?? true;
+      for (const saveTargetId of targetIds) {
+        const target = state.characters[saveTargetId];
+        if (!target) continue;
+        const saveDerivation = computeSavingThrow({
+          character: target,
+          itemInstances: state.itemInstances,
+          content,
+          ability: action.saveAbility,
+          characters: state.characters,
+          sourceIsMagical,
+        });
+        const rolls: number[] = [rollDie(D20_SIDES, rng)];
+        if (saveDerivation.hasAdvantage || saveDerivation.hasDisadvantage) {
+          rolls.push(rollDie(D20_SIDES, rng));
+        }
+        const used = saveDerivation.hasAdvantage
+          ? 'advantage'
+          : saveDerivation.hasDisadvantage
+            ? 'disadvantage'
+            : 'none';
+        const usedD20 = saveDerivation.hasAdvantage
+          ? Math.max(...rolls)
+          : saveDerivation.hasDisadvantage
+            ? Math.min(...rolls)
+            : rolls[0]!;
+        const total = usedD20 + saveDerivation.total;
+        const success = total >= action.saveDC;
+        const saveEvent: SaveRolledEvent = {
+          id: newEventId() as ULID,
+          at,
+          type: 'SaveRolled',
+          targetId: saveTargetId as ULID,
+          ability: action.saveAbility,
+          dc: action.saveDC,
+          d20: rolls,
+          used,
+          bonus: saveDerivation.total,
+          total,
+          success,
+          breakdown: [...saveDerivation.breakdown],
+        };
+        events.push(saveEvent);
+        if (!success) {
+          const condApplied: ConditionAppliedEvent = {
+            id: newEventId() as ULID,
+            at,
+            type: 'ConditionApplied',
+            targetId: saveTargetId as ULID,
+            conditionId: action.conditionOnFail,
+            appliedConditionId: newAppliedConditionId(),
+            sourceCharacterId: intent.characterId as ULID,
+          };
+          events.push(condApplied);
+        }
       }
     } else if (action.kind === 'CastSpell') {
       // Slice 241. Mirror of slice 237's ConsumeAction CastSpell:

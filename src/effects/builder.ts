@@ -8,12 +8,25 @@ const modifierKey = (target: ModifierTarget): string => {
   if (typeof target === 'string') return target;
   switch (target.kind) {
     case 'save':
-      return `save:${target.ability}`;
+      // Slice 299: `save:*` wildcard mirrors slice-266 RollTarget.
+      return `save:${target.ability ?? '*'}`;
     case 'check':
-      return `check:${target.ability}`;
+      return `check:${target.ability ?? '*'}`;
     case 'skill':
       return `skill:${target.skill}`;
   }
+};
+
+// Slice 299: mirror of `wildcardKeyFor` (RollTarget) for ModifierTarget.
+// Returns the wildcard key (`save:*` / `check:*`) when querying a
+// specific-ability save/check, so unconditional + wildcard entries
+// merge at sum time. Returns undefined for non-wildcard targets and
+// for queries already at the wildcard level.
+const modifierWildcardKeyFor = (target: ModifierTarget): string | undefined => {
+  if (typeof target === 'string') return undefined;
+  if (target.kind === 'save' && target.ability !== undefined) return 'save:*';
+  if (target.kind === 'check' && target.ability !== undefined) return 'check:*';
+  return undefined;
 };
 
 const rollKey = (target: RollTarget): string => {
@@ -339,22 +352,38 @@ export class EffectAccumulator {
   }
 
   modifierSum(target: ModifierTarget, facts?: ReadonlyMap<string, unknown>): number {
-    const list = this.modifiers.get(modifierKey(target));
-    if (list === undefined) return 0;
-    return list.reduce((acc, c) => {
-      if (c.predicate !== undefined && !evaluatePredicate(c.predicate, { facts })) {
-        return acc;
-      }
-      return acc + c.value;
-    }, 0);
+    // Slice 299: a specific-ability save/check query ALSO consumes the
+    // wildcard bucket (`save:*` / `check:*`) so a no-ability AddModifier
+    // (Stone of Good Luck, Cloak of Protection, Bless / Bane) folds into
+    // every per-ability sum. Mirror of slice-266's advantageFor merge.
+    const sumList = (list: ModifierContribution[] | undefined): number =>
+      list === undefined
+        ? 0
+        : list.reduce((acc, c) => {
+            if (c.predicate !== undefined && !evaluatePredicate(c.predicate, { facts })) {
+              return acc;
+            }
+            return acc + c.value;
+          }, 0);
+    const base = sumList(this.modifiers.get(modifierKey(target)));
+    const wildcardKey = modifierWildcardKeyFor(target);
+    if (wildcardKey === undefined) return base;
+    return base + sumList(this.modifiers.get(wildcardKey));
   }
 
   modifierBreakdown(target: ModifierTarget, facts?: ReadonlyMap<string, unknown>): ReadonlyArray<ModifierContribution> {
-    const list = this.modifiers.get(modifierKey(target));
-    if (list === undefined) return [];
-    return list.filter((c) =>
-      c.predicate === undefined || evaluatePredicate(c.predicate, { facts }),
-    );
+    // Slice 299: same wildcard merge as `modifierSum`. The breakdown
+    // surface is what UIs render as a hover-over tooltip, so each
+    // contributing source (specific-ability and wildcard) appears as
+    // its own entry rather than being summed up-front.
+    const filter = (list: ModifierContribution[] | undefined): ModifierContribution[] =>
+      list === undefined
+        ? []
+        : list.filter((c) => c.predicate === undefined || evaluatePredicate(c.predicate, { facts }));
+    const base = filter(this.modifiers.get(modifierKey(target)));
+    const wildcardKey = modifierWildcardKeyFor(target);
+    if (wildcardKey === undefined) return base;
+    return [...base, ...filter(this.modifiers.get(wildcardKey))];
   }
 
   advantageFor(target: RollTarget, facts?: ReadonlyMap<string, unknown>): AdvantageState {

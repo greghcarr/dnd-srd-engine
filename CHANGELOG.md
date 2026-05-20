@@ -4,6 +4,311 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+_No unreleased changes since 0.1.0-alpha.8._
+
+## 0.1.0-alpha.8 - 2026-05-19
+
+Promotes the slices 282-299 cohort to a tagged release. Eighteen slices on top of alpha.7. `package.json` version bumped from `0.1.0-alpha.7` to `0.1.0-alpha.8`; `package-lock.json` regenerated via `npm install --package-lock-only`. The previous `## Unreleased` heading becomes `## 0.1.0-alpha.8 - 2026-05-19`.
+
+Headline themes for the cohort:
+
+- **Consumable surface near complete.** ConsumeAction union grew through `GrantTempHP` (slice 282), `RemoveConditions` + `RemoveExhaustion` (slice 283), and `ApplyItemBuff` (slice 284). Drives consumables wired count to 42/52 (~81%). Canonical users: Potion of Heroism, Potion of Vitality, Oil of Sharpness, Poison Basic, Antitoxin (slice 291), Perfume (slice 292).
+- **UseAction surface extended.** New `Save` variant (slice 286) for Pipes of Haunting's item-fixed-DC save mechanic. New `timeBudget` field on MagicItemSchema (slice 293) for Boots of Speed's cumulative 10-minute-per-long-rest cap, with `ItemTimeBudgetConsumed` event + `minutesElapsed` on UseItemIntent + LR reset hook.
+- **Non-walk speed mechanically observable.** Slice 288 added `getEffectiveFlySpeed` / `Swim` / `Climb` / `Burrow` derives over the slice-77 walk algorithm. Slice 290 added the `matchWalkSpeed` op on `ModifySpeed` for "climb speed equal to walk speed" RAW (Cloak of Arachnida, Slippers of Spider Climbing, Spider Climb spell). Slice 289 wired Cloak of the Bat's fly-speed Toggle on top.
+- **Three new predicate facts.** Slice 291 added `event.savePreventsCondition` (Antitoxin's "advantage on saves vs Poisoned" gate). Plus the slice-294 consumer-coordinated facts tracking section (catalogs the slice-276 / 278 / 279 LoS / lightLevel slots so future consumers know what to populate).
+- **Variant-unroll content sweep.** Slices 295 + 296 carry the slice-229 Belt of Giant Strength pattern forward to the SRD d10 damage-type table: 10 Armor of Resistance variants + 10 Ring of Resistance variants + 10 Potion of Resistance variants + 5 new `protection-*-active` conditions. Slice 297 added the Elvenkind Stealth wires (Boots + Cloak). Slice 298 wired Eyes of Minute Seeing, Headband of Intellect, Necklace of Adaptation, Periapt of Health.
+- **AddModifier save/check wildcard primitive.** Slice 299 mirrored slice-266's RollTarget wildcard onto `ModifierTarget`. Stone of Good Luck is the canonical user (12 unrolled entries → 2 wildcard). Five sibling cleanups (Cloak/Ring of Protection, blessed/baned, aura-of-protection-active + Paladin L6 self-effect) refactored in the same slice. 36 entries → 6 effective.
+- **Two bugs caught via pattern-check.** (1) Slice 298 found a Stone of Good Luck duplicate pack entry (wired entry's name mismatched SRD canonical, so drift audit silently skipped it). Resolved. (2) Slice 299 surfaced Bless / Bane flat +2 / -2 vs RAW 1d4 deviation (pre-existing approximation documented in rules-truth.test.ts since the original wire). Tracked as deferred row for a future per-roll bonus-die primitive.
+- **Doc-size audit shipped.** Slice 285 added [tests/audit/doc-size.test.ts](tests/audit/doc-size.test.ts) asserting every front-door doc + each `docs/changelog/*.md` archive + each `docs/gaps-*.md` catalog stays under the 60 KB single-Read ceiling. Closes the slice-270 / 277 recurring archive cadence.
+
+Net counts: 1728 → 1833 tests across 253 → 268 files (+105 tests, +15 files). Magic-item wired count: 27 → 86 (slices 282-299 added the consumable-surface extensions, variant unrolls, and simple-wire sweep). Coverage snapshot reflects every new wired id. tsc clean; full vitest suite (1833 tests across 268 files) green; doc-size + SRD-drift + RAW-compliance audits all green.
+
+Per-slice detail for slices 282-299 stays inline in the alpha.8 release block below; a follow-up archive slice can move it under [docs/changelog/archive-slices-282-299.md](docs/changelog/) once the next cohort lands, mirroring the slice 270 / 277 / 288 archive cadence.
+
+**Engine + content: AddModifier save/check wildcard + 6-wire refactor (slice 299)**
+
+Closes the deferred row opened in slice 298. Mirror of slice-266's RollTarget wildcard, extended to `ModifierTarget` for AddModifier. Stone of Good Luck (Luckstone) is the canonical user (12 unrolled entries → 2 wildcard entries); the slice-261 pattern-check norm bundled 5 sibling cleanups in the same slice.
+
+Plumbing:
+- `ModifierTarget` save/check kinds now have optional `ability` (matches slice-266 RollTarget). New `modifierWildcardKeyFor` helper returns `save:*` / `check:*` for specific-ability queries. `modifierSum` and `modifierBreakdown` merge the wildcard bucket into per-ability queries (mirror of slice-266's advantageFor merge).
+- Wildcard queries themselves (`target: { kind: 'save' }` without `ability`) return only the wildcard bucket — the specific-ability buckets do NOT bubble upward. This matches RollTarget semantics: a wildcard query asks "what applies to ALL saves," not "what applies to SOME save."
+
+Content refactored (6 wires, 36 entries → 6 effective):
+- Stone of Good Luck (Luckstone): 12 → 2 (save wildcard + check wildcard)
+- Cloak of Protection: 7 → 2 (AC + save wildcard)
+- Ring of Protection: 7 → 2 (AC + save wildcard)
+- `blessed` condition: 7 → 2 (attack + save wildcard)
+- `baned` condition: 7 → 2 (attack + save wildcard)
+- `aura-of-protection-active` condition: 6 → 1 (save wildcard with the CHA-mod formula preserved)
+- Paladin L6 Aura of Protection feature (the self-effect entries that mirror the aura's ally condition): 6 → 1 same way
+
+RAW deviation discovered during refactor (pattern-check norm): the existing `blessed` / `baned` wires use a flat +2 / -2, but RAW 5.2.1 says 1d4. Documented in [tests/unit/rules-truth.test.ts:262](tests/unit/rules-truth.test.ts) since the original wire; this slice preserves the approximation and tracks the fix as a new deferred row (needs a per-roll bonus-die primitive distinct from AddModifier's static `value` — Guidance / Resistance / Bardic Inspiration are future canonical users of the same shape).
+
+Audit:
+- Names: `modifierWildcardKeyFor` mirrors `wildcardKeyFor` from slice 266.
+- DRY: shared `sumList` / `filter` helpers inside the reader avoid copy-paste between sum + breakdown.
+- SRP: schema extension, reader merge, content refactor — three concerns, three layers.
+- at-threading: no event emission in this slice (read-only effect path).
+- Mechanical outcomes: 9 new tests in [tests/unit/effects/add-modifier-wildcard.test.ts](tests/unit/effects/add-modifier-wildcard.test.ts) pin (1) wildcard contributes to every per-ability sum, (2) save vs check don't leak, (3) wildcard + specific stack additively, (4) breakdown surfaces both sources, (5) wildcard query doesn't recursively expand, (6) non-save/check targets unaffected.
+- 2 existing tests updated: `slice-298-wires.test.ts` (length assertion 12 → 2 with comment); `aura-improvements.test.ts` (drops `.ability === 'WIS'` filter — the entry is wildcard now).
+
+tsc clean; 1833 tests across 268 files (was 1824 / 267; +9 net). Coverage snapshot unchanged (no wiredIds flips — the refactored items were already wired). SRD drift audit unchanged.
+
+Doc updates: deferred-primitives backlog gains the Bless/Bane RAW-deviation row; wildcard row marked closed with strikethrough.
+
+**Content + bug-fix: simple wires sweep + Stone of Good Luck dedup (slice 298)**
+
+Sweep of unwired magic items using existing primitives, with a bug-pattern audit that surfaced one duplicate. Per the slice-261 pattern-check norm, the audit found that 3 items (Cloak of Protection, Ring of Protection, Stone of Good Luck) and 3 conditions (blessed, baned, aura-of-protection-active) all ship 6 per-ability AddModifier entries to model universal save bonuses — wireable today via slice-266's wildcard pattern extended to AddModifier (deferred to a focused primitive slice). The wider sweep also surfaced one pack-data bug fixed here.
+
+Bug fix: Stone of Good Luck duplicate. The pack carried two entries — `stone-of-good-luck` (wired with 12 save+check AddModifier entries, name "Stone of Good Luck") and `stone-of-good-luck-luckstone` (empty, name "Stone of Good Luck (Luckstone)"). SRD 5.2.1 canonical name is "Stone of Good Luck (Luckstone)" so the wired entry's name silently mismatched and the SRD drift audit silently skipped it. Resolution: renamed the wired entry to the SRD-canonical name, deleted the empty duplicate. Net pack delta: -1 entry. ID stability: kept `stone-of-good-luck` (the wired id).
+
+Content wired:
+- **Eyes of Minute Seeing** — `SetAdvantage on:{kind:'skill', skill:'investigation'}` (slice-263 primitive). "Within 1 foot" gate is consumer-managed; the 1-foot Darkvision arm is narrative (engine doesn't reason about sub-5-foot vision).
+- **Headband of Intellect** — `OverrideAbilityScore { ability:'INT', value: 19 }` (slice-229 primitive, floor semantics).
+- **Necklace of Adaptation** (arm 2) — `SetAdvantage on:{kind:'save'} condition: eq event.savePreventsCondition 'poisoned'` (slice-291 fact, bearer-side passive form rather than consumable-applied). The "breathe in any environment" arm 1 stays deferred (needs the `GrantBreathlessness` marker from the slice-224 backlog).
+- **Periapt of Health** (arm 2) — same shape as Necklace of Adaptation. The 1/dawn self-heal arm 1 stays deferred (UseActionSchema lacks a Heal variant).
+
+Pattern-check sweep results:
+- **Universal save bonus (6-ability AddModifier unroll)**: 6 occurrences across pack (3 items + 3 conditions). Symptom of a missing wildcard primitive in AddModifier. Tracked as a future "AddModifier save/check wildcard + canonical user" slice. Existing wires are correct but verbose.
+- **Duplicate pack entries**: ran a normalize-by-name audit across the full items list. Stone of Good Luck was the only true duplicate. Resistance variant groups (Armor / Ring / Potion) are intentional unrolls per slice 295/296. "Greatclub (Ogre)" is a weapon variant for the Ogre monster, not a magic item duplicate.
+- **Poisoned-save advantage**: searched SRD for sibling items. Found Necklace of Adaptation + Periapt of Health (wired here), Periapt of Proof against Poison (already wired with full immunity), Belt of Dwarvenkind (deferred — multi-arm with creature-type "if not dwarf or duergar" gate that needs a `bearer.species` predicate the engine doesn't have).
+
+Audit:
+- Names: descriptive ids; the renamed Stone of Good Luck keeps its original id (less churn) while updating name to match SRD.
+- DRY: each wire is one effect entry; no copy-paste.
+- SRP: each wire targets one observable behavior.
+- Magic numbers: 19 (Headband INT floor) cited to RAW + slice-229 primitive doc.
+- Mechanical outcomes: 14 tests pin the 4 wires + the dedup invariant (only one Stone entry exists; canonical name matches SRD; 12-entry effect array preserved).
+
+tsc clean; 1824 tests across 267 files (was 1810 / 266; +14 in new [tests/unit/derive/slice-298-wires.test.ts](tests/unit/derive/slice-298-wires.test.ts)). Coverage snapshot updated for the 4 new wiredIds. SRD drift audit now silently SKIPS Stone of Good Luck via the new name (the SRD entry name still doesn't map to an `srdItems.get` hit because the audit's name parser doesn't match parenthetical canonicals — same as Belt of Giant Strength variants); rarity + attunement assertions still pass.
+
+Doc updates: Items count refreshed (511 → 510; 58 → 62 wired); deferred-primitives backlog gains a tracked row for the universal-save-bonus wildcard primitive (AddModifier save/check wildcard).
+
+**Content: Elvenkind Stealth wires (slice 297)**
+
+Two simple wires picked up on the way past — both items had `effects: []` since the original starter-pack authoring even though the slice-263 skill-discriminated `SetAdvantage on:{kind:'skill', skill:'stealth'}` primitive (originally landed for Eyes of the Eagle) covers their bearer-side arms.
+
+Content wired:
+- Boots of Elvenkind (uncommon, no attunement): RAW grants Stealth advantage unconditionally + silent steps. The silent-steps arm is narrative (engine doesn't model sound); the Stealth advantage wires as a single SetAdvantage.
+- Cloak of Elvenkind (uncommon, attunement-required): RAW grants Stealth advantage (hood-up gated) + imposes disadvantage on third-party Perception checks against the wearer. Slice 297 wires arm 1 (the hood-up gate is consumer-managed, mirroring slice 289's Cloak of the Bat dim-light gate); arm 2 stays deferred since it needs a per-skill-roll-from-another-creature's-perspective primitive the engine doesn't carry yet (same blocker as Cloak of Displacement's third-party attack-disadvantage arm).
+
+Pattern-check: searched for sibling unwired items with bearer-side skill advantage covered by existing primitives. Found these two (and Cloak of the Bat's Stealth arm already wired at slice 279; Eyes of the Eagle's sight-Perception arm at slice 263). No remaining bearer-side skill-advantage wires await a missing primitive.
+
+Audit: pure content. tsc clean; 1810 tests across 266 files (was 1804 / 265; +6 in new [tests/unit/derive/elvenkind-stealth.test.ts](tests/unit/derive/elvenkind-stealth.test.ts)). Coverage snapshot updated for the 2 new `boots-of-elvenkind` + `cloak-of-elvenkind` wiredIds. SRD drift audit passes (rarity/attunement unchanged).
+
+Doc updates: [docs/gaps-items-batches-1.1-1.10.md](docs/gaps-items-batches-1.1-1.10.md) "Conditional advantage / disadvantage grant" bullet refreshed to note arm-1 closure on both items + remaining arm-2 deferral on the cloak.
+
+**Content: Potion of Resistance variant unroll + 5 missing protection-*-active conditions (slice 296)**
+
+Closes the slice-239 deferred row, sibling of slice 295's Armor / Ring of Resistance unroll (same SRD 5.2.1 d10 damage-type table). Same variant-unroll pattern, but Potion of Resistance has the extra dimension of needing 5 new conditions since the existing `protection-*-active` set (acid, cold, fire, lightning, thunder) only covered the 5 elemental types Protection from Energy targets in RAW.
+
+Content wired:
+- 5 new conditions: `protection-force-active`, `protection-necrotic-active`, `protection-poison-active`, `protection-psychic-active`, `protection-radiant-active`. Each is dead-simple: one `GrantResistance` for the matching damage type. Mirrors the existing 5 from Protection from Energy.
+- 10 Potion of Resistance variants (`potion-of-resistance-<type>`, named "Potion of Resistance (<Type>)"). Each carries a single `ApplyCondition` ConsumeAction pointing at the matching `protection-<type>-active` condition. Single empty parent entry removed.
+
+RAW deviations: 1-hour duration is consumer-managed (mirror of slice 236's ApplyCondition doc); no engine-side auto-expiry. Protection from Energy's RAW spell scope (only the 5 elemental types) is unchanged — the new 5 conditions are not added to its caster-chooses-variant list.
+
+Pattern-check: this slice + slice 295 form the natural pair (both bound by SRD 5.2.1's "1d10 damage type" chooser-at-creation). Belt of Giant Strength (slice 229) was the earlier canonical pattern. No other sibling chooser-at-creation magic items in 2024 RAW today.
+
+Audit: pure content. tsc clean; 1804 tests across 265 files (unchanged count; conditions coverage snapshot updated for the 5 new `protection-*-active` IDs). SRD drift audit passes (variant names not in srdItems map → rarity asserts silently skip, same as slice 295).
+
+Doc updates: gaps-row closed; Coverage-at-a-glance Items count refreshed (502 → 511 total; consumables 42 → 52); Conditions count refreshed (98 → 117; prior count had drifted across slices 263-296).
+
+**Content: Armor + Ring of Resistance variant unroll (slice 295)**
+
+Closes the slice-224 deferred row that bundled Armor of Resistance + Ring of Resistance together (same chooser-at-creation pattern, same SRD 5.2.1 d10 damage-type table). The slice-229 Belt of Giant Strength variant-unroll pattern carries forward: one pack entry per damage type, single `GrantResistance` effect per variant.
+
+Content wired: 10 Armor of Resistance variants (`armor-of-resistance-<type>`, named "Armor of Resistance (Acid)" etc., rare + attunement-required per RAW) and 10 Ring of Resistance variants (`ring-of-resistance-<type>`, rare + no-attunement per slice-184 SRD-drift fix). Damage types: acid, cold, fire, force, lightning, necrotic, poison, psychic, radiant, thunder. The pre-slice single empty parent entries were removed (verified no consumers reference them via grep across src/ tests/ docs/).
+
+Pattern-check: searched for sibling chooser-at-creation magic items. Belt of Giant Strength variants already shipped (slice 229). Potion of Resistance is the next sibling on the same RAW pattern but stays deferred — it adds the additional dimension of needing 5 missing `protection-*-active` conditions (force, necrotic, poison, psychic, radiant) plus the ConsumeAction ApplyCondition wire. The 5 existing protection conditions cover only the Protection from Energy spell's RAW set (acid, cold, fire, lightning, thunder); the wider damage-type set for Potion of Resistance hadn't authored. Tracking left as a deferred row.
+
+Audit: pure content. No engine changes. tsc clean; 1804 tests across 265 files (unchanged count; coverage snapshot updated to include the 20 new wiredIds). Coverage snapshot diff verified: only the 10 armor-of-resistance-* + 10 ring-of-resistance-* IDs added to the magic-items wiredIds list. SRD drift audit passes (parent name "Armor of Resistance" / "Ring of Resistance" not in srdItems map for the variant ids, so rarity/attunement asserts silently skip — same as Belt of Giant Strength variants per the slice-229 doc).
+
+Doc updates: gaps-row closed (strikethrough + slice 295 closure note); Coverage-at-a-glance Items count refreshed (484 total → 502 total; +18 from the unroll net of 2 parent removals). The pre-slice "27 wired" count had drifted across slices 242-289; new count "58 wired" matches the coverage snapshot, with a parenthetical pointer to the drift for future readers.
+
+**Docs: consumer-coordinated fact-slot tracking section (slice 294)**
+
+Closes the slice-276 follow-up row that slice 280 introduced ("Consumer-half tracking for engine-half-only RAW fixes"). New "Consumer-coordinated fact slots" section in [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md) catalogs the three engine-half-landed slots (`bearerCanSeeFearSource`, `targetCanSeeAttacker`, `lightLevel`) plus their entry-point inputs (AttackIntent / ResolveAttackInput / ComputeAbilityCheckInput), the default-undefined semantic (default-apply vs opt-in), and what observable RAW behavior is gated. Includes a "when to use which semantic" rule for future consumer-coordinated facts.
+
+Why this is its own slice: future consumers (dndbnb, web demo, VTT integrations) need a single canonical reference for which engine inputs to populate from their scene state. Before this slice, the information was scattered across slice 276 / 278 / 279 commit bodies + per-condition wires + inline doc comments. The new section is the front-door reference, and future slices append to its table as new slots land.
+
+Pattern-check: the row was opened slice 280 alongside the doc-size CI check row; that one closed slice 285. Both came from the same "we have a deferred meta-task; we need a concrete artifact" reframe. Future cross-cutting tracking gaps follow the same shape — open a row when noticed, close it when the artifact exists.
+
+Audit: pure doc slice — no engine changes. tsc clean (no source touched); 1804 tests across 265 files (unchanged). The doc-size audit passes for the updated starter-pack-gaps.md (44 KB, under the 60 KB ceiling). No new tests; the artifact's value is reference content for consumers, not a behavior to assert.
+
+**Engine+content: Boots of Speed time-budget cap (slice 293)**
+
+Closes the slice-242 deferred row that had been open since the initial Toggle UseAction landed. RAW (SRD 5.2.1): "When the boots' property has been used for a total of 10 minutes, the magic ceases to function until you finish a Long Rest." A continuous, cumulative minutes-per-LR pool distinct from `charges` (per-use integer count) and round-based auto-expiry (slice 102).
+
+Plumbing: new optional `timeBudget: { maxMinutesPerLongRest: number }` field on `MagicItemSchema` + `minutesUsed?: number` counter on `ItemInstance`. New `ItemTimeBudgetConsumed` event (carries `instanceId`, `amountMinutes`, `byCharacterId`). `UseItemIntent` gains `minutesElapsed?: number`. `planUseItem`'s Toggle branch validates `minutesUsed < max` on toggle-on (throws "exhausted ... finish a Long Rest to reset" past the cap) and emits `ItemTimeBudgetConsumed` on toggle-off when the consumer reports elapsed minutes. `applyLongRestEnded` walks each participant's inventory and resets `minutesUsed` to 0 on instances that carry the counter (undefined → undefined; never been activated stays pristine).
+
+Consumer contract: the engine doesn't model real-time elapsed-while-toggled (would require continuous clock or per-tick state) — the consumer reports cumulative elapsed minutes on the toggle-off intent. This mirrors the engine's general consumer-coordinated stance (positions, scene state, RAW LoS).
+
+Content wired: Boots of Speed gains `timeBudget: { maxMinutesPerLongRest: 10 }`. Same shape applies to Winged Boots' "4 hours per day, can be used in 1-min increments" (still wires-only; same primitive, different cap + reset cadence).
+
+Pattern-check: searched MagicItemSchema callers for sibling "minutes-per-cadence" shapes — Winged Boots is the only match in 2024 RAW. Future content (e.g. a Cloak of Invisibility-style "2 hours total before sundown") would plug into the same field with a different cap and possibly a different reset event (DawnReset, ShortRestEnded). The current cadence is "long-rest reset only"; future variants can split.
+
+Audit:
+- Names: `timeBudget`, `minutesUsed`, `minutesElapsed`, `ItemTimeBudgetConsumed` — each names a distinct thing (the def's spec, the instance's counter, the consumer's per-use report, the event). The `amountMinutes` event field mirrors slice-261's `amount` naming on ItemChargeConsumed.
+- DRY: reset-on-LR walks the inventory inline in `applyLongRestEnded` rather than a helper — 6 lines, single call site, below the abstraction threshold. If a second cadence (DawnReset, ShortRestEnded) ever lands, factor then.
+- SRP: planner gate (validation + emit), reducer (state mutation), rest-reset (lifecycle hook) each do one thing.
+- Magic numbers: `maxMinutesPerLongRest: 10` lives in the content pack (Boots-specific), not in engine code. The gate uses the def's value, no hardcoding.
+- at-threading: planner resolves `at = intent.at ?? nowIso()` once; ItemTimeBudgetConsumed inherits it from the same call.
+- Mechanical outcomes: 5 tests pin (1) emit on toggle-off-with-minutesElapsed, (2) no emit on toggle-off-without-minutesElapsed (rounds-only use), (3) cumulative accumulation across cycles, (4) toggle-on-after-cap throws, (5) long-rest resets + re-enables toggle-on.
+- Tests: prevent regression of the budget gate, the cumulative semantic, the LR reset, and the no-op-when-not-reported case (would silently drop a feature if reversed).
+
+tsc clean; 1804 tests across 265 files (was 1799 across 264). No coverage snapshot change (no `wiredIds` flips). Transcript formatter gains a one-line case for `ItemTimeBudgetConsumed`.
+
+**Content: Perfume + perfumed-active condition (slice 292)**
+
+Closes the slice-239 Perfume deferred row. The original row miscategorized the gap — the skill-discriminated SetAdvantage target `on: { kind: 'skill', skill: Skill }` had been in the schema since slices 263 / 274 (canonical users at the time: Eyes of the Eagle Perception, Gloves of Swimming Athletics, slice 279 Cloak of the Bat Stealth). Perfume is the canonical Persuasion user; pure content slice on top of existing primitives.
+
+Content wired: new `perfumed-active` condition with `SetAdvantage on:{kind:'skill', skill:'persuasion'} mode:'advantage'`. Perfume's `onConsume` becomes `[ApplyCondition perfumed-active]` (slice-236 ApplyCondition variant).
+
+RAW deviations: "Indifferent Humanoid" target-attitude gate is consumer-managed (engine doesn't model attitude); 5-ft range is consumer-managed; 1-hour duration is consumer-managed (mirror of slice 236).
+
+Audit: pure content. tsc clean; 1799 tests across 264 files (was 1793). 6 cases: cast emits ConditionApplied; CHA(Persuasion) advantage; CHA(Deception) no advantage; raw CHA no advantage; WIS(Persuasion) advantage (skill-discriminated, ability-agnostic); baseline no advantage. Coverage: `perfumed-active` joins conditions wired list.
+
+**Engine+content: Antitoxin + `event.savePreventsCondition` predicate fact (slice 291)**
+
+Closes the slice-239 Antitoxin deferred row. RAW: "Advantage on saving throws to avoid or end the Poisoned condition for 1 hour." Pre-291 the engine had no way to gate save advantage on the specific condition the save would prevent or end.
+
+Plumbing: new `savePreventsCondition?: string` field on [`ComputeSaveInput`](src/derive/save.ts) surfaces as the `event.savePreventsCondition` predicate fact. Cast-spell save resolution populates it from `mechanic.conditionOnFail` (poison-spell saves, Hold-shape saves, etc.). Recurring-save planner populates it from the bearer condition id when `recurringSave.onSuccess === 'removeCondition'` (so a Hold Person target's end-of-turn save would carry `savePreventsCondition: 'held-paralyzed'` etc.). Generic saves (Stunning Strike CON, multiattack save) leave the fact undefined and per-condition gates evaluate false.
+
+Content wired: new `antitoxin-active` condition with `SetAdvantage on:{kind:'save'}` (slice-266 wildcard) gated on `eq event.savePreventsCondition 'poisoned'`. Antitoxin consumable's `onConsume` becomes `[{ kind: 'ApplyCondition', conditionId: 'antitoxin-active' }]` (slice-236 ApplyCondition variant). 1-hour duration consumer-managed.
+
+Pattern-check: searched for sibling per-condition save-advantage buffs — none in SRD 5.2.1 today. The new fact is generic enough that future content (e.g. a buff that grants advantage on saves vs Charmed, or future Restoration potions) plugs in by gating on the same fact with a different condition id.
+
+Audit: input field + 2 planner threadings + 1 condition + 1 content wire. tsc clean; 1793 tests across 263 files (was 1787). 6 cases: drinking emits ConditionApplied; save with savePreventsCondition='poisoned' gets advantage; save with savePreventsCondition='frightened' does NOT; save with undefined does NOT; all 6 ability scores get advantage on poisoned-gating save (slice-266 wildcard); no-antitoxin baseline does not. Coverage snapshot: `antitoxin-active` joins conditions wired list.
+
+**Engine+content: ModifySpeed matchWalkSpeed op + Cloak of Arachnida + Spider Climb (slice 290)**
+
+Closes the slice-227 Cloak of Arachnida row. RAW: "Climb Speed equal to your walking speed" — Cloak of Arachnida + Slippers of Spider Climbing + Spider Climb spell all share this shape. Pre-290 the engine had no way to express it; all three shipped as `op: 'set', value: 30` approximations.
+
+Plumbing: new `op: 'matchWalkSpeed'` on `ModifySpeed` (Zod enum extension + TS union update). `getEffectiveSpeedForMode` recurses once into walk-mode resolution to find the effective walk speed, then treats it as a `set` for the non-walk mode (so Fast Movement / Unarmored Movement / Haste's ×2 fold in). Walk mode itself ignores `matchWalkSpeed` (would be circular). `value` is required by the union but ignored for this op; content ships `value: 0`.
+
+Content re-wired (3 entries; same observable for human/30 base, dynamic across faster bases):
+- Cloak of Arachnida (very-rare): `ModifySpeed climb matchWalkSpeed`. Description rewrites the RAW spec and enumerates remaining deferrals (Athletics-climb advantage; Web spell-cast).
+- Slippers of Spider Climbing (uncommon): same.
+- `spider-climbing-active` condition (Spider Climb spell + Potion of Climbing): same. Description drops the "approximated as 30 ft" caveat.
+
+Pattern-check: the three users share the same RAW phrasing and the same primitive — clean three-canonical-users-in-one-slice closure. No sibling shapes need the same op (climb-only RAW; no swim/fly variants today). The Athletics-climb-advantage arm of Cloak of Arachnida would gate on slice-274's `athleticsSubAction='climb'` if a future slice wires it.
+
+Audit: schema + resolver + 3 content wires. tsc clean; 1787 tests across 262 files (was 1778). 9 cases in new [tests/unit/engine/match-walk-speed.test.ts](tests/unit/engine/match-walk-speed.test.ts): human walk 30 → climb 30; Barbarian L5 Fast Movement walk 40 → climb 40; hasted Barbarian walk 80 → climb 80 (multiplier folds); Cloak of Arachnida attuned 40, unattuned 0; Slippers climb 30 (human) / 40 (Barbarian L5); walk-mode-ignores-matchWalkSpeed regression. Coverage snapshot unchanged (no wiredIds membership flips).
+
+**Content: Cloak of the Bat fly-speed Toggle wire (slice 289)**
+
+Closes the slice-227 deferred Cloak of the Bat fly-speed row. Composes three prior slices into one wired item: slice 240's `ApplyCondition` UseAction + slice 279's `bearer.lightLevel` Stealth gate + slice 288's `getEffectiveFlySpeed`. No new engine primitives needed.
+
+Content wired: Cloak of the Bat gains `charges: { max: 1, recharge: 'dawn' }` and `onUse: [{ kind: 'ApplyCondition', conditionId: 'cloak-of-the-bat-active' }]`. New `cloak-of-the-bat-active` condition carries `ModifySpeed fly set 40`. The slice-279 Stealth advantage stays independently wired on the cloak's passive `effects` array.
+
+RAW deviations: the "in an area of dim light or darkness" activation gate is consumer-managed — same shape as Pipes of Haunting's 30-ft scope (engine doesn't model scene lighting at activation time, and RAW most-naturally reads as "the buff lasts 1 hour from activation regardless of where you walk"). The 1-hour duration is consumer-managed (mirror of slice 236's ApplyCondition doc). The Polymorph-self-to-Bat arm stays deferred (needs a `CastSpell` UseAction variant dispatching to dedicated planPolymorph, parallel to slice-237).
+
+Pattern-check: this slice is the third post-alpha.7 composition of pre-existing primitives (slice 282 used slice 235 + 236; slice 284 used slice 76 + 90 + 235; slice 289 uses slice 240 + 279 + 288). The pattern that emerges: each Toggle UseAction wire ships once the prerequisite engine primitives are in place. The slice 281's "consumer-half tracking" gap row (engine half landed, consumer half pending) is the symmetric tracker.
+
+Audit: no engine changes — pure content slice. One new condition (1 effect entry) + one item config update + onUse array. tsc clean; 1778 tests across 261 files (was 1774). 4 cases pin: useItem emits charge + condition + ItemUsed; fly speed flips from 0 to 40 across the cast; second use throws on 0 charges; Stealth arm stays independent of fly activation. Coverage snapshot: `cloak-of-the-bat-active` joins conditions wired list; `cloak-of-the-bat` joins `withChargesIds` list.
+
+**Engine: non-walk speed derives (slice 288)**
+
+Closes the slice-263 pattern-check finding: ~30 in-pack `ModifySpeed` entries for fly / swim / climb / burrow modes projected to the effect stack but no consumer read them. Slice 288 ships `getEffectiveFlySpeed` / `getEffectiveSwimSpeed` / `getEffectiveClimbSpeed` / `getEffectiveBurrowSpeed` mode-parameterized off slice 77's walk algorithm.
+
+**Lights up mechanically** (no content changes): Gaseous Form fly 10 (slice 287's declarative wire), Cloak of the Bat fly 40 (pending Toggle), Slippers of Spider Climbing climb 30, Ring of Swimming swim 40, Gloves of Swimming and Climbing climb/swim 30, Spider Climb climb 30, native monster fly/climb/swim/burrow.
+
+Plumbing: shared `getEffectiveSpeedForMode(input, mode)` in [_actor-state.ts](src/engine/plan/_actor-state.ts) + four aliases. `getEffectiveSpeed` becomes a thin wrapper; algorithm unchanged. Base lookup: walk → `character.speedFeet`; non-walk → monster statblock or species `speed[mode]`, default 0.
+
+Cloak of Arachnida half-closure: non-walk derive lands; remaining blocker is a `ModifySpeed { op: 'matchWalkSpeed' }` op for "climb speed equal to walking speed."
+
+Audit: derive-only. No reducer / planner changes. Existing call sites unchanged (consumers opt in incrementally). tsc clean; 1774 tests across 260 files (was 1766). 8 cases: PC defaults all 0; Gaseous Form fly 10; Spider Climb climb 30; Ring of Swimming swim 40; Gloves (climb + swim 30); Young Red Dragon fly 80 / climb 40; zero-set wins (Gaseous Form + Earthbind); walk derive unchanged (regression check).
+
+Bundled archive: this slice also triggered the slice-285 doc-size audit (CHANGELOG drifted past 60 KB after slice 287's entry plus this one). Per the slice-281 plan + slice-270 / 277 precedent, slices 269-280 (the alpha.7 release-block detail) moved to [docs/changelog/archive-slices-269-280.md](docs/changelog/archive-slices-269-280.md). The slice 281 release-bump entry stays live alongside slices 282-288.
+
+**Content: Gaseous Form wired through existing primitives (slice 287)**
+
+Closes one of two spells on the slice-241 "Transformation handler" row. RAW reframing: both alter-self and gaseous-form are buff-condition shaped (not statblock-swap), so no wildShape/polymorph-style planner is needed. Gaseous Form wires through the slice-73 buff mechanic + new `gaseous-form-active` condition: `OverrideACFormula base 11`, `GrantResistance` for B/P/S, `GrantConditionImmunity prone`, `SetAdvantage` on STR/DEX/CON saves, declarative `ModifySpeed fly set 10`.
+
+Alter Self stays deferred — all three arms need missing primitives (Aquatic: non-walk speed derive + `matchWalkSpeed` op; Natural Weapons: unarmed-strike attack replacement; Change Appearance: pure narrative). Gap row reframed as "Alter Self (spell wiring)" with per-arm prerequisites.
+
+Audit: no engine changes. tsc clean; 1766 tests across 259 files (was 1758). 8 cases pin cast chain + AC override + B/P/S resistance + prone immunity + per-ability save advantage. Coverage: `gaseous-form-active` joins conditions wired list.
+
+**Engine+content: Pipes of Haunting + Save UseAction variant (slice 286)**
+
+Closes the slice-241 deferred Pipes of Haunting row. RAW (SRD 5.2.1): "Each creature of your choice within 30 feet of you must succeed on a DC 15 Wisdom saving throw or have the Frightened condition for 1 minute." Pre-286 Pipes shipped with `effects: []` / `onUse: []` — charges were declared but no UseAction rolled the bespoke item-fixed-DC save. This slice adds the fourth variant to the slice-240 `UseActionSchema` (sibling to ApplyCondition, Toggle, CastSpell).
+
+**Plumbing**:
+
+- New `{ kind: 'Save', saveAbility, saveDC, conditionOnFail, sourceIsMagical? }` variant on [`UseActionSchema`](src/schemas/content/item.ts). Distinct from CastSpell because no spell is cast and no class spell-DC is involved — the item carries its own fixed DC. `sourceIsMagical` defaults to true (item-played effects are magical for Magic Resistance purposes).
+- New `saveTargetIds?: ReadonlyArray<string>` field on [`UseItemIntent`](src/engine/plan/use-item.ts). Required (non-empty) when the fired action is a Save; engine doesn't model positions, so the 30-foot scope is consumer territory.
+- planUseItem branch rolls one save per target via [`computeSavingThrow`](src/derive/save.ts) (mirrors the cast-spell save resolution: honors advantage / disadvantage from the target's effect stack; rolls 1 or 2 d20s as needed). Emits SaveRolled per target and ConditionApplied per failed target with `sourceCharacterId = item user`.
+
+**Content wired**:
+
+- **Pipes of Haunting**: `onUse: [{ kind: 'Save', saveAbility: 'WIS', saveDC: 15, conditionOnFail: 'frightened' }]`. Also fixed the recharge formula from a pre-285 stub of `1d4+1` to the RAW `1d3`. Description rewrites the RAW spec verbatim and enumerates the deferrals.
+
+**RAW deviations**: 30-ft scope is consumer territory; 1-minute duration is consumer-managed (mirror of slice 236's ApplyCondition doc); the RAW end-of-turn recurring save and 24-hour immunity-on-success are still deferred (would need a `recurringSave` shape applied via the planner and consumer-tracked per-target immunity state).
+
+**Pattern-check sweep**: searched the pack for sibling items with bespoke item-fixed-DC save mechanics — none currently wired. Wind Fan ships `effects: []` and would benefit from this same shape if RAW carries a save; other "save vs effect" items mostly route through CastSpell (the spell's save mechanic handles it). The variant is reusable for any future item that carries its own DC outside the spell pipeline.
+
+Audit: variant name follows the UseAction convention (`ApplyCondition`, `CastSpell`, `Toggle`, now `Save`). One new variant + one new intent field, one new planner branch, one content wire. tsc clean; full vitest suite (1758 tests across 258 files, was 1752) green. 6 cases: failed-save applies frightened; successful-save (seed-search loop) does not apply; multi-target preserves the per-target save↔condition relationship; charge gate fires; throws on missing / empty saveTargetIds. Coverage snapshot: `pipes-of-haunting` joins `wiredIds`.
+
+**Tests+infra: doc-size audit on front-door docs (slice 285)**
+
+Closes the recurring problem that bit slices 270 + 277: front-door docs (CHANGELOG.md, starter-pack-gaps.md) silently drifted over the single-Read ceiling between content slices, surfacing only when a fresh agent's Read tool errored out. New [tests/audit/doc-size.test.ts](tests/audit/doc-size.test.ts) audit asserts every front-door doc fits the documented ~60 KB ceiling. Runs as part of `npm test` so CI catches the drift at commit time, not next-agent-Read.
+
+**Implementation**: nine vitest cases. Seven per-file `expect` cases pin the fixed front-door docs (README.md, CHANGELOG.md, CLAUDE.md, docs/starter-pack-gaps.md, docs/status.md, docs/roadmap.md, docs/api-overview.md). One dynamic case enumerates `docs/changelog/*.md` archives and `docs/gaps-*.md` per-category catalogs so new archives are caught without test edits. One floor-count sanity case prevents a vacuously-green audit if the file list ever empties (path renames, dir moves).
+
+Threshold: 60,000 bytes per file. Matches CLAUDE.md's "Doc size discipline" documented hard ceiling ("anything safely under 60,000 bytes will fit"). Empirical verification at slice 285: the 59 KB and 56 KB archives ([archive-rollup-narrative-A.md](docs/changelog/archive-rollup-narrative-A.md) + [gaps-monsters-deferred-mechanics.md](docs/gaps-monsters-deferred-mechanics.md)) both Read cleanly; the 65 KB CHANGELOG at slice 277 pre-archive failed. 60 KB is the practical boundary for typical content density.
+
+**Failure message**: when a file exceeds the threshold, the assertion prints the file path, current byte count, and a one-line pointer to CLAUDE.md's split playbook. A developer / agent shipping a slice that pushes a doc over the limit sees the failure inline rather than hitting it next session.
+
+Audit: no engine / content changes. tsc clean; full vitest suite (1752 tests across 257 files, was 1743) green. 9 new cases. The audit itself is the test.
+
+**Engine+content: ApplyItemBuff ConsumeAction variant + Oil of Sharpness + Poison Basic (slice 284)**
+
+Third slice of the consumable-variant chain. Closes two slice-239 deferred rows with one new variant: Oil of Sharpness (+3 attack / +3 damage / counts as magical) and Poison Basic (1d4 poison rider) both wire as `ApplyItemBuff` ConsumeActions that stamp a `temporaryBuff` onto a target weapon via the slice-76 shape. The Poison Basic save-vs-Poisoned arm stays deferred (would need an on-hit-rider extension to the temporaryBuff shape or composition with slice-61).
+
+**Plumbing**:
+
+- New `{ kind: 'ApplyItemBuff', attackBonus?, damageBonus?, extraDamageDice?, extraDamageType? }` variant on [`ConsumeActionSchema`](src/schemas/content/item.ts). Field shape mirrors `ItemTemporaryBuff` so the attack planner picks up the buff automatically (slice 76's attack-bonus / damage-bonus path; slice 90's elemental-rider path for extra dice).
+- New `targetWeaponInstanceId?: string` field on [`ConsumeItemIntent`](src/engine/plan/consume-item.ts). Defaults to the actor's `equipped.mainHand`. Throws if the target isn't a weapon or no main hand is set.
+- planConsumeItem emits `ItemBuffApplied` with a fresh synthetic `sourceEffectInstanceId` (consumable-applied buffs aren't linked to concentration; the id tags the buff for any future "remove this specific oil" semantics).
+
+**Content wired (2 consumables)**:
+
+- **Oil of Sharpness**: `onConsume: [{ kind: 'ApplyItemBuff', attackBonus: 3, damageBonus: 3 }]`. The "counts as magical" arm is free — slice 112's `isMagicWeaponAttack` returns true for any temporaryBuff-bearing item.
+- **Poison Basic**: `onConsume: [{ kind: 'ApplyItemBuff', extraDamageDice: '1d4', extraDamageType: 'poison' }]`.
+
+**RAW deviations** (both items): engine doesn't gate on weapon type (RAW: piercing / slashing only) or auto-expire after the narrative duration (1 hour / 1 minute or first-hit). Consumer-managed.
+
+**Pattern-check sweep**: searched for other consumables that apply weapon buffs — none in SRD 5.2.1. Drow Poison and similar future content would extend with on-hit-save composition (deferred).
+
+Audit: variant name follows the ConsumeAction convention. One new variant + one new intent field, one new planner branch, two content wires. tsc clean; full vitest suite (1743 tests across 256 files, was 1737) green. 6 cases in two describes + an error-paths describe: Oil emits +3/+3 on equipped main hand; weapon state carries the buff after consume; explicit targetWeaponInstanceId overrides main hand; Poison Basic emits 1d4 poison rider; throws when no target weapon; throws when target isn't a weapon.
+
+**Engine+content: Potion of Vitality + RemoveConditions / RemoveExhaustion ConsumeAction variants (slice 283)**
+
+Second slice of the consumable-variant chain. Closes the first arm of the slice-239 Potion of Vitality row. RAW: "removes any Exhaustion you are suffering and cures any disease or Poison affecting you. For the next 24 hours, you regain the maximum number of Hit Points for any Hit Die you spend." The 24-hour max-HD-spend rider stays deferred (the engine doesn't model Hit Die spend max yet).
+
+Two variants instead of one combined "cleanse" because the shapes are mechanically distinct: RemoveConditions walks `character.appliedConditions` and emits ConditionRemoved per matched instance; RemoveExhaustion emits a single ExhaustionChanged from current → 0 on the numeric `exhaustion` field (a separate state slot, not a condition).
+
+**Plumbing**: two new variants on [`ConsumeActionSchema`](src/schemas/content/item.ts) — `{ kind: 'RemoveConditions', conditionIds: string[] }` and `{ kind: 'RemoveExhaustion' }`. [`planConsumeItem`](src/engine/plan/consume-item.ts) gains two branches. RemoveConditions walks the target's appliedConditions and emits ConditionRemoved per match (handles multiply-sourced conditions correctly). RemoveExhaustion no-ops cleanly when exhaustion is already 0 (no event emitted, audit trail stays clean).
+
+**Content wired**: Potion of Vitality's `onConsume` becomes `[{ kind: 'RemoveExhaustion' }, { kind: 'RemoveConditions', conditionIds: ['poisoned'] }]`. Description rewrites the RAW spec and notes the deferred HD-spend rider.
+
+**Pattern-check sweep**: RemoveExhaustion + RemoveConditions are reusable. Future canonical users: Greater Restoration spell (RAW reduces exhaustion by 1, not zeroes out — needs a different variant); Heroes' Feast (RAW: "cures all diseases and poison effects"). Both stay deferred — they're spell-driven, not consumable-driven. The variants land here for the consumable surface; future spell wiring may extend RemoveConditions or add siblings.
+
+Audit: variant names follow the ConsumeAction convention (`Heal`, `ApplyCondition`, `CastSpell`, `GrantTempHP`, `RemoveConditions`, `RemoveExhaustion`). Two new variants, two new planner branches, one content wire. tsc clean; full vitest suite (1737 tests across 255 files, was 1732) green. 5 cases: both cleared together; state-side verification; no-op when neither present; exhaustion-only; poisoned-only.
+
+**Engine+content: Potion of Heroism + GrantTempHP ConsumeAction variant (slice 282)**
+
+First slice of the consumable-variant chain. Closes the slice-239 deferred row for Potion of Heroism. RAW: "For 1 hour, the drinker gains 10 Temporary Hit Points and the Blessed condition." Pre-282 the potion shipped `onConsume: []` — the engine had no shape for "flat temp HP grant on consume." This slice adds the fourth variant to the slice-235 `ConsumeAction` discriminated union and wires its canonical user.
+
+**Plumbing**: new `{ kind: 'GrantTempHP', amount }` variant on [`ConsumeActionSchema`](src/schemas/content/item.ts). [`planConsumeItem`](src/engine/plan/consume-item.ts) gains a branch that emits a `TempHPGranted` event with the action's `amount` and a `source: 'item:<def-id>'` tag. The existing slice-75 `applyTempHPGranted` reducer enforces RAW max-not-additive semantics; no reducer changes needed.
+
+**Content wired**: Potion of Heroism's `onConsume` becomes `[{ kind: 'GrantTempHP', amount: 10 }, { kind: 'ApplyCondition', conditionId: 'blessed' }]`. The Bless half uses the existing slice-236 ApplyCondition variant pointing at the pre-existing `blessed` condition (Bless spell shares the same condition). The 1-hour duration is consumer-managed per the ConsumeAction doc comment.
+
+**Pattern-check sweep**: searched the pack for other consumables that need flat temp HP grants — none in the SRD 5.2.1 consumables catalog beyond Potion of Heroism. Potion of Vitality grants HP differently (full restore + remove conditions); Potion of Healing variants use the slice-235 Heal action. Future monster ability descriptions that grant temp HP on consume (rare) would plug in by reusing this variant.
+
+Audit: variant name follows the kebab-case ConsumeAction convention (`Heal`, `ApplyCondition`, `CastSpell`, now `GrantTempHP`). One new variant, one new planner branch, one content wire. tsc clean; full vitest suite (1732 tests across 254 files, was 1728) green. 4 cases: emits TempHPGranted + ConditionApplied + ItemConsumed in correct shape; instance retires from inventory; drinker carries 10 temp HP + blessed; ally-feed via targetId override grants the ally, not the drinker.
+
 **Release: bump to 0.1.0-alpha.7 (slice 281)**
 
 Promotes the slice 269-280 cohort to a tagged release. `package.json` version bumped from `0.1.0-alpha.6` to `0.1.0-alpha.7`; `package-lock.json` regenerated via `npm install --package-lock-only`. The previous `## Unreleased` heading becomes `## 0.1.0-alpha.7 - 2026-05-19` immediately below.
@@ -14,7 +319,7 @@ The alpha.7 release block keeps the per-slice detail inline. A follow-up archive
 
 ## 0.1.0-alpha.7 - 2026-05-19
 
-Cumulative post-alpha.6 release. 31 slices (251-280) shipped since alpha.6 (251-260 archived in slice 270; 261-268 in slice 277; 269-280 detail inline below).
+Cumulative post-alpha.6 release. 31 slices (251-280) shipped since alpha.6 (251-260 archived in slice 270; 261-268 in slice 277; 269-280 archived in slice 288 to [docs/changelog/archive-slices-269-280.md](docs/changelog/archive-slices-269-280.md)).
 
 Headline changes since alpha.6:
 
@@ -28,281 +333,6 @@ Headline changes since alpha.6:
 - **Doc discipline**: two archive slices (270 + 277) restored the single-Read ceiling on front-door docs when they drifted over. Slice 280 added tracking rows for a future CI doc-size check and for consumer-half coverage of engine-half-only RAW fixes.
 
 ---
-
-**Docs: refresh front-door counts + api-overview consumer-state pattern + 2 new tracking rows (slice 280)**
-
-Pre-bump hygiene before promoting Unreleased to alpha.7. Three same-shape docs updates:
-
-- **Test counts**: README.md and docs/status.md (2 spots) updated from "1643 tests across 244 files" to "1728 tests across 253 files." 85 new tests and 9 new files across the slice 251-279 window.
-- **api-overview.md**: new paragraph documenting the consumer-supplied scene-state fact pattern (slices 263, 274, 276, 278, 279). Lists each of the five optional input fields, their host shapes (`AttackIntent` vs. `ComputeAbilityCheckInput`), their default semantic (default-apply vs. opt-in), and the framing distinction between negative penalties (default-apply) and positive benefits (opt-in).
-- **starter-pack-gaps.md**: 2 new deferred-backlog rows. (1) Doc-size CI check (slice 270 + 277 each had to archive when the front-door doc went over ceiling silently; a `wc -c`-based pre-commit script would catch this earlier). (2) Consumer-half tracking for engine-half-only RAW fixes (slices 276 / 278 / 279 ship engine-side fact slots that no consumer currently populates; the bug fixes are silent in production until consumers wire them).
-
-No code changes; no test changes; coverage snapshot unchanged. tsc clean; full vitest suite (1728 tests across 253 files) still green.
-
-**Engine+content: Cloak of the Bat dim-light Stealth gate (slice 279)**
-
-Closes the slice-263 deferred Cloak of the Bat Stealth row. RAW: "Advantage on Dexterity (Stealth) checks while wearing this cloak in an area of dim light or darkness." Pre-279 the SetAdvantage applied unconditionally (broader than RAW).
-
-Same opt-in semantic as slice 263 (Eyes of the Eagle, `sense?`) and slice 274 (Gloves of Swimming, `athleticsSubAction?`): the consumer reports the value, undefined produces no advantage. Different from slice 276/278's default-apply: this is a positive benefit consumers opt INTO, not a negative penalty consumers opt OUT of.
-
-**Plumbing**: new `lightLevel?: 'bright' | 'dim' | 'darkness'` on [`ComputeAbilityCheckInput`](src/derive/ability-check.ts). `computeAbilityCheck` populates `bearer.lightLevel` fact alongside the existing slice 263/274/276 facts.
-
-**Content wired**: Cloak of the Bat's SetAdvantage on Stealth gains `condition: any(eq path:'bearer.lightLevel' value:'dim', eq path:'bearer.lightLevel' value:'darkness')`. Description rewritten to cite the RAW spec.
-
-**Pattern-check sweep**: searched the pack for sibling Stealth-on-light items — none. Cloak of Elvenkind uses a different shape (target's WIS perception to spot bearer has disadvantage, not bearer's own Stealth advantage). Cloak of the Bat is the unique user.
-
-**Related deferred rows updated**: the Cloak of the Bat fly-speed and Polymorph-to-Bat arms (slice-227 deferred rows) have half (b) — the `bearer.lightLevel` fact — closed by this slice. Half (a) still needs the slice-242 Toggle UseAction wire (fly speed) and a Polymorph cross-reference primitive (Polymorph arm).
-
-Audit: name matches slice 263/274 sibling fields in `ComputeAbilityCheckInput`. Derive-only; plan/commit split preserved. tsc clean; full vitest suite (1728 tests across 253 files, was 1722) green. 6 cases: dim/darkness → advantage; bright → no advantage; undefined → no advantage; non-Stealth skill in dim → no advantage; unattuned in dim → no advantage. Pack drift: `cloak-of-the-bat.effects[0]` gains a `condition` field.
-
-**Engine+content: Dodge LoS gate (consumer-supplied per-attacker) (slice 278)**
-
-Closes the slice-267 deferred row for Dodge's missing LoS gate. RAW (SRD 5.2.1 Dodge): "any attack roll made against you has Disadvantage if you can see the attacker." Slice 272 added the Incap/Speed-0 self-disable; this slice adds the per-attacker LoS gate on the attack-disadvantage arm only (RAW: the LoS clause applies to the attack benefit; the DEX-save advantage has no LoS clause).
-
-Same consumer-coordinated pattern as slice 276 (Frightened), but per-**attacker** rather than per-**bearer**: the same dodging creature might see attacker A but not attacker B, so the fact lives on `AttackIntent` (per-call) rather than on a per-character state field.
-
-**Plumbing**: new `targetCanSeeAttacker?: boolean` on [`AttackIntent`](src/engine/plan/attack.ts) and `ResolveAttackInput`, threaded into the `attackerFacts` map as `bearer.canSeeAttacker` (the bearer of `dodged` is the target of this attack). Default-apply: predicate is `not eq value:false`, undefined and true both fire the disadvantage.
-
-**Content wired**: `dodged.effects[0]` (the `ImposeDisadvantageOnAttackers` entry) combines the slice-272 Incap/Speed-0 gate with the new LoS gate via `all`. The DEX-save advantage arm stays unchanged (RAW: no LoS clause). Description rewritten to cite both gates.
-
-Audit: name parallels slice 276's `bearerCanSeeFearSource` but axis differs (per-attacker vs. per-bearer). Threading uses the slice-206 spread-on-defined idiom. Derive-only fact-population; plan/commit split preserved. tsc clean; full vitest suite (1722 tests across 252 files, was 1718) green. 4 cases in [tests/unit/engine/dodge-los-gate.test.ts](tests/unit/engine/dodge-los-gate.test.ts): undefined fires disadvantage; true fires; false bypasses; non-dodged target has no disadvantage. Default-apply preserved prior behavior (the 1718 pre-slice tests still pass without modification). Pack drift: `dodged.effects[0].condition.terms` gains a third (LoS) term.
-
-**Docs+infra: archive slices 261-268 to restore single-Read ceiling (slice 277)**
-
-Companion to slice 276. Slice 276's CHANGELOG entry pushed the live doc ~70 tokens over the single-Read ceiling. This slice archives the pattern-check chain (slices 261-268) to [docs/changelog/archive-slices-261-268.md](docs/changelog/archive-slices-261-268.md), mirroring slice 270's archive of 252-260. Live Unreleased now carries slices 269-276 (the bug-fix cohort that surfaced from the pattern-check chain).
-
-CHANGELOG.md drops from ~63 KB → ~35 KB. Mechanical reorganization only; path-prefix sweep applied per the slice-252 convention. tsc clean; full vitest suite (1718 tests across 251 files) green. Both front-door docs verified to fit in a single Read post-archive.
-
-**Engine+content: Frightened breadth + LoS gate (slice 276)**
-
-Closes the dual-bug slice-264 deferred row. Both axes fixed simultaneously: breadth (now all 6 ability checks via the slice-266 check wildcard; was STR-only) + LoS gate (consumer-supplied, default-apply). RAW (SRD 5.2.1): "Disadvantage on ability checks and attack rolls while the source of fear is within line of sight."
-
-First slice in this chain to ship the **engine half of a consumer-coordinated fix**: the engine exposes a `bearerCanSeeFearSource?: boolean` slot on `AttackIntent` + `ComputeAbilityCheckInput`, the consumer (UI, encounter manager, future VTT) supplies the value when it models line of sight, undefined preserves current behavior. The predicate is `not eq path:'bearer.canSeeFearSource' value:false` — default-apply semantics so consumers not yet wired don't regress. Future LoS-gated bugs (Dodge LoS gate, Cloak of the Bat dim-light family) will follow the same pattern.
-
-**Plumbing**: new `bearerCanSeeFearSource?: boolean` on [`AttackIntent`](src/engine/plan/attack.ts), [`ResolveAttackInput`](src/engine/plan/attack.ts), and [`ComputeAbilityCheckInput`](src/derive/ability-check.ts). Threaded from `planAttack` through `resolveAttack` into `attackerSelfAdvantageFacts` (attack arm); populated directly in `computeAbilityCheck`'s facts map (check arm). Mirrors slice-263 / 274 consumer-supplied scene-state pattern.
-
-**Content wired**: `frightened` condition's existing STR-only check entry replaced with the slice-266 wildcard; both arms gain `condition: { kind: 'not', term: { kind: 'eq', path: 'bearer.canSeeFearSource', value: false } }`.
-
-**Pattern-check sweep**: Frightened is the unique RAW source-in-LoS-gated condition. Charmed gates on a specific source-relative target (different shape); Hex tracks without LoS. Per-source `frightened-by-X` variants don't ship today.
-
-Audit: names match the `bearer.*` namespace and slice-263 / 274 sibling fields. Threading uses the slice-206 spread-on-defined idiom. Derive-only fact-population; plan/commit split preserved. tsc clean; full vitest suite (1718 tests across 251 files, was 1711) green. 7 cases in [tests/unit/engine/frightened-los-gate.test.ts](tests/unit/engine/frightened-los-gate.test.ts) — 4 ability-check + 3 attack-roll. Default-apply preserves prior behavior (the 1711 pre-slice tests still pass without modification). Pack drift: `frightened.effects[0]` + `effects[1]` each gain a `condition` field; the check arm switches from per-ability (STR) to wildcard.
-
-**Engine+content: Bracers of Archery +2 damage with longbow / shortbow (slice 275)**
-
-Closes the slice-224 deferred row that has been waiting on weapon-id specificity. RAW: "Proficiency with the longbow and the shortbow, and gain a +2 bonus to damage rolls on ranged attacks made with such weapons." Pre-275 Bracers of Archery shipped unwired (`effects: []`). This slice ships the +2 damage arm (the higher-payoff mechanical wire); the proficiency arm stays deferred until conditional `GrantProficiency` lands.
-
-**Plumbing**:
-
-- New `event.weaponId: string` predicate fact on the attack planner's `damageFacts` map (carrying the weapon instance's `definitionId`). Sits alongside `event.attackKind`, `event.damageType`, and `bearer.offHandHasWeapon`. Unblocks any future weapon-specific item buff with the same shape (Sun Blade vs. specific sword types, Dwarven Thrower vs. specific hammers, etc.).
-
-**Content wired (1 magic item)**:
-
-- **Bracers of Archery** (was `effects: []`): new `AddModifier { target: 'damage', value: 2, condition: { kind: 'any', terms: [{ kind: 'eq', path: 'event.weaponId', value: 'longbow' }, { kind: 'eq', path: 'event.weaponId', value: 'shortbow' }] } }`. Description rewrites the RAW spec and notes the deferred proficiency arm.
-
-**Pattern-check sweep**: searched the pack for sibling items with weapon-id-specific damage gates — none currently. Sun Blade gates on weapon TYPE (radiant) which the existing `event.damageType` covers. Dwarven Thrower, Trident of Fish Command, and other "specific weapon type" items mostly ship as `effects: []` and would benefit from `event.weaponId` when wired; tracking those as a future content sweep rather than this slice.
-
-**RAW deviation tracked**: the proficiency arm of Bracers of Archery (RAW: grants longbow/shortbow proficiency regardless of class) is not yet wired. Conditional `GrantProficiency` would be the cleanest path (a `condition` field on the existing `GrantProficiency` shape, mirror of slice 258's `SetAdvantage.condition` plumbing). No current canonical user other than this; tracked as deferred and waiting for a second use case before adding the schema field.
-
-Pre-commit Uncle Bob audit:
-
-- **Names**: `event.weaponId` lives in the existing `event.*` namespace alongside `event.attackKind` and `event.damageType`. Mirrors the slice-263 / 274 `event.sense` / `event.athleticsSubAction` pattern.
-- **DRY**: same fact-map-then-AddModifier shape as Dueling fighting style (`event.attackKind == melee`) and Archery fighting style (`event.attackKind == ranged`). The Bracers wire reads consistently with both.
-- **SRP**: one new fact, one content wire, no API change. The damageFacts map already existed and already routed predicates; this slice extends it by one key.
-- **Magic numbers**: `2` (the damage bonus) is RAW; `'longbow'` / `'shortbow'` are content ids (RAW-named).
-- **at-threading**: N/A (damage modifier, no new event emitted).
-- **Plan/commit split preserved**: derive-only (modifier sum), no RNG.
-- **Pattern-check applied**: confirmed Bracers of Archery is the only currently-applicable user of weapon-id-specific damage gates. Future "specific weapon type" items (Dwarven Thrower, Trident of Fish Command, etc.) plug in by gating on `event.weaponId`.
-- **Mechanical outcomes asserted**: tsc clean; full vitest suite (1711 tests across 250 files, was 1706) green. 5 cases: Bracers + longbow gets +2; Bracers + shortbow gets +2; Bracers + heavy crossbow gets +0 (RAW bows only); no Bracers baseline; Bracers carried but not attuned stays at baseline (slice-132 projection gate).
-- **Tests**: 5 cases in new [tests/unit/engine/bracers-of-archery.test.ts](tests/unit/engine/bracers-of-archery.test.ts). Coverage snapshot: `bracers-of-archery` joins `wiredIds` (was unwired).
-
-Pack snapshot drift: `bracers-of-archery.effects` goes from `[]` to a single AddModifier entry. Coverage matrix: 1 new entry in `wiredIds`.
-
-**Engine+content: Gloves of Swimming and Climbing sub-action gate (slice 274)**
-
-Closes the deferred row from slice 263's pattern-check sweep. RAW: "Advantage on any Strength (Athletics) check you make to climb or swim." Pre-274 the wire was broader (advantage on every Athletics check). Mirror of slice 263's `sense?` field pattern on a different axis (skill sub-action vs. environmental sense).
-
-**Plumbing**:
-
-- New `athleticsSubAction?: 'climb' | 'swim' | 'jump' | 'grapple' | 'shove'` field on [`ComputeAbilityCheckInput`](src/derive/ability-check.ts). The five-value enum covers 2024 PHB-named Athletics applications. Populated by the consumer who knows the narrative context; defaults to undefined.
-- `computeAbilityCheck` populates `event.athleticsSubAction: input.athleticsSubAction` in the facts map alongside slice 263's `event.sense`. Undefined means "consumer didn't specify" — gates requiring a specific sub-action evaluate false.
-
-**Content wired (1 magic item)**:
-
-- **Gloves of Swimming and Climbing**: existing `SetAdvantage on:{kind:'skill', skill:'athletics'} mode:'advantage'` gains `condition: { kind: 'any', terms: [{ kind: 'eq', path: 'event.athleticsSubAction', value: 'climb' }, { kind: 'eq', path: 'event.athleticsSubAction', value: 'swim' }] }`. The ClimbSpeed / SwimSpeed arms stay unconditional (RAW: granted while the gloves are worn).
-
-**Pattern-check sweep**: searched the pack for other `SetAdvantage on:{kind:'skill', skill:'athletics'}` wires — none. Gloves of Swimming and Climbing is the unique Athletics-targeting SetAdvantage in the pack. The pattern-check chain from slice 263 (which surfaced 3 broader-than-RAW SetAdvantage wires: Eyes of the Eagle closed slice 263; Cloak of the Bat Stealth still open per the deferred light-level row; Gloves closed this slice) is now down to 1 remaining.
-
-Pre-commit Uncle Bob audit:
-
-- **Names**: `athleticsSubAction` is intention-revealing about its scope (Athletics-only) and the axis (sub-action vs. ambient context). `event.athleticsSubAction` mirrors `event.sense` in the predicate namespace.
-- **DRY**: same shape as slice 263's `sense?` field. The two facts live side-by-side in the same facts map population in `computeAbilityCheck` (3 lines vs. 1 line each); no abstraction needed.
-- **SRP**: the input field, fact population, and content wire each own one concern. No engine API change beyond the optional input field.
-- **Magic numbers**: none. The five sub-action enum values are RAW vocabulary.
-- **at-threading**: N/A (derive-only).
-- **Plan/commit split preserved**: derive-only change.
-- **Pattern-check applied**: confirmed Gloves are the unique Athletics-targeting SetAdvantage. Closing this row leaves Cloak of the Bat Stealth as the only remaining slice-263 deferred sibling (which still needs the `bearer.lightLevel` consumer-state fact).
-- **Mechanical outcomes asserted**: tsc clean; full vitest suite (1706 tests across 249 files, was 1700) green. 6 cases: advantage on climb, advantage on swim, no advantage on jump, no advantage on grapple/shove (loop), no advantage when sub-action omitted, no advantage when Gloves unattuned (slice-132 projection gate still works).
-- **Tests**: 6 cases in new [tests/unit/derive/gloves-of-swimming-and-climbing.test.ts](tests/unit/derive/gloves-of-swimming-and-climbing.test.ts).
-
-Pack snapshot drift: `gloves-of-swimming-and-climbing.effects[2]` gains a `condition` field. Coverage matrix counts unchanged.
-
-**Engine+content: Invisible condition perception-bypass on both arms (slice 273)**
-
-Closes the gap tracked in slice 271's pattern-check secondary finding. The `invisible` condition had a known two-bug shape:
-
-1. The bearer-side `SetAdvantage on:'attack' mode:'advantage'` (bearer's own attacks) applied unconditionally; RAW: "If a creature can somehow see you, you don't gain this benefit against that creature."
-2. The disadvantage-on-attackers arm was missing entirely; RAW: "Attack rolls against you have Disadvantage."
-
-This slice ships both. The shape is symmetric to slice 271's Blur bypass but uses a different bypass clause (Blinded creatures do NOT bypass invisibility — they can't see anything to begin with — so they're excluded from this fact).
-
-**Plumbing**:
-
-- New `attacker.canLocateInvisible` + `target.canLocateInvisible` boolean facts populated in [src/engine/plan/attack.ts](src/engine/plan/attack.ts). True when the counter-party has blindsight, tremorsense, or truesight. Computed via a shared helper closure (`canLocateInvisible(effectStack)`) applied to both attacker and target.
-- `attackerEffects.advantageFor('attack')` now receives a facts map containing `target.canLocateInvisible` (previously called with no facts). The existing `attackerFacts` map (passed to `imposesDisadvantageOnAttackers`) gains `attacker.canLocateInvisible`.
-
-**Content wired (1 condition)**:
-
-- **`invisible`**: existing `SetAdvantage on:'attack' mode:'advantage'` gains `condition: { kind: 'eq', path: 'target.canLocateInvisible', value: false }`. New `ImposeDisadvantageOnAttackers` entry with `condition: { kind: 'eq', path: 'attacker.canLocateInvisible', value: false }`. Description rewrites the RAW spec and notes the Blinded distinction.
-
-**Pattern-check sweep**: Invisible is the only 2024 RAW condition with `SetAdvantage on:'attack' mode:'advantage'` (slice 113 archived: "invisible — gains advantage on its own attacks"). All other conditions with `SetAdvantage on:'attack'` use `mode:'disadvantage'` (blinded, frightened, poisoned, prone, restrained — none need a bypass clause; they impose on the bearer's own attacks unconditionally per RAW). No sibling bugs surfaced.
-
-Pre-commit Uncle Bob audit:
-
-- **Names**: `canLocateInvisible` reads as a boolean question targeted at the Invisible RAW shape ("can a creature somehow see you"). Mirror naming on both attacker and target sides. The slice-271 `bypassesSightIllusion` fact is kept separate because its bypass clause includes Blinded (Blur's "doesn't rely on sight" applies to blinded creatures; Invisible's "can somehow see you" does not).
-- **DRY**: shared `canLocateInvisible(effects)` closure used at both attacker and target call sites — three-line helper, two call sites, the symmetry made the abstraction worth the named function.
-- **SRP**: facts live in the existing maps already passed to `advantageFor` / `imposesDisadvantageOnAttackers`. No new helper or API change. The condition uses existing `eq` predicate; no new predicate kinds.
-- **Magic numbers**: none added. The three senses (blindsight, tremorsense, truesight) are RAW vocabulary.
-- **at-threading**: N/A (derive-only fact population).
-- **Plan/commit split preserved**: derive-only change. No RNG, no event emission.
-- **Pattern-check applied**: confirmed Invisible is the unique 2024 condition with `SetAdvantage on:'attack' mode:'advantage'`. Five other `SetAdvantage on:'attack'` wires all use disadvantage; none need a bypass.
-- **Mechanical outcomes asserted**: tsc clean; full vitest suite (1700 tests across 248 files, was 1695) green. 5 integration cases organized in two describes: bearer-attacks-someone (advantage with sight-only target; no advantage with truesight target) + attacker-targets-bearer (disadvantage with sight-only attacker; no disadvantage with truesight attacker) + a no-Invisible baseline.
-- **Tests**: 5 cases in new [tests/unit/engine/invisible-perception-bypass.test.ts](tests/unit/engine/invisible-perception-bypass.test.ts).
-
-Pack snapshot drift: `invisible.effects[0]` gains a `condition` field; new `effects[1]` is the ImposeDisadvantageOnAttackers entry. Coverage matrix counts unchanged.
-
-**Engine+content: Dodge benefits disabled by Incapacitated / Speed 0 (slice 272)**
-
-Closes the second of the slice-267 outstanding bugs. RAW (2024 PHB Dodge action): "You lose these benefits if you have the Incapacitated condition or if your Speed is 0." Pre-272 the `dodged` condition imposed both benefits (disadvantage on attackers + advantage on DEX saves) unconditionally. The gaps row sketched two paths; this slice ships path (a) — per-effect `condition` predicate — because it reuses the slice-103 + slice-258 plumbing already in place without new schema surface. Path (b) (a condition-level `disabledWhile?` field) is deferred unless a second canonical user emerges.
-
-**Plumbing**:
-
-- New `bearer.hasIncapacitated` and `bearer.speedZero` boolean facts populated at the two consumer sites: [src/engine/plan/attack.ts](src/engine/plan/attack.ts) (for the `ImposeDisadvantageOnAttackers` arm) and [src/derive/save.ts](src/derive/save.ts) (for the `SetAdvantage on:save.DEX` arm). The existing `findActorBlockingCondition` helper (slice 199) covers Incapacitated + the four conditions that RAW-include Incapacitated (Stunned, Paralyzed, Petrified, Unconscious) plus HP <= 0; `getEffectiveSpeed` (slice 77) computes the bearer's effective walking speed across the full effect stack.
-- `computeSavingThrow` adds the new facts to the same facts map already carrying `event.isSpellSave`. No API change.
-
-**Content wired (1 condition)**:
-
-- **`dodged`**: both effect entries gain a `condition: { kind: 'all', terms: [{ kind: 'eq', path: 'bearer.hasIncapacitated', value: false }, { kind: 'eq', path: 'bearer.speedZero', value: false }] }` predicate. Description rewritten to cite the RAW disable clause and the slice-267 LoS row that stays deferred.
-
-**Pattern-check sweep** (per slice 261 / 268 norms): the "RAW lose these benefits if X" shape is uniquely Dodge among 2024 conditions. Rage, Concentration, and Hide all *end* on their respective triggers rather than disabling effects while keeping the condition active. No sibling bugs surfaced. The slice-103 `ImposeDisadvantageOnAttackers.condition` plumbing already honored predicates; the only missing piece was the bearer-state facts at the call sites — populated here for both consumer paths.
-
-Pre-commit Uncle Bob audit:
-
-- **Names**: `bearer.hasIncapacitated` reads as a boolean question; `bearer.speedZero` is concise. Both live in the existing `bearer.*` namespace alongside `bearer.tempHp` (slice 122) and `bearer.wieldingShield` (slice 230). The old Elusive-era `bearerHasIncapacitated` fact (no dot, slice 199) is left untouched because pulling Elusive into the new namespace would be a separate concern.
-- **DRY**: same two facts populated at two call sites (attack planner + save derive). Considered factoring into a helper but the call sites differ (attack consumes the target via its planner state; save consumes `input.character` via its derive input) and the construction is 3 lines each. Inline keeps each consumer self-contained.
-- **SRP**: facts live next to existing predicate facts in the same maps. No new helper. The condition's predicate composition uses existing `all` + `eq` shapes; no new predicate kinds.
-- **Magic numbers**: none added.
-- **at-threading**: N/A (derive-only fact population).
-- **Plan/commit split preserved**: derive-only change. No RNG, no event emission.
-- **Pattern-check applied**: searched for RAW "lose these benefits if..." shape across the 2024 PHB conditions; Dodge is the unique instance. The cleaner path-(b) abstraction (condition-level `disabledWhile?`) is deferred because there's no second user to justify the schema extension.
-- **Mechanical outcomes asserted**: tsc clean; full vitest suite (1695 tests across 247 files, was 1692) green. 3 integration cases: baseline (both arms work), Incapacitated disables both, Grappled (speed 0) disables both. Grappled rather than Restrained for the speed-zero case because Restrained adds its own advantage-on-attackers + DEX-save disadvantage that would muddy the observable.
-- **Tests**: 3 cases in new [tests/unit/engine/dodge-self-disable.test.ts](tests/unit/engine/dodge-self-disable.test.ts).
-
-Pack snapshot drift: `dodged.effects[0]` and `effects[1]` each gain a `condition` field. Coverage matrix counts unchanged.
-
-**Engine+content: Blurred attacker-sense bypass closes the slice-267 outstanding bug (slice 271)**
-
-Closes the third of the slice-267 outstanding bugs: the `blurred-active` condition imposed disadvantage on attackers unconditionally, but Blur RAW says "An attacker is immune to this effect if it doesn't rely on sight, as with Blindsight, or can see through illusions, as with Truesight." The bypass shape is mirror of slice 127's Mirror Image vision-gate (already shipped for that one spell's dedicated deflection branch).
-
-**Plumbing**:
-
-- New `attacker.bypassesSightIllusion` boolean fact populated in [src/engine/plan/attack.ts](src/engine/plan/attack.ts)'s `attackerFacts` map. True when the attacker has blindsight, tremorsense, or truesight, OR carries the Blinded condition. Mirrors the slice-127 Mirror Image bypass logic verbatim. Darkvision is sight-based and intentionally excluded.
-
-**Content wired (1 condition)**:
-
-- **`blurred-active`**: the existing `ImposeDisadvantageOnAttackers` entry gains `condition: { kind: 'eq', path: 'attacker.bypassesSightIllusion', value: false }`. Description rewritten to drop the "blindsight / truesight / blindness isn't modeled" caveat.
-
-**Pattern-check sweep** (per slice 261 / 268 norms): walked all 8 `ImposeDisadvantageOnAttackers` wires in the pack against RAW. Blur was the only same-shape bug:
-
-- `escape-the-horde` (slice 206): gated on `event.isOpportunityAttack` — correct.
-- `dodged` (Dodge action): two separately-tracked deferred rows (LoS gate + Incap/Speed-0 disabler) blocked on consumer-supplied scene state and bearer-state predicate facts respectively.
-- `boots-of-speed-active` (slice 269): gated on `event.isOpportunityAttack` — correct.
-- `foresight-active` (Foresight spell): unconditional — RAW-correct (precognitive sense, not a sight-illusion).
-- `protection-from-evil-and-good-active` (slice 103): gated on `attackerCreatureType` — correct.
-- `magic-circle-active` (slice 103): gated on `attackerCreatureType` — correct.
-- `holy-aura-active` (slice 103): unconditional — RAW-correct (universal).
-
-**Pattern-check secondary finding** (different shape, new tracking row): the `invisible` condition's wire is broken on a different axis. It carries `SetAdvantage on:'attack' mode:'advantage'` (bearer's own attack advantage) but is missing both:
-1. The disadvantage-on-attackers arm entirely.
-2. The bypass clause on the existing advantage arm ("if a creature can somehow see you, you don't gain this benefit against that creature").
-
-Tracked as a new deferred row in [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md). Closing (b) for Invisible is a one-line content edit (parallel to this slice); closing (a) needs a target-side perception fact symmetric to this slice's attacker-side fact (the engine doesn't track per-target see-invisibility today).
-
-Pre-commit Uncle Bob audit:
-
-- **Names**: `attacker.bypassesSightIllusion` is intention-revealing about both the bypass condition and the use case (sight-illusion effects, not all sight-related). The path namespace (`attacker.*`) matches the existing `attacker` family (`attackerCreatureType` already in the same map).
-- **DRY**: bypass logic mirrors slice 127 byte-for-byte (`hasSense('blindsight') || hasSense('tremorsense') || hasSense('truesight') || appliedConditions.includes('blinded')`). Extracted as a local boolean named `attackerBypassesSightIllusion` for readability; not factored to a shared helper because slice 127's Mirror Image branch reads its own logic inline (the inline form lets each call site document its bypass clauses against its own RAW source).
-- **SRP**: the fact-population sits next to the existing `attackerCreatureType` and `event.isOpportunityAttack` facts (one map, one purpose: predicate gates for `ImposeDisadvantageOnAttackers`). The condition entry gates via the existing slice-103 predicate plumbing; no engine API change.
-- **Magic numbers**: none added. The four sense / condition checks are RAW vocabulary.
-- **at-threading**: N/A (no events emitted by the new code path).
-- **Plan/commit split preserved**: derive-only fact-population; no RNG, no event emission.
-- **Pattern-check applied**: 8 wires audited, 1 closed (Blur), 0 false-positives (RAW-correct universal wires kept as-is), 1 new tracking row (Invisible — different shape).
-- **Mechanical outcomes asserted**: tsc clean; full vitest suite (1692 tests across 246 files, was 1689) green. 3 new integration cases: baseline sight-only attacker rolls with disadvantage (2 d20); truesight attacker bypasses (1 d20, used='none'); no-condition baseline doesn't impose disadvantage (1 d20). The Blinded-attacker case is observationally muddied by Blinded's own attacker-side disadvantage (slice 97) and isn't pinned at the integration level; the slice-127 Mirror Image tests pin the same Blinded-bypass code path in a different scenario.
-- **Tests**: 3 cases in new [tests/unit/engine/blur-attacker-sense-bypass.test.ts](tests/unit/engine/blur-attacker-sense-bypass.test.ts).
-
-Pack snapshot drift: 1 entry on `blurred-active.effects[0]` gains a `condition` field. Coverage matrix counts unchanged.
-
-**Docs+infra: front-door docs split back under single-Read ceiling (slice 270)**
-
-Two same-shape splits to restore single-Read fitness on the two front-door docs that drifted over the ceiling during the recent slice cluster:
-
-1. **CHANGELOG.md**: slices 252-260 archived to [docs/changelog/archive-slices-252-260.md](docs/changelog/archive-slices-252-260.md) (mirrors the slice 248 / slice 252 archive convention). Slices 261-269 stay live as the recent pattern-check chain + bug-fix slice.
-2. **docs/starter-pack-gaps.md**: the shipped engine-slice rows (~30 rows, all `~~struck through~~` ✓ shipped) split out to [docs/gaps-engine-slices-shipped.md](docs/gaps-engine-slices-shipped.md). The "Future engine slices" table in the live gaps doc now lists only the unshipped rows plus a pointer to the shipped archive.
-
-Surface symptom: pre-split, both files errored out on the Read tool with "exceeds maximum allowed tokens." A fresh agent landing on the repo couldn't open either front-door doc in one call, breaking the slice-template discovery path. Both are now back under the ceiling and read in one call.
-
-What changed:
-
-- **CHANGELOG.md**: 65 KB → ~36 KB. Live Unreleased section keeps slices 261-269 (9 slices); archived range 252-260 (9 slices) follows the slice-252 archive format including the `../../` path prefix sweep on root-relative links.
-- **New file [docs/changelog/archive-slices-252-260.md](docs/changelog/archive-slices-252-260.md)** (~35 KB): header + slice-by-slice entries copied verbatim with the path-prefix sweep applied. Order: most-recent first.
-- **CHANGELOG archive pointer block**: gains the new archive's row at the top of the index; description prose updated to reflect "slices 48-260" coverage and slice 270 as the most recent archive operation.
-- **docs/starter-pack-gaps.md**: 64 KB → ~33 KB. The "Future engine slices" table now contains only unshipped rows; a pointer line and a sentence of context route readers to the shipped-engine-slices archive when they want the historical view.
-- **New file [docs/gaps-engine-slices-shipped.md](docs/gaps-engine-slices-shipped.md)** (~32 KB): carries the shipped rows verbatim (relative links unchanged because the new file is a sibling under `docs/`, same depth as the original).
-
-Pattern-check meta-finding: both front-door docs drifted over the ceiling during the slice 253-269 window. Slice 248 originally enforced the ceiling but didn't add a mechanical check; slices since then grew the files past the limit silently. Adding a CI check (a script that fails when front-door docs exceed N bytes / tokens) would catch this earlier; tracked as a small future infra slice.
-
-Pre-commit short audit (docs/infra slice):
-
-- **Names**: archive file naming follows the existing `archive-slices-NNN-MMM.md` convention; the new `gaps-engine-slices-shipped.md` mirrors the slice-249 pattern (`gaps-{category}.md` siblings under `docs/`).
-- **DRY**: archive headers reuse the slice-252 archive's structure (intro paragraph + bullet list of covered slices + most-recent-first note). Path-prefix sweep uses the slice-252 sed pattern verbatim.
-- **SRP**: pure docs/infra slice. No code, schemas, or content surface touched. The split is mechanical reorganization; no content edits beyond the path-prefix sweep.
-- **Magic numbers**: ceiling target stated as "comfortably under 60 KB" matching CLAUDE.md's documented threshold.
-- **at-threading**: N/A.
-- **Mechanical outcomes asserted**: tsc clean; full vitest suite (1689 tests across 245 files) green; CHANGELOG.md fits in a single Read post-split; docs/starter-pack-gaps.md fits in a single Read post-split; both archive files fit individually; sibling-archive cross-references in `docs/changelog/` still resolve.
-- **Tests**: no new tests. The doc-size check is manual at this point (verified by attempting `Read` on each front-door doc without offset/limit).
-
-**Content: Boots of Speed Disadvantage-on-OA arm closed; stale gap row (slice 269)**
-
-Closes the Boots of Speed RAW "Disadvantage on opportunity attacks against the wearer" arm that has been deferred since slice 242. The `boots-of-speed-active` condition now wires a second effect: `ImposeDisadvantageOnAttackers` gated on `{ kind: 'eq', path: 'event.isOpportunityAttack', value: true }`. No engine work — the predicate fact landed in slice 206 (for Hunter L7 Escape the Horde, the first canonical user of the same shape), making this a one-line content edit.
-
-What changed:
-
-- **[src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)** boots-of-speed-active condition: added the `ImposeDisadvantageOnAttackers` entry; rewrote the description to drop the stale "needs an `event.isOpportunityAttack` predicate fact" caveat (slice 206 landed it).
-- **[tests/unit/engine/boots-of-speed-oa-disadvantage.test.ts](tests/unit/engine/boots-of-speed-oa-disadvantage.test.ts)** (new, 3 cases): an OA against the boots-active wearer rolls with disadvantage (2 d20); a regular attack does not (1 d20, used='none'); an OA against a baseline target without the condition does not (1 d20).
-- **[docs/starter-pack-gaps.md](docs/starter-pack-gaps.md)**: struck the deferred row; closure annotation cites the meta-finding below.
-
-**Pattern-check meta-finding**: this row sat 27 slices past the primitive's landing (slice 206 → slice 269 for the second canonical user). Slice 206 wired one canonical user (Escape the Horde) and tested the fact's plumbing, but didn't sweep the deferred-primitives backlog for OTHER content already documented as waiting on the same fact. The pattern-check norm focuses on "did I make this mistake elsewhere?" — this slice surfaces a complementary axis: **when a new predicate fact lands, sweep the deferred-primitives backlog for content awaiting it**. Adding this to the slice-template checklist could be a future docs slice; for now, the lesson is captured in this entry plus the row's closure annotation.
-
-Pre-commit short audit (content slice):
-
-- **Names**: reuses the slice-206 `event.isOpportunityAttack` path verbatim; condition id and effect kind are existing vocabulary.
-- **DRY**: the predicate shape `{ kind: 'eq', path: 'event.isOpportunityAttack', value: true }` matches Escape the Horde's wire (slice 206) byte-for-byte. Two users of the same primitive, factored at the schema layer.
-- **SRP**: the boots condition now does two things (speed × 2 + OA disadvantage) but both arms are RAW from one item, atomic by design.
-- **Magic numbers**: none added. The d20-count (2 vs 1) tested in the new file is the standard advantage/disadvantage shape.
-- **at-threading**: N/A (content-only slice).
-- **Mechanical outcomes asserted**: OA against active wearer → `used='disadvantage'`, d20.length=2; regular attack same wearer → `used='none'`, d20.length=1; OA against inactive baseline → `used='none'`, d20.length=1. Pins the predicate gates on both axes (boots-state and attack-shape).
-- **Tests**: 3 new cases under boots-of-speed-oa-disadvantage.test.ts. The third (baseline-without-boots) ensures the entry is genuinely gated on the condition and isn't a global side effect.
-
-Pack snapshot drift: 1 new entry on `boots-of-speed-active.effects[]`. Coverage matrix counts unchanged (the slice doesn't add a new effect kind).
 
 ## 0.1.0-alpha.6 - 2026-05-18
 
@@ -319,8 +349,9 @@ Headline changes since alpha.5:
 
 ---
 
-*Slice detail for slices 48-268 has been moved out of the live CHANGELOG to per-cohort archives under [docs/changelog/](docs/changelog/) (single-Read fitness; slices 261-268 were archived in slice 277; slices 252-260 in slice 270; the alpha.6 release block of slices 241-250 in slice 252; older slices in slice 248). Each fits in a single Read tool call:*
+*Slice detail for slices 48-280 has been moved out of the live CHANGELOG to per-cohort archives under [docs/changelog/](docs/changelog/) (single-Read fitness; slices 269-280 were archived in slice 288; slices 261-268 in slice 277; slices 252-260 in slice 270; the alpha.6 release block of slices 241-250 in slice 252; older slices in slice 248). Each fits in a single Read tool call:*
 
+- *[archive-slices-269-280.md](docs/changelog/archive-slices-269-280.md) (alpha.7 release block: bug-fix cohort + consumer-coordinated pattern + docs hygiene)*
 - *[archive-slices-261-268.md](docs/changelog/archive-slices-261-268.md) (pattern-check chain: norm codified, RAW-deviation sweeps, filter-shape refinement)*
 - *[archive-slices-252-260.md](docs/changelog/archive-slices-252-260.md) (post-alpha.6 polish + audit-gap-fix trio + closure-annotation convention)*
 - *[archive-slices-241-250.md](docs/changelog/archive-slices-241-250.md) (alpha.6 release block, slices 241-250)*

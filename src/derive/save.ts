@@ -39,6 +39,18 @@ export interface ComputeSaveInput {
   // magical sources (cast-spell, traps spell-armed, recurring saves
   // on spell-applied conditions, etc.) pass `true`.
   readonly sourceIsMagical?: boolean;
+  // Slice 291: the condition id this save's outcome would prevent or
+  // end, when known. Cast-spell save mechanics with `conditionOnFail`
+  // pass the conditionId here (the save's failure applies that
+  // condition); recurring-save planners pass the bearer condition id
+  // when the save's success would end the condition (per
+  // `recurringSave.onSuccess: 'removeCondition'`). Surfaces as the
+  // `event.savePreventsCondition` predicate fact so per-condition
+  // save-advantage buffs can gate ("advantage on saves to avoid or
+  // end the Poisoned condition," per Antitoxin RAW). Generic saves
+  // (Stunning Strike CON, multiattack save, etc.) leave this
+  // undefined and the gate evaluates false.
+  readonly savePreventsCondition?: string;
 }
 
 const isSaveProficient = (character: Character, ability: AbilityScore, content: ResolvedContent): boolean => {
@@ -123,6 +135,8 @@ export const computeSavingThrow = (input: ComputeSaveInput): SaveResult => {
     ['event.isSpellSave', input.sourceIsMagical === true],
     ['bearer.hasIncapacitated', bearerHasIncapacitated],
     ['bearer.speedZero', bearerSpeedZero],
+    // Slice 291: per-condition save-advantage gate (Antitoxin).
+    ['event.savePreventsCondition', input.savePreventsCondition],
   ]);
   const adv = effects.advantageFor(target, facts);
   // Slice 131: Magic Resistance contributes advantage to the save

@@ -124,6 +124,14 @@ export const planTickRecurringSave = (
     // Bestow Curse's inactive-turn variant), so the recurring save
     // counts as a magical effect.
     sourceIsMagical: true,
+    // Slice 291: when the recurring save's success ends the condition,
+    // surface the condition id so per-condition save-advantage buffs
+    // (Antitoxin's poisoned gate) can fire. onFail-only recurring
+    // saves don't end the condition on success, so the gate stays
+    // off.
+    ...(conditionDef.recurringSave.onSuccess === 'removeCondition'
+      ? { savePreventsCondition: intent.conditionId }
+      : {}),
   });
 
   // Slice 133: honor save advantage / disadvantage. The recurring
