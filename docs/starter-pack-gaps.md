@@ -35,9 +35,9 @@ Sibling per-category catalogs (extracted in slice 249 to keep this doc under the
 | Backgrounds | 19 / 16 | 16 | Full PHB 2024 list shipped (plus three legacy entries for round-trip compat). |
 | Feats | 35 total | ~50+ | 12 origin / 7 general / 6 fighting style / 10 epic boon. SRD 5.2.1 complete. |
 | Spells | 351 (339 SRD + 12 non-SRD) | ~340 (SRD 5.2.1) | ~147 mechanically wired (139 via `mechanicalEffects`, 11 dedicated planners). Per-level wired-vs-schema-only catalog in [gaps-spells.md](gaps-spells.md). |
-| Items | 510 total | hundreds (DMG) | 39 weapons + 13 armor + 52 consumables + 37 tools + 77 gear + 292 magic items (62 wired per coverage snapshot; slice 298 removed a Stone of Good Luck duplicate, so net change is -1 entry +4 newly-wired). Per-item RAW shape catalog in [gaps-items-batches-1.1-1.10.md](gaps-items-batches-1.1-1.10.md) + [gaps-items-batches-1.11-1.20.md](gaps-items-batches-1.11-1.20.md). |
+| Items | 510 total | hundreds (DMG) | 39 weapons + 13 armor + 55 consumables + 37 tools + 77 gear + 289 magic items (64 wired per coverage snapshot). Slice 305 wired 2 magic items (Ring of Feather Falling, Gloves of Thievery) and converted 3 miscategorized potions (Gaseous Form, Invulnerability, Elixir of Health) from `magic` to `consumable` with `onConsume` wires. Per-item RAW shape catalog in [gaps-items-batches-1.1-1.10.md](gaps-items-batches-1.1-1.10.md) + [gaps-items-batches-1.11-1.20.md](gaps-items-batches-1.11-1.20.md). |
 | Monsters | 253 / ~370 | ~370 (MM) | All 14 MM creature types in pack; SRD 5.2.1 monster catalog complete (235/235). Per-batch authoring history + per-RAW-trait deferred mechanics in the `gaps-monsters-*` sibling files. |
-| Conditions | 115 (15 RAW + 100 rider) | 15 (RAW) | All 15 RAW conditions plus 100 mechanic-rider conditions used by the engine. Slices 301-302 added 4 buff conditions; slice 304 removed 6 dead 2014-era orphans. |
+| Conditions | 116 (15 RAW + 101 rider) | 15 (RAW) | All 15 RAW conditions plus 101 mechanic-rider conditions used by the engine. Slices 301-302 added 4 buff conditions; slice 304 removed 6 dead 2014-era orphans; slice 305 added potion-of-invulnerability-active. |
 
 ## Spells
 

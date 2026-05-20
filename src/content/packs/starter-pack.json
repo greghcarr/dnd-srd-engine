@@ -2526,7 +2526,7 @@
     { "id": "ioun-stone-leadership", "itemKind": "magic", "name": "Ioun Stone, Leadership", "rarity": "very-rare", "requiresAttunement": true, "effects": [] },
     { "id": "ioun-stone-awareness", "itemKind": "magic", "name": "Ioun Stone, Awareness", "rarity": "rare", "requiresAttunement": true, "effects": [] },
     { "id": "ioun-stone-protection", "itemKind": "magic", "name": "Ioun Stone, Protection", "rarity": "rare", "requiresAttunement": true, "effects": [{ "kind": "AddModifier", "target": "ac", "value": 1 }] },
-    { "id": "ring-of-feather-falling", "itemKind": "magic", "name": "Ring of Feather Falling", "rarity": "rare", "requiresAttunement": true, "effects": [] },
+    { "id": "ring-of-feather-falling", "itemKind": "magic", "name": "Ring of Feather Falling", "rarity": "rare", "requiresAttunement": true, "effects": [{ "kind": "GrantFallingProtection" }] },
     { "id": "ring-of-mind-shielding", "itemKind": "magic", "name": "Ring of Mind Shielding", "rarity": "uncommon", "requiresAttunement": true, "effects": [] },
     { "id": "ring-of-warmth", "itemKind": "magic", "name": "Ring of Warmth", "rarity": "uncommon", "requiresAttunement": true, "effects": [{ "kind": "GrantResistance", "damageType": "cold" }] },
     { "id": "ring-of-water-walking", "itemKind": "magic", "name": "Ring of Water Walking", "rarity": "uncommon", "requiresAttunement": false, "effects": [] },
@@ -2626,7 +2626,7 @@
     { "id": "talisman-of-the-sphere", "itemKind": "magic", "name": "Talisman of the Sphere", "rarity": "legendary", "requiresAttunement": true, "effects": [] },
     { "id": "eyes-of-minute-seeing", "itemKind": "magic", "name": "Eyes of Minute Seeing", "rarity": "uncommon", "requiresAttunement": false, "description": "RAW (SRD 5.2.1): 'These crystal lenses fit over the eyes. While wearing them, your vision improves significantly out to a range of 1 foot, granting you Darkvision within that range and Advantage on Intelligence (Investigation) checks made to examine something within that range.' Slice 298 wired the Investigation advantage arm via slice-263's skill-discriminated SetAdvantage. The 1-foot Darkvision arm is narrative (engine doesn't reason about sub-5-foot vision separately); the 'to examine something within that range' gate is consumer-managed (mirror of slice 289's Cloak of the Bat dim-light gate).", "effects": [{ "kind": "SetAdvantage", "on": { "kind": "skill", "skill": "investigation" }, "mode": "advantage" }] },
     { "id": "helm-of-comprehending-languages", "itemKind": "magic", "name": "Helm of Comprehending Languages", "rarity": "uncommon", "requiresAttunement": false, "effects": [] },
-    { "id": "gloves-of-thievery", "itemKind": "magic", "name": "Gloves of Thievery", "rarity": "uncommon", "requiresAttunement": false, "effects": [] },
+    { "id": "gloves-of-thievery", "itemKind": "magic", "name": "Gloves of Thievery", "rarity": "uncommon", "requiresAttunement": false, "effects": [{ "kind": "AddModifier", "target": { "kind": "skill", "skill": "sleight-of-hand" }, "value": 5 }] },
     { "id": "boots-of-the-winterlands", "itemKind": "magic", "name": "Boots of the Winterlands", "rarity": "uncommon", "requiresAttunement": true, "effects": [{ "kind": "GrantResistance", "damageType": "cold" }] },
     { "id": "ring-of-spell-storing", "itemKind": "magic", "name": "Ring of Spell Storing", "rarity": "rare", "requiresAttunement": true, "charges": { "max": 5, "recharge": "never" }, "effects": [] },
     { "id": "ring-of-three-wishes", "itemKind": "magic", "name": "Ring of Three Wishes", "rarity": "legendary", "requiresAttunement": false, "charges": { "max": 3, "recharge": "never" }, "effects": [] },
@@ -2817,7 +2817,7 @@
     {"id": "efficient-quiver", "itemKind": "magic", "name": "Efficient Quiver", "rarity": "uncommon", "requiresAttunement": false, "effects": []},
     {"id": "efreeti-bottle", "itemKind": "magic", "name": "Efreeti Bottle", "rarity": "very-rare", "requiresAttunement": false, "effects": []},
     {"id": "elemental-gem", "itemKind": "magic", "name": "Elemental Gem", "rarity": "uncommon", "requiresAttunement": false, "effects": []},
-    {"id": "elixir-of-health", "itemKind": "magic", "name": "Elixir of Health", "rarity": "rare", "requiresAttunement": false, "effects": []},
+    {"id": "elixir-of-health", "itemKind": "consumable", "name": "Elixir of Health", "onConsume": [{ "kind": "RemoveConditions", "conditionIds": ["blinded", "deafened", "paralyzed", "poisoned"] }], "description": "RAW (SRD 5.2.1): 'When you drink this potion, you are cured of all magical contagions. In addition, the following conditions end on you: Blinded, Deafened, Paralyzed, and Poisoned.' Slice 305 wired the condition-clear arm via the slice-283 RemoveConditions ConsumeAction variant. The 'cured of all magical contagions' arm is narrative (the engine doesn't model diseases)."},
     {"id": "energy-bow", "itemKind": "magic", "name": "Energy Bow", "rarity": "very-rare", "requiresAttunement": true, "effects": []},
     {"id": "eyes-of-charming", "itemKind": "magic", "name": "Eyes of Charming", "rarity": "uncommon", "requiresAttunement": true, "effects": []},
     {"id": "gem-of-seeing", "itemKind": "magic", "name": "Gem of Seeing", "rarity": "rare", "requiresAttunement": true, "effects": []},
@@ -2859,8 +2859,8 @@
     {"id": "plate-armor-of-etherealness", "itemKind": "magic", "name": "Plate Armor of Etherealness", "rarity": "legendary", "requiresAttunement": true, "effects": []},
     {"id": "portable-hole", "itemKind": "magic", "name": "Portable Hole", "rarity": "rare", "requiresAttunement": false, "effects": []},
     {"id": "potion-of-clairvoyance", "itemKind": "magic", "name": "Potion of Clairvoyance", "rarity": "rare", "requiresAttunement": false, "effects": []},
-    {"id": "potion-of-gaseous-form", "itemKind": "magic", "name": "Potion of Gaseous Form", "rarity": "rare", "requiresAttunement": false, "effects": []},
-    {"id": "potion-of-invulnerability", "itemKind": "magic", "name": "Potion of Invulnerability", "rarity": "rare", "requiresAttunement": false, "effects": []},
+    {"id": "potion-of-gaseous-form", "itemKind": "consumable", "name": "Potion of Gaseous Form", "onConsume": [{ "kind": "ApplyCondition", "conditionId": "gaseous-form-active" }], "description": "RAW (SRD 5.2.1): 'When you drink this potion, you gain the effect of the Gaseous Form spell for 1 hour (no Concentration required) or until you end the effect as a Bonus Action.' Slice 305 wired via the slice-287 gaseous-form-active condition (reused from the spell). The 1-hour duration and bonus-action dismissal are consumer-managed (mirror of slice 236's ApplyCondition doc)."},
+    {"id": "potion-of-invulnerability", "itemKind": "consumable", "name": "Potion of Invulnerability", "onConsume": [{ "kind": "ApplyCondition", "conditionId": "potion-of-invulnerability-active" }], "description": "RAW (SRD 5.2.1): 'For 1 minute after you drink this potion, you have Resistance to all damage.' Slice 305 wired via a new potion-of-invulnerability-active condition (GrantResistance damageType: all). The 1-minute duration is consumer-managed (mirror of slice 236's ApplyCondition doc)."},
     {"id": "potion-of-longevity", "itemKind": "magic", "name": "Potion of Longevity", "rarity": "very-rare", "requiresAttunement": false, "effects": []},
     {"id": "quarterstaff-of-the-acrobat", "itemKind": "magic", "name": "Quarterstaff of the Acrobat", "rarity": "very-rare", "requiresAttunement": true, "effects": []},
     {"id": "ring-of-djinni-summoning", "itemKind": "magic", "name": "Ring of Djinni Summoning", "rarity": "legendary", "requiresAttunement": true, "effects": []},
@@ -8702,6 +8702,14 @@
           ]
         }
       ]
+    },
+    {
+      "id": "potion-of-invulnerability-active",
+      "name": "Potion of Invulnerability",
+      "description": "Resistance to all damage for 1 minute (Potion of Invulnerability, slice 305). RAW (SRD 5.2.1): 'For 1 minute after you drink this potion, you have Resistance to all damage.' Flows through the existing mitigateDamage pipeline (GrantResistance damageType: all, already supported). The 1-minute duration is consumer-managed.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [{ "kind": "GrantResistance", "damageType": "all" }]
     },
     {
       "id": "protection-acid-active",

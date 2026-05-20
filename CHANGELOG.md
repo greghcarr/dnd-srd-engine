@@ -4,6 +4,22 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content: magic-item buff sweep, 5 wires via existing primitives (slice 305)**
+
+Pure-content sweep, no engine changes. Five DMG magic items wired through primitives the engine already supports, each pinned by a test in [tests/unit/engine/slice-305-magic-item-wires.test.ts](tests/unit/engine/slice-305-magic-item-wires.test.ts):
+
+- **Ring of Feather Falling** → `effects: [{ GrantFallingProtection }]`. The slice-129 falling planner already short-circuits to no events when this effect is present; the attuned ring projects it via slice-132 magic-item projection (RAW: "you descend 60 feet per round and take no damage from falling").
+- **Gloves of Thievery** → `effects: [{ AddModifier, target: { kind: skill, skill: sleight-of-hand }, value: 5 }]`. Projects from inventory (no attunement) and surfaces in the ability-check modifier sum (RAW: "+5 bonus to Dexterity (Sleight of Hand) checks").
+- **Potion of Invulnerability** → `onConsume: [{ ApplyCondition, conditionId: potion-of-invulnerability-active }]` + a new condition carrying `GrantResistance { damageType: 'all' }` (RAW: "Resistance to all damage" for 1 minute).
+- **Potion of Gaseous Form** → `onConsume: [{ ApplyCondition, conditionId: gaseous-form-active }]`, reusing the slice-287 condition (RAW: "the effect of the Gaseous Form spell for 1 hour").
+- **Elixir of Health** → `onConsume: [{ RemoveConditions, conditionIds: [blinded, deafened, paralyzed, poisoned] }]` via the slice-283 ConsumeAction variant (RAW: those four conditions end).
+
+The three potions/elixir were miscategorized as `itemKind: 'magic'` with empty `effects` (the pack's other potions are already `consumable`); slice 305 corrected them to `itemKind: 'consumable'` so they carry `onConsume`. RAW deviations carried as consumer-managed (mirror of slice 236's ApplyCondition doc): the 1-minute / 1-hour potion durations and Gaseous Form's bonus-action dismissal are not auto-expired; Elixir's "cured of all magical contagions" arm is narrative (no disease model).
+
+Process note (why this is a content sweep, not the planned next buff-spell wire): a full audit of the remaining buff-shape `skip` spells in spell-coverage.test.ts found the cheap pure-content spell wires are exhausted — every remaining one needs a missing primitive (see-invisibility wants a `see-invisible` sense; glibness/nondetection want anti-divination + check-floor primitives; beacon-of-hope needs a death-save advantage RollTarget plus recipient-side max-healing). Magic items still hold wireable-today content, so the sweep pivoted there to keep pushing coverage cheaply.
+
+Audit (content sweep): Names — reused existing effect-primitive vocabulary and the `*-active` condition naming convention. DRY — no new abstraction; each wire is a direct primitive application. SRP — the one new condition does one thing (resistance to all). Magic numbers — the +5 (Gloves) and the four cleared conditions (Elixir) are RAW-cited above. Mechanical outcomes asserted — falling planner returns no events with the ring (and damage without it / unattuned); Gloves add exactly +5 to the sleight-of-hand modifier sum and 0 to other skills; consuming each potion applies/removes the expected conditions and Invulnerability yields resistance to fire/bludgeoning/necrotic. Tests — 9 new, pinning each wire plus an unattuned-ring control, a non-skill-bleed check, and a no-op Elixir clear that still consumes the item. Coverage snapshot gained `potion-of-invulnerability-active` + the 2 magic items; full suite green (1873 passed), tsc clean. Docs: gaps Items + Conditions rows refreshed.
+
 **Content cleanup: remove 6 dead 2014-era orphan conditions (slice 304)**
 
 Closes the slice-301 deferred row, now guided by the slice-303 pack-integrity audit. Removed all six conditions that carried effects but had no SRD 5.2.1 spell carrier (all 2014 PHB leftovers): `wrathful-smite-active`, `thunderous-smite-active`, `branding-smite-active` (named-smite spells, replaced by 2024's Divine Smite feature), `holy-weapon-active` (Holy Weapon), `invulnerable-active` (Invulnerability), `earthbound-active` (Earthbind). None are in the spells catalog; the conditions were stranded when the IP cleanup / SRD 5.2.1 migration dropped the carrier spells.
