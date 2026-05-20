@@ -98,6 +98,7 @@ export { planFlurryOfBlows, type FlurryOfBlowsIntent } from './flurry-of-blows.j
 export { planPatientDefense, type PatientDefenseIntent } from './patient-defense.js';
 export { planStepOfTheWind, type StepOfTheWindIntent } from './step-of-the-wind.js';
 export { planIntimidatingPresence, type IntimidatingPresenceIntent } from './intimidating-presence.js';
+export { planDragonWings, type DragonWingsIntent } from './dragon-wings.js';
 export { planFrenzy, type FrenzyIntent } from './frenzy.js';
 export {
   planCuttingWords,

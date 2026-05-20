@@ -1185,7 +1185,7 @@
           {
             "id": "dragon-wings",
             "name": "Dragon Wings",
-            "effects": []
+            "effects": [{ "kind": "Custom", "handlerId": "dragon-wings" }]
           }
         ],
         "18": [
@@ -8239,6 +8239,16 @@
       "id": "flying-active",
       "name": "Flying",
       "description": "Gains a flying speed of 60 ft for the duration. The engine's `getEffectiveSpeed` planner currently reads `character.speedFeet` (walking) directly and doesn't consume `ModifySpeed` effects from features or conditions; this entry ships as discoverable metadata so consumers can read 'fly 60 ft' from the effect stack.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "ModifySpeed", "mode": "fly", "op": "set", "value": 60 }
+      ]
+    },
+    {
+      "id": "dragon-wings-active",
+      "name": "Dragon Wings",
+      "description": "Draconic Sorcery L14 Dragon Wings: a Fly Speed of 60 feet (observable via getEffectiveFlySpeed). Applied by engine.plan.dragonWings. A dedicated condition (rather than reusing flying-active) so dismissing the Fly spell never removes the sorcerer's wings. Consumer-managed: the 1-hour duration, dismissal (no action: remove the condition), and the once-per-Long-Rest use restorable by spending 3 Sorcery Points.",
       "stackable": false,
       "endsOn": [],
       "effects": [

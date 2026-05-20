@@ -4,6 +4,18 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content: Draconic Sorcery Dragon Wings (slice 351)**
+
+New `planDragonWings` ([src/engine/plan/dragon-wings.ts](src/engine/plan/dragon-wings.ts)) + `engine.plan.dragonWings`. RAW 2024 (Sorcerer L14): as a Bonus Action, gain a Fly Speed of 60 feet. The planner validates Draconic Sorcery at level 14+ and applies the new `dragon-wings-active` condition (`ModifySpeed { fly, set, 60 }`), observable through `getEffectiveFlySpeed` (slice 288). Activation works in or out of combat: the Bonus Action is consumed only when the sorcerer is the active combatant in an encounter (and is rejected on another creature's turn), mirroring the graceful in/out-of-encounter handling of `planStunningStrike`. The subclass feature carries a `Custom { handlerId }` planner marker.
+
+A dedicated `dragon-wings-active` condition (rather than reusing the Fly spell's identical `flying-active`) keeps the sorcerer's wings independent of the Fly spell, so dispelling one never removes the other.
+
+Deferred / consumer-managed (documented): the 1-hour duration, dismissal (no action: remove the condition), and the once-per-Long-Rest use restorable by spending 3 Sorcery Points.
+
+Closes the L14 Dragon Wings stub. Conditions 119 -> 120. New [tests/unit/engine/slice-351-dragon-wings.test.ts](tests/unit/engine/slice-351-dragon-wings.test.ts): out of combat grants Fly Speed 60 with no action-economy event; in combat consumes the Bonus Action and grants the speed; a sub-L14 / non-draconic sorcerer is rejected.
+
+Uncle Bob audit: **Names** `planDragonWings` / `dragon-wings-active` match the feature. **DRY** reuses the slice-288 fly-speed derive, the `ModifySpeed fly set` shape (Fly / Cloak of the Bat), the `planStunningStrike` in/out-of-encounter gating, and the Sacred Weapon `Custom`-marker convention; no new derive or event. **SRP** the planner validates + (conditionally) consumes the Bonus Action + applies the buff; the fly-speed math lives in `getEffectiveFlySpeed`. **Magic numbers** the 60-ft fly speed + L14 are named/RAW-cited (the speed in the condition's content). **at-threading** single `nowIso()`; no RNG. **Mechanical outcomes asserted** Fly Speed 60 after activation, the Bonus-Action consume only in combat, and the level/subclass guard. **Tests** prevent the buff not applying, the economy firing out of combat, and a non-qualifying actor using it. No em/en dashes. Full suite green (304 files), `tsc --noEmit` clean; coverage snapshot gained `dragon-wings-active` + `draconic-sorcery L14 dragon-wings`.
+
 **Engine + content: Path of the Berserker Intimidating Presence (slice 350)**
 
 New `planIntimidatingPresence` ([src/engine/plan/intimidating-presence.ts](src/engine/plan/intimidating-presence.ts)) + `engine.plan.intimidatingPresence`. RAW 2024 (Barbarian L14): as a Bonus Action, each creature of the barbarian's choice makes a Wisdom save (DC 8 + STR mod + Proficiency Bonus); on a failure it has the Frightened condition. The planner validates Path of the Berserker at level 14+, requires the barbarian to be the active combatant, consumes the Bonus Action, and rolls one save per chosen target via the shared `rollSaveAgainstDC` helper (full derivation: advantage / Bless-Bane bonus dice / Magic Resistance), applying the bare `frightened` condition on a failure. The subclass feature is marked with a `Custom { handlerId }` planner marker (the Sacred Weapon convention).
