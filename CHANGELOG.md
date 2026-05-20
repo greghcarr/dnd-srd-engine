@@ -4,6 +4,19 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content: magic-item buff sweep cont., 5 more wearables/weapons (slice 312)**
+
+Pure-content sweep, no engine changes. Five attunement-gated items, passive arms wired via existing primitives; pinned by [tests/unit/engine/slice-312-magic-item-wires.test.ts](tests/unit/engine/slice-312-magic-item-wires.test.ts):
+
+- **Robe of Eyes** → `GrantSense truesight 120` + `GrantSense darkvision 120` (Special Senses) + `SetAdvantage skill:perception` (All-Around Vision). RAW deviation: the "rely on sight" scope on the Perception advantage isn't modeled; the Light/Daylight blind-drawback is deferred (situational, scene-lighting-gated). Truesight already composes with the slice-127/271/273 invisible/illusion-piercing facts, so the see-invisible/ethereal flavor is covered.
+- **Frost Brand** → `GrantResistance fire` (the on-hit +1d6 cold rider is deferred — on-hit weapon mechanic).
+- **Quarterstaff of the Acrobat** → `SetAdvantage skill:acrobatics` (Acrobatic Assist; the +2 weapon bonus + form toggle + deflection reaction deferred).
+- **Robe of Stars** and **Luck Blade** → `AddModifier { kind: save } +1` (all-saves, via the slice-299 save-wildcard). Their charged/weapon/travel arms are deferred.
+
+Boundary found and respected: magic-**armor** AC items (Dwarven Plate, Elven Chain, Glamoured Studded Leather, Demon Armor, Dragon Scale Mail) are typed `magic` and don't carry base armor AC, so wiring their "+N AC" as `AddModifier ac` would add the bonus on top of whatever *other* armor the character wears rather than being the armor — a mis-model. They stay deferred until magic armor is modeled as armor (base AC + magic bonus). This is distinct from the slice-311 Scarab/Staff AC bonuses, which are wondrous-item/staff bonuses that correctly stack on worn armor.
+
+Audit (content sweep): Names — no new identifiers; reused GrantSense / GrantResistance / SetAdvantage / AddModifier. DRY — Robe of Stars + Luck Blade share the slice-299 save-wildcard arm; Quarterstaff/Robe-of-Eyes advantage reuses the SetAdvantage skill shape. SRP — one primitive per arm. Magic numbers — the 120-ft sense ranges, +1 save, fire type all RAW-cited. Mechanical outcomes asserted — Robe of Eyes truesight+darkvision senses + Perception advantage; Frost Brand fire resistance (not cold); Quarterstaff acrobatics advantage (not stealth); Robe of Stars + Luck Blade +1 to **every** ability's save (loops all six). Tests — 5 new. Coverage snapshot gained the 5 items; full suite green (1908 passed), tsc clean. Docs: gaps Items wired 81 → 86 + the magic-armor-AC deferral note.
+
 **Content: magic-item buff sweep cont., 6 staves/rods/medallion (slice 311)**
 
 Pure-content sweep, no engine changes. Six attunement-gated items, passive arms wired via existing primitives; pinned by [tests/unit/engine/slice-311-magic-item-wires.test.ts](tests/unit/engine/slice-311-magic-item-wires.test.ts):
