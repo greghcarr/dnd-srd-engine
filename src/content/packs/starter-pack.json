@@ -1701,7 +1701,7 @@
     { "id": "guards-and-wards", "name": "Guards and Wards", "level": 6, "school": "abjuration", "castingTime": "1 hour", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a silver rod worth 10+ GP" }, "duration": "24 hours", "concentration": false, "ritual": false, "classes": ["bard", "wizard"], "targeting": { "shape": "cube", "size": 50 }, "mechanicalEffects": [] },
     { "id": "harm", "name": "Harm", "level": 6, "school": "necromancy", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["cleric"], "mechanicalEffects": [{ "kind": "save", "ability": "CON", "damageDice": "14d6", "damageType": "necrotic", "halfOnSuccess": true }] },
     { "id": "heal", "name": "Heal", "level": 6, "school": "abjuration", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["cleric", "druid"], "mechanicalEffects": [{ "kind": "heal", "flatAmount": 70, "extraDicePerSlotLevel": 0 }] },
-    { "id": "heroes-feast", "name": "Heroes' Feast", "level": 6, "school": "conjuration", "castingTime": "10 minutes", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "a gem-encrusted bowl worth 1,000+ GP, which the spell consumes" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["bard", "cleric", "druid"], "targeting": { "shape": "cube", "size": 10 }, "mechanicalEffects": [] },
+    { "id": "heroes-feast", "name": "Heroes' Feast", "level": 6, "school": "conjuration", "castingTime": "10 minutes", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "a gem-encrusted bowl worth 1,000+ GP, which the spell consumes" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["bard", "cleric", "druid"], "targeting": { "shape": "cube", "size": 10 }, "mechanicalEffects": [{ "kind": "buff", "conditionId": "heroes-feasted-active" }] },
     { "id": "magic-jar", "name": "Magic Jar", "level": 6, "school": "necromancy", "castingTime": "1 minute", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "a gem, crystal, or reliquary worth 500+ GP" }, "duration": "Until dispelled", "concentration": false, "ritual": false, "classes": ["wizard"], "mechanicalEffects": [] },
     { "id": "mass-suggestion", "name": "Mass Suggestion", "level": 6, "school": "enchantment", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "material": "a snake's tongue" }, "duration": "24 hours", "concentration": false, "ritual": false, "classes": ["bard", "sorcerer", "wizard"], "mechanicalEffects": [{ "kind": "save", "ability": "WIS", "conditionOnFail": "charmed" }] },
     { "id": "move-earth", "name": "Move Earth", "level": 6, "school": "transmutation", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true, "material": "a miniature shovel" }, "duration": "Concentration, up to 2 hours", "concentration": true, "ritual": false, "classes": ["druid", "sorcerer", "wizard"], "targeting": { "shape": "cube", "size": 40 }, "mechanicalEffects": [] },
@@ -1709,10 +1709,10 @@
     { "id": "planar-ally", "name": "Planar Ally", "level": 6, "school": "conjuration", "castingTime": "10 minutes", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["cleric"], "mechanicalEffects": [] },
     { "id": "programmed-illusion", "name": "Programmed Illusion", "level": 6, "school": "illusion", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true, "material": "jade dust worth 25+ GP" }, "duration": "Until dispelled", "concentration": false, "ritual": false, "classes": ["bard", "wizard"], "targeting": { "shape": "cube", "size": 30 }, "mechanicalEffects": [] },
     { "id": "sunbeam", "name": "Sunbeam", "level": 6, "school": "evocation", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "a magnifying glass" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["cleric", "druid", "sorcerer", "wizard"], "targeting": { "shape": "line", "size": 60 }, "mechanicalEffects": [{ "kind": "save", "ability": "CON", "damageDice": "6d8", "damageType": "radiant", "halfOnSuccess": true }] },
-    { "id": "true-seeing", "name": "True Seeing", "level": 6, "school": "divination", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "mushroom powder worth 25+ GP, which the spell consumes" }, "duration": "1 hour", "concentration": false, "ritual": false, "classes": ["bard", "cleric", "sorcerer", "warlock", "wizard"], "mechanicalEffects": [] },
+    { "id": "true-seeing", "name": "True Seeing", "level": 6, "school": "divination", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "mushroom powder worth 25+ GP, which the spell consumes" }, "duration": "1 hour", "concentration": false, "ritual": false, "classes": ["bard", "cleric", "sorcerer", "warlock", "wizard"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "true-seeing-active" }] },
     { "id": "wall-of-ice", "name": "Wall of Ice", "level": 6, "school": "evocation", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true, "material": "a piece of quartz" }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["wizard"], "mechanicalEffects": [{ "kind": "aura-damage", "rangeFeet": 60, "saveAbility": "DEX", "damageDice": "10d6", "damageType": "cold", "halfOnSuccess": true, "extraDicePerSlotLevel": 2 }] },
     { "id": "wall-of-thorns", "name": "Wall of Thorns", "level": 6, "school": "conjuration", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true, "material": "a handful of thorns" }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["druid"], "mechanicalEffects": [{ "kind": "aura-damage", "rangeFeet": 60, "saveAbility": "DEX", "damageDice": "7d8", "damageType": "piercing", "halfOnSuccess": true }] },
-    { "id": "wind-walk", "name": "Wind Walk", "level": 6, "school": "transmutation", "castingTime": "1 minute", "range": "30 feet", "components": { "verbal": true, "somatic": true, "material": "a candle" }, "duration": "8 hours", "concentration": false, "ritual": false, "classes": ["druid"], "mechanicalEffects": [] },
+    { "id": "wind-walk", "name": "Wind Walk", "level": 6, "school": "transmutation", "castingTime": "1 minute", "range": "30 feet", "components": { "verbal": true, "somatic": true, "material": "a candle" }, "duration": "8 hours", "concentration": false, "ritual": false, "classes": ["druid"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "wind-walking-active" }] },
     { "id": "word-of-recall", "name": "Word of Recall", "level": 6, "school": "conjuration", "castingTime": "Action", "range": "5 feet", "components": { "verbal": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["cleric"], "mechanicalEffects": [] },
     { "id": "conjure-celestial", "name": "Conjure Celestial", "level": 7, "school": "conjuration", "castingTime": "Action", "range": "90 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["cleric"], "targeting": { "shape": "cylinder", "size": 40 }, "mechanicalEffects": [{ "kind": "summon", "name": "Celestial Servitor", "ac": 16, "hpBase": 70, "hpPerSlotAbove": 10, "baseSlotLevel": 7, "speedFeet": 50 }] },
     { "id": "delayed-blast-fireball", "name": "Delayed Blast Fireball", "level": 7, "school": "evocation", "castingTime": "Action", "range": "150 feet", "components": { "verbal": true, "somatic": true, "material": "a ball of bat guano and sulfur" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["sorcerer", "wizard"], "targeting": { "shape": "sphere", "size": 20 }, "mechanicalEffects": [{ "kind": "save", "ability": "DEX", "damageDice": "12d6", "damageType": "fire", "halfOnSuccess": true, "extraDicePerSlotLevel": 1 }] },
@@ -2042,7 +2042,7 @@
     { "id": "spider-climb", "name": "Spider Climb", "level": 2, "school": "transmutation", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a drop of bitumen and a spider" }, "duration": "Concentration, up to 1 hour", "concentration": true, "ritual": false, "classes": ["sorcerer", "warlock", "wizard"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "spider-climbing-active" }] },
     { "id": "spike-growth", "name": "Spike Growth", "level": 2, "school": "transmutation", "castingTime": "Action", "range": "150 feet", "components": { "verbal": true, "somatic": true, "material": "seven thorns" }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["druid", "ranger"], "targeting": { "shape": "sphere", "size": 20 }, "mechanicalEffects": [{ "kind": "movement-damage", "rangeFeet": 20, "damageDicePerFiveFeet": "2d4", "damageType": "piercing" }] },
     { "id": "summon-beast", "name": "Summon Beast", "level": 2, "school": "conjuration", "castingTime": "Action", "range": "90 feet", "components": { "verbal": true, "somatic": true, "material": "a feather, tuft of fur, and fish tail inside a gilded acorn worth 200+ GP" }, "duration": "Concentration, up to 1 hour", "concentration": true, "ritual": false, "classes": ["druid", "ranger"], "mechanicalEffects": [{ "kind": "summon", "name": "Bestial Spirit", "ac": 11, "hpBase": 30, "hpPerSlotAbove": 5, "baseSlotLevel": 2, "speedFeet": 30 }] },
-    { "id": "warding-bond", "name": "Warding Bond", "level": 2, "school": "abjuration", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a pair of platinum rings worth 50+ GP each, which you and the target must wear for the duration" }, "duration": "1 hour", "concentration": false, "ritual": false, "classes": ["cleric", "paladin"], "mechanicalEffects": [] },
+    { "id": "warding-bond", "name": "Warding Bond", "level": 2, "school": "abjuration", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a pair of platinum rings worth 50+ GP each, which you and the target must wear for the duration" }, "duration": "1 hour", "concentration": false, "ritual": false, "classes": ["cleric", "paladin"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "warding-bond-active" }] },
     { "id": "zone-of-truth", "name": "Zone of Truth", "level": 2, "school": "enchantment", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "10 minutes", "concentration": false, "ritual": false, "classes": ["bard", "cleric", "paladin"], "targeting": { "shape": "sphere", "size": 15 }, "mechanicalEffects": [] },
     { "id": "call-lightning", "name": "Call Lightning", "level": 3, "school": "conjuration", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["druid"], "targeting": { "shape": "cylinder", "size": 5 }, "mechanicalEffects": [{ "kind": "save", "ability": "DEX", "damageDice": "3d10", "damageType": "lightning", "halfOnSuccess": true, "extraDicePerSlotLevel": 1 }] },
     { "id": "fear", "name": "Fear", "level": 3, "school": "illusion", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "a white feather" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "sorcerer", "warlock", "wizard"], "targeting": { "shape": "cone", "size": 30 }, "mechanicalEffects": [{ "kind": "save", "ability": "WIS", "conditionOnFail": "frightened" }] },
@@ -2405,7 +2405,7 @@
     { "id": "gem-of-brightness", "itemKind": "magic", "name": "Gem of Brightness", "rarity": "uncommon", "requiresAttunement": false, "charges": { "max": 50, "recharge": "never" }, "effects": [] },
     { "id": "vicious-weapon", "itemKind": "magic", "name": "Vicious Weapon", "rarity": "rare", "requiresAttunement": false, "effects": [] },
     { "id": "sun-blade", "itemKind": "magic", "name": "Sun Blade", "rarity": "rare", "requiresAttunement": true, "effects": [] },
-    { "id": "frost-brand", "itemKind": "magic", "name": "Frost Brand", "rarity": "very-rare", "requiresAttunement": true, "effects": [] },
+    { "id": "frost-brand", "itemKind": "magic", "name": "Frost Brand", "rarity": "very-rare", "requiresAttunement": true, "effects": [{ "kind": "GrantResistance", "damageType": "fire" }], "description": "RAW (SRD 5.2.1): 'while you hold the weapon, you have Resistance to Fire damage.' Slice 312 wired the fire-resistance arm. Deferred: the on-hit +1d6 cold rider (on-hit weapon-damage mechanic) and the freezing-temperature light. Held-state is consumer-managed; attunement is the projection proxy." },
     { "id": "holy-avenger", "itemKind": "magic", "name": "Holy Avenger", "rarity": "legendary", "requiresAttunement": true, "attunementCondition": "Paladin", "effects": [] },
     { "id": "vorpal-sword", "itemKind": "magic", "name": "Vorpal Sword", "rarity": "legendary", "requiresAttunement": true, "effects": [] },
     { "id": "dwarven-thrower", "itemKind": "magic", "name": "Dwarven Thrower", "rarity": "very-rare", "requiresAttunement": true, "attunementCondition": "Dwarf or a creature attuned to a Belt of Dwarvenkind", "effects": [] },
@@ -2418,7 +2418,7 @@
     { "id": "dragon-scale-mail", "itemKind": "magic", "name": "Dragon Scale Mail", "rarity": "very-rare", "requiresAttunement": true, "effects": [] },
     { "id": "demon-armor", "itemKind": "magic", "name": "Demon Armor", "rarity": "very-rare", "requiresAttunement": true, "effects": [] },
     { "id": "sentinel-shield", "itemKind": "magic", "name": "Sentinel Shield", "rarity": "uncommon", "requiresAttunement": false, "effects": [{ "kind": "SetAdvantage", "on": "initiative", "mode": "advantage" }, { "kind": "SetAdvantage", "on": { "kind": "skill", "skill": "perception" }, "mode": "advantage" }] },
-    { "id": "spellguard-shield", "itemKind": "magic", "name": "Spellguard Shield", "rarity": "very-rare", "requiresAttunement": true, "effects": [] },
+    { "id": "spellguard-shield", "itemKind": "magic", "name": "Spellguard Shield", "rarity": "very-rare", "requiresAttunement": true, "effects": [{ "kind": "GrantMagicResistance" }], "description": "RAW (SRD 5.2.1): 'While holding this Shield, you have Advantage on saving throws against spells and other magical effects, and spell attack rolls have Disadvantage against you.' Slice 307 wired the Magic Resistance arm via the slice-131 GrantMagicResistance marker (computeSavingThrow contributes advantage when the save's sourceIsMagical fact is true). The 'spell attack rolls have Disadvantage against you' arm is deferred: the attack planner's `event.attackKind` fact is only melee/ranged (spell attacks set ranged), so there is no isSpellAttack fact to gate an ImposeDisadvantageOnAttackers entry on without also penalizing mundane ranged attacks. Closing it needs a new isSpellAttack fact distinct from attackKind." },
     { "id": "staff-of-charming", "itemKind": "magic", "name": "Staff of Charming", "rarity": "rare", "requiresAttunement": true, "attunementCondition": "Bard, Cleric, Druid, Sorcerer, Warlock, or Wizard", "charges": { "max": 10, "recharge": "dawn", "rechargeFormula": "1d8+2" }, "effects": [] },
     {
       "id": "staff-of-healing",
@@ -2518,15 +2518,15 @@
     { "id": "spell-scroll-of-cone-of-cold", "itemKind": "consumable", "name": "Spell Scroll of Cone of Cold", "onConsume": [{ "kind": "CastSpell", "spellId": "cone-of-cold", "slotLevel": 5, "castingClassId": "wizard" }], "description": "Rare spell scroll. Cast Cone of Cold at 5th level (save DC 17); scroll crumbles after a single use. Non-class-list casters must succeed on a DC 15 INT or WIS check to read." },
     { "id": "spell-scroll-of-disintegrate", "itemKind": "consumable", "name": "Spell Scroll of Disintegrate", "onConsume": [{ "kind": "CastSpell", "spellId": "disintegrate", "slotLevel": 6, "castingClassId": "wizard" }], "description": "Very rare spell scroll. Cast Disintegrate at 6th level (save DC 17); scroll crumbles after a single use. Non-class-list casters must succeed on a DC 16 INT or WIS check to read." },
     { "id": "spell-scroll-of-wish", "itemKind": "consumable", "name": "Spell Scroll of Wish", "onConsume": [], "description": "Legendary spell scroll. Cast Wish at 9th level (the spell carries its own risk clauses); scroll crumbles after a single use. Wish uses a dedicated planner (planWish); scroll-via-CastSpell is deferred pending a scroll-to-planner dispatch shape." },
-    { "id": "ioun-stone-strength", "itemKind": "magic", "name": "Ioun Stone, Strength", "rarity": "very-rare", "requiresAttunement": true, "effects": [] },
-    { "id": "ioun-stone-agility", "itemKind": "magic", "name": "Ioun Stone, Agility", "rarity": "very-rare", "requiresAttunement": true, "effects": [] },
-    { "id": "ioun-stone-fortitude", "itemKind": "magic", "name": "Ioun Stone, Fortitude", "rarity": "very-rare", "requiresAttunement": true, "effects": [] },
-    { "id": "ioun-stone-intellect", "itemKind": "magic", "name": "Ioun Stone, Intellect", "rarity": "very-rare", "requiresAttunement": true, "effects": [] },
-    { "id": "ioun-stone-insight", "itemKind": "magic", "name": "Ioun Stone, Insight", "rarity": "very-rare", "requiresAttunement": true, "effects": [] },
-    { "id": "ioun-stone-leadership", "itemKind": "magic", "name": "Ioun Stone, Leadership", "rarity": "very-rare", "requiresAttunement": true, "effects": [] },
-    { "id": "ioun-stone-awareness", "itemKind": "magic", "name": "Ioun Stone, Awareness", "rarity": "rare", "requiresAttunement": true, "effects": [] },
+    { "id": "ioun-stone-strength", "itemKind": "magic", "name": "Ioun Stone, Strength", "rarity": "very-rare", "requiresAttunement": true, "effects": [{ "kind": "IncreaseAbilityScore", "ability": "STR", "amount": 2, "max": 20 }] },
+    { "id": "ioun-stone-agility", "itemKind": "magic", "name": "Ioun Stone, Agility", "rarity": "very-rare", "requiresAttunement": true, "effects": [{ "kind": "IncreaseAbilityScore", "ability": "DEX", "amount": 2, "max": 20 }] },
+    { "id": "ioun-stone-fortitude", "itemKind": "magic", "name": "Ioun Stone, Fortitude", "rarity": "very-rare", "requiresAttunement": true, "effects": [{ "kind": "IncreaseAbilityScore", "ability": "CON", "amount": 2, "max": 20 }] },
+    { "id": "ioun-stone-intellect", "itemKind": "magic", "name": "Ioun Stone, Intellect", "rarity": "very-rare", "requiresAttunement": true, "effects": [{ "kind": "IncreaseAbilityScore", "ability": "INT", "amount": 2, "max": 20 }] },
+    { "id": "ioun-stone-insight", "itemKind": "magic", "name": "Ioun Stone, Insight", "rarity": "very-rare", "requiresAttunement": true, "effects": [{ "kind": "IncreaseAbilityScore", "ability": "WIS", "amount": 2, "max": 20 }] },
+    { "id": "ioun-stone-leadership", "itemKind": "magic", "name": "Ioun Stone, Leadership", "rarity": "very-rare", "requiresAttunement": true, "effects": [{ "kind": "IncreaseAbilityScore", "ability": "CHA", "amount": 2, "max": 20 }] },
+    { "id": "ioun-stone-awareness", "itemKind": "magic", "name": "Ioun Stone, Awareness", "rarity": "rare", "requiresAttunement": true, "effects": [{ "kind": "SetAdvantage", "on": "initiative", "mode": "advantage" }, { "kind": "SetAdvantage", "on": { "kind": "skill", "skill": "perception" }, "mode": "advantage" }] },
     { "id": "ioun-stone-protection", "itemKind": "magic", "name": "Ioun Stone, Protection", "rarity": "rare", "requiresAttunement": true, "effects": [{ "kind": "AddModifier", "target": "ac", "value": 1 }] },
-    { "id": "ring-of-feather-falling", "itemKind": "magic", "name": "Ring of Feather Falling", "rarity": "rare", "requiresAttunement": true, "effects": [] },
+    { "id": "ring-of-feather-falling", "itemKind": "magic", "name": "Ring of Feather Falling", "rarity": "rare", "requiresAttunement": true, "effects": [{ "kind": "GrantFallingProtection" }] },
     { "id": "ring-of-mind-shielding", "itemKind": "magic", "name": "Ring of Mind Shielding", "rarity": "uncommon", "requiresAttunement": true, "effects": [] },
     { "id": "ring-of-warmth", "itemKind": "magic", "name": "Ring of Warmth", "rarity": "uncommon", "requiresAttunement": true, "effects": [{ "kind": "GrantResistance", "damageType": "cold" }] },
     { "id": "ring-of-water-walking", "itemKind": "magic", "name": "Ring of Water Walking", "rarity": "uncommon", "requiresAttunement": false, "effects": [] },
@@ -2593,8 +2593,8 @@
       ],
       "description": "STR becomes 29 for 1 hour when consumed. No effect if the consumer's STR is already 29 or higher. Wired arm uses OverrideAbilityScore floor semantics from slice 229. Duration consumer-managed."
     },
-    { "id": "robe-of-the-archmagi", "itemKind": "magic", "name": "Robe of the Archmagi", "rarity": "legendary", "requiresAttunement": true, "attunementCondition": "Sorcerer, Warlock, or Wizard", "effects": [] },
-    { "id": "robe-of-eyes", "itemKind": "magic", "name": "Robe of Eyes", "rarity": "rare", "requiresAttunement": true, "effects": [] },
+    { "id": "robe-of-the-archmagi", "itemKind": "magic", "name": "Robe of the Archmagi", "rarity": "legendary", "requiresAttunement": true, "attunementCondition": "Sorcerer, Warlock, or Wizard", "effects": [{ "kind": "OverrideACFormula", "base": 15, "abilityModifiers": ["DEX"], "priority": 100 }, { "kind": "GrantMagicResistance" }, { "kind": "AddModifier", "target": "spellSaveDC", "value": 2 }, { "kind": "AddModifier", "target": "spellAttack", "value": 2 }] },
+    { "id": "robe-of-eyes", "itemKind": "magic", "name": "Robe of Eyes", "rarity": "rare", "requiresAttunement": true, "effects": [{ "kind": "GrantSense", "sense": "truesight", "range": 120 }, { "kind": "GrantSense", "sense": "darkvision", "range": 120 }, { "kind": "SetAdvantage", "on": { "kind": "skill", "skill": "perception" }, "mode": "advantage" }], "description": "RAW (SRD 5.2.1) wired (slice 312): Special Senses ('Darkvision and Truesight, both with a range of 120 feet') via two GrantSense entries; All-Around Vision ('Advantage on Wisdom (Perception) checks that rely on sight') via SetAdvantage on the Perception skill. RAW deviation: the 'rely on sight' scope isn't modeled (the engine grants Perception advantage unconditionally); truesight already composes with the invisible/illusion-piercing facts (slices 127/271/273), so the see-invisible flavor is covered. Deferred drawback: a Light spell cast on the robe or a Daylight spell blinds the wearer for 1 minute (a situational counter the engine doesn't gate on scene lighting). Held/worn-state is consumer-managed; attunement is the projection proxy." },
     { "id": "cloak-of-displacement", "itemKind": "magic", "name": "Cloak of Displacement", "rarity": "rare", "requiresAttunement": true, "effects": [] },
     { "id": "bracers-of-defense", "itemKind": "magic", "name": "Bracers of Defense", "rarity": "rare", "requiresAttunement": true, "effects": [{ "kind": "AddModifier", "target": "ac", "value": 2, "condition": { "kind": "all", "terms": [{ "kind": "eq", "path": "bearer.wearingArmor", "value": false }, { "kind": "eq", "path": "bearer.wieldingShield", "value": false }] } }] },
     {
@@ -2626,7 +2626,7 @@
     { "id": "talisman-of-the-sphere", "itemKind": "magic", "name": "Talisman of the Sphere", "rarity": "legendary", "requiresAttunement": true, "effects": [] },
     { "id": "eyes-of-minute-seeing", "itemKind": "magic", "name": "Eyes of Minute Seeing", "rarity": "uncommon", "requiresAttunement": false, "description": "RAW (SRD 5.2.1): 'These crystal lenses fit over the eyes. While wearing them, your vision improves significantly out to a range of 1 foot, granting you Darkvision within that range and Advantage on Intelligence (Investigation) checks made to examine something within that range.' Slice 298 wired the Investigation advantage arm via slice-263's skill-discriminated SetAdvantage. The 1-foot Darkvision arm is narrative (engine doesn't reason about sub-5-foot vision separately); the 'to examine something within that range' gate is consumer-managed (mirror of slice 289's Cloak of the Bat dim-light gate).", "effects": [{ "kind": "SetAdvantage", "on": { "kind": "skill", "skill": "investigation" }, "mode": "advantage" }] },
     { "id": "helm-of-comprehending-languages", "itemKind": "magic", "name": "Helm of Comprehending Languages", "rarity": "uncommon", "requiresAttunement": false, "effects": [] },
-    { "id": "gloves-of-thievery", "itemKind": "magic", "name": "Gloves of Thievery", "rarity": "uncommon", "requiresAttunement": false, "effects": [] },
+    { "id": "gloves-of-thievery", "itemKind": "magic", "name": "Gloves of Thievery", "rarity": "uncommon", "requiresAttunement": false, "effects": [{ "kind": "AddModifier", "target": { "kind": "skill", "skill": "sleight-of-hand" }, "value": 5 }] },
     { "id": "boots-of-the-winterlands", "itemKind": "magic", "name": "Boots of the Winterlands", "rarity": "uncommon", "requiresAttunement": true, "effects": [{ "kind": "GrantResistance", "damageType": "cold" }] },
     { "id": "ring-of-spell-storing", "itemKind": "magic", "name": "Ring of Spell Storing", "rarity": "rare", "requiresAttunement": true, "charges": { "max": 5, "recharge": "never" }, "effects": [] },
     { "id": "ring-of-three-wishes", "itemKind": "magic", "name": "Ring of Three Wishes", "rarity": "legendary", "requiresAttunement": false, "charges": { "max": 3, "recharge": "never" }, "effects": [] },
@@ -2769,7 +2769,7 @@
     {"id": "ammunition-of-slaying", "itemKind": "magic", "name": "Ammunition of Slaying", "rarity": "very-rare", "requiresAttunement": false, "effects": []},
     {"id": "amulet-of-the-planes", "itemKind": "magic", "name": "Amulet of the Planes", "rarity": "very-rare", "requiresAttunement": true, "effects": []},
     {"id": "animated-shield", "itemKind": "magic", "name": "Animated Shield", "rarity": "very-rare", "requiresAttunement": true, "effects": []},
-    {"id": "armor-of-invulnerability", "itemKind": "magic", "name": "Armor of Invulnerability", "rarity": "legendary", "requiresAttunement": true, "effects": []},
+    {"id": "armor-of-invulnerability", "itemKind": "magic", "name": "Armor of Invulnerability", "rarity": "legendary", "requiresAttunement": true, "effects": [{ "kind": "GrantResistance", "damageType": "bludgeoning" }, { "kind": "GrantResistance", "damageType": "piercing" }, { "kind": "GrantResistance", "damageType": "slashing" }], "description": "RAW (SRD 5.2.1): 'You have Resistance to Bludgeoning, Piercing, and Slashing damage while you wear this armor.' Slice 307 wired the passive resistance arm. The Metal Shell action (Magic action → Immunity to B/P/S for 10 minutes, 1/dawn) is deferred: it needs a charged onUse action that grants a timed damage-immunity condition (GrantImmunity exists; the once-per-dawn recharge + 10-minute auto-expiry would be consumer-managed like other timed item buffs)."},
     {"id": "armor-of-resistance-acid", "itemKind": "magic", "name": "Armor of Resistance (Acid)", "rarity": "rare", "requiresAttunement": true, "effects": [{ "kind": "GrantResistance", "damageType": "acid" }]},
     {"id": "armor-of-resistance-cold", "itemKind": "magic", "name": "Armor of Resistance (Cold)", "rarity": "rare", "requiresAttunement": true, "effects": [{ "kind": "GrantResistance", "damageType": "cold" }]},
     {"id": "armor-of-resistance-fire", "itemKind": "magic", "name": "Armor of Resistance (Fire)", "rarity": "rare", "requiresAttunement": true, "effects": [{ "kind": "GrantResistance", "damageType": "fire" }]},
@@ -2786,7 +2786,7 @@
     {"id": "bag-of-tricks", "itemKind": "magic", "name": "Bag of Tricks", "rarity": "uncommon", "requiresAttunement": false, "effects": []},
     {"id": "bead-of-force", "itemKind": "magic", "name": "Bead of Force", "rarity": "rare", "requiresAttunement": false, "effects": []},
     {"id": "bead-of-nourishment", "itemKind": "magic", "name": "Bead of Nourishment", "rarity": "common", "requiresAttunement": false, "effects": []},
-    {"id": "belt-of-dwarvenkind", "itemKind": "magic", "name": "Belt of Dwarvenkind", "rarity": "rare", "requiresAttunement": true, "effects": []},
+    {"id": "belt-of-dwarvenkind", "itemKind": "magic", "name": "Belt of Dwarvenkind", "rarity": "rare", "requiresAttunement": true, "effects": [{ "kind": "GrantResistance", "damageType": "poison" }, { "kind": "SetAdvantage", "on": { "kind": "save" }, "mode": "advantage", "condition": { "kind": "eq", "path": "event.savePreventsCondition", "value": "poisoned" } }, { "kind": "IncreaseAbilityScore", "ability": "CON", "amount": 2, "max": 20 }], "description": "RAW (SRD 5.2.1) wired: Resilience arm (slice 306) 'Resistance to Poison damage; Advantage on saving throws to avoid or end the Poisoned condition' (the poisoned-save advantage uses the slice-298 Necklace of Adaptation predicate); Toughness arm (slice 308) 'Your Constitution increases by 2, to a maximum of 20' via the new IncreaseAbilityScore primitive. Deferred arms: the non-dwarf-gated Darkvision 60 and Friend-of-Dwarvenkind (Advantage on Persuasion vs dwarves/duergar) are unconditional-projection / target-scoped shapes the engine doesn't gate. RAW gates Resilience + Darkvision on 'if you aren't a dwarf', but dwarves already have poison resistance + poisoned-save advantage from Dwarven Resilience, so unconditional projection is a no-op for them."},
     {"id": "bowl-of-commanding-water-elementals", "itemKind": "magic", "name": "Bowl of Commanding Water Elementals", "rarity": "rare", "requiresAttunement": false, "effects": []},
     {"id": "brazier-of-commanding-fire-elementals", "itemKind": "magic", "name": "Brazier of Commanding Fire Elementals", "rarity": "rare", "requiresAttunement": false, "effects": []},
     {"id": "broom-of-flying", "itemKind": "magic", "name": "Broom of Flying", "rarity": "uncommon", "requiresAttunement": true, "effects": []},
@@ -2817,7 +2817,7 @@
     {"id": "efficient-quiver", "itemKind": "magic", "name": "Efficient Quiver", "rarity": "uncommon", "requiresAttunement": false, "effects": []},
     {"id": "efreeti-bottle", "itemKind": "magic", "name": "Efreeti Bottle", "rarity": "very-rare", "requiresAttunement": false, "effects": []},
     {"id": "elemental-gem", "itemKind": "magic", "name": "Elemental Gem", "rarity": "uncommon", "requiresAttunement": false, "effects": []},
-    {"id": "elixir-of-health", "itemKind": "magic", "name": "Elixir of Health", "rarity": "rare", "requiresAttunement": false, "effects": []},
+    {"id": "elixir-of-health", "itemKind": "consumable", "name": "Elixir of Health", "onConsume": [{ "kind": "RemoveConditions", "conditionIds": ["blinded", "deafened", "paralyzed", "poisoned"] }], "description": "RAW (SRD 5.2.1): 'When you drink this potion, you are cured of all magical contagions. In addition, the following conditions end on you: Blinded, Deafened, Paralyzed, and Poisoned.' Slice 305 wired the condition-clear arm via the slice-283 RemoveConditions ConsumeAction variant. The 'cured of all magical contagions' arm is narrative (the engine doesn't model diseases)."},
     {"id": "energy-bow", "itemKind": "magic", "name": "Energy Bow", "rarity": "very-rare", "requiresAttunement": true, "effects": []},
     {"id": "eyes-of-charming", "itemKind": "magic", "name": "Eyes of Charming", "rarity": "uncommon", "requiresAttunement": true, "effects": []},
     {"id": "gem-of-seeing", "itemKind": "magic", "name": "Gem of Seeing", "rarity": "rare", "requiresAttunement": true, "effects": []},
@@ -2834,7 +2834,7 @@
     {"id": "iron-bands", "itemKind": "magic", "name": "Iron Bands", "rarity": "rare", "requiresAttunement": false, "effects": []},
     {"id": "iron-flask", "itemKind": "magic", "name": "Iron Flask", "rarity": "legendary", "requiresAttunement": false, "effects": []},
     {"id": "javelin-of-lightning", "itemKind": "magic", "name": "Javelin of Lightning", "rarity": "uncommon", "requiresAttunement": false, "effects": []},
-    {"id": "luck-blade", "itemKind": "magic", "name": "Luck Blade", "rarity": "legendary", "requiresAttunement": true, "effects": []},
+    {"id": "luck-blade", "itemKind": "magic", "name": "Luck Blade", "rarity": "legendary", "requiresAttunement": true, "effects": [{ "kind": "AddModifier", "target": { "kind": "save" }, "value": 1 }], "description": "RAW (SRD 5.2.1): 'While the weapon is on your person, you also gain a +1 bonus to saving throws.' Slice 312 wired the all-saves arm via the slice-299 save-wildcard ModifierTarget ({ kind: save } with no ability). Deferred: the +1 weapon attack/damage bonus (weapon-scoped), the Luck reroll charges, and the embedded Wish charges. On-person state is consumer-managed; attunement is the projection proxy."},
     {"id": "mace-of-disruption", "itemKind": "magic", "name": "Mace of Disruption", "rarity": "rare", "requiresAttunement": true, "effects": []},
     {"id": "mace-of-smiting", "itemKind": "magic", "name": "Mace of Smiting", "rarity": "rare", "requiresAttunement": false, "effects": []},
     {"id": "mace-of-terror", "itemKind": "magic", "name": "Mace of Terror", "rarity": "rare", "requiresAttunement": true, "effects": []},
@@ -2852,43 +2852,43 @@
     {"id": "necklace-of-prayer-beads", "itemKind": "magic", "name": "Necklace of Prayer Beads", "rarity": "rare", "requiresAttunement": true, "effects": []},
     {"id": "nine-lives-stealer", "itemKind": "magic", "name": "Nine Lives Stealer", "rarity": "very-rare", "requiresAttunement": true, "effects": []},
     {"id": "oathbow", "itemKind": "magic", "name": "Oathbow", "rarity": "very-rare", "requiresAttunement": true, "effects": []},
-    {"id": "oil-of-etherealness", "itemKind": "magic", "name": "Oil of Etherealness", "rarity": "rare", "requiresAttunement": false, "effects": []},
+    {"id": "oil-of-etherealness", "itemKind": "consumable", "name": "Oil of Etherealness", "onConsume": [], "description": "RAW (SRD 5.2.1): 'you gain the effect of the Etherealness spell for 1 hour.' Slice 309 corrected the itemKind from magic to consumable (SRD type: Potion). Mechanic deferred: Etherealness is a cross-plane primitive the engine doesn't model."},
     {"id": "periapt-of-proof-against-poison", "itemKind": "magic", "name": "Periapt of Proof against Poison", "rarity": "rare", "requiresAttunement": true, "effects": [{ "kind": "GrantConditionImmunity", "conditionId": "poisoned" }, { "kind": "GrantImmunity", "damageType": "poison" }]},
-    {"id": "philter-of-love", "itemKind": "magic", "name": "Philter of Love", "rarity": "uncommon", "requiresAttunement": false, "effects": []},
+    {"id": "philter-of-love", "itemKind": "consumable", "name": "Philter of Love", "onConsume": [], "description": "RAW (SRD 5.2.1): 'The next time you see a creature within 10 minutes after drinking this potion, you become Charmed by that creature for 1 hour.' Slice 309 corrected the itemKind from magic to consumable (SRD type: Potion). Mechanic deferred: the delayed first-creature-seen Charmed trigger has no engine shape (would need a deferred-onset condition keyed to a later perception event, not an on-consume application)."},
     {"id": "pipes-of-the-sewers", "itemKind": "magic", "name": "Pipes of the Sewers", "rarity": "uncommon", "requiresAttunement": true, "effects": []},
     {"id": "plate-armor-of-etherealness", "itemKind": "magic", "name": "Plate Armor of Etherealness", "rarity": "legendary", "requiresAttunement": true, "effects": []},
     {"id": "portable-hole", "itemKind": "magic", "name": "Portable Hole", "rarity": "rare", "requiresAttunement": false, "effects": []},
-    {"id": "potion-of-clairvoyance", "itemKind": "magic", "name": "Potion of Clairvoyance", "rarity": "rare", "requiresAttunement": false, "effects": []},
-    {"id": "potion-of-gaseous-form", "itemKind": "magic", "name": "Potion of Gaseous Form", "rarity": "rare", "requiresAttunement": false, "effects": []},
-    {"id": "potion-of-invulnerability", "itemKind": "magic", "name": "Potion of Invulnerability", "rarity": "rare", "requiresAttunement": false, "effects": []},
-    {"id": "potion-of-longevity", "itemKind": "magic", "name": "Potion of Longevity", "rarity": "very-rare", "requiresAttunement": false, "effects": []},
-    {"id": "quarterstaff-of-the-acrobat", "itemKind": "magic", "name": "Quarterstaff of the Acrobat", "rarity": "very-rare", "requiresAttunement": true, "effects": []},
+    {"id": "potion-of-clairvoyance", "itemKind": "consumable", "name": "Potion of Clairvoyance", "onConsume": [], "description": "RAW (SRD 5.2.1): 'you gain the effect of the Clairvoyance spell.' Slice 309 corrected the itemKind from magic to consumable (SRD type: Potion). Mechanic deferred: Clairvoyance has a dedicated planClairvoyance (places a remote Sensor entity); the onConsume CastSpell variant delegates to planCastSpell, not to dedicated planners."},
+    {"id": "potion-of-gaseous-form", "itemKind": "consumable", "name": "Potion of Gaseous Form", "onConsume": [{ "kind": "ApplyCondition", "conditionId": "gaseous-form-active" }], "description": "RAW (SRD 5.2.1): 'When you drink this potion, you gain the effect of the Gaseous Form spell for 1 hour (no Concentration required) or until you end the effect as a Bonus Action.' Slice 305 wired via the slice-287 gaseous-form-active condition (reused from the spell). The 1-hour duration and bonus-action dismissal are consumer-managed (mirror of slice 236's ApplyCondition doc)."},
+    {"id": "potion-of-invulnerability", "itemKind": "consumable", "name": "Potion of Invulnerability", "onConsume": [{ "kind": "ApplyCondition", "conditionId": "potion-of-invulnerability-active" }], "description": "RAW (SRD 5.2.1): 'For 1 minute after you drink this potion, you have Resistance to all damage.' Slice 305 wired via a new potion-of-invulnerability-active condition (GrantResistance damageType: all). The 1-minute duration is consumer-managed (mirror of slice 236's ApplyCondition doc)."},
+    {"id": "potion-of-longevity", "itemKind": "consumable", "name": "Potion of Longevity", "onConsume": [], "description": "RAW (SRD 5.2.1): reduces the drinker's apparent and actual age (with a chance of aging instead). Slice 309 corrected the itemKind from magic to consumable (SRD type: Potion). Mechanic is narrative: the engine doesn't model character age."},
+    {"id": "quarterstaff-of-the-acrobat", "itemKind": "magic", "name": "Quarterstaff of the Acrobat", "rarity": "very-rare", "requiresAttunement": true, "effects": [{ "kind": "SetAdvantage", "on": { "kind": "skill", "skill": "acrobatics" }, "mode": "advantage" }], "description": "RAW (SRD 5.2.1): 'While holding this weapon, you have Advantage on Dexterity (Acrobatics) checks.' Slice 312 wired the Acrobatic Assist arm. Deferred: the +2 weapon attack/damage bonus (weapon-scoped), the club/10-foot-pole form toggle, and the Attack Deflection reaction. Held-state is consumer-managed; attunement is the projection proxy."},
     {"id": "ring-of-djinni-summoning", "itemKind": "magic", "name": "Ring of Djinni Summoning", "rarity": "legendary", "requiresAttunement": true, "effects": []},
     {"id": "ring-of-elemental-command", "itemKind": "magic", "name": "Ring of Elemental Command", "rarity": "legendary", "requiresAttunement": true, "effects": []},
     {"id": "ring-of-telekinesis", "itemKind": "magic", "name": "Ring of Telekinesis", "rarity": "very-rare", "requiresAttunement": true, "effects": []},
     {"id": "robe-of-scintillating-colors", "itemKind": "magic", "name": "Robe of Scintillating Colors", "rarity": "very-rare", "requiresAttunement": true, "effects": []},
-    {"id": "robe-of-stars", "itemKind": "magic", "name": "Robe of Stars", "rarity": "very-rare", "requiresAttunement": true, "effects": []},
+    {"id": "robe-of-stars", "itemKind": "magic", "name": "Robe of Stars", "rarity": "very-rare", "requiresAttunement": true, "effects": [{ "kind": "AddModifier", "target": { "kind": "save" }, "value": 1 }], "description": "RAW (SRD 5.2.1): 'You gain a +1 bonus to saving throws while you wear it.' Slice 312 wired the all-saves arm via the slice-299 save-wildcard ModifierTarget. Deferred: the six detachable stars (Magic Missile without a slot), and the Plane Shift / star-field travel arm. Worn-state is consumer-managed; attunement is the projection proxy."},
     {"id": "rod-of-absorption", "itemKind": "magic", "name": "Rod of Absorption", "rarity": "very-rare", "requiresAttunement": true, "effects": []},
-    {"id": "rod-of-alertness", "itemKind": "magic", "name": "Rod of Alertness", "rarity": "very-rare", "requiresAttunement": true, "effects": []},
+    {"id": "rod-of-alertness", "itemKind": "magic", "name": "Rod of Alertness", "rarity": "very-rare", "requiresAttunement": true, "effects": [{ "kind": "SetAdvantage", "on": "initiative", "mode": "advantage" }, { "kind": "SetAdvantage", "on": { "kind": "skill", "skill": "perception" }, "mode": "advantage" }], "description": "RAW (SRD 5.2.1) Alertness arm wired (slice 311): 'While holding the rod, you have Advantage on Wisdom (Perception) checks and on Initiative rolls' (same shape as Sentinel Shield / Ioun Stone of Awareness). Deferred: the spell-casting arm (Detect Evil and Good / Detect Magic / Detect Poison and Disease / See Invisibility) and the Protective Aura action (planted-rod bright-light +1 AC/saves aura) are charged/positional. Held-state is consumer-managed; attunement is the projection proxy."},
     {"id": "rod-of-lordly-might", "itemKind": "magic", "name": "Rod of Lordly Might", "rarity": "legendary", "requiresAttunement": true, "effects": []},
     {"id": "rod-of-resurrection", "itemKind": "magic", "name": "Rod of Resurrection", "rarity": "legendary", "requiresAttunement": true, "effects": []},
     {"id": "rod-of-rulership", "itemKind": "magic", "name": "Rod of Rulership", "rarity": "rare", "requiresAttunement": true, "effects": []},
     {"id": "rod-of-security", "itemKind": "magic", "name": "Rod of Security", "rarity": "very-rare", "requiresAttunement": false, "effects": []},
     {"id": "rope-of-climbing", "itemKind": "magic", "name": "Rope of Climbing", "rarity": "uncommon", "requiresAttunement": false, "effects": []},
     {"id": "rope-of-entanglement", "itemKind": "magic", "name": "Rope of Entanglement", "rarity": "rare", "requiresAttunement": false, "effects": []},
-    {"id": "scarab-of-protection", "itemKind": "magic", "name": "Scarab of Protection", "rarity": "legendary", "requiresAttunement": true, "effects": []},
+    {"id": "scarab-of-protection", "itemKind": "magic", "name": "Scarab of Protection", "rarity": "legendary", "requiresAttunement": true, "effects": [{ "kind": "AddModifier", "target": "ac", "value": 1 }, { "kind": "GrantMagicResistance" }], "description": "RAW (SRD 5.2.1) wired (slice 311): Defense ('+1 bonus to Armor Class') via AddModifier ac; Spell Resistance ('Advantage on saving throws against spells') via the slice-131 GrantMagicResistance marker. Deferred: the Protection arm (5 charges that auto-negate a failed save vs necromancy / a Harmful effect from an undead) is a charged reaction-style mechanic."},
     {"id": "scimitar-of-speed", "itemKind": "magic", "name": "Scimitar of Speed", "rarity": "very-rare", "requiresAttunement": true, "effects": []},
     {"id": "shield-plus1-plus2-or-plus3", "itemKind": "magic", "name": "Shield, +1, +2, or +3", "rarity": "uncommon", "requiresAttunement": false, "effects": []},
     {"id": "shield-of-missile-attraction", "itemKind": "magic", "name": "Shield of Missile Attraction", "rarity": "rare", "requiresAttunement": true, "effects": []},
     {"id": "shield-of-the-cavalier", "itemKind": "magic", "name": "Shield of the Cavalier", "rarity": "very-rare", "requiresAttunement": true, "effects": []},
     {"id": "sovereign-glue", "itemKind": "magic", "name": "Sovereign Glue", "rarity": "legendary", "requiresAttunement": false, "effects": []},
     {"id": "sphere-of-annihilation", "itemKind": "magic", "name": "Sphere of Annihilation", "rarity": "legendary", "requiresAttunement": false, "effects": []},
-    {"id": "staff-of-fire", "itemKind": "magic", "name": "Staff of Fire", "rarity": "very-rare", "requiresAttunement": true, "effects": []},
-    {"id": "staff-of-frost", "itemKind": "magic", "name": "Staff of Frost", "rarity": "very-rare", "requiresAttunement": true, "effects": []},
-    {"id": "staff-of-power", "itemKind": "magic", "name": "Staff of Power", "rarity": "very-rare", "requiresAttunement": true, "effects": []},
+    {"id": "staff-of-fire", "itemKind": "magic", "name": "Staff of Fire", "rarity": "very-rare", "requiresAttunement": true, "effects": [{ "kind": "GrantResistance", "damageType": "fire" }], "description": "RAW (SRD 5.2.1): 'You have Resistance to Fire damage while you hold this staff.' Slice 311 wired the resistance arm. The 50-charge fire spell list (Burning Hands / Fireball / Wall of Fire) is deferred (charged spell-list casting). Held-state is consumer-managed; attunement is the projection proxy (the engine doesn't model which hand holds what)."},
+    {"id": "staff-of-frost", "itemKind": "magic", "name": "Staff of Frost", "rarity": "very-rare", "requiresAttunement": true, "effects": [{ "kind": "GrantResistance", "damageType": "cold" }], "description": "RAW (SRD 5.2.1): 'You have Resistance to Cold damage while you hold this staff.' Slice 311 wired the resistance arm. The 10-charge cold spell list (Cone of Cold / Fog Cloud / Ice Storm / Wall of Ice) is deferred (charged spell-list casting). Held-state is consumer-managed; attunement is the projection proxy."},
+    {"id": "staff-of-power", "itemKind": "magic", "name": "Staff of Power", "rarity": "very-rare", "requiresAttunement": true, "effects": [{ "kind": "AddModifier", "target": "ac", "value": 2 }, { "kind": "AddModifier", "target": { "kind": "save" }, "value": 2 }, { "kind": "AddModifier", "target": "spellAttack", "value": 2 }], "description": "RAW (SRD 5.2.1) wired (slice 311): 'While holding it, you gain a +2 bonus to Armor Class, saving throws, and spell attack rolls.' AC and spellAttack via AddModifier; the all-saves +2 uses the slice-299 save-wildcard ModifierTarget ({ kind: save } with no ability). Deferred: the magic-Quarterstaff +2 weapon bonus, the 20-charge spell list, and Retributive Strike are charged shapes. Held-state is consumer-managed; attunement is the projection proxy."},
     {"id": "staff-of-striking", "itemKind": "magic", "name": "Staff of Striking", "rarity": "very-rare", "requiresAttunement": true, "effects": []},
     {"id": "staff-of-swarming-insects", "itemKind": "magic", "name": "Staff of Swarming Insects", "rarity": "rare", "requiresAttunement": true, "effects": []},
-    {"id": "staff-of-the-magi", "itemKind": "magic", "name": "Staff of the Magi", "rarity": "legendary", "requiresAttunement": true, "effects": []},
+    {"id": "staff-of-the-magi", "itemKind": "magic", "name": "Staff of the Magi", "rarity": "legendary", "requiresAttunement": true, "effects": [{ "kind": "AddModifier", "target": "spellAttack", "value": 2 }, { "kind": "GrantMagicResistance" }], "description": "RAW (SRD 5.2.1) wired (slice 311): '+2 bonus to spell attack rolls' (AddModifier spellAttack) and the Spell Absorption arm's passive 'Advantage on saving throws against spells' (slice-131 GrantMagicResistance). Deferred: the magic-Quarterstaff +2 weapon bonus, the 50-charge spell list, the reaction spell-absorption mechanic, and Retributive Strike are charged/reaction shapes. Held-state is consumer-managed; attunement is the projection proxy."},
     {"id": "staff-of-the-python", "itemKind": "magic", "name": "Staff of the Python", "rarity": "uncommon", "requiresAttunement": true, "effects": []},
     {"id": "staff-of-the-woodlands", "itemKind": "magic", "name": "Staff of the Woodlands", "rarity": "rare", "requiresAttunement": true, "effects": []},
     {"id": "staff-of-thunder-and-lightning", "itemKind": "magic", "name": "Staff of Thunder and Lightning", "rarity": "very-rare", "requiresAttunement": true, "effects": []},
@@ -2930,16 +2930,16 @@
     {"id": "figurine-of-wondrous-power-onyx-dog", "itemKind": "magic", "name": "Figurine of Wondrous Power, Onyx Dog", "rarity": "rare", "requiresAttunement": false, "effects": []},
     {"id": "figurine-of-wondrous-power-serpentine-owl", "itemKind": "magic", "name": "Figurine of Wondrous Power, Serpentine Owl", "rarity": "rare", "requiresAttunement": false, "effects": []},
     {"id": "figurine-of-wondrous-power-silver-raven", "itemKind": "magic", "name": "Figurine of Wondrous Power, Silver Raven", "rarity": "uncommon", "requiresAttunement": false, "effects": []},
-    {"id": "spell-scroll-cantrip", "itemKind": "magic", "name": "Spell Scroll, Cantrip", "rarity": "common", "requiresAttunement": false, "effects": []},
-    {"id": "spell-scroll-1st-level", "itemKind": "magic", "name": "Spell Scroll, 1st Level", "rarity": "common", "requiresAttunement": false, "effects": []},
-    {"id": "spell-scroll-2nd-level", "itemKind": "magic", "name": "Spell Scroll, 2nd Level", "rarity": "uncommon", "requiresAttunement": false, "effects": []},
-    {"id": "spell-scroll-3rd-level", "itemKind": "magic", "name": "Spell Scroll, 3rd Level", "rarity": "uncommon", "requiresAttunement": false, "effects": []},
-    {"id": "spell-scroll-4th-level", "itemKind": "magic", "name": "Spell Scroll, 4th Level", "rarity": "rare", "requiresAttunement": false, "effects": []},
-    {"id": "spell-scroll-5th-level", "itemKind": "magic", "name": "Spell Scroll, 5th Level", "rarity": "rare", "requiresAttunement": false, "effects": []},
-    {"id": "spell-scroll-6th-level", "itemKind": "magic", "name": "Spell Scroll, 6th Level", "rarity": "very-rare", "requiresAttunement": false, "effects": []},
-    {"id": "spell-scroll-7th-level", "itemKind": "magic", "name": "Spell Scroll, 7th Level", "rarity": "very-rare", "requiresAttunement": false, "effects": []},
-    {"id": "spell-scroll-8th-level", "itemKind": "magic", "name": "Spell Scroll, 8th Level", "rarity": "very-rare", "requiresAttunement": false, "effects": []},
-    {"id": "spell-scroll-9th-level", "itemKind": "magic", "name": "Spell Scroll, 9th Level", "rarity": "legendary", "requiresAttunement": false, "effects": []}
+    {"id": "spell-scroll-cantrip", "itemKind": "consumable", "name": "Spell Scroll, Cantrip", "onConsume": [], "description": "Generic template (SRD type: Scroll, consumed on use). Slice 310 corrected the itemKind from magic to consumable for consistency with the specific spell-scroll-of-X entries. No concrete onConsume: this is a by-level placeholder, not a scroll of a named spell; the slice-237 onConsume CastSpell variant is wired on the named scroll entries."},
+    {"id": "spell-scroll-1st-level", "itemKind": "consumable", "name": "Spell Scroll, 1st Level", "onConsume": [], "description": "Generic by-level template (SRD type: Scroll). Slice 310 reclassified magic -> consumable. No concrete onConsume (not a named-spell scroll)."},
+    {"id": "spell-scroll-2nd-level", "itemKind": "consumable", "name": "Spell Scroll, 2nd Level", "onConsume": [], "description": "Generic by-level template (SRD type: Scroll). Slice 310 reclassified magic -> consumable. No concrete onConsume (not a named-spell scroll)."},
+    {"id": "spell-scroll-3rd-level", "itemKind": "consumable", "name": "Spell Scroll, 3rd Level", "onConsume": [], "description": "Generic by-level template (SRD type: Scroll). Slice 310 reclassified magic -> consumable. No concrete onConsume (not a named-spell scroll)."},
+    {"id": "spell-scroll-4th-level", "itemKind": "consumable", "name": "Spell Scroll, 4th Level", "onConsume": [], "description": "Generic by-level template (SRD type: Scroll). Slice 310 reclassified magic -> consumable. No concrete onConsume (not a named-spell scroll)."},
+    {"id": "spell-scroll-5th-level", "itemKind": "consumable", "name": "Spell Scroll, 5th Level", "onConsume": [], "description": "Generic by-level template (SRD type: Scroll). Slice 310 reclassified magic -> consumable. No concrete onConsume (not a named-spell scroll)."},
+    {"id": "spell-scroll-6th-level", "itemKind": "consumable", "name": "Spell Scroll, 6th Level", "onConsume": [], "description": "Generic by-level template (SRD type: Scroll). Slice 310 reclassified magic -> consumable. No concrete onConsume (not a named-spell scroll)."},
+    {"id": "spell-scroll-7th-level", "itemKind": "consumable", "name": "Spell Scroll, 7th Level", "onConsume": [], "description": "Generic by-level template (SRD type: Scroll). Slice 310 reclassified magic -> consumable. No concrete onConsume (not a named-spell scroll)."},
+    {"id": "spell-scroll-8th-level", "itemKind": "consumable", "name": "Spell Scroll, 8th Level", "onConsume": [], "description": "Generic by-level template (SRD type: Scroll). Slice 310 reclassified magic -> consumable. No concrete onConsume (not a named-spell scroll)."},
+    {"id": "spell-scroll-9th-level", "itemKind": "consumable", "name": "Spell Scroll, 9th Level", "onConsume": [], "description": "Generic by-level template (SRD type: Scroll). Slice 310 reclassified magic -> consumable. No concrete onConsume (not a named-spell scroll)."}
   ],
   "monsters": [
     {
@@ -8085,63 +8085,6 @@
       ]
     },
     {
-      "id": "wrathful-smite-active",
-      "name": "Wrathful Smite Active",
-      "description": "Caster's next weapon hit deals +1d6 psychic damage; the spell ends after that hit.",
-      "stackable": false,
-      "endsOn": [],
-      "effects": [
-        {
-          "kind": "OnEvent",
-          "id": "wrathful-smite-rider",
-          "trigger": {
-            "eventType": "AttackRolled",
-            "filter": { "kind": "all", "terms": [{ "kind": "eq", "path": "event.attackerIsSelf", "value": true }, { "kind": "eq", "path": "event.hit", "value": true }] }
-          },
-          "actions": [{ "kind": "AddDamage", "dice": "1d6", "damageType": "psychic" }],
-          "consumeOnTrigger": true
-        }
-      ]
-    },
-    {
-      "id": "thunderous-smite-active",
-      "name": "Thunderous Smite Active",
-      "description": "Caster's next weapon hit deals +2d6 thunder damage; the spell ends after that hit.",
-      "stackable": false,
-      "endsOn": [],
-      "effects": [
-        {
-          "kind": "OnEvent",
-          "id": "thunderous-smite-rider",
-          "trigger": {
-            "eventType": "AttackRolled",
-            "filter": { "kind": "all", "terms": [{ "kind": "eq", "path": "event.attackerIsSelf", "value": true }, { "kind": "eq", "path": "event.hit", "value": true }] }
-          },
-          "actions": [{ "kind": "AddDamage", "dice": "2d6", "damageType": "thunder" }],
-          "consumeOnTrigger": true
-        }
-      ]
-    },
-    {
-      "id": "branding-smite-active",
-      "name": "Branding Smite Active",
-      "description": "Caster's next weapon hit deals +2d6 radiant damage; the spell ends after that hit.",
-      "stackable": false,
-      "endsOn": [],
-      "effects": [
-        {
-          "kind": "OnEvent",
-          "id": "branding-smite-rider",
-          "trigger": {
-            "eventType": "AttackRolled",
-            "filter": { "kind": "all", "terms": [{ "kind": "eq", "path": "event.attackerIsSelf", "value": true }, { "kind": "eq", "path": "event.hit", "value": true }] }
-          },
-          "actions": [{ "kind": "AddDamage", "dice": "2d6", "damageType": "radiant" }],
-          "consumeOnTrigger": true
-        }
-      ]
-    },
-    {
       "id": "aura-of-courage-active",
       "name": "Aura of Courage Active",
       "description": "Frightened immunity granted by a nearby Paladin's L10+ Aura of Courage.",
@@ -8159,16 +8102,6 @@
       "endsOn": [],
       "effects": [
         { "kind": "GrantConditionImmunity", "conditionId": "frightened" }
-      ]
-    },
-    {
-      "id": "earthbound-active",
-      "name": "Earthbound",
-      "description": "Flying speed reduced to 0. If the target is airborne when the spell is cast, they fall (consumer applies the descent / falling damage).",
-      "stackable": false,
-      "endsOn": [],
-      "effects": [
-        { "kind": "ModifySpeed", "mode": "fly", "op": "set", "value": 0 }
       ]
     },
     {
@@ -8771,22 +8704,12 @@
       ]
     },
     {
-      "id": "holy-weapon-active",
-      "name": "Holy Weapon Active",
-      "description": "Caster's weapon attacks deal +2d8 radiant damage on hit while the spell lasts.",
+      "id": "potion-of-invulnerability-active",
+      "name": "Potion of Invulnerability",
+      "description": "Resistance to all damage for 1 minute (Potion of Invulnerability, slice 305). RAW (SRD 5.2.1): 'For 1 minute after you drink this potion, you have Resistance to all damage.' Flows through the existing mitigateDamage pipeline (GrantResistance damageType: all, already supported). The 1-minute duration is consumer-managed.",
       "stackable": false,
       "endsOn": [],
-      "effects": [
-        {
-          "kind": "OnEvent",
-          "id": "holy-weapon-rider",
-          "trigger": {
-            "eventType": "AttackRolled",
-            "filter": { "kind": "all", "terms": [{ "kind": "eq", "path": "event.attackerIsSelf", "value": true }, { "kind": "eq", "path": "event.hit", "value": true }] }
-          },
-          "actions": [{ "kind": "AddDamage", "dice": "2d8", "damageType": "radiant" }]
-        }
-      ]
+      "effects": [{ "kind": "GrantResistance", "damageType": "all" }]
     },
     {
       "id": "protection-acid-active",
@@ -8987,16 +8910,6 @@
       ]
     },
     {
-      "id": "invulnerable-active",
-      "name": "Invulnerable",
-      "description": "Concentration up to 10 minutes (Invulnerability spell): caster takes no damage from any source.",
-      "stackable": false,
-      "endsOn": [],
-      "effects": [
-        { "kind": "GrantImmunity", "damageType": "all" }
-      ]
-    },
-    {
       "id": "blade-warded-active",
       "name": "Blade Warded",
       "description": "Until end of next turn (Blade Ward cantrip): resistance to Bludgeoning, Piercing, and Slashing damage. The `autoExpiry` field (slice 109) tells the cast-spell planner to stamp `expiresOnRound = currentRound + 1` and `expiryTrigger = 'turnEnd'` on the emitted ConditionApplied when cast inside an active encounter; `planAdvanceTurn` lifts the condition at the end of the bearer's turn in the target round. Outside an encounter the expiry stays consumer-managed.",
@@ -9065,6 +8978,54 @@
       "endsOn": [],
       "effects": [
         { "kind": "PreventFatalDamage" }
+      ]
+    },
+    {
+      "id": "true-seeing-active",
+      "name": "True Seeing",
+      "description": "1 hour (True Seeing spell). RAW (SRD 5.2.1): 'the willing creature you touch has Truesight with a range of 120 feet.' Slice 301 wired via the existing slice-127 GrantSense primitive. Truesight composes with slice-271's attacker.bypassesSightIllusion and slice-273's canLocateInvisible facts, so a True-Sighted creature automatically pierces Blur, Mirror Image, and the Invisible condition's visibility-bypass for both attack and target sides. The 1-hour duration is consumer-managed.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "GrantSense", "sense": "truesight", "range": 120 }
+      ]
+    },
+    {
+      "id": "warding-bond-active",
+      "name": "Warding Bond",
+      "description": "1 hour (Warding Bond spell). RAW (SRD 5.2.1): 'While the target is within 60 feet of you, it gains a +1 bonus to AC and saving throws, and it has Resistance to all damage. Also, each time it takes damage, you take the same amount of damage.' Slice 301 wired three of the four arms: +1 AC, +1 save-wildcard (slice-299 primitive), Resistance to all damage. The 60-ft proximity gate is consumer-managed (engine doesn't model positions). The damage-sharing arm (caster takes equal damage on each hit to the target) is deferred — needs a new shared-damage-link primitive that emits a paired DamageApplied to the linked source character on every DamageApplied to the bearer (composes with slice-95's mitigateDamage but the source-link is novel). Sibling deferral with Spirit Guardians / Warding Wind shape if those ever land.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "AddModifier", "target": "ac", "value": 1 },
+        { "kind": "AddModifier", "target": { "kind": "save" }, "value": 1 },
+        { "kind": "GrantResistance", "damageType": "all" }
+      ]
+    },
+    {
+      "id": "heroes-feasted-active",
+      "name": "Heroes' Feast",
+      "description": "24 hours (Heroes' Feast spell, L6). RAW (SRD 5.2.1): partaking creature has Resistance to Poison, Immunity to Frightened + Poisoned conditions, and Hit Point maximum increases by 2d10 (with HP gain to match). Slice 302 wired the 3 always-on arms via existing primitives (GrantResistance + 2x GrantConditionImmunity). The 2d10 HP max bonus arm is deferred — needs a per-cast random rolled value baked at cast time and threaded into HPMaxBonusChanged, distinct from the existing Aid wire which uses a fixed flat bonus. The 1-hour 'feast must finish before effects set in' delay is consumer-managed.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "GrantResistance", "damageType": "poison" },
+        { "kind": "GrantConditionImmunity", "conditionId": "frightened" },
+        { "kind": "GrantConditionImmunity", "conditionId": "poisoned" }
+      ]
+    },
+    {
+      "id": "wind-walking-active",
+      "name": "Wind Walking",
+      "description": "8 hours (Wind Walk spell, L6). RAW (SRD 5.2.1): each target becomes a wisp of cloud with Fly Speed 300 (and can hover), Immunity to Prone, and Resistance to Bludgeoning / Piercing / Slashing damage. The cloud form restricts available actions to Dash or a Magic action to revert; reverting takes 1 minute during which the target is Stunned. Slice 302 wired the 5 always-on arms via existing primitives (ModifySpeed fly 300 + GrantConditionImmunity prone + 3x GrantResistance B/P/S). The action restriction (only Dash or Magic-to-revert) is consumer-managed (mirror of slice-287 gaseous-form-active: the engine doesn't auto-restrict the cast/attack surface based on a transmutation buff). The reverting-takes-1-minute Stunned-during state is also consumer-managed (the consumer applies the Stunned condition during revert).",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "ModifySpeed", "mode": "fly", "op": "set", "value": 300 },
+        { "kind": "GrantConditionImmunity", "conditionId": "prone" },
+        { "kind": "GrantResistance", "damageType": "bludgeoning" },
+        { "kind": "GrantResistance", "damageType": "piercing" },
+        { "kind": "GrantResistance", "damageType": "slashing" }
       ]
     },
     {

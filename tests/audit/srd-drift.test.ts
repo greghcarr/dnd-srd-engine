@@ -127,6 +127,10 @@ interface SrdItem {
   name: string;
   rarity: string | null;
   requiresAttunement: boolean;
+  // The item-type word(s) before the first comma in the SRD spec line,
+  // lowercased: "potion", "wondrous item", "ring", "armor (plate)",
+  // "weapon (any)", etc. Used by the itemKind-categorization check.
+  type: string;
 }
 
 function parseSrdItems(): Map<string, SrdItem> {
@@ -142,7 +146,8 @@ function parseSrdItems(): Map<string, SrdItem> {
     const rarities = /(common|uncommon|rare|very rare|legendary|artifact)/gi;
     const firstRarity = rarities.exec(spec)?.[1]?.toLowerCase().replace(/\s+/g, '-') ?? null;
     const requiresAttunement = /requires attunement/i.test(spec);
-    out.set(name, { name, rarity: firstRarity, requiresAttunement });
+    const type = (spec.split(',')[0] ?? '').trim().toLowerCase();
+    out.set(name, { name, rarity: firstRarity, requiresAttunement, type });
   }
   return out;
 }
@@ -404,6 +409,29 @@ describe.runIf(SRD_AVAILABLE)('SRD 5.2.1 drift audit', () => {
         }
       }
       expect(drift).toEqual([]);
+    });
+
+    // Slice 309. Categorization guard: an SRD item typed "Potion" is a
+    // consumed-on-use item, so it must ship as `itemKind: 'consumable'`
+    // (which carries `onConsume`), never as `itemKind: 'magic'` (which
+    // carries only passive `effects` / `onUse` and cannot express
+    // consumption). Slice 305 corrected three such items while wiring
+    // them; the pattern-check was under-swept, so slice 309 found four
+    // more (Oil of Etherealness, Philter of Love, Potion of
+    // Clairvoyance, Potion of Longevity) and added this guard so the
+    // mismatch can't regress. Scoped to the "potion" type only: the
+    // dusts are RAW "Wondrous Item" (single-use but not Potion-typed),
+    // so `magic` stays defensible for them.
+    it('SRD Potion-typed items ship as itemKind consumable', () => {
+      const offenders: string[] = [];
+      for (const it of pack.items) {
+        const s = srd.get(it.name as string);
+        if (!s || s.type !== 'potion') continue;
+        if (it.itemKind !== 'consumable') {
+          offenders.push(`${it.id as string}: itemKind=${asStr(it.itemKind)} (SRD type: Potion -> expected consumable)`);
+        }
+      }
+      expect(offenders).toEqual([]);
     });
   });
 });

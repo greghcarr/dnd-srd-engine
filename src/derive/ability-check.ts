@@ -84,7 +84,8 @@ export const computeAbilityCheck = (input: ComputeAbilityCheckInput): AbilityChe
   const effects = buildEffectStack(input);
   const baseScore = input.character.abilityScores[input.ability];
   const floor = effects.effectiveAbilityScoreFloor(input.ability)?.value;
-  const abilityMod = abilityModifier(effectiveAbilityScore(baseScore, floor));
+  const increase = effects.effectiveAbilityScoreIncrease(input.ability);
+  const abilityMod = abilityModifier(effectiveAbilityScore(baseScore, floor, increase));
   const breakdown: AbilityCheckBreakdownEntry[] = [
     { source: `${input.ability}-mod`, value: abilityMod },
   ];

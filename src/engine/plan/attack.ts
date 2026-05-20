@@ -677,7 +677,8 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   const damageAbility = chooseDamageAbility(attacker, weaponDef);
   const damageBaseScore = attacker.abilityScores[damageAbility];
   const damageScoreFloor = attackerEffects.effectiveAbilityScoreFloor(damageAbility)?.value;
-  const damageAbilityMod = abilityModifier(effectiveAbilityScore(damageBaseScore, damageScoreFloor));
+  const damageScoreIncrease = attackerEffects.effectiveAbilityScoreIncrease(damageAbility);
+  const damageAbilityMod = abilityModifier(effectiveAbilityScore(damageBaseScore, damageScoreFloor, damageScoreIncrease));
   // Flex mastery: a versatile weapon wielded two-handed (off-hand empty)
   // uses the larger versatileDice instead of damageDice. RAW 2024.
   const wieldedTwoHanded =
@@ -1070,7 +1071,8 @@ export const planCleave = (
   });
   const cleaveBaseScore = attacker.abilityScores[damageAbility];
   const cleaveScoreFloor = cleaveAttackerEffects.effectiveAbilityScoreFloor(damageAbility)?.value;
-  const abilityMod = abilityModifier(effectiveAbilityScore(cleaveBaseScore, cleaveScoreFloor));
+  const cleaveScoreIncrease = cleaveAttackerEffects.effectiveAbilityScoreIncrease(damageAbility);
+  const abilityMod = abilityModifier(effectiveAbilityScore(cleaveBaseScore, cleaveScoreFloor, cleaveScoreIncrease));
   const abilityModToStrip = abilityMod > 0 ? abilityMod : 0;
 
   for (const evt of resolution) {

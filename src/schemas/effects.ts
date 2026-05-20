@@ -247,6 +247,17 @@ export type Effect =
   // Belt of Giant Strength variants (STR 21/23/25/27/29). Future
   // users: Headband of Intellect, Tome of *, Manual of *.
   | { kind: 'OverrideAbilityScore'; ability: AbilityScore; value: number }
+  // Slice 308. Additive ability-score increase capped at `max`,
+  // distinct from OverrideAbilityScore (which *sets* a value and would
+  // mask a wearer's own higher score). RAW shape: "Your [ability]
+  // increases by `amount`, to a maximum of `max`." Canonical users:
+  // the six ability Ioun Stones (+2 to max 20) and Belt of
+  // Dwarvenkind's Toughness arm (CON +2 to max 20). The increase only
+  // raises (never lowers a score that already exceeds `max`); see
+  // effectiveAbilityScore. The Manual/Tome variant (permanently raises
+  // the score AND its max on a one-time read) is a separate
+  // application shape, not this passive-worn projection.
+  | { kind: 'IncreaseAbilityScore'; ability: AbilityScore; amount: number; max: number }
   // Slice 232. Monster trait: the bearer regains `perTurn` HP at the
   // start of each of their turns. If they take damage of a type in
   // `suppressedBy` during a turn, regeneration is suppressed on the
@@ -504,6 +515,12 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       value: z.number().int().min(1).max(30),
     }),
     z.object({
+      kind: z.literal('IncreaseAbilityScore'),
+      ability: AbilityScoreSchema,
+      amount: z.number().int().min(1),
+      max: z.number().int().min(1).max(30),
+    }),
+    z.object({
       kind: z.literal('Regeneration'),
       perTurn: z.number().int().min(1),
       suppressedBy: z.array(DamageTypeSchema),
@@ -709,6 +726,7 @@ export const EFFECT_KINDS = [
   'GrantMagicResistance',
   'OverrideACFormula',
   'OverrideAbilityScore',
+  'IncreaseAbilityScore',
   'Regeneration',
   'SetACFloor',
   'GrantResource',

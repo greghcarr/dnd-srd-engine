@@ -12,9 +12,25 @@ export const PROFICIENCY_BONUS_LEVEL_MAX = 20;
 // here so the canonical AbilityScore-floor primitive (Amulet of
 // Health, Gauntlets of Ogre Power, Belt of Giant Strength variants)
 // participates in every derivation that consumes the score.
-export const effectiveAbilityScore = (baseScore: number, floor?: number): number => {
-  if (floor === undefined) return baseScore;
-  return Math.max(baseScore, floor);
+//
+// Slice 308. Optional additive `increase` ({ amount, max }) from the
+// IncreaseAbilityScore primitive (Ioun Stones, Belt of Dwarvenkind
+// Toughness). Applied after the floor so a "set" floor and a "+N"
+// increase compose RAW-correctly (Amulet of Health floor 19 + an Ioun
+// Stone +2 reaches 20). The increase only raises: it never lowers a
+// score that already exceeds its `max`, so it can't clamp a higher
+// floor down to the cap.
+export const effectiveAbilityScore = (
+  baseScore: number,
+  floor?: number,
+  increase?: { readonly amount: number; readonly max: number },
+): number => {
+  let score = baseScore;
+  if (floor !== undefined) score = Math.max(score, floor);
+  if (increase !== undefined) {
+    score = Math.max(score, Math.min(score + increase.amount, increase.max));
+  }
+  return score;
 };
 
 export const abilityModifier = (score: number): number => {
