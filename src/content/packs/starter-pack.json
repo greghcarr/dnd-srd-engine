@@ -2019,7 +2019,7 @@
     { "id": "dragons-breath", "name": "Dragon's Breath", "level": 2, "school": "transmutation", "castingTime": "Bonus Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a hot pepper" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["sorcerer", "wizard"], "targeting": { "shape": "cone", "size": 15 }, "mechanicalEffects": [] },
     { "id": "enhance-ability", "name": "Enhance Ability", "level": 2, "school": "transmutation", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "fur or a feather" }, "duration": "Concentration, up to 1 hour", "concentration": true, "ritual": false, "classes": ["bard", "cleric", "druid", "ranger", "sorcerer", "wizard"], "mechanicalEffects": [{ "kind": "buff", "casterChoosesVariant": { "variants": [{ "key": "bulls-strength", "conditionId": "bulls-strength-active" }, { "key": "cats-grace", "conditionId": "cats-grace-active" }, { "key": "eagles-splendor", "conditionId": "eagles-splendor-active" }, { "key": "foxs-cunning", "conditionId": "foxs-cunning-active" }, { "key": "owls-wisdom", "conditionId": "owls-wisdom-active" }] } }] },
     { "id": "enlarge-reduce", "name": "Enlarge/Reduce", "level": 2, "school": "transmutation", "castingTime": "Action", "range": "30 feet", "components": { "verbal": true, "somatic": true, "material": "a pinch of powdered iron" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "druid", "sorcerer", "wizard"], "mechanicalEffects": [{ "kind": "buff", "casterChoosesVariant": { "variants": [{ "key": "enlarge", "conditionId": "enlarged-active" }, { "key": "reduce", "conditionId": "reduced-active" }] } }] },
-    { "id": "enthrall", "name": "Enthrall", "level": 2, "school": "enchantment", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "warlock"], "mechanicalEffects": [] },
+    { "id": "enthrall", "name": "Enthrall", "level": 2, "school": "enchantment", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "warlock"], "mechanicalEffects": [{ "kind": "save", "ability": "WIS", "conditionOnFail": "enthralled-active" }] },
     { "id": "find-steed", "name": "Find Steed", "level": 2, "school": "conjuration", "castingTime": "1 minute", "range": "30 feet", "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["paladin"], "mechanicalEffects": [{ "kind": "summon", "name": "Bonded Steed", "ac": 11, "hpBase": 30, "hpPerSlotAbove": 10, "baseSlotLevel": 2, "speedFeet": 60 }] },
     { "id": "find-traps", "name": "Find Traps", "level": 2, "school": "divination", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["cleric", "druid", "ranger"], "mechanicalEffects": [] },
     { "id": "flaming-sphere", "name": "Flaming Sphere", "level": 2, "school": "conjuration", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true, "material": "a ball of wax" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["druid", "sorcerer", "wizard"], "targeting": { "shape": "sphere", "size": 5 }, "mechanicalEffects": [{ "kind": "aura-damage", "rangeFeet": 5, "saveAbility": "DEX", "damageDice": "2d6", "damageType": "fire", "halfOnSuccess": true, "extraDicePerSlotLevel": 1 }] },
@@ -8571,6 +8571,16 @@
       "endsOn": [],
       "effects": [
         { "kind": "AddModifier", "target": { "kind": "skill", "skill": "stealth" }, "value": 10 }
+      ]
+    },
+    {
+      "id": "enthralled-active",
+      "name": "Enthralled",
+      "description": "Applied by Enthrall on a failed Wisdom save: a -10 penalty to Wisdom (Perception) checks until the spell ends (concentration-linked, so it clears when the caster's concentration drops). RAW deviations: the -10 to Passive Perception is not modeled (no derive sums modifiers into passive Perception today; only the active-check penalty is wired), and the 'any creature you or your companions are fighting automatically succeeds on the save' clause is consumer-managed (the engine doesn't model combat relationships, so the caster omits such creatures from the cast's targets).",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "AddModifier", "target": { "kind": "skill", "skill": "perception" }, "value": -10 }
       ]
     },
     {

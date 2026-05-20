@@ -18,7 +18,7 @@ A prior version of this doc tracked the **full PHB 2024 spell list** as its deno
 
 ## Totals
 
-**351 in pack**: **193 wired** (153 cast-time, 13 zone-tick, 27 dedicated planner), **70 narrative**, **88 deferred** (genuine mechanical gap, grouped by needed primitive per level below).
+**351 in pack**: **194 wired** (154 cast-time, 13 zone-tick, 27 dedicated planner), **70 narrative**, **87 deferred** (genuine mechanical gap, grouped by needed primitive per level below).
 
 ## Biggest deferred clusters (the priority queue)
 
@@ -66,21 +66,20 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 **Narrative (13):** alarm, comprehend-languages, create-or-destroy-water, detect-evil-and-good, detect-magic, detect-poison-and-disease, disguise-self, expeditious-retreat, fog-cloud, illusory-script, jump, purify-food-and-drink, speak-with-animals.
 
-## Level 2 (60 in pack): 36 wired, 15 narrative, 9 deferred
+## Level 2 (60 in pack): 37 wired, 15 narrative, 8 deferred
 
-**Wired, cast-time (31):** acid-arrow, aid, barkskin, blindness-deafness, blur, calm-emotions, cordon-of-arrows, darkvision, enhance-ability, enlarge-reduce, find-steed, flame-blade, gust-of-wind, heat-metal, hold-person, invisibility, lesser-restoration, mind-spike, mirror-image, moonbeam, pass-without-trace, prayer-of-healing, protection-from-poison, scorching-ray, shatter, spider-climb, spiritual-weapon, suggestion, summon-beast, warding-bond, web. (Mirror Image carries a `buff` condition on cast plus the slice-124 `planAttack` deflection pool.)
+**Wired, cast-time (32):** acid-arrow, aid, barkskin, blindness-deafness, blur, calm-emotions, cordon-of-arrows, darkvision, enhance-ability, enlarge-reduce, enthrall (WIS save -> `enthralled-active`: -10 to Perception checks; slice 343), find-steed, flame-blade, gust-of-wind, heat-metal, hold-person, invisibility, lesser-restoration, mind-spike, mirror-image, moonbeam, pass-without-trace, prayer-of-healing, protection-from-poison, scorching-ray, shatter, spider-climb, spiritual-weapon, suggestion, summon-beast, warding-bond, web. (Mirror Image carries a `buff` condition on cast plus the slice-124 `planAttack` deflection pool.)
 
 **Wired, zone-tick (3):** cloud-of-daggers (4d4 no-save `aura-damage`), flaming-sphere (DEX save 2d6 `aura-damage`), spike-growth (2d4-per-5ft `movement-damage`).
 
 **Wired, planner (2):** magic-weapon, misty-step.
 
-**Deferred (9):**
+**Deferred (8):**
 - **non-damage area zone:** darkness (obscurement + visibility condition), silence, zone-of-truth.
 - **on-hit rider via `castSpell`:** shining-smite, ray-of-enfeeblement.
 - **recurring-rider primitive:** phantasmal-force.
 - **flight / hover condition:** levitate.
 - **on-action rider:** dragons-breath.
-- **perception-buff condition:** enthrall.
 
 **Narrative (15):** alter-self, animal-messenger, arcane-lock, arcanists-magic-aura, augury, continual-flame, detect-thoughts, find-traps, gentle-repose, knock, locate-animals-or-plants, locate-object, magic-mouth, rope-trick, see-invisibility.
 

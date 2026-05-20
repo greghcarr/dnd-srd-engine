@@ -182,7 +182,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'dragons-breath': { kind: 'skip', reason: 'grants ally a breath-weapon reaction-style; on-action rider not modeled' },
   'enhance-ability': { kind: 'buff', conditionId: 'bulls-strength-active', casterChoice: { kind: 'variant', value: 'bulls-strength' } },
   'enlarge-reduce': { kind: 'buff', conditionId: 'enlarged-active', casterChoice: { kind: 'variant', value: 'enlarge' } },
-  'enthrall': { kind: 'skip', reason: 'WIS save against perception disadvantage on caster; perception-buff condition not modeled' },
+  'enthrall': { kind: 'save' },
   'find-steed': { kind: 'summon' },
   'find-traps': { kind: 'skip', reason: 'divination utility; detection mechanic not modeled' },
   'flaming-sphere': { kind: 'skip', reason: 'aura-damage mechanic (DEX save 2d6 fire, half on success); fires via engine.plan.tickAura at end of caster turn against adjacent creatures. RAW mobile-sphere movement is consumer-side.' },

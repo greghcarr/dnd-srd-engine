@@ -4,6 +4,16 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content: Enthrall wired (slice 343)**
+
+Pure content slice on existing primitives. **Enthrall** (L2, concentration) now wires as a `save` mechanic (WIS, `conditionOnFail: 'enthralled-active'`); the new `enthralled-active` condition carries `AddModifier { target: { kind: 'skill', skill: 'perception' }, value: -10 }`, the RAW 2024 "-10 penalty to Wisdom (Perception) checks." The condition is concentration-linked (cast-spell ties `conditionOnFail` conditions to the concentration effect, so it clears when the caster's concentration drops, same lifecycle as Hold Person). Skill-targeted `AddModifier` is the same shape Pass without Trace already uses (+10 Stealth), and the ability-check derive already sums it.
+
+RAW deviations (documented on the condition): the parallel "-10 to Passive Perception" is not modeled (no derive sums modifiers into passive Perception today; only the active-check penalty is wired), and the "any creature you or your companions are fighting automatically succeeds on the save" clause is consumer-managed (the engine doesn't model combat relationships, so the caster omits such creatures from the cast's targets).
+
+Spell coverage: 193 -> 194 wired, 88 -> 87 deferred. Conditions 118 -> 119. New [tests/unit/engine/slice-343-enthrall.test.ts](tests/unit/engine/slice-343-enthrall.test.ts) pins the -10 Perception penalty (and that other WIS skills are unaffected) and the cast chain (WIS save; failed save applies the condition, successful save does not); enthrall flipped from `skip` to an active `save` expectation. Coverage snapshot regenerated (+1 condition).
+
+Content audit (RAW match): the save ability (WIS), the penalty target (Perception checks) and magnitude (-10), and the concentration linkage all match SRD 5.2.1 Enthrall; the two documented deviations are the passive-Perception arm (no consumer) and the auto-success-while-fighting clause (no combat-relationship model). No new primitive; `tsc --noEmit` clean.
+
 **Engine: `planDimensionDoor` teleport planner (slice 342)**
 
 New dedicated `planDimensionDoor` ([src/engine/plan/movement.ts](src/engine/plan/movement.ts)) + `engine.plan.dimensionDoor`. RAW 2024 Dimension Door: 4th-level conjuration, Action, range 500 ft. The caster teleports to a location within range and may bring one willing creature that starts within 5 ft, arriving within 5 ft of the destination. Emits `SpellCastDeclared` + `SpellSlotConsumed(4+)` + `ActionEconomyConsumed('action')` + `CombatantMoved` (caster) + optional `CombatantMoved` (ally); consumes no RNG. Guards: 4th-level minimum, knows/prepared the spell, active combatant, action not yet used, destination within 500 ft (Chebyshev), ally within 5 ft of caster and arriving within 5 ft of the destination (and not the caster's own space). The RAW "arrive in an occupied space -> 4d6 Force, teleport fails" clause is modeled by *rejecting* an occupied destination, the same positioning stance as Misty Step / Thunder Step (the engine treats occupancy as the consumer's responsibility rather than dealing failure damage).
