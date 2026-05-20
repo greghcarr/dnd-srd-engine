@@ -4,6 +4,10 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Docs: split the Deferred primitives backlog out of starter-pack-gaps.md (slice 336)**
+
+[docs/starter-pack-gaps.md](docs/starter-pack-gaps.md) had grown to ~56 KB (approaching the 60 KB single-Read ceiling), 64% of it the Deferred primitives backlog table. Per the doc-size playbook, that table moved to a new sibling [docs/gaps-deferred-primitives.md](docs/gaps-deferred-primitives.md) (36 KB); the front-door doc keeps a one-paragraph pointer and drops to ~21 KB. Updated the intro references + the sibling-catalog list; the new file is auto-covered by the doc-size audit's `docs/gaps-*.md` glob. No code or content change; docs only. doc-size audit green.
+
 **Engine: Step of the Wind planner — Monk's Focus trio complete, 0 deferred main-class features (slice 335)**
 
 Last of the three Monk's Focus bonus-action planners. With it, **all 17 SRD main-class features are mechanically closed** — the deferred-with-reason main-class-feature count reaches 0 (the long-standing Monk L10 Heightened Focus, which gated on this trio, is closed).
