@@ -1083,6 +1083,28 @@ const planHpThresholdMechanic = (
       } satisfies CreatureDestroyedEvent);
       continue;
     }
+    if (arm.kind === 'condition') {
+      const immune = isImmuneToCondition({
+        state,
+        content,
+        targetId,
+        conditionId: arm.conditionId,
+        sourceCharacterId: intent.characterId,
+      });
+      if (!immune) {
+        events.push({
+          id: newEventId() as ULID,
+          at,
+          type: 'ConditionApplied',
+          targetId: targetId as ULID,
+          conditionId: arm.conditionId,
+          appliedConditionId: newAppliedConditionId(),
+          sourceCharacterId: intent.characterId as ULID,
+          causedByEventId: declaredEventId as ULID,
+        } satisfies ConditionAppliedEvent);
+      }
+      continue;
+    }
     const rolled = rollExpression(arm.damageDice, rng).total;
     if (rolled <= 0) continue;
     const mitigated = mitigateDamage({

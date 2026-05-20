@@ -412,7 +412,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'holy-aura': { kind: 'buff', conditionId: 'holy-aura-active' },
   'maze': { kind: 'skip', reason: 'banishes a target to a demiplane labyrinth; cross-plane single-target primitive not modeled' },
   'mind-blank': { kind: 'buff', conditionId: 'mind-blanked-active' },
-  'power-word-stun': { kind: 'skip', reason: 'tiered HP-threshold stun (≤150 HP); HP-threshold effect not modeled' },
+  'power-word-stun': { kind: 'buff', conditionId: 'power-word-stunned-active' },
   // PHB 2024 L9 spells with wired mechanics
   'mass-heal': { kind: 'heal' },
   'weird': { kind: 'save' },

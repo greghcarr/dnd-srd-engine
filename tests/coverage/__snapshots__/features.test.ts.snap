@@ -179,6 +179,8 @@ exports[`feature-coverage matrix: conditions > wired conditions catalog is stabl
   "petrified",
   "poisoned",
   "potion-of-invulnerability-active",
+  "power-word-speed-zero-active",
+  "power-word-stunned-active",
   "prone",
   "protection-acid-active",
   "protection-cold-active",

@@ -315,12 +315,13 @@ export const cantripExtraDice = (characterLevel: number): number => {
 // threshold 100, `destroy` at or below, 12d12 psychic `damage` above.
 //
 // Each arm is `destroy` (emits CreatureDestroyed, the instant-death
-// path that bypasses death saves, slice 323) or `damage` (dice + type,
+// path that bypasses death saves, slice 323), `damage` (dice + type,
 // run through the same mitigation + fatal-damage intercept as any
-// other spell damage). `above` is optional: a spell may have no
-// otherwise-effect. The two-arm shape extends to Power Word Stun (a
-// future `condition` arm kind) and the tiered Divine Word (a future
-// multi-threshold variant) without reshaping the cast dispatch.
+// other spell damage), or `condition` (applies a condition by id,
+// honoring condition immunity; slice 339, Power Word Stun). `above`
+// is optional: a spell may have no otherwise-effect. The two-arm shape
+// extends to the tiered Divine Word (a future multi-threshold variant)
+// without reshaping the cast dispatch.
 const HpThresholdArmSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('destroy') }),
   z.object({
@@ -328,6 +329,7 @@ const HpThresholdArmSchema = z.discriminatedUnion('kind', [
     damageDice: DiceExpressionSchema,
     damageType: DamageTypeSchema,
   }),
+  z.object({ kind: z.literal('condition'), conditionId: z.string() }),
 ]);
 export type HpThresholdArm = z.infer<typeof HpThresholdArmSchema>;
 

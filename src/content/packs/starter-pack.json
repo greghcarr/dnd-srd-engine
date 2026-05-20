@@ -1747,7 +1747,7 @@
     { "id": "incendiary-cloud", "name": "Incendiary Cloud", "level": 8, "school": "conjuration", "castingTime": "Action", "range": "150 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["druid", "sorcerer", "wizard"], "targeting": { "shape": "sphere", "size": 20 }, "mechanicalEffects": [{ "kind": "save", "ability": "DEX", "damageDice": "10d8", "damageType": "fire", "halfOnSuccess": true }] },
     { "id": "maze", "name": "Maze", "level": 8, "school": "conjuration", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["wizard"], "mechanicalEffects": [] },
     { "id": "mind-blank", "name": "Mind Blank", "level": 8, "school": "abjuration", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true }, "duration": "24 hours", "concentration": false, "ritual": false, "classes": ["bard", "wizard"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "mind-blanked-active" }] },
-    { "id": "power-word-stun", "name": "Power Word Stun", "level": 8, "school": "enchantment", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["bard", "sorcerer", "warlock", "wizard"], "mechanicalEffects": [] },
+    { "id": "power-word-stun", "name": "Power Word Stun", "level": 8, "school": "enchantment", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["bard", "sorcerer", "warlock", "wizard"], "mechanicalEffects": [{ "kind": "hp-threshold", "threshold": 150, "atOrBelow": { "kind": "condition", "conditionId": "power-word-stunned-active" }, "above": { "kind": "condition", "conditionId": "power-word-speed-zero-active" } }] },
     { "id": "sunburst", "name": "Sunburst", "level": 8, "school": "evocation", "castingTime": "Action", "range": "150 feet", "components": { "verbal": true, "somatic": true, "material": "a piece of sunstone" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["cleric", "druid", "sorcerer", "wizard"], "targeting": { "shape": "sphere", "size": 60 }, "mechanicalEffects": [{ "kind": "save", "ability": "CON", "damageDice": "12d6", "damageType": "radiant", "halfOnSuccess": true }] },
     { "id": "tsunami", "name": "Tsunami", "level": 8, "school": "conjuration", "castingTime": "1 minute", "range": "1 mile", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 6 rounds", "concentration": true, "ritual": false, "classes": ["druid"], "mechanicalEffects": [{ "kind": "save", "ability": "STR", "damageDice": "6d10", "damageType": "bludgeoning", "halfOnSuccess": true }] },
     { "id": "astral-projection", "name": "Astral Projection", "level": 9, "school": "necromancy", "castingTime": "1 hour", "range": "10 feet", "components": { "verbal": true, "somatic": true, "material": "for each of the spell's targets, one jacinth worth 1,000+ GP and one silver bar worth 100+ GP, all of which the spell consumes" }, "duration": "Until dispelled", "concentration": false, "ritual": false, "classes": ["cleric", "warlock", "wizard"], "mechanicalEffects": [] },
@@ -8304,6 +8304,29 @@
         { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "DEX" }, "mode": "auto-fail" }
       ],
       "recurringSave": { "ability": "WIS", "trigger": "turnEnd", "onSuccess": "removeCondition" }
+    },
+    {
+      "id": "power-word-stunned-active",
+      "name": "Stunned (Power Word Stun)",
+      "description": "The spell-bound variant of Stunned applied by Power Word Stun to a target with 150 Hit Points or fewer. Same mechanical effects as the bare Stunned condition (auto-fail STR/DEX saves) plus action-blocking via ACTION_BLOCKING_CONDITIONS, plus a Constitution save at the end of each of the bearer's turns; on success the condition ends. The consumer calls `engine.plan.tickRecurringSave({ targetId, conditionId: 'power-word-stunned-active' })` at the end of the bearer's turn. RAW deviation: a creature immune to the bare Stunned condition is not auto-detected as immune to this variant id (same limitation as held-paralyzed-active).",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "STR" }, "mode": "auto-fail" },
+        { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "DEX" }, "mode": "auto-fail" }
+      ],
+      "recurringSave": { "ability": "CON", "trigger": "turnEnd", "onSuccess": "removeCondition" }
+    },
+    {
+      "id": "power-word-speed-zero-active",
+      "name": "Speed 0 (Power Word Stun)",
+      "description": "Applied by Power Word Stun to a target with more than 150 Hit Points: its Speed is 0 until the start of the caster's next turn. Modeled as a one-round speed-0 condition (ModifySpeed walk 0 + autoExpiry after one round on turnEnd). RAW deviation: the engine expires it at the bearer's next turn-end rather than the caster's next turn start; the brief duration is otherwise consumer-managed.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "ModifySpeed", "mode": "walk", "op": "set", "value": 0 }
+      ],
+      "autoExpiry": { "afterRounds": 1, "trigger": "turnEnd" }
     },
     {
       "id": "hideous-laughter-active",
