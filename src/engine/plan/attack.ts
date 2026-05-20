@@ -6,12 +6,16 @@ import type {
   DamageRolledEvent,
   DamageRoll,
 } from '../../schemas/events/attack.js';
-import type { DamageAppliedEvent, ConditionRemovedEvent } from '../../schemas/events/combat.js';
+import type {
+  DamageAppliedEvent,
+  ConditionRemovedEvent,
+  ConditionAppliedEvent,
+} from '../../schemas/events/combat.js';
 import type { MirrorImageDeflectedEvent } from '../../schemas/events/mirror-image.js';
 import type { ItemTemporaryBuff } from '../../schemas/runtime/item-instance.js';
 import type { RNG } from '../../rng/index.js';
 import { rollDie, parseDiceExpression } from '../../rng/dice.js';
-import { newEventId } from '../../ids.js';
+import { newEventId, newAppliedConditionId } from '../../ids.js';
 import { computeAttackBonus } from '../../derive/attack.js';
 import { computeAC } from '../../derive/ac.js';
 import { buildEffectStack } from '../../derive/effect-stack.js';
@@ -23,6 +27,7 @@ import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { isMagicWeaponAttack } from '../../derive/magicality.js';
 import { resolveEnchantment } from '../../derive/enchantment.js';
 import { evaluatePredicate } from '../../effects/predicate.js';
+import { rollSaveAgainstDC } from './_save-roll.js';
 import {
   findMirrorImage,
   mirrorImageThreshold,
@@ -793,12 +798,21 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   // Slice 318: a rider may carry a target-gated `condition` (Sun Blade's
   // +1d8 radiant vs Undead). Evaluate it against target facts at hit
   // time; unconditional riders always fire.
+  // Slice 319: `target.speciesId` lets a rider gate on lineage (the
+  // Ghoul's Claw fires "if the target isn't an Undead or elf"); the
+  // creatureType fact alone can't express the elf exclusion.
   const riderFacts = new Map<string, unknown>([
     ['target.creatureType', getCreatureType(target, content)],
+    ['target.speciesId', target.speciesId],
   ]);
-  const onHitRiderRolls = [...(weaponDef.onHit ?? []), ...(enchantment?.onHit ?? [])]
-    .filter((r) => r.condition === undefined || evaluatePredicate(r.condition, { facts: riderFacts }))
-    .map((r) => rollExtraDamageDice(r.dice, r.damageType, rng, critical));
+  const applicableRiders = [...(weaponDef.onHit ?? []), ...(enchantment?.onHit ?? [])].filter(
+    (r) => r.condition === undefined || evaluatePredicate(r.condition, { facts: riderFacts }),
+  );
+  const onHitRiderRolls = applicableRiders.flatMap((r) =>
+    r.dice !== undefined && r.damageType !== undefined
+      ? [rollExtraDamageDice(r.dice, r.damageType, rng, critical)]
+      : [],
+  );
 
   const damageRolled: DamageRolledEvent = {
     id: newEventId() as ULID,
@@ -828,13 +842,18 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     const riderTotal = rider.rolls.reduce((s, v) => s + v, 0) + rider.modifier;
     rawComponents.push({ amount: Math.max(0, riderTotal), type: rider.type });
   }
+  const attackIsMagical = isMagicWeaponAttack(
+    weaponInstance,
+    weaponDef,
+    attackerEffects.hasUnarmedAsMagical(),
+  );
   const mitigatedComponents = mitigateDamage({
     character: target,
     itemInstances: state.itemInstances,
     content,
     rawComponents,
     characters: state.characters,
-    sourceIsMagical: isMagicWeaponAttack(weaponInstance, weaponDef, attackerEffects.hasUnarmedAsMagical()),
+    sourceIsMagical: attackIsMagical,
   });
   // Slice 111: simulate prior-rider damage so the Death Ward intercept
   // sees the target's HP at the moment the main damage event commits.
@@ -876,12 +895,46 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     at,
   });
 
+  // Slice 319: on-hit-save riders (Ghoul's Claw: CON save DC 10 or
+  // Paralyzed). Resolved after the damage chain — the hit lands, then
+  // the target makes the save. Only riders whose `condition` gate
+  // already passed (filtered into applicableRiders above) carry a save
+  // here. RNG-rolled in the planner so replay stays deterministic.
+  const onHitSaveEvents: Event[] = [];
+  for (const rider of applicableRiders) {
+    if (rider.save === undefined) continue;
+    const saveResult = rollSaveAgainstDC({
+      state,
+      content,
+      targetId: input.targetId,
+      ability: rider.save.ability,
+      dc: rider.save.dc,
+      sourceIsMagical: rider.save.sourceIsMagical ?? false,
+      rng,
+      at,
+    });
+    if (saveResult === undefined) continue;
+    onHitSaveEvents.push(saveResult.event);
+    if (!saveResult.success) {
+      onHitSaveEvents.push({
+        id: newEventId() as ULID,
+        at,
+        type: 'ConditionApplied',
+        targetId: input.targetId as ULID,
+        conditionId: rider.save.conditionOnFail,
+        appliedConditionId: newAppliedConditionId(),
+        sourceCharacterId: input.attackerId as ULID,
+      } satisfies ConditionAppliedEvent);
+    }
+  }
+
   return [
     attackRolled,
     ...attackTriggers,
     damageRolled,
     damageApplied,
     ...damageTriggers,
+    ...onHitSaveEvents,
     ...intercept.extraEvents,
     ...concentrationBreak,
   ];

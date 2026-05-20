@@ -4,6 +4,27 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content: on-hit-save weapon riders (slice 319)**
+
+Extends the slice-316/317/318 `onHit` rider with a saving-throw arm: a rider can carry a `save` block (`ability` + fixed `dc` + `conditionOnFail`); on a hit the target makes the save and, on failure, gains the condition. The save fires only when the rider's slice-318 `condition` gate passes, so the gate and the save compose. This is the on-hit-save primitive that the slice-318 entry flagged as deferred.
+
+Engine:
+- The `onHit` rider schema gains optional `save: { ability, dc, conditionOnFail, sourceIsMagical? }`. `dice`/`damageType` are now optional and paired (a rider carries extra damage, a save, or both — a pure-save rider omits dice entirely), enforced by two `.refine` checks.
+- The attack planner splits the (already condition-filtered) applicable riders into damage rolls and save rolls. After the damage chain, each save rider rolls a save against the target and, on failure, emits `ConditionApplied` (sourced by the attacker). `sourceIsMagical` defaults to false (monster natural-weapon saves are nonmagical).
+- New shared `rollSaveAgainstDC` helper ([src/engine/plan/_save-roll.ts](src/engine/plan/_save-roll.ts)) bakes the d20(s) + computed bonus into a `SaveRolled` event. Three older planners (use-item `Save`, recurring-save, breath-weapon) still inline the same shape; routing them through the helper is a tracked follow-up (below).
+- The rider-facts map gains `target.speciesId`, so a gate can express lineage exclusions (the Ghoul's "isn't an Undead or elf") that creature-type alone can't.
+
+Content (canonical user): **Ghoul's Claw** (`ghoul-claws`, a Ghoul natural weapon: simple melee 1d4 slashing) carries the RAW save rider — CON DC 10 or Paralyzed — gated on `not(any[target.creatureType = Undead, target.speciesId = elf])`. Monster natural attacks are modeled as wielded weapon items (the slice-13 Ogre/longsword pattern), so the claw is the canonical user.
+
+Open follow-ups:
+- The three legacy inlined save-roll blocks (use-item `Save`, recurring-save, breath-weapon) should route through the new `rollSaveAgainstDC` helper. **Still open** — left out of this slice to keep it focused on the primitive + canonical user rather than bundling a 3-planner refactor.
+- Magic-weapon on-hit-save users with extra gating stay deferred as content: Mace of Disruption's destroy-or-Frighten (low-HP-gated) and Dagger of Venom's poison (coat-gated, once/long-rest). The mechanism now exists; only their bespoke gates remain.
+- Poison Basic's DC 10 CON save vs Poisoned arm is still deferred: the save lives on the static weapon-def/enchantment `onHit` rider, not on the slice-76 `temporaryBuff` (consumable) shape. A future slice would add a `save` slot to `temporaryBuff`.
+
+RAW deviation: the Paralyzed condition's "until the end of its next turn" duration is consumer-managed (the planner emits `ConditionApplied` without `expiresOnRound`), mirroring the slice-286 `Save` UseAction.
+
+Uncle Bob audit: **Names** — `save` / `conditionOnFail` reuse the slice-286 `Save` UseAction field names; `rollSaveAgainstDC` says what it does. **DRY** — extracted the save-roll shape into one helper instead of adding a 4th inline copy; the rider condition-gate reuses the slice-318 `.filter`. **SRP** — schema, helper, and planner save-emission each live in their own layer; the helper does one thing (roll a fixed-DC save). **Magic numbers** — none new (DC 10 / CON / Paralyzed are RAW-cited on the content item). **at-threading** — the save rolls in the planner, baked into `SaveRolled`; `apply` stays RNG-free. **Mechanical outcomes asserted** — a hit vs a humanoid emits a CON DC 10 `SaveRolled` + base slashing damage; a failed save applies Paralyzed sourced by the attacker; a hit vs an Undead or an elf emits no `SaveRolled` (gate filters the rider) but still deals slashing. **Tests** — 4 new ([tests/unit/engine/slice-319-onhit-save.test.ts](tests/unit/engine/slice-319-onhit-save.test.ts)); full suite green (1933 passed), tsc clean. Coverage snapshot unchanged (ghoul-claws has no mastery, isn't a magic item). Docs: gaps Items (weapons 47 → 48; on-hit-save mechanism marked landed).
+
 **Engine + content: target-gated on-hit weapon riders (slice 318)**
 
 Builds on the slice-316/317 `onHit` rider mechanism: a rider can now carry an optional `condition` predicate, evaluated against target facts at hit time, so it only fires against a matching target. This unblocks the conditional weapon riders (vs Undead / Fiend / etc.) that were deferred when the rider mechanism first landed.

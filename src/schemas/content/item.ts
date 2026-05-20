@@ -42,16 +42,45 @@ const MagicRaritySchema = z.enum([
 // ItemInstance.enchantmentDefinitionId). `weaponEnhancementFields`:
 // `attackBonus` / `damageBonus` flat enhancements + `onHit` per-hit
 // extra-damage riders. `armorEnhancementFields`: `acBonus`.
-const onHitRiderSchema = z.object({
-  dice: DiceExpressionSchema,
-  damageType: DamageTypeSchema,
-  // Slice 318: optional target-gated condition. When present, the rider
-  // only fires on a hit whose target satisfies the predicate, evaluated
-  // against target facts at hit time (`target.creatureType` for "vs
-  // Undead / Giants / Constructs"). Unconditional riders (Thunderous
-  // Greatclub's +1d8 thunder) omit it and fire on every hit.
-  condition: PredicateSchema.optional(),
+// Slice 319: on-hit-save arm. A rider may carry a saving throw at a
+// fixed DC; on a failed save the target gains `conditionOnFail`. RAW
+// canonical user: a Ghoul's Claw ("Constitution Saving Throw: DC 10.
+// Failure: the target has the Paralyzed condition"). The save fires
+// only when the enclosing rider's `condition` gate passes (the Ghoul's
+// "if the target isn't an Undead or elf"), so the gate and the save
+// compose. The condition's duration is consumer-managed (mirror of the
+// slice-286 Save UseAction), and `sourceIsMagical` defaults to false
+// (monster natural-weapon saves are nonmagical) so the target's Magic
+// Resistance doesn't apply unless the rider opts in.
+const onHitSaveSchema = z.object({
+  ability: AbilityScoreSchema,
+  dc: z.number().int().min(1),
+  conditionOnFail: z.string(),
+  sourceIsMagical: z.boolean().optional(),
 });
+const onHitRiderSchema = z
+  .object({
+    // Slice 319: dice/damageType are now optional and paired. A rider
+    // carries extra damage (dice + damageType), a save (below), or
+    // both. A pure-save rider (Ghoul's Claw: no extra dice, just the
+    // save) omits dice/damageType entirely.
+    dice: DiceExpressionSchema.optional(),
+    damageType: DamageTypeSchema.optional(),
+    // Slice 318: optional target-gated condition. When present, the rider
+    // only fires on a hit whose target satisfies the predicate, evaluated
+    // against target facts at hit time (`target.creatureType` and
+    // `target.speciesId` for "vs Undead / Giants / Constructs", or the
+    // Ghoul's "isn't an Undead or elf"). Unconditional riders (Thunderous
+    // Greatclub's +1d8 thunder) omit it and fire on every hit.
+    condition: PredicateSchema.optional(),
+    save: onHitSaveSchema.optional(),
+  })
+  .refine((r) => (r.dice === undefined) === (r.damageType === undefined), {
+    message: 'onHit rider dice and damageType must be set together',
+  })
+  .refine((r) => r.dice !== undefined || r.save !== undefined, {
+    message: 'onHit rider must carry extra damage (dice) or a save',
+  });
 const weaponEnhancementFields = {
   attackBonus: z.number().int().optional(),
   damageBonus: z.number().int().optional(),
