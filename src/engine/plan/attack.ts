@@ -22,6 +22,7 @@ import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { isMagicWeaponAttack } from '../../derive/magicality.js';
 import { resolveEnchantment } from '../../derive/enchantment.js';
+import { evaluatePredicate } from '../../effects/predicate.js';
 import {
   findMirrorImage,
   mirrorImageThreshold,
@@ -789,9 +790,15 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   // deferred — these fire on every hit.
   // Slice 317: enchantment onHit riders (Frost Brand +1d6 cold) fire
   // alongside any intrinsic weapon-def riders.
-  const onHitRiderRolls = [...(weaponDef.onHit ?? []), ...(enchantment?.onHit ?? [])].map((r) =>
-    rollExtraDamageDice(r.dice, r.damageType, rng, critical),
-  );
+  // Slice 318: a rider may carry a target-gated `condition` (Sun Blade's
+  // +1d8 radiant vs Undead). Evaluate it against target facts at hit
+  // time; unconditional riders always fire.
+  const riderFacts = new Map<string, unknown>([
+    ['target.creatureType', getCreatureType(target, content)],
+  ]);
+  const onHitRiderRolls = [...(weaponDef.onHit ?? []), ...(enchantment?.onHit ?? [])]
+    .filter((r) => r.condition === undefined || evaluatePredicate(r.condition, { facts: riderFacts }))
+    .map((r) => rollExtraDamageDice(r.dice, r.damageType, rng, critical));
 
   const damageRolled: DamageRolledEvent = {
     id: newEventId() as ULID,

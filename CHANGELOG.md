@@ -4,6 +4,18 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content: target-gated on-hit weapon riders (slice 318)**
+
+Builds on the slice-316/317 `onHit` rider mechanism: a rider can now carry an optional `condition` predicate, evaluated against target facts at hit time, so it only fires against a matching target. This unblocks the conditional weapon riders (vs Undead / Fiend / etc.) that were deferred when the rider mechanism first landed.
+
+Engine:
+- The `onHit` rider schema (shared by `WeaponSchema`/`MagicItemSchema`) gains `condition?: Predicate`.
+- The attack planner builds a rider-facts map carrying `target.creatureType` (via the existing `getCreatureType`) and filters the rider list: a rider with a `condition` only rolls when the predicate passes; unconditional riders (Thunderous Greatclub) always fire.
+
+Content (canonical users): **Sun Blade** gains its RAW +1d8 radiant vs Undead rider (`eq target.creatureType = Undead`). **Mace of Disruption** is modeled as `itemKind: 'weapon'` (Mace base) with +2d6 radiant vs Fiend or Undead (an `any` predicate over `target.creatureType`). Still deferred: ranged-gated riders (Dwarven Thrower vs Giants), on-hit save riders (Mace of Disruption's destroy/Frighten, Dagger of Venom's poison), and crit-only riders (Mace of Smiting).
+
+Uncle Bob audit: **Names** — reused `condition` (the field name used by every other predicate-gated effect). **DRY** — reused the existing `evaluatePredicate` + `getCreatureType`; the rider filter is one `.filter` ahead of the existing `.map`. **SRP** — the rider condition is evaluated at the one rider-assembly site. **Magic numbers** — none (dice + types RAW-cited). **at-threading** — riders still roll in the planner, baked into `DamageRolled`. **Mechanical outcomes asserted** — Sun Blade emits 2 radiant components vs an Undead but 1 vs a Humanoid; Mace of Disruption emits radiant vs a Fiend but only bludgeoning vs a Humanoid. **Tests** — 4 new ([tests/unit/engine/slice-318-conditional-riders.test.ts](tests/unit/engine/slice-318-conditional-riders.test.ts)); full suite green (1928 passed), tsc clean. Coverage snapshot gained mace-of-disruption (now a weapon). Docs: gaps Items (weapons 46 → 47, magic 259 → 258).
+
 **Engine + content: magic-equipment modeling, stage 3 — multi-base enchantment overlay (slice 317)**
 
 Final stage: the multi-base magic equipment whose base is chosen at creation (Frost Brand = any of 6 weapons, "+1 weapon" = any weapon, "+1 armor" = any armor) — which can't ship as a single `itemKind: 'weapon'/'armor'` definition the way stage 1/2's single-base items did. Modeled as an **enchantment overlay**: the magic item stays `itemKind: 'magic'` (the enchantment) and a base weapon/armor instance references it via the new `ItemInstance.enchantmentDefinitionId`, parallel to how `temporaryBuff` already overlays the attack planner.

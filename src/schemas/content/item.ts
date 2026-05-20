@@ -8,6 +8,7 @@ import {
   WeaponPropertySchema,
 } from '../primitives.js';
 import { EffectSchema } from '../effects.js';
+import { PredicateSchema } from '../predicate.js';
 
 const ItemBaseSchema = z.object({
   id: z.string(),
@@ -44,6 +45,12 @@ const MagicRaritySchema = z.enum([
 const onHitRiderSchema = z.object({
   dice: DiceExpressionSchema,
   damageType: DamageTypeSchema,
+  // Slice 318: optional target-gated condition. When present, the rider
+  // only fires on a hit whose target satisfies the predicate, evaluated
+  // against target facts at hit time (`target.creatureType` for "vs
+  // Undead / Giants / Constructs"). Unconditional riders (Thunderous
+  // Greatclub's +1d8 thunder) omit it and fire on every hit.
+  condition: PredicateSchema.optional(),
 });
 const weaponEnhancementFields = {
   attackBonus: z.number().int().optional(),
