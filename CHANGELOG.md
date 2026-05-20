@@ -4,6 +4,20 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content: magic-item buff sweep cont., 6 staves/rods/medallion (slice 311)**
+
+Pure-content sweep, no engine changes. Six attunement-gated items, passive arms wired via existing primitives; pinned by [tests/unit/engine/slice-311-magic-item-wires.test.ts](tests/unit/engine/slice-311-magic-item-wires.test.ts):
+
+- **Staff of Fire** → `GrantResistance fire`; **Staff of Frost** → `GrantResistance cold` (RAW: "Resistance to Fire/Cold damage while you hold this staff").
+- **Rod of Alertness** → `SetAdvantage` on initiative + skill:perception (RAW Alertness arm, same shape as Sentinel Shield / Ioun Stone of Awareness).
+- **Scarab of Protection** → `AddModifier ac +1` (Defense) + `GrantMagicResistance` (Spell Resistance: "Advantage on saving throws against spells").
+- **Staff of the Magi** → `AddModifier spellAttack +2` + `GrantMagicResistance` (the Spell Absorption arm's passive "Advantage on saving throws against spells").
+- **Staff of Power** → `AddModifier ac +2` + `AddModifier { kind: save } +2` (all-saves, via the slice-299 save-wildcard) + `AddModifier spellAttack +2` (RAW: "+2 bonus to Armor Class, saving throws, and spell attack rolls").
+
+Deferred per item (charged spell-lists, reaction absorption, positional auras, weapon +N, Retributive Strike). Held-state is consumer-managed; attunement is the projection proxy (the engine doesn't model which hand holds a staff — same approximation as Spellguard Shield in slice 307).
+
+Audit (content sweep): Names — no new identifiers; reused GrantResistance / SetAdvantage / AddModifier / GrantMagicResistance. DRY — Rod of Alertness reuses the Ioun-Stone-of-Awareness advantage pair; Scarab/Staff magic-resistance reuses the slice-131 marker; Staff of Power's all-saves bonus reuses the slice-299 save-wildcard rather than six per-ability entries. SRP — one primitive per arm. Magic numbers — the +1/+2 bonuses and fire/cold types are RAW-cited above. Mechanical outcomes asserted — fire/cold resistance (and not the other); Rod advantage on initiative+perception; Scarab +1 AC delta + magic-resistance advantage; Staff of the Magi +2 spell-attack delta + magic resistance; Staff of Power +2 AC, +2 spell attack, and +2 to **every** ability's save (loops all six). Tests — 6 new. Coverage snapshot gained the 6 items; full suite green (1903 passed), tsc clean. Docs: gaps Items wired 75 → 81.
+
 **Content + audit: reclassify 10 generic Spell Scroll templates + scroll guard (slice 310)**
 
 Pattern-check continuation of slice 309. After the Potion categorization fix, a full SRD-type vs pack-`itemKind` cross-reference (every pack item against SRD typing) confirmed the rest are consistent — magic armor/weapons typed `magic` is the deliberate mundane-vs-magic split — with one remaining family: **Spell Scrolls**. The specific `spell-scroll-of-X` entries were already `consumable`, but the ten generic by-level templates (`spell-scroll-cantrip`, `spell-scroll-1st-level` … `spell-scroll-9th-level`) were still `itemKind: "magic"`. RAW Spell Scroll is type "Scroll" (consumed on use), so all ten are now `itemKind: "consumable"`.
