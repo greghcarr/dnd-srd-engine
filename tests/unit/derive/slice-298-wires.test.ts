@@ -180,14 +180,16 @@ describe('Stone of Good Luck deduplication (slice 298 bug fix)', () => {
     expect(entry?.name).toBe('Stone of Good Luck (Luckstone)');
   });
 
-  it('canonical entry still carries all 12 save+check AddModifier entries', () => {
+  it('canonical entry carries the save+check wildcard AddModifier entries', () => {
+    // Slice 299 compressed the previous 12 per-ability entries down to
+    // 2 wildcard entries via the new save/check ModifierTarget wildcard.
     const entry = PACK.items.find((i) => i.id === 'stone-of-good-luck');
     if (entry === undefined || (entry.itemKind !== 'magic' && entry.itemKind !== 'consumable')) {
       throw new Error('expected stone-of-good-luck to be wired magic item');
     }
     expect(entry.itemKind).toBe('magic');
     if (entry.itemKind === 'magic') {
-      expect(entry.effects).toHaveLength(12);
+      expect(entry.effects).toHaveLength(2);
     }
   });
 });

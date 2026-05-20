@@ -4,6 +4,37 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content: AddModifier save/check wildcard + 6-wire refactor (slice 299)**
+
+Closes the deferred row opened in slice 298. Mirror of slice-266's RollTarget wildcard, extended to `ModifierTarget` for AddModifier. Stone of Good Luck (Luckstone) is the canonical user (12 unrolled entries → 2 wildcard entries); the slice-261 pattern-check norm bundled 5 sibling cleanups in the same slice.
+
+Plumbing:
+- `ModifierTarget` save/check kinds now have optional `ability` (matches slice-266 RollTarget). New `modifierWildcardKeyFor` helper returns `save:*` / `check:*` for specific-ability queries. `modifierSum` and `modifierBreakdown` merge the wildcard bucket into per-ability queries (mirror of slice-266's advantageFor merge).
+- Wildcard queries themselves (`target: { kind: 'save' }` without `ability`) return only the wildcard bucket — the specific-ability buckets do NOT bubble upward. This matches RollTarget semantics: a wildcard query asks "what applies to ALL saves," not "what applies to SOME save."
+
+Content refactored (6 wires, 36 entries → 6 effective):
+- Stone of Good Luck (Luckstone): 12 → 2 (save wildcard + check wildcard)
+- Cloak of Protection: 7 → 2 (AC + save wildcard)
+- Ring of Protection: 7 → 2 (AC + save wildcard)
+- `blessed` condition: 7 → 2 (attack + save wildcard)
+- `baned` condition: 7 → 2 (attack + save wildcard)
+- `aura-of-protection-active` condition: 6 → 1 (save wildcard with the CHA-mod formula preserved)
+- Paladin L6 Aura of Protection feature (the self-effect entries that mirror the aura's ally condition): 6 → 1 same way
+
+RAW deviation discovered during refactor (pattern-check norm): the existing `blessed` / `baned` wires use a flat +2 / -2, but RAW 5.2.1 says 1d4. Documented in [tests/unit/rules-truth.test.ts:262](tests/unit/rules-truth.test.ts) since the original wire; this slice preserves the approximation and tracks the fix as a new deferred row (needs a per-roll bonus-die primitive distinct from AddModifier's static `value` — Guidance / Resistance / Bardic Inspiration are future canonical users of the same shape).
+
+Audit:
+- Names: `modifierWildcardKeyFor` mirrors `wildcardKeyFor` from slice 266.
+- DRY: shared `sumList` / `filter` helpers inside the reader avoid copy-paste between sum + breakdown.
+- SRP: schema extension, reader merge, content refactor — three concerns, three layers.
+- at-threading: no event emission in this slice (read-only effect path).
+- Mechanical outcomes: 9 new tests in [tests/unit/effects/add-modifier-wildcard.test.ts](tests/unit/effects/add-modifier-wildcard.test.ts) pin (1) wildcard contributes to every per-ability sum, (2) save vs check don't leak, (3) wildcard + specific stack additively, (4) breakdown surfaces both sources, (5) wildcard query doesn't recursively expand, (6) non-save/check targets unaffected.
+- 2 existing tests updated: `slice-298-wires.test.ts` (length assertion 12 → 2 with comment); `aura-improvements.test.ts` (drops `.ability === 'WIS'` filter — the entry is wildcard now).
+
+tsc clean; 1833 tests across 268 files (was 1824 / 267; +9 net). Coverage snapshot unchanged (no wiredIds flips — the refactored items were already wired). SRD drift audit unchanged.
+
+Doc updates: deferred-primitives backlog gains the Bless/Bane RAW-deviation row; wildcard row marked closed with strikethrough.
+
 **Content + bug-fix: simple wires sweep + Stone of Good Luck dedup (slice 298)**
 
 Sweep of unwired magic items using existing primitives, with a bug-pattern audit that surfaced one duplicate. Per the slice-261 pattern-check norm, the audit found that 3 items (Cloak of Protection, Ring of Protection, Stone of Good Luck) and 3 conditions (blessed, baned, aura-of-protection-active) all ship 6 per-ability AddModifier entries to model universal save bonuses — wireable today via slice-266's wildcard pattern extended to AddModifier (deferred to a focused primitive slice). The wider sweep also surfaced one pack-data bug fixed here.

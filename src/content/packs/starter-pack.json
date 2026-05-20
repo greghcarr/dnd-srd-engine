@@ -359,7 +359,7 @@
         "3": { "proficiencyBonus": 2, "features": [{ "id": "channel-divinity-paladin", "name": "Channel Divinity", "effects": [{ "kind": "GrantResource", "resourceId": "channel-divinity", "max": 2, "recharge": "shortRest" }] }], "columns": {} },
         "4": { "proficiencyBonus": 2, "features": [], "columns": {} },
         "5": { "proficiencyBonus": 3, "features": [{ "id": "extra-attack-paladin", "name": "Extra Attack", "effects": [{ "kind": "ModifyActionEconomy", "op": "extraAttack", "count": 1 }] }, { "id": "faithful-steed", "name": "Faithful Steed", "effects": [] }], "columns": {} },
-        "6": { "proficiencyBonus": 3, "features": [{ "id": "aura-of-protection", "name": "Aura of Protection", "effects": [{ "kind": "GrantAura", "auraId": "aura-of-protection", "rangeFeet": 10, "allyConditionId": "aura-of-protection-active", "description": "You and allies within 10 ft add your CHA modifier (min +1) to saving throws." }, { "kind": "AddModifier", "target": { "kind": "save", "ability": "STR" }, "value": { "kind": "max", "terms": [{ "kind": "const", "value": 1 }, { "kind": "abilityMod", "ability": "CHA" }] } }, { "kind": "AddModifier", "target": { "kind": "save", "ability": "DEX" }, "value": { "kind": "max", "terms": [{ "kind": "const", "value": 1 }, { "kind": "abilityMod", "ability": "CHA" }] } }, { "kind": "AddModifier", "target": { "kind": "save", "ability": "CON" }, "value": { "kind": "max", "terms": [{ "kind": "const", "value": 1 }, { "kind": "abilityMod", "ability": "CHA" }] } }, { "kind": "AddModifier", "target": { "kind": "save", "ability": "INT" }, "value": { "kind": "max", "terms": [{ "kind": "const", "value": 1 }, { "kind": "abilityMod", "ability": "CHA" }] } }, { "kind": "AddModifier", "target": { "kind": "save", "ability": "WIS" }, "value": { "kind": "max", "terms": [{ "kind": "const", "value": 1 }, { "kind": "abilityMod", "ability": "CHA" }] } }, { "kind": "AddModifier", "target": { "kind": "save", "ability": "CHA" }, "value": { "kind": "max", "terms": [{ "kind": "const", "value": 1 }, { "kind": "abilityMod", "ability": "CHA" }] } }] }], "columns": {} },
+        "6": { "proficiencyBonus": 3, "features": [{ "id": "aura-of-protection", "name": "Aura of Protection", "effects": [{ "kind": "GrantAura", "auraId": "aura-of-protection", "rangeFeet": 10, "allyConditionId": "aura-of-protection-active", "description": "You and allies within 10 ft add your CHA modifier (min +1) to saving throws." }, { "kind": "AddModifier", "target": { "kind": "save" }, "value": { "kind": "max", "terms": [{ "kind": "const", "value": 1 }, { "kind": "abilityMod", "ability": "CHA" }] } }] }], "columns": {} },
         "7": { "proficiencyBonus": 3, "features": [], "columns": {} },
         "8": { "proficiencyBonus": 3, "features": [], "columns": {} },
         "9": { "proficiencyBonus": 4, "features": [{ "id": "abjure-foes", "name": "Abjure Foes", "effects": [] }], "columns": {} },
@@ -2281,8 +2281,8 @@
     { "id": "potion-of-greater-healing", "itemKind": "consumable", "name": "Potion of Greater Healing", "onConsume": [{ "kind": "Heal", "dice": "4d4", "flatAmount": 4 }], "description": "Heals 4d4+4 hit points when consumed" },
     { "id": "potion-of-superior-healing", "itemKind": "consumable", "name": "Potion of Superior Healing", "onConsume": [{ "kind": "Heal", "dice": "8d4", "flatAmount": 8 }], "description": "Heals 8d4+8 hit points when consumed" },
     { "id": "bag-of-holding", "itemKind": "magic", "name": "Bag of Holding", "rarity": "uncommon", "requiresAttunement": false, "effects": [] },
-    { "id": "cloak-of-protection", "itemKind": "magic", "name": "Cloak of Protection", "rarity": "uncommon", "requiresAttunement": true, "effects": [{ "kind": "AddModifier", "target": "ac", "value": 1 }, { "kind": "AddModifier", "target": { "kind": "save", "ability": "STR" }, "value": 1 }, { "kind": "AddModifier", "target": { "kind": "save", "ability": "DEX" }, "value": 1 }, { "kind": "AddModifier", "target": { "kind": "save", "ability": "CON" }, "value": 1 }, { "kind": "AddModifier", "target": { "kind": "save", "ability": "INT" }, "value": 1 }, { "kind": "AddModifier", "target": { "kind": "save", "ability": "WIS" }, "value": 1 }, { "kind": "AddModifier", "target": { "kind": "save", "ability": "CHA" }, "value": 1 }] },
-    { "id": "ring-of-protection", "itemKind": "magic", "name": "Ring of Protection", "rarity": "rare", "requiresAttunement": true, "effects": [{ "kind": "AddModifier", "target": "ac", "value": 1 }, { "kind": "AddModifier", "target": { "kind": "save", "ability": "STR" }, "value": 1 }, { "kind": "AddModifier", "target": { "kind": "save", "ability": "DEX" }, "value": 1 }, { "kind": "AddModifier", "target": { "kind": "save", "ability": "CON" }, "value": 1 }, { "kind": "AddModifier", "target": { "kind": "save", "ability": "INT" }, "value": 1 }, { "kind": "AddModifier", "target": { "kind": "save", "ability": "WIS" }, "value": 1 }, { "kind": "AddModifier", "target": { "kind": "save", "ability": "CHA" }, "value": 1 }] },
+    { "id": "cloak-of-protection", "itemKind": "magic", "name": "Cloak of Protection", "rarity": "uncommon", "requiresAttunement": true, "effects": [{ "kind": "AddModifier", "target": "ac", "value": 1 }, { "kind": "AddModifier", "target": { "kind": "save" }, "value": 1 }] },
+    { "id": "ring-of-protection", "itemKind": "magic", "name": "Ring of Protection", "rarity": "rare", "requiresAttunement": true, "effects": [{ "kind": "AddModifier", "target": "ac", "value": 1 }, { "kind": "AddModifier", "target": { "kind": "save" }, "value": 1 }] },
     { "id": "boots-of-elvenkind", "itemKind": "magic", "name": "Boots of Elvenkind", "rarity": "uncommon", "requiresAttunement": false, "description": "RAW (SRD 5.2.1): 'While you wear these boots, your steps make no sound, regardless of the surface you are moving across. You also have Advantage on Dexterity (Stealth) checks.' Slice 297 wired the Stealth arm via slice-263's skill-discriminated SetAdvantage. The silent-steps arm is pure narrative (no mechanical effect; the engine doesn't model sound).", "effects": [{ "kind": "SetAdvantage", "on": { "kind": "skill", "skill": "stealth" }, "mode": "advantage" }] },
     { "id": "wand-of-magic-missiles", "itemKind": "magic", "name": "Wand of Magic Missiles", "rarity": "uncommon", "requiresAttunement": false, "charges": { "max": 7, "recharge": "dawn", "rechargeFormula": "1d6+1" }, "effects": [], "onUse": [{ "kind": "CastSpell", "spellId": "magic-missile", "slotLevel": 1, "chargesCost": 1, "chargesCostMax": 3, "castingClassId": "wizard" }], "destructionRoll": { "trigger": "lastChargeExpended", "die": 20, "destroyOn": [1] } },
     { "id": "amulet-of-health", "itemKind": "magic", "name": "Amulet of Health", "rarity": "rare", "requiresAttunement": true, "effects": [{ "kind": "OverrideAbilityScore", "ability": "CON", "value": 19 }] },
@@ -2383,7 +2383,7 @@
     { "id": "bracers-of-archery", "itemKind": "magic", "name": "Bracers of Archery", "rarity": "uncommon", "requiresAttunement": true, "description": "RAW: 'Proficiency with the longbow and the shortbow, and gain a +2 bonus to damage rolls on ranged attacks made with such weapons.' Slice 275 wired the +2 damage arm via a new `event.weaponId` predicate fact on the attack planner's `damageFacts` map; the AddModifier entry gates on `any(eq path:event.weaponId value:longbow, eq path:event.weaponId value:shortbow)`. The proficiency arm (RAW: grants proficiency with longbow/shortbow regardless of class) stays deferred until conditional GrantProficiency lands — most archery-focused builds already carry these proficiencies via class, so the damage arm is the higher-payoff mechanical wire.", "effects": [{ "kind": "AddModifier", "target": "damage", "value": 2, "condition": { "kind": "any", "terms": [{ "kind": "eq", "path": "event.weaponId", "value": "longbow" }, { "kind": "eq", "path": "event.weaponId", "value": "shortbow" }] } }] },
     { "id": "winged-boots", "itemKind": "magic", "name": "Winged Boots", "rarity": "uncommon", "requiresAttunement": true, "effects": [] },
     { "id": "gloves-of-swimming-and-climbing", "itemKind": "magic", "name": "Gloves of Swimming and Climbing", "rarity": "uncommon", "requiresAttunement": true, "effects": [{ "kind": "ModifySpeed", "mode": "climb", "op": "set", "value": 30 }, { "kind": "ModifySpeed", "mode": "swim", "op": "set", "value": 30 }, { "kind": "SetAdvantage", "on": { "kind": "skill", "skill": "athletics" }, "mode": "advantage", "condition": { "kind": "any", "terms": [{ "kind": "eq", "path": "event.athleticsSubAction", "value": "climb" }, { "kind": "eq", "path": "event.athleticsSubAction", "value": "swim" }] } }] },
-    { "id": "stone-of-good-luck", "itemKind": "magic", "name": "Stone of Good Luck (Luckstone)", "rarity": "uncommon", "requiresAttunement": true, "description": "RAW (SRD 5.2.1): '+1 bonus to ability checks and saving throws.' Wired as 12 AddModifier entries (6 saves + 6 checks at +1 each); a future slice extending AddModifier to slice-266-style save/check wildcards would compress to 2 entries.", "effects": [{ "kind": "AddModifier", "target": { "kind": "save", "ability": "STR" }, "value": 1 }, { "kind": "AddModifier", "target": { "kind": "save", "ability": "DEX" }, "value": 1 }, { "kind": "AddModifier", "target": { "kind": "save", "ability": "CON" }, "value": 1 }, { "kind": "AddModifier", "target": { "kind": "save", "ability": "INT" }, "value": 1 }, { "kind": "AddModifier", "target": { "kind": "save", "ability": "WIS" }, "value": 1 }, { "kind": "AddModifier", "target": { "kind": "save", "ability": "CHA" }, "value": 1 }, { "kind": "AddModifier", "target": { "kind": "check", "ability": "STR" }, "value": 1 }, { "kind": "AddModifier", "target": { "kind": "check", "ability": "DEX" }, "value": 1 }, { "kind": "AddModifier", "target": { "kind": "check", "ability": "CON" }, "value": 1 }, { "kind": "AddModifier", "target": { "kind": "check", "ability": "INT" }, "value": 1 }, { "kind": "AddModifier", "target": { "kind": "check", "ability": "WIS" }, "value": 1 }, { "kind": "AddModifier", "target": { "kind": "check", "ability": "CHA" }, "value": 1 }] },
+    { "id": "stone-of-good-luck", "itemKind": "magic", "name": "Stone of Good Luck (Luckstone)", "rarity": "uncommon", "requiresAttunement": true, "description": "RAW (SRD 5.2.1): '+1 bonus to ability checks and saving throws.' Slice 299 compressed from 12 per-ability AddModifier entries to 2 wildcard entries via the new save/check wildcard on ModifierTarget.", "effects": [{ "kind": "AddModifier", "target": { "kind": "save" }, "value": 1 }, { "kind": "AddModifier", "target": { "kind": "check" }, "value": 1 }] },
     { "id": "weapon-plus-1", "itemKind": "magic", "name": "Weapon, +1", "rarity": "uncommon", "requiresAttunement": false, "effects": [] },
     { "id": "weapon-plus-2", "itemKind": "magic", "name": "Weapon, +2", "rarity": "rare", "requiresAttunement": false, "effects": [] },
     { "id": "weapon-plus-3", "itemKind": "magic", "name": "Weapon, +3", "rarity": "very-rare", "requiresAttunement": false, "effects": [] },
@@ -7845,31 +7845,23 @@
     {
       "id": "blessed",
       "name": "Blessed",
+      "description": "Bless spell effect. RAW (SRD 5.2.1): 'the target adds 1d4 to the attack roll or save.' Pack approximates the d4 as a flat +2 (the 2014 / pre-2024 fixed value); a future slice would replace the flat +2 with a per-roll d4 (would need a per-roll-bonus-die primitive distinct from AddModifier's static value). Slice 299 compressed the 6 per-ability save entries to 1 wildcard entry via the new save wildcard on ModifierTarget.",
       "stackable": false,
       "endsOn": [],
       "effects": [
         { "kind": "AddModifier", "target": "attack", "value": 2 },
-        { "kind": "AddModifier", "target": { "kind": "save", "ability": "STR" }, "value": 2 },
-        { "kind": "AddModifier", "target": { "kind": "save", "ability": "DEX" }, "value": 2 },
-        { "kind": "AddModifier", "target": { "kind": "save", "ability": "CON" }, "value": 2 },
-        { "kind": "AddModifier", "target": { "kind": "save", "ability": "INT" }, "value": 2 },
-        { "kind": "AddModifier", "target": { "kind": "save", "ability": "WIS" }, "value": 2 },
-        { "kind": "AddModifier", "target": { "kind": "save", "ability": "CHA" }, "value": 2 }
+        { "kind": "AddModifier", "target": { "kind": "save" }, "value": 2 }
       ]
     },
     {
       "id": "baned",
       "name": "Baned",
+      "description": "Bane spell effect. RAW (SRD 5.2.1): 'subtract 1d4 from each attack roll and saving throw the target makes.' Pack approximates the d4 as a flat -2 (same simplification as `blessed`'s flat +2). Slice 299 compressed the 6 per-ability save entries to 1 wildcard.",
       "stackable": false,
       "endsOn": [],
       "effects": [
         { "kind": "AddModifier", "target": "attack", "value": -2 },
-        { "kind": "AddModifier", "target": { "kind": "save", "ability": "STR" }, "value": -2 },
-        { "kind": "AddModifier", "target": { "kind": "save", "ability": "DEX" }, "value": -2 },
-        { "kind": "AddModifier", "target": { "kind": "save", "ability": "CON" }, "value": -2 },
-        { "kind": "AddModifier", "target": { "kind": "save", "ability": "INT" }, "value": -2 },
-        { "kind": "AddModifier", "target": { "kind": "save", "ability": "WIS" }, "value": -2 },
-        { "kind": "AddModifier", "target": { "kind": "save", "ability": "CHA" }, "value": -2 }
+        { "kind": "AddModifier", "target": { "kind": "save" }, "value": -2 }
       ]
     },
     {
@@ -9259,12 +9251,7 @@
       "stackable": false,
       "endsOn": [],
       "effects": [
-        { "kind": "AddModifier", "target": { "kind": "save", "ability": "STR" }, "value": { "kind": "max", "terms": [{ "kind": "const", "value": 1 }, { "kind": "sourceAbilityMod", "ability": "CHA" }] } },
-        { "kind": "AddModifier", "target": { "kind": "save", "ability": "DEX" }, "value": { "kind": "max", "terms": [{ "kind": "const", "value": 1 }, { "kind": "sourceAbilityMod", "ability": "CHA" }] } },
-        { "kind": "AddModifier", "target": { "kind": "save", "ability": "CON" }, "value": { "kind": "max", "terms": [{ "kind": "const", "value": 1 }, { "kind": "sourceAbilityMod", "ability": "CHA" }] } },
-        { "kind": "AddModifier", "target": { "kind": "save", "ability": "INT" }, "value": { "kind": "max", "terms": [{ "kind": "const", "value": 1 }, { "kind": "sourceAbilityMod", "ability": "CHA" }] } },
-        { "kind": "AddModifier", "target": { "kind": "save", "ability": "WIS" }, "value": { "kind": "max", "terms": [{ "kind": "const", "value": 1 }, { "kind": "sourceAbilityMod", "ability": "CHA" }] } },
-        { "kind": "AddModifier", "target": { "kind": "save", "ability": "CHA" }, "value": { "kind": "max", "terms": [{ "kind": "const", "value": 1 }, { "kind": "sourceAbilityMod", "ability": "CHA" }] } }
+        { "kind": "AddModifier", "target": { "kind": "save" }, "value": { "kind": "max", "terms": [{ "kind": "const", "value": 1 }, { "kind": "sourceAbilityMod", "ability": "CHA" }] } }
       ]
     },
     {

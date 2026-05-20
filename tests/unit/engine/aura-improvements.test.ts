@@ -106,13 +106,16 @@ describe('Paladin L18 Aura Expansion (slice 211)', () => {
       (e) => e.kind === 'GrantConditionImmunity' && e.conditionId === 'frightened',
     );
     expect(frightenedImmunity).toBeDefined();
-    const wisSaveBuff = effects.find(
+    // Slice 299: Aura of Protection's per-ability save buffs were
+    // compressed to a single save-wildcard AddModifier (target.kind
+    // 'save', no `ability`). The wildcard reader merges into every
+    // per-ability sum, so WIS saves still receive the buff.
+    const saveBuff = effects.find(
       (e) =>
         e.kind === 'AddModifier' &&
         typeof e.target === 'object' &&
-        e.target.kind === 'save' &&
-        e.target.ability === 'WIS',
+        e.target.kind === 'save',
     );
-    expect(wisSaveBuff).toBeDefined();
+    expect(saveBuff).toBeDefined();
   });
 });
