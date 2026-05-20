@@ -63,6 +63,7 @@ import {
   planStunningStrike,
   planFlurryOfBlows,
   planPatientDefense,
+  planStepOfTheWind,
   planFrenzy,
   planCuttingWords,
   planMetamagic,
@@ -185,6 +186,7 @@ import {
   type StunningStrikeIntent,
   type FlurryOfBlowsIntent,
   type PatientDefenseIntent,
+  type StepOfTheWindIntent,
   type FrenzyIntent,
   type CuttingWordsIntent,
   type CuttingWordsOutcome,
@@ -307,6 +309,7 @@ export interface Engine {
     stunningStrike(state: CampaignState, intent: Omit<StunningStrikeIntent, 'type'>): PlanResult;
     flurryOfBlows(state: CampaignState, intent: Omit<FlurryOfBlowsIntent, 'type'>): PlanResult;
     patientDefense(state: CampaignState, intent: Omit<PatientDefenseIntent, 'type'>): PlanResult;
+    stepOfTheWind(state: CampaignState, intent: Omit<StepOfTheWindIntent, 'type'>): PlanResult;
     frenzy(state: CampaignState, intent: Omit<FrenzyIntent, 'type'>): PlanResult;
     cuttingWords(state: CampaignState, intent: Omit<CuttingWordsIntent, 'type'>): CuttingWordsOutcome;
     metamagic(state: CampaignState, intent: Omit<MetamagicIntent, 'type'>): PlanResult;
@@ -577,6 +580,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     patientDefense(state, intent) {
       return { events: planPatientDefense(state, content, rng, { type: 'PatientDefense', ...intent }) };
+    },
+    stepOfTheWind(state, intent) {
+      return { events: planStepOfTheWind(state, content, { type: 'StepOfTheWind', ...intent }) };
     },
     frenzy(state, intent) {
       return { events: planFrenzy(state, content, { type: 'Frenzy', ...intent }) };

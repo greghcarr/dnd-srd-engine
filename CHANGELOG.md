@@ -4,6 +4,15 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine: Step of the Wind planner — Monk's Focus trio complete, 0 deferred main-class features (slice 335)**
+
+Last of the three Monk's Focus bonus-action planners. With it, **all 17 SRD main-class features are mechanically closed** — the deferred-with-reason main-class-feature count reaches 0 (the long-standing Monk L10 Heightened Focus, which gated on this trio, is closed).
+
+- New `planStepOfTheWind` ([src/engine/plan/step-of-the-wind.ts](src/engine/plan/step-of-the-wind.ts)) + `engine.plan.stepOfTheWind`: as a Bonus Action, a Monk (level ≥ 2) takes the **Dash** action; or with `spendFocusPoint: true`, spends 1 Focus Point to take both **Disengage and Dash**. Reuses the existing `Dashed` + `Disengaged` events under a Bonus Action. Requires the monk to be the active combatant in an active encounter (rejects double-dash / used bonus action); consumes the Bonus Action and (focus mode) 1 Focus Point. Takes no RNG.
+- Consumer-managed (consistent with the engine's movement-geometry stance, where it models no jump distance or positions): the RAW focus-mode "jump distance is doubled" and the L10 Heightened Focus "a willing Large-or-smaller creature within 5 ft moves with you without provoking." Documented on the planner.
+
+Uncle Bob audit: **Names** — `planStepOfTheWind` / `StepOfTheWindIntent` / `spendFocusPoint` match the trio's vocabulary. **DRY** — reuses the `Dashed` + `Disengaged` events (the `planDash`/`planDisengage` shapes) and the same encounter/bonus-action/ki gates as the slice-334 Patient Defense planner. **SRP** — orchestrates economy + resource + the two sub-actions; no new mechanics. **Magic numbers** — only the L2 threshold (named). **at-threading** — single `nowIso()` to every event; no RNG. **Mechanical outcomes asserted** — free mode emits `Dashed` + a bonusAction consume with no Focus Point and no Disengage (works at 0 ki, sets `turnUsage.dashed`); focus mode spends 1 ki and emits both `Dashed` + `Disengaged` (sets both flags; replay + RNG-capture hold); throws on no-Focus-in-focus-mode and out-of-encounter. **Tests** — 4 new ([tests/unit/engine/slice-335-step-of-the-wind.test.ts](tests/unit/engine/slice-335-step-of-the-wind.test.ts)); full suite green (1968 passed), tsc clean. Docs: api-overview class-action list; status.md + gaps + the class audit all updated to "Heightened Focus closed / 0 deferred main-class features."
+
 **Engine: Patient Defense planner (slice 334)**
 
 Second of the three Monk's Focus bonus-action planners, and the Patient Defense arm of L10 Heightened Focus.
