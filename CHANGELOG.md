@@ -4,6 +4,12 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+## 0.1.0-alpha.11 - 2026-05-20
+
+**Release (slice 344): bump to 0.1.0-alpha.11**
+
+Promotes the post-alpha.10 cohort (slices 329-343) to a tagged release. `package.json` bumped from `0.1.0-alpha.10` to `0.1.0-alpha.11`; `package-lock.json` updated to match. Cohort highlights: the spell-gaps catalog reconciliation + a permanent per-level count audit (337); the new `hp-threshold` spell mechanic with Power Word Kill and Power Word Stun, plus a latent Hold Person action-blocking fix (338-339); the multi-damage `save` extension with Flame Strike (341); the dedicated `planDimensionDoor` teleport planner (342); Enthrall wired (343); and earlier, the `AddBonusDie` primitive making Bless/Bane fully RAW and the Monk's Focus bonus-action trio that closed the last deferred main-class feature (329-336, archived). Spell coverage climbed to 194 wired / 70 narrative / 87 deferred. Per-slice detail for slices 329-336 lives in [docs/changelog/archive-slices-329-336.md](docs/changelog/archive-slices-329-336.md) (slice 340); the 337-343 detail follows below.
+
 **Content: Enthrall wired (slice 343)**
 
 Pure content slice on existing primitives. **Enthrall** (L2, concentration) now wires as a `save` mechanic (WIS, `conditionOnFail: 'enthralled-active'`); the new `enthralled-active` condition carries `AddModifier { target: { kind: 'skill', skill: 'perception' }, value: -10 }`, the RAW 2024 "-10 penalty to Wisdom (Perception) checks." The condition is concentration-linked (cast-spell ties `conditionOnFail` conditions to the concentration effect, so it clears when the caster's concentration drops, same lifecycle as Hold Person). Skill-targeted `AddModifier` is the same shape Pass without Trace already uses (+10 Stealth), and the ability-check derive already sums it.
