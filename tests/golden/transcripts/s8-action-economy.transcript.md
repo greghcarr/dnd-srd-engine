@@ -24,7 +24,7 @@ _(Hilda the Veteran consumes attack)_
 
 Damage rolled: 1d8=[4]+4 slashing.
 
-**Training Dummy** takes 8 damage (8 slashing). (HP 100 -> 92)
+**Training Dummy** takes 8 damage from **Hilda the Veteran** (8 slashing). (HP 100 -> 92)
 
 _(Hilda the Veteran consumes attack)_
 
@@ -32,7 +32,7 @@ _(Hilda the Veteran consumes attack)_
 
 Damage rolled: 1d8=[3]+4 slashing.
 
-**Training Dummy** takes 7 damage (7 slashing). (HP 92 -> 85)
+**Training Dummy** takes 7 damage from **Hilda the Veteran** (7 slashing). (HP 92 -> 85)
 
 End of Hilda the Veteran's turn.
 
@@ -52,4 +52,4 @@ _(Hilda the Veteran consumes attack)_
 
 Damage rolled: 1d8=[1]+4 slashing.
 
-**Training Dummy** takes 5 damage (5 slashing). (HP 85 -> 80)
+**Training Dummy** takes 5 damage from **Hilda the Veteran** (5 slashing). (HP 85 -> 80)

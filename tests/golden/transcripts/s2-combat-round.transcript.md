@@ -28,7 +28,7 @@ _(Borin consumes attack)_
 
 Damage rolled: 1d8=[7]+3 slashing.
 
-**Alyx** takes 10 damage (10 slashing). (HP 12 -> 2)
+**Alyx** takes 10 damage from **Borin** (10 slashing). (HP 12 -> 2)
 
 End of Borin's turn.
 
@@ -42,7 +42,7 @@ _(Alyx consumes attack)_
 
 Damage rolled: 1d8=[7]+4 slashing.
 
-**Borin** takes 11 damage (11 slashing). (HP 12 -> 1)
+**Borin** takes 11 damage from **Alyx** (11 slashing). (HP 12 -> 1)
 
 End of Alyx's turn.
 

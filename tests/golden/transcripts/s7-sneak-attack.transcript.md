@@ -28,7 +28,7 @@ _(sneak-attack triggers for Vex)_
 
 Damage rolled: 1d8=[8]+4 piercing.
 
-**Training Dummy** takes 12 damage (12 piercing). (HP 94 -> 82)
+**Training Dummy** takes 12 damage from **Vex** (12 piercing). (HP 94 -> 82)
 
 _(Vex consumes attack)_
 
@@ -36,7 +36,7 @@ _(Vex consumes attack)_
 
 Damage rolled: 1d8=[5]+4 piercing.
 
-**Training Dummy** takes 9 damage (9 piercing). (HP 82 -> 73)
+**Training Dummy** takes 9 damage from **Vex** (9 piercing). (HP 82 -> 73)
 
 End of Vex's turn.
 
@@ -64,6 +64,6 @@ _(sneak-attack triggers for Vex)_
 
 Damage rolled: 1d8=[4]+4 piercing.
 
-**Training Dummy** takes 8 damage (8 piercing). (HP 72 -> 64)
+**Training Dummy** takes 8 damage from **Vex** (8 piercing). (HP 72 -> 64)
 
 ## Encounter ends: victory.

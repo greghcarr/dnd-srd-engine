@@ -7,7 +7,8 @@ import type { Predicate } from '../../schemas/predicate.js';
 import type { RNG } from '../../rng/index.js';
 import { rollDie, parseDiceExpression } from '../../rng/dice.js';
 import { evaluatePredicate } from '../../effects/predicate.js';
-import { collectEffectsFromCharacter } from '../../derive/effect-stack.js';
+import { collectEffectsFromCharacter, buildFormulaContext } from '../../derive/effect-stack.js';
+import { evaluateFormula } from '../../effects/formula.js';
 import { getCreatureType } from '../../derive/creature-type.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { isMagicWeaponAttack } from '../../derive/magicality.js';
@@ -20,6 +21,7 @@ import type {
   ConditionAppliedEvent,
   ConditionRemovedEvent,
   DamageAppliedEvent,
+  TempHPGrantedEvent,
 } from '../../schemas/events/combat.js';
 import { newAppliedConditionId } from '../../ids.js';
 import type { ConcentrationBrokenEvent } from '../../schemas/events/concentration.js';
@@ -98,6 +100,17 @@ const buildEventFacts = (
     }
   } else if (event.type === 'DamageApplied') {
     facts.set('event.targetIsSelf', event.targetId === characterId);
+    // Slice 349: on-kill facts for Dark One's Blessing. The DamageApplied
+    // trigger dispatch runs on the post-damage state, so `targetReducedToZero`
+    // reflects the target's HP after this damage. `sourceIsSelf` is whether
+    // the bearer dealt the damage. (Known edge: an overkill hit on an
+    // already-0-HP creature also reads as reduced-to-zero; firing on
+    // an already-downed enemy is a documented approximation.)
+    facts.set('event.sourceIsSelf', event.sourceCharacterId === characterId);
+    const damaged = state.characters[event.targetId];
+    if (damaged !== undefined) {
+      facts.set('event.targetReducedToZero', damaged.hp.current <= 0);
+    }
     // Slice 233: cumulative damage-per-type facts for predicate-gated
     // riders on DamageApplied (Troll Loathsome Limbs needs
     // `event.damageOfType.slashing >= 15`). One fact per damage type
@@ -551,6 +564,20 @@ const fireTrigger = (
       );
     } else if (action.kind === 'SpawnCreature') {
       events.push(...fireSpawnCreature(action, content, at));
+    } else if (action.kind === 'GrantTempHP') {
+      const amount = typeof action.amount === 'number'
+        ? action.amount
+        : evaluateFormula(action.amount, buildFormulaContext(character));
+      if (amount > 0) {
+        events.push({
+          id: newEventId() as ULID,
+          at,
+          type: 'TempHPGranted',
+          targetId: character.id as ULID,
+          amount,
+          source: triggerId,
+        } satisfies TempHPGrantedEvent);
+      }
     }
   }
   return { events, triggerId, cadence };

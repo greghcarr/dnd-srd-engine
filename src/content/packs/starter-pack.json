@@ -1206,7 +1206,34 @@
           {
             "id": "dark-ones-blessing",
             "name": "Dark One's Blessing",
-            "effects": []
+            "effects": [
+              {
+                "kind": "OnEvent",
+                "id": "dark-ones-blessing",
+                "trigger": {
+                  "eventType": "DamageApplied",
+                  "filter": {
+                    "kind": "all",
+                    "terms": [
+                      { "kind": "eq", "path": "event.sourceIsSelf", "value": true },
+                      { "kind": "eq", "path": "event.targetReducedToZero", "value": true }
+                    ]
+                  }
+                },
+                "actions": [
+                  {
+                    "kind": "GrantTempHP",
+                    "amount": {
+                      "kind": "max",
+                      "terms": [
+                        { "kind": "const", "value": 1 },
+                        { "kind": "add", "terms": [{ "kind": "abilityMod", "ability": "CHA" }, { "kind": "level", "classId": "warlock" }] }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
           },
           {
             "id": "fiend-spells",

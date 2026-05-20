@@ -40,4 +40,4 @@ _(Twin Striker consumes attack)_
 
 Damage rolled: 1d8=[7]+3 slashing.
 
-**Pile of Sandbags** takes 10 damage (10 slashing). (HP 198 -> 188)
+**Pile of Sandbags** takes 10 damage from **Twin Striker** (10 slashing). (HP 198 -> 188)

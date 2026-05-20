@@ -10,7 +10,7 @@ Item acquired: Longsword.
 
 Damage rolled: 1d8=[3]+4 slashing.
 
-**Wight** takes 7 damage (7 slashing). (HP 60 -> 53)
+**Wight** takes 7 damage from **Aria** (7 slashing). (HP 60 -> 53)
 
 Slot consumed: 2nd-level.
 
