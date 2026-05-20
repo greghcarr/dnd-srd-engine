@@ -395,6 +395,7 @@ exports[`feature-coverage matrix: subclasses > wired subclass features catalog i
   "oath-of-devotion L13 devotion-spells-l13",
   "oath-of-devotion L17 devotion-spells-l17",
   "path-of-the-berserker L3 frenzy",
+  "path-of-the-berserker L14 intimidating-presence",
   "thief L3 second-story-work",
 ]
 `;

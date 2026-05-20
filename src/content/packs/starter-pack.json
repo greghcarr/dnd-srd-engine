@@ -662,7 +662,7 @@
           {
             "id": "intimidating-presence",
             "name": "Intimidating Presence",
-            "effects": []
+            "effects": [{ "kind": "Custom", "handlerId": "intimidating-presence" }]
           }
         ]
       }
