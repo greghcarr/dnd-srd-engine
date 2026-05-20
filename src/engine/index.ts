@@ -61,6 +61,7 @@ import {
   planElementalWeapon,
   planRecklessAttack,
   planStunningStrike,
+  planFlurryOfBlows,
   planFrenzy,
   planCuttingWords,
   planMetamagic,
@@ -181,6 +182,7 @@ import {
   type ElementalWeaponIntent,
   type RecklessAttackIntent,
   type StunningStrikeIntent,
+  type FlurryOfBlowsIntent,
   type FrenzyIntent,
   type CuttingWordsIntent,
   type CuttingWordsOutcome,
@@ -301,6 +303,7 @@ export interface Engine {
     elementalWeapon(state: CampaignState, intent: Omit<ElementalWeaponIntent, 'type'>): PlanResult;
     recklessAttack(state: CampaignState, intent: Omit<RecklessAttackIntent, 'type'>): PlanResult;
     stunningStrike(state: CampaignState, intent: Omit<StunningStrikeIntent, 'type'>): PlanResult;
+    flurryOfBlows(state: CampaignState, intent: Omit<FlurryOfBlowsIntent, 'type'>): PlanResult;
     frenzy(state: CampaignState, intent: Omit<FrenzyIntent, 'type'>): PlanResult;
     cuttingWords(state: CampaignState, intent: Omit<CuttingWordsIntent, 'type'>): CuttingWordsOutcome;
     metamagic(state: CampaignState, intent: Omit<MetamagicIntent, 'type'>): PlanResult;
@@ -565,6 +568,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     stunningStrike(state, intent) {
       return { events: planStunningStrike(state, content, rng, { type: 'StunningStrike', ...intent }) };
+    },
+    flurryOfBlows(state, intent) {
+      return { events: planFlurryOfBlows(state, content, rng, { type: 'FlurryOfBlows', ...intent }) };
     },
     frenzy(state, intent) {
       return { events: planFrenzy(state, content, { type: 'Frenzy', ...intent }) };

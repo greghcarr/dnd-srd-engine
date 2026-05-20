@@ -35,6 +35,7 @@ export const performIntent = (
     SacredWeapon: (i) => engine.plan.sacredWeapon(campaign.state, i),
     RecklessAttack: (i) => engine.plan.recklessAttack(campaign.state, i),
     StunningStrike: (i) => engine.plan.stunningStrike(campaign.state, i),
+    FlurryOfBlows: (i) => engine.plan.flurryOfBlows(campaign.state, i),
     Frenzy: (i) => engine.plan.frenzy(campaign.state, i),
     Metamagic: (i) => engine.plan.metamagic(campaign.state, i),
     WildCompanion: (i) => engine.plan.wildCompanion(campaign.state, i),

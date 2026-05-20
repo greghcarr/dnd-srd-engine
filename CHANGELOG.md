@@ -4,6 +4,23 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine: Flurry of Blows planner (slice 333)**
+
+First of the three Monk's Focus bonus-action planners, and the Flurry arm of the L10 Heightened Focus feature (the last partly-deferred SRD main-class feature).
+
+- New `planFlurryOfBlows` ([src/engine/plan/flurry-of-blows.ts](src/engine/plan/flurry-of-blows.ts)) + `engine.plan.flurryOfBlows`: a Monk (level ≥ 2) with a Focus Point spends 1 Focus Point as a Bonus Action to make **two Unarmed Strikes** — **three** at Monk level 10+ (the Heightened Focus upgrade, gated on monk level). The strikes resolve through the shared `resolveAttack` path (so the Martial Arts die, on-hit riders, and mastery all apply) and do not consume the Attack-action budget. Consumes the Bonus Action (when the monk is the active combatant; rejects if it's already used) and 1 Focus Point.
+- Guards: rejects non-Monks ("does not have Monk's Focus"), zero Focus Points, and any weapon that isn't an Unarmed Strike (RAW: Flurry is Unarmed Strikes specifically).
+
+RAW deviation: the "immediately after you take the Attack action" timing isn't enforced (the engine's bonus-action timing is loose); the Bonus Action + Focus Point are still spent.
+
+Scope: this closes the **Flurry** arm of Monk L10 Heightened Focus. The other two Monk's Focus planners — `planPatientDefense` (free Disengage, or 1 Focus for Disengage + Dodge; L10 adds temp HP) and `planStepOfTheWind` (free Disengage/Dash, or 1 Focus for both + doubled jump; L10 ally-move) — remain, each carrying its own Heightened Focus L10 arm; once they land the deferred main-class-feature count reaches 0.
+
+Uncle Bob audit: **Names** — `planFlurryOfBlows` / `FlurryOfBlowsIntent` match the planner-naming convention; the strike-count constants name the RAW thresholds. **DRY** — reuses `resolveAttack` (the multiattack pattern) for the strikes and the established ki-spend (stunning-strike) + bonus-action (innate-sorcery) shapes rather than re-implementing. **SRP** — the planner orchestrates economy + resource + strikes; the attack mechanics stay in `resolveAttack`. **Magic numbers** — 2 / 3 strikes and the L2 / L10 thresholds are named constants, RAW-cited. **at-threading** — single `nowIso()` resolution passed to every emitted event and each `resolveAttack`. **Mechanical outcomes asserted** — L2 spends exactly 1 Focus Point and emits 2 AttackRolled (ki goes 2→1, replay-equivalence + RNG-capture hold); L10 emits 3; throws on no-Focus / non-unarmed-weapon / non-Monk. **Tests** — 5 new ([tests/unit/engine/slice-333-flurry-of-blows.test.ts](tests/unit/engine/slice-333-flurry-of-blows.test.ts)); full suite green (1959 passed), tsc clean. Docs: api-overview class-action list, status.md + gaps Heightened Focus rows (Flurry arm closed).
+
+**Docs: correct the AddBonusDie sibling-spell claim (slice 332)**
+
+Corrected slice 331's over-claim that Guidance / Resistance / Bardic Inspiration "just need a check-roll consumption pass." `AddBonusDie` is the right primitive only for *always-on* per-roll dice (Bless/Bane). Those cantrips add a die to *one* roll then end — intentionally consumer-managed today (`guided`/`resisted` ship `effects: []`; the consumer rolls the d4 and removes the condition). Auto-applying `AddBonusDie` would wrongly add the die to every roll. The gaps backlog row was corrected to say so. Docs only.
+
 **Engine + content: save-roll bonus dice — Bless/Bane fully RAW (slice 331)**
 
 Closes the slice-330 follow-up: the Bless/Bane **save** arm is now a per-roll 1d4 everywhere, completing the RAW fix (the attack arm landed in slice 330). A bonus die can only be rolled in a planner, so this threads the bonus through every save-rolling site.

@@ -92,6 +92,7 @@ export { planMagicWeapon, type MagicWeaponIntent } from './magic-weapon.js';
 export { planElementalWeapon, type ElementalWeaponIntent } from './elemental-weapon.js';
 export { planRecklessAttack, type RecklessAttackIntent } from './reckless-attack.js';
 export { planStunningStrike, type StunningStrikeIntent } from './stunning-strike.js';
+export { planFlurryOfBlows, type FlurryOfBlowsIntent } from './flurry-of-blows.js';
 export { planFrenzy, type FrenzyIntent } from './frenzy.js';
 export {
   planCuttingWords,
