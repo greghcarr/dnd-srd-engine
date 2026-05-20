@@ -111,6 +111,16 @@ const onHitRiderSchema = z
     // which gates the condition behind a failed save. Duration is
     // consumer-managed (mirror of slice 286 / 319).
     applyConditionId: z.string().optional(),
+    // Slice 324: crit-gate. When true, the whole rider fires only on a
+    // critical hit (the 2024 "When you roll a 20 on the attack roll, the
+    // target takes an extra ..." shape). Composes with `condition`:
+    // Sword of Life Stealing is crit-gated AND vs-non-Construct/Undead.
+    // Flat crit damage is the dice field as a `0d6+N` constant (slice
+    // 122) so the crit-doubling leaves the flat amount unchanged (RAW
+    // doubles dice, not flat bonuses). Future users: Sword of Sharpness
+    // (+14 slashing), Vorpal (decapitation via the slice-323 destroy
+    // arm, once a head/too-big immunity fact exists).
+    requiresCritical: z.boolean().optional(),
   })
   .refine((r) => (r.dice === undefined) === (r.damageType === undefined), {
     message: 'onHit rider dice and damageType must be set together',

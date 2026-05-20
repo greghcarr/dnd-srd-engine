@@ -4,6 +4,19 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content: crit-gated on-hit riders + Sword of Life Stealing (slice 324)**
+
+Adds the last trigger gate to the on-hit-rider family: a rider can fire only on a critical hit (the 2024 "When you roll a 20 on the attack roll, the target takes an extra ..." shape).
+
+Engine:
+- The `onHit` rider schema gains optional `requiresCritical: boolean`. The attack planner's rider filter (which already gates on the slice-318 `condition` predicate) now also drops `requiresCritical` riders when the hit isn't a crit. The two gates compose. No new damage machinery: 2024 crit riders deal *flat* extra damage, which the existing dice field already expresses as a `0d6+N` constant (slice 122), and crit-doubling correctly leaves the flat amount unchanged (RAW doubles dice, not flat bonuses).
+
+Content (canonical user): **Sword of Life Stealing** (a multi-base weapon enchantment, applied via the slice-317 overlay) gains its RAW crit rider — "When you roll a 20 ... the target takes an extra 15 Necrotic damage if it isn't a Construct or an Undead" — as `{ dice: '0d6+15', damageType: 'necrotic', requiresCritical: true, condition: not(Construct or Undead) }`.
+
+Deferred: the "you gain Temporary Hit Points equal to the Necrotic damage taken" self-buff arm (the rider applies to the target; an attacker-side temp-HP arm is a future shape). Mace of Smiting's crit +7/+14 (flat, with a Construct auto-destroy) and Vorpal's crit decapitation (needs a head / too-big / Legendary-Resistance immunity fact before it can reuse the slice-323 `CreatureDestroyed` arm) stay deferred, but the crit-gate they need now exists.
+
+Uncle Bob audit: **Names** — `requiresCritical` says what it gates. **DRY** — reused the existing rider filter, the `0d6+N` flat-damage shape (no new flat-damage field), and the slice-318 `condition` gate; the crit rider rides the same `rollExtraDamageDice` path. **SRP** — one boolean on the schema, one clause on the planner filter. **Magic numbers** — 15 / necrotic / Construct / Undead are RAW-cited on the enchantment. **at-threading** — unchanged (riders roll in the planner, baked into `DamageRolled`). **Mechanical outcomes asserted** — a crit vs a Humanoid emits a necrotic component of exactly +15 flat (0 dice, modifier 15, not doubled); a non-crit hit emits no necrotic; a crit vs a Construct or Undead emits no necrotic (gate). **Tests** — 3 new ([tests/unit/engine/slice-324-crit-rider.test.ts](tests/unit/engine/slice-324-crit-rider.test.ts)); full suite green (1947 passed), tsc clean. Coverage snapshot unchanged (the enchantment stays `itemKind: magic`). Docs: gaps Items.
+
 **Engine + content: instant-destroy primitive + Mace of Disruption destroy-or-Frighten (slice 323)**
 
 Adds the instant-death outcome the on-hit-save rider needed for Mace of Disruption (and the shared primitive future Vorpal-style decapitation will reuse). "Destroyed" / "dies instantly" is a real RAW outcome distinct from damage: the creature dies, bypassing the death-save sequence.

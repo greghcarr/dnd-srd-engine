@@ -806,8 +806,11 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     ['target.creatureType', getCreatureType(target, content)],
     ['target.speciesId', target.speciesId],
   ]);
+  // Slice 324: a rider gated `requiresCritical` fires only on a crit.
   const applicableRiders = [...(weaponDef.onHit ?? []), ...(enchantment?.onHit ?? [])].filter(
-    (r) => r.condition === undefined || evaluatePredicate(r.condition, { facts: riderFacts }),
+    (r) =>
+      (r.requiresCritical !== true || critical) &&
+      (r.condition === undefined || evaluatePredicate(r.condition, { facts: riderFacts })),
   );
   const onHitRiderRolls = applicableRiders.flatMap((r) =>
     r.dice !== undefined && r.damageType !== undefined
