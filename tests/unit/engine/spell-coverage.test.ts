@@ -40,6 +40,7 @@ type Expectation =
   | { kind: 'summon' }
   | { kind: 'temp-hp' }
   | { kind: 'trap'; casterChoice?: CasterChoice }
+  | { kind: 'destroy' }
   | { kind: 'skip'; reason: string };
 
 const SPELL_EXPECTATIONS: Record<string, Expectation> = {
@@ -422,7 +423,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'imprisonment': { kind: 'skip', reason: 'six variants of long-term imprisonment; multi-mode utility primitive not modeled' },
   'meteor-swarm': { kind: 'skip', reason: 'four 40-ft spheres dealing 20d6 fire + 20d6 bludgeoning; multi-AoE multi-damage primitive not modeled' },
   'power-word-heal': { kind: 'skip', reason: 'full heal + remove charmed/frightened/paralyzed/stunned; healing surge + remove-multiple-conditions composite' },
-  'power-word-kill': { kind: 'skip', reason: 'tiered HP-threshold instant death (≤100 HP); HP-threshold effect not modeled' },
+  'power-word-kill': { kind: 'destroy' },
   'prismatic-wall': { kind: 'skip', reason: 'multi-layer wall with seven distinct damage / save effects; area-wall + multi-damage primitive not modeled' },
   'shapechange': { kind: 'skip', reason: 'has dedicated transformation handler patterns (Wild Shape, Polymorph); a Shapechange-specific planner is the obvious follow-up' },
   'storm-of-vengeance': { kind: 'skip', reason: 'multi-round growing storm with stage-keyed damage; recurring multi-stage area-effect primitive not modeled' },
@@ -587,6 +588,12 @@ describe('spell coverage: each shipped spell emits the expected event kinds when
         }
         case 'trap': {
           expect(types, 'expected TrapArmed').toContain('TrapArmed');
+          break;
+        }
+        case 'destroy': {
+          // hp-threshold mechanic: the 50-HP dummy target is at or below
+          // Power Word Kill's 100-HP threshold, so the destroy arm fires.
+          expect(types, 'expected CreatureDestroyed').toContain('CreatureDestroyed');
           break;
         }
         case 'hp-pool-knockout': {

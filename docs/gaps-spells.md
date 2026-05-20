@@ -18,14 +18,14 @@ A prior version of this doc tracked the **full PHB 2024 spell list** as its deno
 
 ## Totals
 
-**351 in pack**: **189 wired** (150 cast-time, 13 zone-tick, 26 dedicated planner), **70 narrative**, **92 deferred** (genuine mechanical gap, grouped by needed primitive per level below).
+**351 in pack**: **190 wired** (151 cast-time, 13 zone-tick, 26 dedicated planner), **70 narrative**, **91 deferred** (genuine mechanical gap, grouped by needed primitive per level below).
 
 ## Biggest deferred clusters (the priority queue)
 
 The remaining mechanical gap fragments across ~20 small primitives; there is no single large lever left (the persistent-damage-zone family already shipped via `aura-damage` / `movement-damage`). The clusters worth a focused slice, roughly by payoff:
 
 - **Cross-plane travel / long-range teleport** (~12): blink, banishment, dimension-door, etherealness, plane-shift, teleport, word-of-recall, transport-via-plants, tree-stride, astral-projection, gate, maze. Most of the long-range ones are DM / consumer-side; **dimension-door** is the cleanest mechanical one (a multi-target `planMistyStep` sibling).
-- **HP-threshold tier effect** (4): divine-word, power-word-stun, power-word-kill, power-word-heal. Fully mechanical (compare current HP to a threshold, apply effect), no positions / narrative. The cleanest remaining primitive.
+- **HP-threshold tier effect** (3 remaining): divine-word, power-word-stun, power-word-heal. The `hp-threshold` mechanic shipped in slice 338 (power-word-kill: destroy at or below 100 HP, 12d12 psychic above). The remaining three need new arm kinds: a `condition` arm (power-word-stun: Stunned with a recurring CON save, else Speed 0), a multi-threshold tiered variant (divine-word), and a heal + multi-condition-remove arm (power-word-heal).
 - **Non-damage area zones** (~7): darkness, silence, zone-of-truth, tiny-hut, wind-wall, guardian-of-faith, compulsion. Need obscurement / silence / ward zone shapes distinct from the damage-zone `aura-damage` mechanic.
 - **Beyond-image illusion** (~5): seeming, mislead, project-image, programmed-illusion, mirage-arcane.
 - **Multi-damage AoE** (4): flame-strike, prismatic-spray, meteor-swarm, prismatic-wall.
@@ -199,15 +199,14 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 **Narrative (1):** glibness.
 
-## Level 9 (16 in pack): 7 wired, 1 narrative, 8 deferred
+## Level 9 (16 in pack): 8 wired, 1 narrative, 7 deferred
 
-**Wired, cast-time (3):** foresight, mass-heal, weird.
+**Wired, cast-time (4):** foresight, mass-heal, power-word-kill (`hp-threshold`: destroy at or below 100 HP, 12d12 psychic above; slice 338), weird.
 
 **Wired, planner (4):** shapechange, true-polymorph, true-resurrection, wish.
 
-**Deferred (8):**
-- **HP-threshold tier effect:** power-word-kill.
-- **healing surge + multi-condition remove:** power-word-heal.
+**Deferred (7):**
+- **HP-threshold tier effect (heal + multi-condition remove arm):** power-word-heal.
 - **multi-AoE multi-damage:** meteor-swarm.
 - **area-wall + multi-damage (seven layers):** prismatic-wall.
 - **recurring multi-stage area-effect:** storm-of-vengeance.
