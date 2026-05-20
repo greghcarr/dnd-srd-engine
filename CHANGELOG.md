@@ -4,6 +4,17 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content: magic-item buff sweep cont., 2 defensive wearables (slice 307)**
+
+Pure-content sweep, no engine changes. Two attunement-gated defensive wearables, passive arms wired via existing primitives; pinned by [tests/unit/engine/slice-307-magic-item-wires.test.ts](tests/unit/engine/slice-307-magic-item-wires.test.ts):
+
+- **Spellguard Shield** → `GrantMagicResistance` (RAW: "Advantage on saving throws against spells and other magical effects"), the slice-131 marker consumed by computeSavingThrow when `sourceIsMagical` is true. Deferred: "spell attack rolls have Disadvantage against you" — the attack planner's `event.attackKind` fact is only melee/ranged (spell attacks set `ranged`), so there is no isSpellAttack fact to gate `ImposeDisadvantageOnAttackers` on without also penalizing mundane ranged attacks.
+- **Armor of Invulnerability** → `GrantResistance` to bludgeoning + piercing + slashing (RAW: "Resistance to Bludgeoning, Piercing, and Slashing damage while you wear this armor"). Deferred: the Metal Shell action (Magic action → 10-minute B/P/S immunity, 1/dawn) needs a charged `onUse` granting a timed immunity condition.
+
+This closes the cheap fully-clean magic-item vein for now: the obvious single-primitive wearables (Ring/Cloak of Protection, Amulet of Health, Belt/Gauntlets of Giant Strength, Sentinel Shield, Brooch of Shielding, Bracers of Defense, Eyes of the Eagle, and the slices 305-307 additions) are wired. Most remaining unwired magic items need a new primitive (additive ability score; crit immunity for Adamantine Armor; armor stealth-penalty cancel for Mithral Armor; death-save manipulation for Periapt of Wound Closure; the isSpellAttack fact above) or have charged / stateful arms.
+
+Audit (content sweep): Names — no new identifiers; reused GrantMagicResistance + GrantResistance. DRY — Spellguard's arm is identical to Robe of the Archmagi's Magic Resistance (slice 306); Armor of Invulnerability's B/P/S triple mirrors Gaseous Form's resistance arm. SRP — one primitive per arm. Magic numbers — none new; the three damage types are RAW-cited. Mechanical outcomes asserted — Spellguard advantage on saves only when sourceIsMagical; Armor resistance to B/P/S but not fire/necrotic. Tests — 4 new. Coverage snapshot gained the 2 items; full suite green (1886 passed), tsc clean. Docs: gaps Items count 67 → 69.
+
 **Content: magic-item buff sweep cont., 3 attunement-gated wearables (slice 306)**
 
 Pure-content sweep, no engine changes. Three DMG wearables wired through existing primitives, pinned by [tests/unit/engine/slice-306-magic-item-wires.test.ts](tests/unit/engine/slice-306-magic-item-wires.test.ts):
