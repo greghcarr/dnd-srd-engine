@@ -4,6 +4,17 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content: buff-shape spell sweep cluster 2 (slice 302)**
+
+Continues the alpha.9 sweep. Two more wires using existing primitives.
+
+- **Heroes' Feast (L6)** -> `heroes-feasted-active`: `GrantResistance(poison)` + `GrantConditionImmunity(frightened)` + `GrantConditionImmunity(poisoned)`. 2d10 HP-max-increase arm deferred (needs per-cast random rolled value baked at cast time, distinct from Aid's flat `flatAmount`). 1-hour delay is consumer-managed.
+- **Wind Walk (L6)** -> `wind-walking-active`: `ModifySpeed(fly, set, 300)` + `GrantConditionImmunity(prone)` + 3x `GrantResistance(B/P/S)`. Fly lights up via slice-288's `getEffectiveFlySpeed`. Action restriction + revert-takes-1-minute-Stunned arms are consumer-managed (mirror of slice-287 gaseous-form-active).
+
+Pattern-check: searched for sibling "+Nd10 HP max" arms. Heroes' Feast is the only random-HP-max-bonus today; no second canonical user yet to justify a new primitive.
+
+Audit: pure content. tsc clean; 1856 tests / 270 files (+10 in [tests/unit/engine/slice-302-buff-spells.test.ts](tests/unit/engine/slice-302-buff-spells.test.ts) + 2 new conditions in snapshot). Spell-coverage: both flip skip -> buff.
+
 **Content: buff-shape spell sweep (slice 301)**
 
 First slice of the alpha.9 buff-shape spell sweep. Two clean wires using existing primitives + pattern-check audit that surfaced a deferred orphan-conditions backlog row.

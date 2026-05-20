@@ -1701,7 +1701,7 @@
     { "id": "guards-and-wards", "name": "Guards and Wards", "level": 6, "school": "abjuration", "castingTime": "1 hour", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a silver rod worth 10+ GP" }, "duration": "24 hours", "concentration": false, "ritual": false, "classes": ["bard", "wizard"], "targeting": { "shape": "cube", "size": 50 }, "mechanicalEffects": [] },
     { "id": "harm", "name": "Harm", "level": 6, "school": "necromancy", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["cleric"], "mechanicalEffects": [{ "kind": "save", "ability": "CON", "damageDice": "14d6", "damageType": "necrotic", "halfOnSuccess": true }] },
     { "id": "heal", "name": "Heal", "level": 6, "school": "abjuration", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["cleric", "druid"], "mechanicalEffects": [{ "kind": "heal", "flatAmount": 70, "extraDicePerSlotLevel": 0 }] },
-    { "id": "heroes-feast", "name": "Heroes' Feast", "level": 6, "school": "conjuration", "castingTime": "10 minutes", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "a gem-encrusted bowl worth 1,000+ GP, which the spell consumes" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["bard", "cleric", "druid"], "targeting": { "shape": "cube", "size": 10 }, "mechanicalEffects": [] },
+    { "id": "heroes-feast", "name": "Heroes' Feast", "level": 6, "school": "conjuration", "castingTime": "10 minutes", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "a gem-encrusted bowl worth 1,000+ GP, which the spell consumes" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["bard", "cleric", "druid"], "targeting": { "shape": "cube", "size": 10 }, "mechanicalEffects": [{ "kind": "buff", "conditionId": "heroes-feasted-active" }] },
     { "id": "magic-jar", "name": "Magic Jar", "level": 6, "school": "necromancy", "castingTime": "1 minute", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "a gem, crystal, or reliquary worth 500+ GP" }, "duration": "Until dispelled", "concentration": false, "ritual": false, "classes": ["wizard"], "mechanicalEffects": [] },
     { "id": "mass-suggestion", "name": "Mass Suggestion", "level": 6, "school": "enchantment", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "material": "a snake's tongue" }, "duration": "24 hours", "concentration": false, "ritual": false, "classes": ["bard", "sorcerer", "wizard"], "mechanicalEffects": [{ "kind": "save", "ability": "WIS", "conditionOnFail": "charmed" }] },
     { "id": "move-earth", "name": "Move Earth", "level": 6, "school": "transmutation", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true, "material": "a miniature shovel" }, "duration": "Concentration, up to 2 hours", "concentration": true, "ritual": false, "classes": ["druid", "sorcerer", "wizard"], "targeting": { "shape": "cube", "size": 40 }, "mechanicalEffects": [] },
@@ -1712,7 +1712,7 @@
     { "id": "true-seeing", "name": "True Seeing", "level": 6, "school": "divination", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "mushroom powder worth 25+ GP, which the spell consumes" }, "duration": "1 hour", "concentration": false, "ritual": false, "classes": ["bard", "cleric", "sorcerer", "warlock", "wizard"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "true-seeing-active" }] },
     { "id": "wall-of-ice", "name": "Wall of Ice", "level": 6, "school": "evocation", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true, "material": "a piece of quartz" }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["wizard"], "mechanicalEffects": [{ "kind": "aura-damage", "rangeFeet": 60, "saveAbility": "DEX", "damageDice": "10d6", "damageType": "cold", "halfOnSuccess": true, "extraDicePerSlotLevel": 2 }] },
     { "id": "wall-of-thorns", "name": "Wall of Thorns", "level": 6, "school": "conjuration", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true, "material": "a handful of thorns" }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["druid"], "mechanicalEffects": [{ "kind": "aura-damage", "rangeFeet": 60, "saveAbility": "DEX", "damageDice": "7d8", "damageType": "piercing", "halfOnSuccess": true }] },
-    { "id": "wind-walk", "name": "Wind Walk", "level": 6, "school": "transmutation", "castingTime": "1 minute", "range": "30 feet", "components": { "verbal": true, "somatic": true, "material": "a candle" }, "duration": "8 hours", "concentration": false, "ritual": false, "classes": ["druid"], "mechanicalEffects": [] },
+    { "id": "wind-walk", "name": "Wind Walk", "level": 6, "school": "transmutation", "castingTime": "1 minute", "range": "30 feet", "components": { "verbal": true, "somatic": true, "material": "a candle" }, "duration": "8 hours", "concentration": false, "ritual": false, "classes": ["druid"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "wind-walking-active" }] },
     { "id": "word-of-recall", "name": "Word of Recall", "level": 6, "school": "conjuration", "castingTime": "Action", "range": "5 feet", "components": { "verbal": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["cleric"], "mechanicalEffects": [] },
     { "id": "conjure-celestial", "name": "Conjure Celestial", "level": 7, "school": "conjuration", "castingTime": "Action", "range": "90 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["cleric"], "targeting": { "shape": "cylinder", "size": 40 }, "mechanicalEffects": [{ "kind": "summon", "name": "Celestial Servitor", "ac": 16, "hpBase": 70, "hpPerSlotAbove": 10, "baseSlotLevel": 7, "speedFeet": 50 }] },
     { "id": "delayed-blast-fireball", "name": "Delayed Blast Fireball", "level": 7, "school": "evocation", "castingTime": "Action", "range": "150 feet", "components": { "verbal": true, "somatic": true, "material": "a ball of bat guano and sulfur" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["sorcerer", "wizard"], "targeting": { "shape": "sphere", "size": 20 }, "mechanicalEffects": [{ "kind": "save", "ability": "DEX", "damageDice": "12d6", "damageType": "fire", "halfOnSuccess": true, "extraDicePerSlotLevel": 1 }] },
@@ -9087,6 +9087,32 @@
         { "kind": "AddModifier", "target": "ac", "value": 1 },
         { "kind": "AddModifier", "target": { "kind": "save" }, "value": 1 },
         { "kind": "GrantResistance", "damageType": "all" }
+      ]
+    },
+    {
+      "id": "heroes-feasted-active",
+      "name": "Heroes' Feast",
+      "description": "24 hours (Heroes' Feast spell, L6). RAW (SRD 5.2.1): partaking creature has Resistance to Poison, Immunity to Frightened + Poisoned conditions, and Hit Point maximum increases by 2d10 (with HP gain to match). Slice 302 wired the 3 always-on arms via existing primitives (GrantResistance + 2x GrantConditionImmunity). The 2d10 HP max bonus arm is deferred — needs a per-cast random rolled value baked at cast time and threaded into HPMaxBonusChanged, distinct from the existing Aid wire which uses a fixed flat bonus. The 1-hour 'feast must finish before effects set in' delay is consumer-managed.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "GrantResistance", "damageType": "poison" },
+        { "kind": "GrantConditionImmunity", "conditionId": "frightened" },
+        { "kind": "GrantConditionImmunity", "conditionId": "poisoned" }
+      ]
+    },
+    {
+      "id": "wind-walking-active",
+      "name": "Wind Walking",
+      "description": "8 hours (Wind Walk spell, L6). RAW (SRD 5.2.1): each target becomes a wisp of cloud with Fly Speed 300 (and can hover), Immunity to Prone, and Resistance to Bludgeoning / Piercing / Slashing damage. The cloud form restricts available actions to Dash or a Magic action to revert; reverting takes 1 minute during which the target is Stunned. Slice 302 wired the 5 always-on arms via existing primitives (ModifySpeed fly 300 + GrantConditionImmunity prone + 3x GrantResistance B/P/S). The action restriction (only Dash or Magic-to-revert) is consumer-managed (mirror of slice-287 gaseous-form-active: the engine doesn't auto-restrict the cast/attack surface based on a transmutation buff). The reverting-takes-1-minute Stunned-during state is also consumer-managed (the consumer applies the Stunned condition during revert).",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "ModifySpeed", "mode": "fly", "op": "set", "value": 300 },
+        { "kind": "GrantConditionImmunity", "conditionId": "prone" },
+        { "kind": "GrantResistance", "damageType": "bludgeoning" },
+        { "kind": "GrantResistance", "damageType": "piercing" },
+        { "kind": "GrantResistance", "damageType": "slashing" }
       ]
     },
     {

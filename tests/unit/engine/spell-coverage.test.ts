@@ -361,7 +361,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'forbiddance': { kind: 'skip', reason: 'creature-type-keyed area ward; area-warding primitive not modeled' },
   'globe-of-invulnerability': { kind: 'skip', reason: '10-ft globe blocking 5th-or-lower-level spells; spell-filtering primitive not modeled' },
   'guards-and-wards': { kind: 'skip', reason: 'multi-effect building ward (illusion + lock + obscure + restrain); composite ward primitive not modeled' },
-  'heroes-feast': { kind: 'skip', reason: 'long-rest preparation that grants temp-HP, save-advantage, immunity to poison/frightened for 24h; multi-effect ritual buff not modeled' },
+  'heroes-feast': { kind: 'buff', conditionId: 'heroes-feasted-active' },
   'magic-jar': { kind: 'skip', reason: 'soul transfer between caster and target; possession primitive not modeled' },
   'move-earth': { kind: 'skip', reason: 'terrain reshaping; terrain primitive not modeled' },
   'irresistible-dance': { kind: 'skip', reason: 'target dances and has disadvantage on rolls; dancing condition + recurring save not modeled' },
@@ -370,7 +370,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'true-seeing': { kind: 'buff', conditionId: 'true-seeing-active' },
   'wall-of-ice': { kind: 'skip', reason: 'aura-damage mechanic (DEX save 10d6 cold, half on success); fires via engine.plan.tickAura per-turn, not on cast. RAW persistent terrain block-passage isn\'t expressed.' },
   'wall-of-thorns': { kind: 'skip', reason: 'aura-damage mechanic (DEX save 7d8 piercing, half on success); fires via engine.plan.tickAura per-turn, not on cast. RAW difficult-terrain side-effect isn\'t expressed.' },
-  'wind-walk': { kind: 'skip', reason: 'mass cloud-travel transformation; multi-target transformation primitive not modeled' },
+  'wind-walk': { kind: 'buff', conditionId: 'wind-walking-active' },
   'word-of-recall': { kind: 'skip', reason: 'instant teleport to a designated sanctuary; teleport-network primitive not modeled' },
   // PHB 2024 L7 spells with wired mechanics
   'conjure-celestial': { kind: 'summon' },

@@ -162,6 +162,7 @@ exports[`feature-coverage matrix: conditions > wired conditions catalog is stabl
   "hasted-active",
   "healing-blocked-active",
   "held-paralyzed-active",
+  "heroes-feasted-active",
   "heroic-active",
   "hexed-active",
   "hill-giant-strength-potion-active",
@@ -214,6 +215,7 @@ exports[`feature-coverage matrix: conditions > wired conditions catalog is stabl
   "true-seeing-active",
   "unconscious",
   "warding-bond-active",
+  "wind-walking-active",
   "wrathful-smite-active",
 ]
 `;
