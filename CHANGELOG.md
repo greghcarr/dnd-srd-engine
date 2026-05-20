@@ -4,6 +4,16 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content + audit: reclassify 10 generic Spell Scroll templates + scroll guard (slice 310)**
+
+Pattern-check continuation of slice 309. After the Potion categorization fix, a full SRD-type vs pack-`itemKind` cross-reference (every pack item against SRD typing) confirmed the rest are consistent — magic armor/weapons typed `magic` is the deliberate mundane-vs-magic split — with one remaining family: **Spell Scrolls**. The specific `spell-scroll-of-X` entries were already `consumable`, but the ten generic by-level templates (`spell-scroll-cantrip`, `spell-scroll-1st-level` … `spell-scroll-9th-level`) were still `itemKind: "magic"`. RAW Spell Scroll is type "Scroll" (consumed on use), so all ten are now `itemKind: "consumable"`.
+
+They keep empty `onConsume`: a by-level template isn't a scroll of a *named* spell, so there's no concrete `CastSpell` to dispatch (the slice-237 `onConsume` `CastSpell` variant is wired on the named `spell-scroll-of-X` entries). The reclassification removes the inconsistency where `spell-scroll-of-fireball` was `consumable` but `spell-scroll-3rd-level` was `magic`.
+
+Guard: [tests/audit/pack-integrity.test.ts](tests/audit/pack-integrity.test.ts) gains an id-based check — every `spell-scroll-*` item must be `itemKind: "consumable"`. This is id-based rather than SRD-name-matched (like the slice-309 Potion guard) because the generic templates ("Spell Scroll, Nth Level") don't match the SRD "Spell Scroll" header, so a name-matched check can't see them. Negative proof: planting one reverted template makes the check fail; restoring it goes green.
+
+Audit (content + audit): Names — added `itemKind` to the pack-integrity `Entry` interface. DRY — reused the existing pack-integrity harness (pack-only, no SRD dependency, the right home for an id-based rule). SRP — the new it() checks one invariant. Magic numbers — none. Mechanical outcomes asserted — all ten templates satisfy the guard; a planted regression is caught (verified). Tests — 1 new audit check (pack-integrity 8 → 9). Full suite green (1897 passed), tsc clean, coverage snapshot unchanged (the ten were unwired before and after). Docs: gaps Items breakdown (magic 285 → 275, consumables 59 → 69; wired count unchanged at 75).
+
 **Content + audit: reclassify 4 mislabeled Potions + categorization guard (slice 309)**
 
 Pattern-check follow-up to slice 305. Slice 305 corrected three potions miscategorized as `itemKind: "magic"` (which carries only passive `effects` / `onUse` and can't express consumption) while wiring them, but the sweep was under-swept. A rigorous cross-reference of every `magic`-kind pack item against SRD item typing found four more SRD-"Potion"-typed items still mislabeled: **Oil of Etherealness**, **Philter of Love**, **Potion of Clairvoyance**, **Potion of Longevity**. All four are now `itemKind: "consumable"`.

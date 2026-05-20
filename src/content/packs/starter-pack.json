@@ -2930,16 +2930,16 @@
     {"id": "figurine-of-wondrous-power-onyx-dog", "itemKind": "magic", "name": "Figurine of Wondrous Power, Onyx Dog", "rarity": "rare", "requiresAttunement": false, "effects": []},
     {"id": "figurine-of-wondrous-power-serpentine-owl", "itemKind": "magic", "name": "Figurine of Wondrous Power, Serpentine Owl", "rarity": "rare", "requiresAttunement": false, "effects": []},
     {"id": "figurine-of-wondrous-power-silver-raven", "itemKind": "magic", "name": "Figurine of Wondrous Power, Silver Raven", "rarity": "uncommon", "requiresAttunement": false, "effects": []},
-    {"id": "spell-scroll-cantrip", "itemKind": "magic", "name": "Spell Scroll, Cantrip", "rarity": "common", "requiresAttunement": false, "effects": []},
-    {"id": "spell-scroll-1st-level", "itemKind": "magic", "name": "Spell Scroll, 1st Level", "rarity": "common", "requiresAttunement": false, "effects": []},
-    {"id": "spell-scroll-2nd-level", "itemKind": "magic", "name": "Spell Scroll, 2nd Level", "rarity": "uncommon", "requiresAttunement": false, "effects": []},
-    {"id": "spell-scroll-3rd-level", "itemKind": "magic", "name": "Spell Scroll, 3rd Level", "rarity": "uncommon", "requiresAttunement": false, "effects": []},
-    {"id": "spell-scroll-4th-level", "itemKind": "magic", "name": "Spell Scroll, 4th Level", "rarity": "rare", "requiresAttunement": false, "effects": []},
-    {"id": "spell-scroll-5th-level", "itemKind": "magic", "name": "Spell Scroll, 5th Level", "rarity": "rare", "requiresAttunement": false, "effects": []},
-    {"id": "spell-scroll-6th-level", "itemKind": "magic", "name": "Spell Scroll, 6th Level", "rarity": "very-rare", "requiresAttunement": false, "effects": []},
-    {"id": "spell-scroll-7th-level", "itemKind": "magic", "name": "Spell Scroll, 7th Level", "rarity": "very-rare", "requiresAttunement": false, "effects": []},
-    {"id": "spell-scroll-8th-level", "itemKind": "magic", "name": "Spell Scroll, 8th Level", "rarity": "very-rare", "requiresAttunement": false, "effects": []},
-    {"id": "spell-scroll-9th-level", "itemKind": "magic", "name": "Spell Scroll, 9th Level", "rarity": "legendary", "requiresAttunement": false, "effects": []}
+    {"id": "spell-scroll-cantrip", "itemKind": "consumable", "name": "Spell Scroll, Cantrip", "onConsume": [], "description": "Generic template (SRD type: Scroll, consumed on use). Slice 310 corrected the itemKind from magic to consumable for consistency with the specific spell-scroll-of-X entries. No concrete onConsume: this is a by-level placeholder, not a scroll of a named spell; the slice-237 onConsume CastSpell variant is wired on the named scroll entries."},
+    {"id": "spell-scroll-1st-level", "itemKind": "consumable", "name": "Spell Scroll, 1st Level", "onConsume": [], "description": "Generic by-level template (SRD type: Scroll). Slice 310 reclassified magic -> consumable. No concrete onConsume (not a named-spell scroll)."},
+    {"id": "spell-scroll-2nd-level", "itemKind": "consumable", "name": "Spell Scroll, 2nd Level", "onConsume": [], "description": "Generic by-level template (SRD type: Scroll). Slice 310 reclassified magic -> consumable. No concrete onConsume (not a named-spell scroll)."},
+    {"id": "spell-scroll-3rd-level", "itemKind": "consumable", "name": "Spell Scroll, 3rd Level", "onConsume": [], "description": "Generic by-level template (SRD type: Scroll). Slice 310 reclassified magic -> consumable. No concrete onConsume (not a named-spell scroll)."},
+    {"id": "spell-scroll-4th-level", "itemKind": "consumable", "name": "Spell Scroll, 4th Level", "onConsume": [], "description": "Generic by-level template (SRD type: Scroll). Slice 310 reclassified magic -> consumable. No concrete onConsume (not a named-spell scroll)."},
+    {"id": "spell-scroll-5th-level", "itemKind": "consumable", "name": "Spell Scroll, 5th Level", "onConsume": [], "description": "Generic by-level template (SRD type: Scroll). Slice 310 reclassified magic -> consumable. No concrete onConsume (not a named-spell scroll)."},
+    {"id": "spell-scroll-6th-level", "itemKind": "consumable", "name": "Spell Scroll, 6th Level", "onConsume": [], "description": "Generic by-level template (SRD type: Scroll). Slice 310 reclassified magic -> consumable. No concrete onConsume (not a named-spell scroll)."},
+    {"id": "spell-scroll-7th-level", "itemKind": "consumable", "name": "Spell Scroll, 7th Level", "onConsume": [], "description": "Generic by-level template (SRD type: Scroll). Slice 310 reclassified magic -> consumable. No concrete onConsume (not a named-spell scroll)."},
+    {"id": "spell-scroll-8th-level", "itemKind": "consumable", "name": "Spell Scroll, 8th Level", "onConsume": [], "description": "Generic by-level template (SRD type: Scroll). Slice 310 reclassified magic -> consumable. No concrete onConsume (not a named-spell scroll)."},
+    {"id": "spell-scroll-9th-level", "itemKind": "consumable", "name": "Spell Scroll, 9th Level", "onConsume": [], "description": "Generic by-level template (SRD type: Scroll). Slice 310 reclassified magic -> consumable. No concrete onConsume (not a named-spell scroll)."}
   ],
   "monsters": [
     {

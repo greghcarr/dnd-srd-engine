@@ -36,6 +36,7 @@ const PACK_PATH = resolve(HERE, '../../src/content/packs/starter-pack.json');
 interface Entry {
   readonly id: string;
   readonly name?: string;
+  readonly itemKind?: string;
   readonly effects?: ReadonlyArray<unknown>;
   readonly onUse?: ReadonlyArray<unknown>;
   readonly onConsume?: ReadonlyArray<unknown>;
@@ -68,6 +69,26 @@ const itemIsWired = (e: Entry): boolean =>
   e.charges !== undefined;
 
 const conditionIsWired = (e: Entry): boolean => (e.effects?.length ?? 0) > 0;
+
+describe('pack integrity: spell scrolls are consumable', () => {
+  // Slice 310 (pattern-check follow-up to slices 305 / 309). Spell
+  // scrolls are consumed on use (RAW item type "Scroll"), so they must
+  // ship as `itemKind: 'consumable'` (which carries `onConsume`), never
+  // as `itemKind: 'magic'`. The specific `spell-scroll-of-X` entries
+  // were already consumable; the ten generic by-level templates
+  // (`spell-scroll-cantrip` / `-1st-level` … `-9th-level`) were
+  // mislabeled `magic` and reclassified in slice 310. This guard is
+  // id-based rather than SRD-name-matched because the generic templates
+  // ("Spell Scroll, Nth Level") don't match the SRD "Spell Scroll"
+  // header, so the slice-309 srd-drift Potion-type guard can't see them.
+  it('every spell-scroll-* item is itemKind consumable', () => {
+    const offenders = pack.items
+      .filter((e) => /^spell-scroll-/.test(e.id))
+      .filter((e) => e.itemKind !== 'consumable')
+      .map((e) => `${e.id}: itemKind=${e.itemKind ?? '<unset>'}`);
+    expect(offenders).toEqual([]);
+  });
+});
 
 describe('pack integrity: no duplicate ids within a category', () => {
   // Ids are looked up per category, so a spell `shield` and an armor
