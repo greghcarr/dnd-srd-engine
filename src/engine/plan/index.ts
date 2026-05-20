@@ -71,6 +71,7 @@ export {
   planDodge,
   planMistyStep,
   planThunderStep,
+  planDimensionDoor,
   chebyshevDistance,
   type MoveIntent,
   type DashIntent,
@@ -78,6 +79,7 @@ export {
   type DodgeIntent,
   type MistyStepIntent,
   type ThunderStepIntent,
+  type DimensionDoorIntent,
 } from './movement.js';
 export { planActionSurge, type ActionSurgeIntent } from './action-surge.js';
 export { planSacredWeapon, type SacredWeaponIntent } from './sacred-weapon.js';

@@ -12,19 +12,19 @@ A prior version of this doc tracked the **full PHB 2024 spell list** as its deno
 
 - **cast-time**: the spell carries `mechanicalEffects` the engine consumes at cast (`save`, `attack`, `heal`, `buff`, `summon`, `temp-hp`, `trap`, etc.); `engine.plan.castSpell` emits the chain.
 - **zone-tick**: the spell carries an `aura-damage` or `movement-damage` mechanic. Cast emits only `ConcentrationStarted`; damage / conditions fire later via `engine.plan.tickAura({ casterId, targetIds, trigger? })` or `engine.plan.tickMovementDamage({ casterId, targetId, feetMoved })`, per-turn or per-traversal (slices 68-72). Wired, just not on the cast event.
-- **planner**: handled by a dedicated planner (`planShield`, `planCounterspell`, `planPolymorph`, `planClairvoyance`, `planScrying`, `planArcaneEye`, `planSilentImage`, `planMajorImage`, `planRemoveCurse`, `planThunderStep`, `planResurrect`, `planMistyStep`, `planHuntersMark`, `planMagicWeapon`, `planElementalWeapon`, `planSimulacrum`, `planWish`, `planAbsorbElements`). `mechanicalEffects` is empty by design.
+- **planner**: handled by a dedicated planner (`planShield`, `planCounterspell`, `planPolymorph`, `planClairvoyance`, `planScrying`, `planArcaneEye`, `planSilentImage`, `planMajorImage`, `planRemoveCurse`, `planThunderStep`, `planDimensionDoor`, `planResurrect`, `planMistyStep`, `planHuntersMark`, `planMagicWeapon`, `planElementalWeapon`, `planSimulacrum`, `planWish`, `planAbsorbElements`). `mechanicalEffects` is empty by design.
 - **deferred**: ships in the pack so the validator + consumer see it, but no mechanical event is emitted, pending the named primitive.
 - **narrative**: intentionally emits nothing (rituals, divination, sensory / utility spells).
 
 ## Totals
 
-**351 in pack**: **192 wired** (153 cast-time, 13 zone-tick, 26 dedicated planner), **70 narrative**, **89 deferred** (genuine mechanical gap, grouped by needed primitive per level below).
+**351 in pack**: **193 wired** (153 cast-time, 13 zone-tick, 27 dedicated planner), **70 narrative**, **88 deferred** (genuine mechanical gap, grouped by needed primitive per level below).
 
 ## Biggest deferred clusters (the priority queue)
 
 The remaining mechanical gap fragments across ~20 small primitives; there is no single large lever left (the persistent-damage-zone family already shipped via `aura-damage` / `movement-damage`). The clusters worth a focused slice, roughly by payoff:
 
-- **Cross-plane travel / long-range teleport** (~12): blink, banishment, dimension-door, etherealness, plane-shift, teleport, word-of-recall, transport-via-plants, tree-stride, astral-projection, gate, maze. Most of the long-range ones are DM / consumer-side; **dimension-door** is the cleanest mechanical one (a multi-target `planMistyStep` sibling).
+- **Cross-plane travel / long-range teleport** (~11 remaining): blink, banishment, etherealness, plane-shift, teleport, word-of-recall, transport-via-plants, tree-stride, astral-projection, gate, maze. The cleanest in-combat teleport, **dimension-door**, shipped in slice 342 (`planDimensionDoor`); the rest are mostly DM / consumer-side (long-range / cross-plane positioning the engine doesn't model).
 - **HP-threshold tier effect** (2 remaining): divine-word, power-word-heal. The `hp-threshold` mechanic shipped in slice 338 (power-word-kill: destroy / 12d12 psychic) and gained a `condition` arm in slice 339 (power-word-stun: Stunned at or below 150 HP with a recurring CON save, else Speed 0). The remaining two need a multi-threshold tiered variant (divine-word) and a heal + multi-condition-remove arm (power-word-heal).
 - **Non-damage area zones** (~7): darkness, silence, zone-of-truth, tiny-hut, wind-wall, guardian-of-faith, compulsion. Need obscurement / silence / ward zone shapes distinct from the damage-zone `aura-damage` mechanic.
 - **Beyond-image illusion** (~5): seeming, mislead, project-image, programmed-illusion, mirage-arcane.
@@ -100,16 +100,16 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 **Narrative (10):** create-food-and-water, daylight, meld-into-stone, nondetection, plant-growth, sending, speak-with-dead, speak-with-plants, tongues, water-walk.
 
-## Level 4 (34 in pack): 17 wired, 6 narrative, 11 deferred
+## Level 4 (34 in pack): 18 wired, 6 narrative, 10 deferred
 
 **Wired, cast-time (13):** blight, charm-monster, confusion, conjure-minor-elementals, conjure-woodland-beings, death-ward, fire-shield, freedom-of-movement, greater-invisibility, ice-storm, phantasmal-killer, stoneskin, vitriolic-sphere.
 
 **Wired, zone-tick (2):** black-tentacles (DEX save 3d6 + restrained `aura-damage`), wall-of-fire (DEX save 5d8 `aura-damage`).
 
-**Wired, planner (2):** arcane-eye, polymorph.
+**Wired, planner (3):** arcane-eye, dimension-door (`planDimensionDoor`: action teleport up to 500 ft + optional willing passenger; slice 342), polymorph.
 
-**Deferred (11):**
-- **cross-plane travel:** banishment, dimension-door (a multi-target `planMistyStep` sibling).
+**Deferred (10):**
+- **cross-plane travel:** banishment.
 - **non-damage area zone + delayed expiration:** guardian-of-faith.
 - **recurring-save area mechanic:** compulsion.
 - **multi-target movement-restriction (force cage):** resilient-sphere.
