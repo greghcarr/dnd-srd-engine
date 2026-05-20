@@ -4,6 +4,20 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content: unconditional on-hit condition riders (slice 321)**
+
+The 2024 SRD's common natural-attack shape isn't save-for-half damage — it's an unconditional on-hit condition ("Hit: ... and the target has the Poisoned condition", with no save). This slice adds that arm to the `onHit` rider, completing the on-hit-rider family (extra damage / save-or-condition / unconditional-condition).
+
+Engine:
+- The `onHit` rider schema gains optional `applyConditionId: string`. On a hit where the rider's slice-318 `condition` gate passes, the attack planner emits `ConditionApplied` (sourced by the attacker) with no save. The schema's "rider must do something" refine now accepts `dice`, `save`, or `applyConditionId`.
+- The planner's post-damage rider loop (renamed `onHitRiderEvents`) handles both arms via a shared `applyRiderCondition` closure: the slice-319 `save.conditionOnFail` (gated behind a failed save) and the new unconditional `applyConditionId`.
+
+Content (canonical user): **Couatl's Bite** (`couatl-bite`, simple melee 1d12 piercing) applies Poisoned on every hit — RAW "Hit: 11 (1d12 + 5) Piercing damage, and the target has the Poisoned condition until the end of the couatl's next turn." Like the Ghoul's Claw, it's a monster natural weapon modeled as a wielded item; the +5/+7 come from the wielder's ability + proficiency.
+
+RAW deviation: the "until the end of the couatl's next turn" duration is consumer-managed (no `expiresOnRound`), mirroring slices 286/319.
+
+Uncle Bob audit: **Names** — `applyConditionId` parallels the slice-286 `conditionId` naming; `applyRiderCondition` says what it does. **DRY** — the save-fail and unconditional arms share one `ConditionApplied`-building closure instead of two literals. **SRP** — schema, planner emission each in their own layer; the closure does one thing. **Magic numbers** — none (1d12 / piercing / poisoned RAW-cited on the content item). **at-threading** — the condition applies with the planner's single resolved `at`; no RNG consumed for the unconditional arm. **Mechanical outcomes asserted** — a hit applies attacker-sourced Poisoned with no `SaveRolled` + base piercing damage; a miss applies nothing. **Tests** — 2 new ([tests/unit/engine/slice-321-onhit-condition.test.ts](tests/unit/engine/slice-321-onhit-condition.test.ts)); full suite green (1935 passed), tsc clean. Coverage snapshot unchanged (couatl-bite has no mastery, isn't a magic item). Docs: gaps Items (weapons 48 → 49).
+
 **Engine refactor: unify save-rolling on the shared `rollSaveAgainstDC` helper (slice 320)**
 
 Closes the slice-319 follow-up. The d20-roll + advantage-resolution + `SaveRolled`-assembly shape was inlined in four places once slice 319 added the on-hit-save rider; this slice routes the three legacy copies (use-item `Save`, recurring-save, breath-weapon) through the same `rollSaveAgainstDC` helper the rider already uses. No behavior change.

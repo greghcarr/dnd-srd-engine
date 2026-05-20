@@ -74,12 +74,21 @@ const onHitRiderSchema = z
     // Greatclub's +1d8 thunder) omit it and fire on every hit.
     condition: PredicateSchema.optional(),
     save: onHitSaveSchema.optional(),
+    // Slice 321: unconditional on-hit condition application (no save).
+    // The 2024 RAW shape for most poison/venom natural attacks: "Hit:
+    // ... and the target has the Poisoned condition" (Couatl's Bite,
+    // Assassin's Shortsword, Bearded Devil's Beard). On a hit where the
+    // rider's `condition` gate passes, the planner emits ConditionApplied
+    // (sourced by the attacker). Distinct from `save.conditionOnFail`,
+    // which gates the condition behind a failed save. Duration is
+    // consumer-managed (mirror of slice 286 / 319).
+    applyConditionId: z.string().optional(),
   })
   .refine((r) => (r.dice === undefined) === (r.damageType === undefined), {
     message: 'onHit rider dice and damageType must be set together',
   })
-  .refine((r) => r.dice !== undefined || r.save !== undefined, {
-    message: 'onHit rider must carry extra damage (dice) or a save',
+  .refine((r) => r.dice !== undefined || r.save !== undefined || r.applyConditionId !== undefined, {
+    message: 'onHit rider must carry extra damage (dice), a save, or an applied condition',
   });
 const weaponEnhancementFields = {
   attackBonus: z.number().int().optional(),

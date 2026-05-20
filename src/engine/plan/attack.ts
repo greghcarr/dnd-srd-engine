@@ -895,37 +895,44 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     at,
   });
 
-  // Slice 319: on-hit-save riders (Ghoul's Claw: CON save DC 10 or
-  // Paralyzed). Resolved after the damage chain — the hit lands, then
-  // the target makes the save. Only riders whose `condition` gate
-  // already passed (filtered into applicableRiders above) carry a save
-  // here. RNG-rolled in the planner so replay stays deterministic.
-  const onHitSaveEvents: Event[] = [];
-  for (const rider of applicableRiders) {
-    if (rider.save === undefined) continue;
-    const saveResult = rollSaveAgainstDC({
-      state,
-      content,
-      targetId: input.targetId,
-      ability: rider.save.ability,
-      dc: rider.save.dc,
-      sourceIsMagical: rider.save.sourceIsMagical ?? false,
-      rng,
+  // On-hit condition riders, resolved after the damage chain (the hit
+  // lands, then the rider resolves). Only riders whose `condition` gate
+  // already passed (filtered into applicableRiders above) reach here.
+  // Two shapes:
+  //   - slice 319 save: roll a save (RNG in the planner so replay stays
+  //     deterministic); on failure apply `conditionOnFail`.
+  //   - slice 321 applyConditionId: apply the condition unconditionally
+  //     (no save) — the 2024 poison-bite shape (Couatl's Bite).
+  const onHitRiderEvents: Event[] = [];
+  const applyRiderCondition = (conditionId: string): void => {
+    onHitRiderEvents.push({
+      id: newEventId() as ULID,
       at,
-    });
-    if (saveResult === undefined) continue;
-    onHitSaveEvents.push(saveResult.event);
-    if (!saveResult.success) {
-      onHitSaveEvents.push({
-        id: newEventId() as ULID,
+      type: 'ConditionApplied',
+      targetId: input.targetId as ULID,
+      conditionId,
+      appliedConditionId: newAppliedConditionId(),
+      sourceCharacterId: input.attackerId as ULID,
+    } satisfies ConditionAppliedEvent);
+  };
+  for (const rider of applicableRiders) {
+    if (rider.save !== undefined) {
+      const saveResult = rollSaveAgainstDC({
+        state,
+        content,
+        targetId: input.targetId,
+        ability: rider.save.ability,
+        dc: rider.save.dc,
+        sourceIsMagical: rider.save.sourceIsMagical ?? false,
+        rng,
         at,
-        type: 'ConditionApplied',
-        targetId: input.targetId as ULID,
-        conditionId: rider.save.conditionOnFail,
-        appliedConditionId: newAppliedConditionId(),
-        sourceCharacterId: input.attackerId as ULID,
-      } satisfies ConditionAppliedEvent);
+      });
+      if (saveResult !== undefined) {
+        onHitRiderEvents.push(saveResult.event);
+        if (!saveResult.success) applyRiderCondition(rider.save.conditionOnFail);
+      }
     }
+    if (rider.applyConditionId !== undefined) applyRiderCondition(rider.applyConditionId);
   }
 
   return [
@@ -934,7 +941,7 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     damageRolled,
     damageApplied,
     ...damageTriggers,
-    ...onHitSaveEvents,
+    ...onHitRiderEvents,
     ...intercept.extraEvents,
     ...concentrationBreak,
   ];
