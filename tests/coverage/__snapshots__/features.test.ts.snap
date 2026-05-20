@@ -211,7 +211,9 @@ exports[`feature-coverage matrix: conditions > wired conditions catalog is stabl
   "stunned",
   "superior-defense-active",
   "thunderous-smite-active",
+  "true-seeing-active",
   "unconscious",
+  "warding-bond-active",
   "wrathful-smite-active",
 ]
 `;

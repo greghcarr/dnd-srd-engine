@@ -4,7 +4,24 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
-_No unreleased changes since 0.1.0-alpha.8._
+**Content: buff-shape spell sweep (slice 301)**
+
+First slice of the alpha.9 buff-shape spell sweep. Two clean wires using existing primitives + pattern-check audit that surfaced a deferred orphan-conditions backlog row.
+
+Content wired:
+- **True Seeing (L6)** — new `true-seeing-active` condition with `GrantSense truesight 120`. Auto-folds into slice-271's `attacker.bypassesSightIllusion` (Blur, Mirror Image) and slice-273's `canLocateInvisible` (Invisible condition) facts, since both check `hasSense('truesight')`. Truesight gain is immediately observable on incoming-attack + visibility-bypass paths. 1-hour duration consumer-managed.
+- **Warding Bond (L2)** — new `warding-bond-active` condition with 3 of the 4 RAW arms: `AddModifier ac 1`, `AddModifier save wildcard 1` (slice-299 primitive), `GrantResistance damageType:'all'`. 60-ft proximity gate consumer-managed. Damage-sharing arm deferred (needs a shared-damage-link primitive); tracked as new backlog row.
+
+Pattern-check sweep — orphan `*-active` conditions audit. Three categories surfaced:
+- **Planner-emitted (false positives, NOT orphans)**: sacred-weapon-active, innate-sorcery-active, superior-defense-active, frenzied, dodged, shielded, baned, faerie-fired, absorb-elements-charged-*, healing-blocked-active. Engine-applied via dedicated planners or reducer-tagged conditions; initial walk-conditionId-refs script didn't follow src/engine/plan/ refs.
+- **Already wired** (false positives): death-ward-active, freedom-of-movement-active, mind-blanked-active. My initial filter mis-classified them.
+- **Dead 2014-era orphans (real)**: wrathful-smite-active, thunderous-smite-active, branding-smite-active, holy-weapon-active, invulnerable-active, earthbound-active. None of their source spells in SRD 5.2.1. Tracked as new deferred row for a focused future cleanup; not removed in slice 301 to keep scope tight.
+
+Spell-coverage table: `true-seeing` and `warding-bond` flip from `skip` to `buff` in [tests/unit/engine/spell-coverage.test.ts](tests/unit/engine/spell-coverage.test.ts).
+
+Audit: pure content. tsc clean; 1844 tests across 269 files (was 1833 / 268; +11 in new [tests/unit/engine/slice-301-buff-spells.test.ts](tests/unit/engine/slice-301-buff-spells.test.ts)). Conditions coverage snapshot adds true-seeing-active + warding-bond-active.
+
+Doc updates: 2 new deferred-primitives-backlog rows (Warding Bond damage-sharing arm; dead 2014 orphan conditions cleanup).
 
 ## 0.1.0-alpha.8 - 2026-05-19
 

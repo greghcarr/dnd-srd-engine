@@ -1709,7 +1709,7 @@
     { "id": "planar-ally", "name": "Planar Ally", "level": 6, "school": "conjuration", "castingTime": "10 minutes", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["cleric"], "mechanicalEffects": [] },
     { "id": "programmed-illusion", "name": "Programmed Illusion", "level": 6, "school": "illusion", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true, "material": "jade dust worth 25+ GP" }, "duration": "Until dispelled", "concentration": false, "ritual": false, "classes": ["bard", "wizard"], "targeting": { "shape": "cube", "size": 30 }, "mechanicalEffects": [] },
     { "id": "sunbeam", "name": "Sunbeam", "level": 6, "school": "evocation", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "a magnifying glass" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["cleric", "druid", "sorcerer", "wizard"], "targeting": { "shape": "line", "size": 60 }, "mechanicalEffects": [{ "kind": "save", "ability": "CON", "damageDice": "6d8", "damageType": "radiant", "halfOnSuccess": true }] },
-    { "id": "true-seeing", "name": "True Seeing", "level": 6, "school": "divination", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "mushroom powder worth 25+ GP, which the spell consumes" }, "duration": "1 hour", "concentration": false, "ritual": false, "classes": ["bard", "cleric", "sorcerer", "warlock", "wizard"], "mechanicalEffects": [] },
+    { "id": "true-seeing", "name": "True Seeing", "level": 6, "school": "divination", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "mushroom powder worth 25+ GP, which the spell consumes" }, "duration": "1 hour", "concentration": false, "ritual": false, "classes": ["bard", "cleric", "sorcerer", "warlock", "wizard"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "true-seeing-active" }] },
     { "id": "wall-of-ice", "name": "Wall of Ice", "level": 6, "school": "evocation", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true, "material": "a piece of quartz" }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["wizard"], "mechanicalEffects": [{ "kind": "aura-damage", "rangeFeet": 60, "saveAbility": "DEX", "damageDice": "10d6", "damageType": "cold", "halfOnSuccess": true, "extraDicePerSlotLevel": 2 }] },
     { "id": "wall-of-thorns", "name": "Wall of Thorns", "level": 6, "school": "conjuration", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true, "material": "a handful of thorns" }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["druid"], "mechanicalEffects": [{ "kind": "aura-damage", "rangeFeet": 60, "saveAbility": "DEX", "damageDice": "7d8", "damageType": "piercing", "halfOnSuccess": true }] },
     { "id": "wind-walk", "name": "Wind Walk", "level": 6, "school": "transmutation", "castingTime": "1 minute", "range": "30 feet", "components": { "verbal": true, "somatic": true, "material": "a candle" }, "duration": "8 hours", "concentration": false, "ritual": false, "classes": ["druid"], "mechanicalEffects": [] },
@@ -2042,7 +2042,7 @@
     { "id": "spider-climb", "name": "Spider Climb", "level": 2, "school": "transmutation", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a drop of bitumen and a spider" }, "duration": "Concentration, up to 1 hour", "concentration": true, "ritual": false, "classes": ["sorcerer", "warlock", "wizard"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "spider-climbing-active" }] },
     { "id": "spike-growth", "name": "Spike Growth", "level": 2, "school": "transmutation", "castingTime": "Action", "range": "150 feet", "components": { "verbal": true, "somatic": true, "material": "seven thorns" }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["druid", "ranger"], "targeting": { "shape": "sphere", "size": 20 }, "mechanicalEffects": [{ "kind": "movement-damage", "rangeFeet": 20, "damageDicePerFiveFeet": "2d4", "damageType": "piercing" }] },
     { "id": "summon-beast", "name": "Summon Beast", "level": 2, "school": "conjuration", "castingTime": "Action", "range": "90 feet", "components": { "verbal": true, "somatic": true, "material": "a feather, tuft of fur, and fish tail inside a gilded acorn worth 200+ GP" }, "duration": "Concentration, up to 1 hour", "concentration": true, "ritual": false, "classes": ["druid", "ranger"], "mechanicalEffects": [{ "kind": "summon", "name": "Bestial Spirit", "ac": 11, "hpBase": 30, "hpPerSlotAbove": 5, "baseSlotLevel": 2, "speedFeet": 30 }] },
-    { "id": "warding-bond", "name": "Warding Bond", "level": 2, "school": "abjuration", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a pair of platinum rings worth 50+ GP each, which you and the target must wear for the duration" }, "duration": "1 hour", "concentration": false, "ritual": false, "classes": ["cleric", "paladin"], "mechanicalEffects": [] },
+    { "id": "warding-bond", "name": "Warding Bond", "level": 2, "school": "abjuration", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a pair of platinum rings worth 50+ GP each, which you and the target must wear for the duration" }, "duration": "1 hour", "concentration": false, "ritual": false, "classes": ["cleric", "paladin"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "warding-bond-active" }] },
     { "id": "zone-of-truth", "name": "Zone of Truth", "level": 2, "school": "enchantment", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "10 minutes", "concentration": false, "ritual": false, "classes": ["bard", "cleric", "paladin"], "targeting": { "shape": "sphere", "size": 15 }, "mechanicalEffects": [] },
     { "id": "call-lightning", "name": "Call Lightning", "level": 3, "school": "conjuration", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["druid"], "targeting": { "shape": "cylinder", "size": 5 }, "mechanicalEffects": [{ "kind": "save", "ability": "DEX", "damageDice": "3d10", "damageType": "lightning", "halfOnSuccess": true, "extraDicePerSlotLevel": 1 }] },
     { "id": "fear", "name": "Fear", "level": 3, "school": "illusion", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "a white feather" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "sorcerer", "warlock", "wizard"], "targeting": { "shape": "cone", "size": 30 }, "mechanicalEffects": [{ "kind": "save", "ability": "WIS", "conditionOnFail": "frightened" }] },
@@ -9065,6 +9065,28 @@
       "endsOn": [],
       "effects": [
         { "kind": "PreventFatalDamage" }
+      ]
+    },
+    {
+      "id": "true-seeing-active",
+      "name": "True Seeing",
+      "description": "1 hour (True Seeing spell). RAW (SRD 5.2.1): 'the willing creature you touch has Truesight with a range of 120 feet.' Slice 301 wired via the existing slice-127 GrantSense primitive. Truesight composes with slice-271's attacker.bypassesSightIllusion and slice-273's canLocateInvisible facts, so a True-Sighted creature automatically pierces Blur, Mirror Image, and the Invisible condition's visibility-bypass for both attack and target sides. The 1-hour duration is consumer-managed.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "GrantSense", "sense": "truesight", "range": 120 }
+      ]
+    },
+    {
+      "id": "warding-bond-active",
+      "name": "Warding Bond",
+      "description": "1 hour (Warding Bond spell). RAW (SRD 5.2.1): 'While the target is within 60 feet of you, it gains a +1 bonus to AC and saving throws, and it has Resistance to all damage. Also, each time it takes damage, you take the same amount of damage.' Slice 301 wired three of the four arms: +1 AC, +1 save-wildcard (slice-299 primitive), Resistance to all damage. The 60-ft proximity gate is consumer-managed (engine doesn't model positions). The damage-sharing arm (caster takes equal damage on each hit to the target) is deferred — needs a new shared-damage-link primitive that emits a paired DamageApplied to the linked source character on every DamageApplied to the bearer (composes with slice-95's mitigateDamage but the source-link is novel). Sibling deferral with Spirit Guardians / Warding Wind shape if those ever land.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "AddModifier", "target": "ac", "value": 1 },
+        { "kind": "AddModifier", "target": { "kind": "save" }, "value": 1 },
+        { "kind": "GrantResistance", "damageType": "all" }
       ]
     },
     {

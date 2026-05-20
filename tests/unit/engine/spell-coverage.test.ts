@@ -204,7 +204,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'spider-climb': { kind: 'buff', conditionId: 'spider-climbing-active' },
   'spike-growth': { kind: 'skip', reason: 'movement-damage mechanic (2d4 piercing per 5 ft moved through zone, no save); fires via engine.plan.tickMovementDamage, not on cast. RAW difficult-terrain side-effect isn\'t expressed.' },
   'summon-beast': { kind: 'summon' },
-  'warding-bond': { kind: 'skip', reason: 'damage-share + AC/save buff; multi-target linked condition not modeled' },
+  'warding-bond': { kind: 'buff', conditionId: 'warding-bond-active' },
   'zone-of-truth': { kind: 'skip', reason: 'area + CHA save against deception; area-effect mechanic not modeled' },
   // PHB 2024 L3 spells with wired mechanics
   'call-lightning': { kind: 'save' },
@@ -367,7 +367,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'irresistible-dance': { kind: 'skip', reason: 'target dances and has disadvantage on rolls; dancing condition + recurring save not modeled' },
   'planar-ally': { kind: 'skip', reason: 'requests aid from an other-planar entity; DM-resolution + cross-plane summon not modeled' },
   'programmed-illusion': { kind: 'skip', reason: 'long-duration triggered illusion; illusion + trigger primitive not modeled' },
-  'true-seeing': { kind: 'skip', reason: 'truesight 120 ft + sees illusions / ethereal / shapechangers; multi-effect detection primitive not modeled' },
+  'true-seeing': { kind: 'buff', conditionId: 'true-seeing-active' },
   'wall-of-ice': { kind: 'skip', reason: 'aura-damage mechanic (DEX save 10d6 cold, half on success); fires via engine.plan.tickAura per-turn, not on cast. RAW persistent terrain block-passage isn\'t expressed.' },
   'wall-of-thorns': { kind: 'skip', reason: 'aura-damage mechanic (DEX save 7d8 piercing, half on success); fires via engine.plan.tickAura per-turn, not on cast. RAW difficult-terrain side-effect isn\'t expressed.' },
   'wind-walk': { kind: 'skip', reason: 'mass cloud-travel transformation; multi-target transformation primitive not modeled' },
