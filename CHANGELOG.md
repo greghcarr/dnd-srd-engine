@@ -4,7 +4,23 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
-_No unreleased changes since 0.1.0-alpha.9._
+**Engine + content: magic-equipment modeling, stage 1 — magic armor (slice 315)**
+
+First half of making magic equipment behave as equipment, not just effect-projectors. Magic armor and shields were `itemKind: 'magic'`, so the AC derive (which keys on `itemKind === 'armor'`) didn't recognize them — even a Spellguard / Sentinel Shield granted no AC. This slice models single-base magic armor as `itemKind: 'armor'`.
+
+Engine:
+- `ArmorSchema` gains optional magic fields: `rarity`, `requiresAttunement`, `attunementCondition`, `acBonus`, `effects` (the rarity enum extracted to a shared `MagicRaritySchema`, reused by `MagicItemSchema`). A single-base magic armor now ships as `itemKind: 'armor'` with its base stats + these fields.
+- `computeAC` adds `acBonus` to both the body-armor and shield branches (Dragon Scale Mail +1, etc.).
+- `collectItemEffects` (slice-132 projection) broadened to also project an armor's `effects` under the same equipped/attuned rule, and to walk the `equipped.armor` / `equipped.shield` slots. So a magic shield's `GrantMagicResistance` / a magic armor's resistance reaches the wearer's effect stack when worn + attuned.
+- srd-drift audit's rarity + attunement checks broadened to `itemKind: 'armor'` so the converted items stay drift-checked against SRD (mundane armor has no SRD magic-item entry, so it's skipped).
+
+Content (9 conversions, `magic` → `armor`):
+- Body armor: Glamoured Studded Leather (Studded Leather, +1 AC), Dragon Scale Mail (Scale Mail, +1 AC), Armor of Invulnerability (Plate, + the slice-307 B/P/S resistance now projecting from worn armor).
+- Shields (base Shield, +2 AC): Sentinel (+ init/perception advantage), Spellguard (+ Magic Resistance), Animated, Arrow-Catching, Shield of Missile Attraction, Shield of the Cavalier — all now grant their shield AC; their charged / conditional / cursed arms stay deferred.
+
+Multi-base magic armor (Dwarven Plate, Elven Chain, Mithral, Adamantine, Demon Armor) stays `itemKind: 'magic'` (deferred): no single base AC; needs a magic-property-applied-to-a-chosen-base model. Stage 2 (next slice) does the weapon side.
+
+Uncle Bob audit: **Names** — `acBonus` parallels `baseAC`; `MagicRaritySchema` extracted to remove the duplicated inline rarity enum. **DRY** — the rarity enum is now shared between `MagicItemSchema` and `ArmorSchema` (and the future `WeaponSchema`); effect projection reused the existing `fold` rather than a parallel path. **SRP** — schema fields, AC fold, effect projection, audit each changed in their own layer. **Magic numbers** — base AC values (12 / 14 / 18 / 2) are the SRD base-armor values, cited per item. **at-threading** — n/a (derivation-only). **Mechanical outcomes asserted** — Glamoured Studded Leather AC 15 (12+DEX+1), Dragon Scale Mail 17 (14+cap2+1), Armor of Invulnerability 18 (plate, no DEX); Spellguard Shield +2 AC delta; effects project when worn+attuned (Spellguard magic resistance, Armor of Invulnerability B/P/S resistance, Sentinel init/perception advantage). **Tests** — 7 new ([tests/unit/engine/slice-315-magic-armor.test.ts](tests/unit/engine/slice-315-magic-armor.test.ts)); the slice-307/311/312 effect-projection tests still pass unchanged (attuned projection covers armor). Coverage snapshot dropped the 3 converted wired items from the magic-item catalog (now armor). Full suite green (1914 passed), tsc clean. Docs: gaps Items breakdown (armor 13 → 22, magic 275 → 266), api-overview ArmorSchema note.
 
 ## 0.1.0-alpha.9 - 2026-05-19
 

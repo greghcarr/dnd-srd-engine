@@ -233,7 +233,6 @@ exports[`feature-coverage matrix: magic items > magic-item wire and charge state
 {
   "wiredIds": [
     "amulet-of-health",
-    "armor-of-invulnerability",
     "armor-of-resistance-acid",
     "armor-of-resistance-cold",
     "armor-of-resistance-fire",
@@ -307,9 +306,7 @@ exports[`feature-coverage matrix: magic items > magic-item wire and charge state
     "robe-of-the-archmagi",
     "rod-of-alertness",
     "scarab-of-protection",
-    "sentinel-shield",
     "slippers-of-spider-climbing",
-    "spellguard-shield",
     "staff-of-fire",
     "staff-of-frost",
     "staff-of-healing",

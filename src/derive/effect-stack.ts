@@ -102,13 +102,26 @@ const collectItemEffects = (
     const inst = itemInstances[instanceId];
     if (!inst) return;
     const def = content.items.get(inst.definitionId);
-    if (def === undefined || def.itemKind !== 'magic') return;
+    if (def === undefined) return;
+    // Slice 132: magic items. Slice 315: magic armor (itemKind 'armor'
+    // with optional `effects`) projects under the same rule, so a magic
+    // shield's GrantMagicResistance / a magic armor's resistance reaches
+    // the wearer's effect stack. Mundane armor has no `effects` (no-op).
+    if (def.itemKind !== 'magic' && def.itemKind !== 'armor') return;
+    const itemEffects = def.itemKind === 'magic' ? def.effects : (def.effects ?? []);
+    if (itemEffects.length === 0) return;
     if (requireNonAttunement && def.requiresAttunement) return;
     seen.add(instanceId);
-    effects.push(...def.effects);
+    effects.push(...itemEffects);
   };
   for (const instanceId of character.equipped.attuned) {
     fold(instanceId, false);
+  }
+  // Slice 315: worn magic armor / shield projects even if not separately
+  // listed in inventory. Requires-attunement armor still only projects
+  // via the attuned loop above (requireNonAttunement gate here).
+  for (const instanceId of [character.equipped.armor, character.equipped.shield]) {
+    if (instanceId !== undefined) fold(instanceId, true);
   }
   for (const instanceId of character.inventory) {
     fold(instanceId, true);

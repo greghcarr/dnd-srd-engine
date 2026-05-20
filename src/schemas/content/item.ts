@@ -21,6 +21,19 @@ const ItemBaseSchema = z.object({
     .optional(),
 });
 
+// Shared across MagicItemSchema and the magic-equipment fields on
+// WeaponSchema / ArmorSchema (slice 315). A magic weapon or armor ships
+// as itemKind 'weapon' / 'armor' (so the attack / AC consumers
+// recognize it as wielded / worn) plus optional magic fields below.
+const MagicRaritySchema = z.enum([
+  'common',
+  'uncommon',
+  'rare',
+  'very-rare',
+  'legendary',
+  'artifact',
+]);
+
 export const WeaponSchema = ItemBaseSchema.extend({
   itemKind: z.literal('weapon'),
   category: z.enum(['simple', 'martial']),
@@ -42,6 +55,19 @@ export const ArmorSchema = ItemBaseSchema.extend({
   dexCap: z.number().int().optional(),
   strRequirement: z.number().int().optional(),
   stealthDisadvantage: z.boolean().default(false),
+  // Slice 315: optional magic-armor fields. A magic armor / shield with
+  // a single base (Dragon Scale Mail = Scale Mail, the magic shields =
+  // Shield) ships as itemKind 'armor' so the AC derive applies its
+  // baseAC + DEX, plus these fields. `acBonus` is the enhancement bonus
+  // to AC (Dragon Scale Mail +1). `effects` project to the wearer's
+  // effect stack under the same equipped + attunement rule as magic
+  // items (slice 132). Multi-base magic armor ("any medium or heavy")
+  // stays itemKind 'magic' (deferred) — it has no single base AC.
+  rarity: MagicRaritySchema.optional(),
+  requiresAttunement: z.boolean().optional(),
+  attunementCondition: z.string().optional(),
+  acBonus: z.number().int().optional(),
+  effects: z.array(EffectSchema).optional(),
 });
 export type Armor = z.infer<typeof ArmorSchema>;
 
@@ -178,7 +204,7 @@ export type DestructionRoll = z.infer<typeof DestructionRollSchema>;
 
 export const MagicItemSchema = ItemBaseSchema.extend({
   itemKind: z.literal('magic'),
-  rarity: z.enum(['common', 'uncommon', 'rare', 'very-rare', 'legendary', 'artifact']),
+  rarity: MagicRaritySchema,
   requiresAttunement: z.boolean().default(false),
   attunementCondition: z.string().optional(),
   charges: z
