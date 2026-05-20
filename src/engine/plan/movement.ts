@@ -18,6 +18,7 @@ import type { RNG } from '../../rng/index.js';
 import { rollDie, rollExpression } from '../../rng/dice.js';
 import { D20_SIDES } from '../../internal/constants.js';
 import { computeSavingThrow } from '../../derive/save.js';
+import { rollSaveBonusDice } from './_bonus-dice.js';
 import { computeSpellSaveDC } from '../../derive/spell-dc.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
@@ -646,7 +647,9 @@ export const planThunderStep = (
       characters: state.characters,
     });
     const d20 = rollDie(D20_SIDES, rng);
-    const total = d20 + saveDerivation.total;
+    const saveBonus = rollSaveBonusDice(saveDerivation.bonusDice, rng);
+    const bonus = saveDerivation.total + saveBonus.total;
+    const total = d20 + bonus;
     const success = total >= dcResult.total;
     const saveEvent: SaveRolledEvent = {
       id: newEventId() as ULID,
@@ -657,10 +660,10 @@ export const planThunderStep = (
       dc: dcResult.total,
       d20: [d20],
       used: 'none',
-      bonus: saveDerivation.total,
+      bonus,
       total,
       success,
-      breakdown: [...saveDerivation.breakdown],
+      breakdown: [...saveDerivation.breakdown, ...saveBonus.breakdown],
     };
     events.push(saveEvent);
     stagedState = applyAll(stagedState, [saveEvent]);

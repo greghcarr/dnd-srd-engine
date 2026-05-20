@@ -46,6 +46,7 @@ import { effectiveSpellList } from '../../derive/effective-spell-list.js';
 import { computeAvailableSpellSlots } from '../../derive/spell-slots.js';
 import { computeAC } from '../../derive/ac.js';
 import { computeSavingThrow } from '../../derive/save.js';
+import { rollSaveBonusDice } from './_bonus-dice.js';
 import { abilityModifier } from '../../derive/ability.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
@@ -536,7 +537,11 @@ const planSaveMechanic = (
       : saveDerivation.hasDisadvantage
         ? Math.min(...rolls)
         : rolls[0]!;
-    const total = usedD20 + saveDerivation.total;
+    // Slice 331: per-roll save bonus dice (Bless +1d4 / Bane -1d4) on the
+    // target's save against this spell.
+    const saveBonus = rollSaveBonusDice(saveDerivation.bonusDice, rng);
+    const bonus = saveDerivation.total + saveBonus.total;
+    const total = usedD20 + bonus;
     const success = total >= dcResult.total;
     const saveEvent: SaveRolledEvent = {
       id: newEventId() as ULID,
@@ -547,11 +552,11 @@ const planSaveMechanic = (
       dc: dcResult.total,
       d20: rolls,
       used,
-      bonus: saveDerivation.total,
+      bonus,
       total,
       success,
       causedByEventId: declaredEventId as ULID,
-      breakdown: [...saveDerivation.breakdown],
+      breakdown: [...saveDerivation.breakdown, ...saveBonus.breakdown],
     };
     events.push(saveEvent);
 

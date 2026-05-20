@@ -22,6 +22,7 @@ import type { ActionEconomyConsumedEvent } from '../../schemas/events/action-eco
 import type { SaveRolledEvent } from '../../schemas/events/checks.js';
 import { computeSpellSaveDC } from '../../derive/spell-dc.js';
 import { computeSavingThrow } from '../../derive/save.js';
+import { rollSaveBonusDice } from './_bonus-dice.js';
 import { rollDie } from '../../rng/dice.js';
 import { D20_SIDES } from '../../internal/constants.js';
 import { newEventId, newSensorId, newEffectInstanceId } from '../../ids.js';
@@ -417,7 +418,9 @@ export const planScrying = (
     : saveDerivation.hasDisadvantage
       ? Math.min(...rolls)
       : rolls[0]!;
-  const total = usedD20 + saveDerivation.total;
+  const saveBonus = rollSaveBonusDice(saveDerivation.bonusDice, rng);
+  const bonus = saveDerivation.total + saveBonus.total;
+  const total = usedD20 + bonus;
   const success = total >= dc;
   const save: SaveRolledEvent = {
     id: newEventId() as ULID,
@@ -428,11 +431,11 @@ export const planScrying = (
     dc,
     d20: rolls,
     used,
-    bonus: saveDerivation.total,
+    bonus,
     total,
     success,
     causedByEventId: declared.id,
-    breakdown: [...saveDerivation.breakdown],
+    breakdown: [...saveDerivation.breakdown, ...saveBonus.breakdown],
   };
   events.push(save);
 

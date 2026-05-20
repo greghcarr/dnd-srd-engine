@@ -1,6 +1,7 @@
 import type { RNG } from '../../rng/index.js';
 import { rollDie, parseDiceExpression } from '../../rng/dice.js';
 import type { BonusDieContribution } from '../../effects/builder.js';
+import type { RollBreakdownEntry } from '../../schemas/events/checks.js';
 
 // One rolled bonus-die contribution, baked into the emitting roll event
 // so apply()/replay never re-rolls. `total` is the signed contribution
@@ -44,4 +45,28 @@ export const rollBonusDice = (
     });
   }
   return { total, rolls };
+};
+
+export interface SaveBonusDice {
+  readonly total: number;
+  readonly breakdown: ReadonlyArray<RollBreakdownEntry>;
+}
+
+// Rolls the bonus dice that apply to a saving throw (Bless / Bane) and
+// returns the signed total plus breakdown entries to merge into the
+// SaveRolled event's `breakdown` (and `bonus`/`total`). Empty entries
+// roll no RNG, so an unaffected save's stream is unchanged. Used by every
+// save-rolling planner so the bonus applies wherever a save is made.
+export const rollSaveBonusDice = (
+  entries: ReadonlyArray<BonusDieContribution>,
+  rng: RNG,
+): SaveBonusDice => {
+  const rolled = rollBonusDice(entries, rng);
+  return {
+    total: rolled.total,
+    breakdown: rolled.rolls.map((r) => ({
+      source: `${r.source} (${r.subtract ? '-' : '+'}${r.dice}=${r.rolls.join(',')})`,
+      value: r.total,
+    })),
+  };
 };

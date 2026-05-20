@@ -12,6 +12,7 @@ import { nowIso } from '../../internal/clock.js';
 import { abilityModifier, proficiencyBonus } from '../../derive/ability.js';
 import { computeTotalLevel } from '../../schemas/runtime/character.js';
 import { computeSavingThrow } from '../../derive/save.js';
+import { rollSaveBonusDice } from './_bonus-dice.js';
 import type { ULID } from '../ids-utils.js';
 
 const KI_RESOURCE_ID = 'ki';
@@ -98,7 +99,9 @@ export const planStunningStrike = (
       : useAdv === 'disadvantage'
         ? Math.min(...rolls)
         : (rolls[0] ?? 0);
-  const total = d20 + saveDerivation.total;
+  const saveBonus = rollSaveBonusDice(saveDerivation.bonusDice, rng);
+  const bonus = saveDerivation.total + saveBonus.total;
+  const total = d20 + bonus;
   const success = total >= dc;
   const at = intent.at ?? nowIso();
 
@@ -123,10 +126,10 @@ export const planStunningStrike = (
     dc,
     d20: rolls,
     used: useAdv,
-    bonus: saveDerivation.total,
+    bonus,
     total,
     success,
-    breakdown: [...saveDerivation.breakdown],
+    breakdown: [...saveDerivation.breakdown, ...saveBonus.breakdown],
   };
   events.push(save);
 

@@ -9,6 +9,7 @@ import type { RNG } from '../../rng/index.js';
 import { rollDie, parseDiceExpression } from '../../rng/dice.js';
 import { newAppliedConditionId, newEventId } from '../../ids.js';
 import { computeSavingThrow } from '../../derive/save.js';
+import { rollSaveBonusDice } from './_bonus-dice.js';
 import { computeSpellSaveDC } from '../../derive/spell-dc.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
@@ -105,7 +106,10 @@ export const planCheckConcentration = (
     characters: state.characters,
   });
   const d20 = rollDie(D20_SIDES, rng);
-  const total = d20 + saveDerivation.total;
+  // Slice 331: per-roll save bonus dice (Bless +1d4 / Bane -1d4).
+  const saveBonus = rollSaveBonusDice(saveDerivation.bonusDice, rng);
+  const bonus = saveDerivation.total + saveBonus.total;
+  const total = d20 + bonus;
   const success = total >= dc;
 
   const save: SaveRolledEvent = {
@@ -117,10 +121,10 @@ export const planCheckConcentration = (
     dc,
     d20: [d20],
     used: 'none',
-    bonus: saveDerivation.total,
+    bonus,
     total,
     success,
-    breakdown: [...saveDerivation.breakdown],
+    breakdown: [...saveDerivation.breakdown, ...saveBonus.breakdown],
   };
   const events: Event[] = [save];
 
@@ -270,7 +274,9 @@ export const planTickAura = (
         characters: state.characters,
       });
       const d20 = rollDie(D20_SIDES, rng);
-      const total = d20 + saveDerivation.total;
+      const saveBonus = rollSaveBonusDice(saveDerivation.bonusDice, rng);
+      const bonus = saveDerivation.total + saveBonus.total;
+      const total = d20 + bonus;
       saveSucceeded = total >= dcResult.total;
       const saveEvent: SaveRolledEvent = {
         id: newEventId() as ULID,
@@ -281,10 +287,10 @@ export const planTickAura = (
         dc: dcResult.total,
         d20: [d20],
         used: 'none',
-        bonus: saveDerivation.total,
+        bonus,
         total,
         success: saveSucceeded,
-        breakdown: [...saveDerivation.breakdown],
+        breakdown: [...saveDerivation.breakdown, ...saveBonus.breakdown],
       };
       events.push(saveEvent);
       saveCausedById = saveEvent.id;

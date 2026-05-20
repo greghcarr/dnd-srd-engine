@@ -4,6 +4,7 @@ import type { ResolvedContent } from '../content/pack.js';
 import type { AbilityScore } from '../schemas/primitives.js';
 import { abilityModifier, effectiveAbilityScore, proficiencyBonus } from './ability.js';
 import { buildEffectStack } from './effect-stack.js';
+import type { BonusDieContribution } from '../effects/builder.js';
 import { computeTotalLevel } from '../schemas/runtime/character.js';
 import { EXHAUSTION_SAVE_PENALTY_PER_LEVEL } from '../internal/constants.js';
 import { findActorBlockingCondition, getEffectiveSpeed } from '../engine/plan/_actor-state.js';
@@ -18,6 +19,9 @@ export interface SaveResult {
   readonly breakdown: ReadonlyArray<SaveBreakdownEntry>;
   readonly hasAdvantage: boolean;
   readonly hasDisadvantage: boolean;
+  // Slice 331: unrolled per-roll bonus dice (AddBonusDie on saves). The
+  // pure derivation surfaces them; the planner rolls them.
+  readonly bonusDice: ReadonlyArray<BonusDieContribution>;
 }
 
 export interface ComputeSaveInput {
@@ -153,5 +157,10 @@ export const computeSavingThrow = (input: ComputeSaveInput): SaveResult => {
     breakdown,
     hasAdvantage: effectiveAdvantage && !adv.disadvantage,
     hasDisadvantage: adv.disadvantage && !effectiveAdvantage,
+    // Slice 331: the pending per-roll bonus dice for this save (Bless
+    // +1d4 / Bane -1d4 via AddBonusDie). Returned unrolled (this is a
+    // pure derivation); the planner that rolls the save rolls these too
+    // and folds them into the SaveRolled total + breakdown.
+    bonusDice: effects.bonusDiceFor(target, facts),
   };
 };

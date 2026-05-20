@@ -7850,23 +7850,23 @@
     {
       "id": "blessed",
       "name": "Blessed",
-      "description": "Bless spell effect. RAW (SRD 5.2.1): 'the target adds 1d4 to the attack roll or save.' Slice 330 wired the attack arm as a per-roll AddBonusDie (1d4, rolled fresh on each attack and baked into AttackRolled). The save arm still ships as the flat +2 AddModifier approximation (the wildcard `save` entry slice 299 compressed): a per-roll die on saves needs every save-roll site to consume AddBonusDie, which waits on centralizing the ~13 inline save-roll sites through the shared roller (tracked follow-up).",
+      "description": "Bless spell effect. RAW (SRD 5.2.1): 'the target adds 1d4 to the attack roll or save.' Fully RAW since slice 331: both arms are per-roll AddBonusDie 1d4 (attack arm slice 330; save arm slice 331, which threaded save bonus dice through every save-rolling planner via computeSavingThrow's bonusDice + the shared rollSaveBonusDice helper). The wildcard `save` target (slice 299) applies the die to every ability's save.",
       "stackable": false,
       "endsOn": [],
       "effects": [
         { "kind": "AddBonusDie", "target": "attack", "dice": "1d4" },
-        { "kind": "AddModifier", "target": { "kind": "save" }, "value": 2 }
+        { "kind": "AddBonusDie", "target": { "kind": "save" }, "dice": "1d4" }
       ]
     },
     {
       "id": "baned",
       "name": "Baned",
-      "description": "Bane spell effect. RAW (SRD 5.2.1): 'subtract 1d4 from each attack roll and saving throw the target makes.' Slice 330 wired the attack arm as a per-roll AddBonusDie (1d4 with subtract:true). The save arm still ships as the flat -2 AddModifier approximation (same save-roll-centralization follow-up as blessed).",
+      "description": "Bane spell effect. RAW (SRD 5.2.1): 'subtract 1d4 from each attack roll and saving throw the target makes.' Fully RAW since slice 331: both arms are per-roll AddBonusDie 1d4 with subtract:true (attack arm slice 330; save arm slice 331).",
       "stackable": false,
       "endsOn": [],
       "effects": [
         { "kind": "AddBonusDie", "target": "attack", "dice": "1d4", "subtract": true },
-        { "kind": "AddModifier", "target": { "kind": "save" }, "value": -2 }
+        { "kind": "AddBonusDie", "target": { "kind": "save" }, "dice": "1d4", "subtract": true }
       ]
     },
     {

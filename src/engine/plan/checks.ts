@@ -11,6 +11,7 @@ import type { RNG } from '../../rng/index.js';
 import { rollDie } from '../../rng/dice.js';
 import { newEventId } from '../../ids.js';
 import { computeSavingThrow } from '../../derive/save.js';
+import { rollSaveBonusDice } from './_bonus-dice.js';
 import { computeAbilityCheck } from '../../derive/ability-check.js';
 import { D20_SIDES } from '../../internal/constants.js';
 import { nowIso } from '../../internal/clock.js';
@@ -69,7 +70,9 @@ export const planSave = (
     derivation.hasDisadvantage,
   );
   const { rolls, used: d20 } = rollWithAdvantage(rng, used);
-  const total = d20 + derivation.total;
+  const saveBonus = rollSaveBonusDice(derivation.bonusDice, rng);
+  const bonus = derivation.total + saveBonus.total;
+  const total = d20 + bonus;
   const event: SaveRolledEvent = {
     id: newEventId() as ULID,
     at: intent.at ?? nowIso(),
@@ -79,10 +82,10 @@ export const planSave = (
     dc: intent.dc,
     d20: rolls,
     used,
-    bonus: derivation.total,
+    bonus,
     total,
     success: total >= intent.dc,
-    breakdown: [...derivation.breakdown],
+    breakdown: [...derivation.breakdown, ...saveBonus.breakdown],
   };
   return [event];
 };

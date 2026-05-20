@@ -28,6 +28,7 @@ import type {
 import { buildEffectStack } from '../../derive/effect-stack.js';
 import type { Character } from '../../schemas/runtime/character.js';
 import { computeSavingThrow } from '../../derive/save.js';
+import { rollSaveBonusDice } from './_bonus-dice.js';
 import type { ConditionAppliedEvent, ConditionRemovedEvent, HealedEvent } from '../../schemas/events/combat.js';
 import type { DamageType } from '../../schemas/primitives.js';
 import type { ConcentrationBrokenEvent } from '../../schemas/events/concentration.js';
@@ -896,7 +897,9 @@ export const planSanctuaryWardSave = (
     d20s = [firstRoll, second];
     d20 = useAdv === 'advantage' ? Math.max(firstRoll, second) : Math.min(firstRoll, second);
   }
-  const total = d20 + saveDerivation.total;
+  const saveBonus = rollSaveBonusDice(saveDerivation.bonusDice, rng);
+  const bonus = saveDerivation.total + saveBonus.total;
+  const total = d20 + bonus;
   const success = total >= dc;
 
   const saveEvent: SaveRolledEvent = {
@@ -908,10 +911,10 @@ export const planSanctuaryWardSave = (
     dc,
     d20: d20s,
     used: useAdv,
-    bonus: saveDerivation.total,
+    bonus,
     total,
     success,
-    breakdown: [...saveDerivation.breakdown],
+    breakdown: [...saveDerivation.breakdown, ...saveBonus.breakdown],
   };
 
   if (success) {

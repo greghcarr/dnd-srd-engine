@@ -27,6 +27,7 @@ import { nowIso } from '../../internal/clock.js';
 import { computeTotalLevel } from '../../schemas/runtime/character.js';
 import { computeSpellSaveDC } from '../../derive/spell-dc.js';
 import { computeSavingThrow } from '../../derive/save.js';
+import { rollSaveBonusDice } from './_bonus-dice.js';
 import { D20_SIDES } from '../../internal/constants.js';
 import type { ULID } from '../ids-utils.js';
 
@@ -144,7 +145,9 @@ export const planPolymorph = (
       characters: state.characters,
     });
     const d20 = rollDie(D20_SIDES, rng);
-    const total = d20 + saveDerivation.total;
+    const saveBonus = rollSaveBonusDice(saveDerivation.bonusDice, rng);
+    const bonus = saveDerivation.total + saveBonus.total;
+    const total = d20 + bonus;
     const success = total >= dcResult.total;
     const save: SaveRolledEvent = {
       id: newEventId() as ULID,
@@ -155,11 +158,11 @@ export const planPolymorph = (
       dc: dcResult.total,
       d20: [d20],
       used: 'none',
-      bonus: saveDerivation.total,
+      bonus,
       total,
       success,
       causedByEventId: declared.id,
-      breakdown: [...saveDerivation.breakdown],
+      breakdown: [...saveDerivation.breakdown, ...saveBonus.breakdown],
     };
     events.push(save);
     if (success) {

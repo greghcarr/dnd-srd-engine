@@ -9,6 +9,7 @@ import { nowIso } from '../../internal/clock.js';
 import { invariant } from '../../internal/invariants.js';
 import { computeAbilityCheck } from '../../derive/ability-check.js';
 import { computeSavingThrow } from '../../derive/save.js';
+import { rollSaveBonusDice } from './_bonus-dice.js';
 import { EXHAUSTION_MAX } from '../../schemas/primitives.js';
 import type { ULID } from '../ids-utils.js';
 import type { ForagedForEvent, NavigationCheckRolledEvent } from '../../schemas/events/travel.js';
@@ -142,7 +143,9 @@ export const planForcedMarch = (
         characters: state.characters,
       });
       const d20 = rollDie(D20_SIDES, rng);
-      const total = d20 + saveDerivation.total;
+      const saveBonus = rollSaveBonusDice(saveDerivation.bonusDice, rng);
+      const bonus = saveDerivation.total + saveBonus.total;
+      const total = d20 + bonus;
       const success = total >= dc;
       const save: SaveRolledEvent = {
         id: newEventId() as ULID,
@@ -153,10 +156,10 @@ export const planForcedMarch = (
         dc,
         d20: [d20],
         used: 'none',
-        bonus: saveDerivation.total,
+        bonus,
         total,
         success,
-        breakdown: [...saveDerivation.breakdown],
+        breakdown: [...saveDerivation.breakdown, ...saveBonus.breakdown],
       };
       events.push(save);
       if (!success) {

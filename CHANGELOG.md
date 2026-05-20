@@ -4,6 +4,21 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content: save-roll bonus dice — Bless/Bane fully RAW (slice 331)**
+
+Closes the slice-330 follow-up: the Bless/Bane **save** arm is now a per-roll 1d4 everywhere, completing the RAW fix (the attack arm landed in slice 330). A bonus die can only be rolled in a planner, so this threads the bonus through every save-rolling site.
+
+Engine:
+- `computeSavingThrow` now surfaces the pending save bonus dice on its result (`bonusDice: BonusDieContribution[]`, queried from the effect stack via `bonusDiceFor({kind:'save', ability})`). Pure derivation — it returns the dice unrolled; the planner rolls them. The two non-rolling callers (`engine.derive` save surface, character-view) simply ignore the field.
+- New shared `rollSaveBonusDice` helper ([src/engine/plan/_bonus-dice.ts](src/engine/plan/_bonus-dice.ts)) rolls the dice and returns the signed total + `breakdown` entries to merge into the `SaveRolled` event (no new event field needed — the existing `breakdown` carries each rolled die).
+- Every save-rolling planner consumes it: the shared `rollSaveAgainstDC` helper (covers on-hit-save / use-item / breath-weapon / recurring-save), plus cast-spell, concentration (×2), trap, stunning-strike, transformations, movement, sensor, checks, reactive-spells, and travel. Each folds the die into `bonus` + `total` + `breakdown`. No RNG is consumed when a save has no bonus dice, so unaffected saves keep their exact stream.
+
+Content: **Bless**/**Bane** save arms re-wired from flat `AddModifier ±2` to `AddBonusDie 1d4` (Bane `subtract: true`). Both spells are now fully RAW.
+
+Scope / deferral: **Guidance / Resistance / Bardic Inspiration** are unblocked on the data side (the primitive supports them) — Resistance (save) wires for free now; Guidance/Bardic on *checks* need the same consumption pass on the ability-check roll path (a small follow-up). **weapon-mastery (Topple) and the contested-check planner** compute their bonus as a raw ability modifier (bypassing `computeSavingThrow`), so no effect-stack save modifier — Bless included — applies there; routing them through `computeSavingThrow` is a separate tracked slice (they never honored Aura of Protection / Bless either, so this is a pre-existing limitation, not a regression).
+
+Uncle Bob audit: **Names** — `bonusDice` / `rollSaveBonusDice` mirror the attack-side vocabulary. **DRY** — the bonus is surfaced once (in `computeSavingThrow`) and rolled through one helper consumed at every site, rather than re-deriving per site; the helper builds on slice-330's `rollBonusDice`. **SRP** — derivation surfaces, planner rolls, helper formats the breakdown. **Magic numbers** — 1d4 RAW-cited on the conditions. **at-threading** — the die rolls in each planner with the d20; `apply` stays RNG-free; replay re-reads baked values. **Mechanical outcomes asserted** — `computeSavingThrow` for a blessed creature carries no static +2 and surfaces exactly one 1d4 save bonus die per ability (rules-truth test rewritten from the old +2 assertion); the showcase shows a blessed CON save rolling `+1d4`. **Tests** — rules-truth blessed test updated to the per-roll shape; full suite green (1954 passed), tsc clean. The showcase transcript was regenerated (Bless now rolls a save 1d4, shifting the seeded stream; replay-equivalence + RNG-capture still hold). Docs: gaps backlog row struck through (closed); the deferred-with-reason note now tracks the check-roll siblings + the raw-ability-modifier save sites.
+
 **Engine + content: `AddBonusDie` primitive + Bless/Bane attack arm (slice 330)**
 
 Fixes a long-standing RAW deviation: Bless/Bane were approximated as a flat +2/−2, but RAW is "add (or subtract) 1d4." A bonus *die* (unlike `AddModifier`'s static value) must be rolled fresh per affected roll, so it has to be consumed in the planner (where RNG lives) and baked into the emitted roll event — `apply()` stays RNG-free.
