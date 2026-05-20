@@ -4,7 +4,16 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
-_No unreleased changes yet._
+**Docs: fix the SRD-compliance aggregate contradiction + sweep remaining stale numbers (slice 329)**
+
+Follow-up accuracy pass. The status.md "SRD-compliance ~85%" headline row contradicted its own wired rows (it claimed "the remaining 15% is mechanical wiring depth" while the table shows spells ~47% / magic items ~35% / subclasses ~33% wired) and carried a stale "~195 spells schema-only" figure. Relabeled the row to **"SRD pack-presence + architecture"** — explicitly a presence-and-readiness number, not a mechanical-wiring number — with a pointer to the per-row wired figures for "how much does the engine actually execute." Then swept the rest of the live docs for stale counts:
+
+- [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md): spell wiring "~147 (139 + 11)" → "164 via `mechanicalEffects` + 11 planners".
+- [docs/getting-started.md](docs/getting-started.md): the starter-pack contents sentence was badly stale (399 spells, 7 species, 9 magic items, 6 monsters, 25 conditions, ~36 weapons, etc.) → refreshed to 351 spells / 9 species / 258 magic items / 253 monsters / 116 conditions / 52 weapons / 22 armors / 37 tools / 77 gear / 69 consumables / 35 feats.
+- [docs/parallel-authoring.md](docs/parallel-authoring.md): "~1452 tests as of slice 177" → "~1951 tests as of slice 328".
+- [docs/gaps-class-features.md](docs/gaps-class-features.md): the Mystic Arcanum deferral said "the pack ships 0 spells at L6-9" — it now ships 84; the real blocker (Warlock list curation) is preserved.
+
+Frozen docs (CHANGELOG release blocks + `docs/changelog/` archives + the `srd-5.2.1-audit-*` / content-attribution point-in-time records + roadmap per-slice deliverables) were intentionally left as historical snapshots. Docs only; doc-size audit green.
 
 ## 0.1.0-alpha.10 - 2026-05-20
 
