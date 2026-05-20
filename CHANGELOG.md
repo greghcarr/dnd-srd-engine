@@ -4,6 +4,18 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content: magic-item buff sweep cont., 3 attunement-gated wearables (slice 306)**
+
+Pure-content sweep, no engine changes. Three DMG wearables wired through existing primitives, pinned by [tests/unit/engine/slice-306-magic-item-wires.test.ts](tests/unit/engine/slice-306-magic-item-wires.test.ts):
+
+- **Ioun Stone, Awareness** → `SetAdvantage { on: 'initiative' }` + `SetAdvantage { on: { kind: skill, skill: perception } }` (RAW: "Advantage on Initiative rolls and Wisdom (Perception) checks"). Consumed at encounter.ts (initiative) and the ability-check derive (perception).
+- **Robe of the Archmagi** — fully wired (3/3 arms): `OverrideACFormula { base: 15, abilityModifiers: [DEX] }` (RAW: "If you aren't wearing armor, your base AC is 15 + your Dex modifier" — OverrideACFormula already only applies when unarmored); `GrantMagicResistance` (slice-131 marker, RAW Magic Resistance arm); `AddModifier spellSaveDC +2` + `AddModifier spellAttack +2` (War Mage arm).
+- **Belt of Dwarvenkind** — Resilience arm: `GrantResistance { damageType: poison }` + `SetAdvantage { on: { kind: save }, condition: eq event.savePreventsCondition='poisoned' }` (the slice-298 Necklace of Adaptation predicate). Deferred arms tracked: Toughness (CON +2 to max 20) needs a new additive-ability-score primitive; the dwarf-conditional Darkvision and Persuasion-vs-dwarves arms need unconditional-projection gating / target scoping. RAW gates Resilience on "if you aren't a dwarf", but dwarves already carry both benefits, so unconditional projection is a no-op for them.
+
+Deferred-primitives backlog gained a high-leverage row: an `IncreaseAbilityScore { ability, amount, max }` primitive (distinct from `OverrideAbilityScore`, which *sets* and would mask a higher base) would unblock the six ability Ioun Stones, the four Manual/Tome items, and Belt of Dwarvenkind's Toughness arm in one slice (~11 items).
+
+Audit (content sweep): Names — reused existing primitive vocabulary; no new identifiers. DRY — Belt's poisoned-save arm reuses the slice-298 predicate shape verbatim; Robe's Magic Resistance reuses the slice-131 marker rather than re-deriving an `isSpellSave` predicate. SRP — each effect is one primitive doing one thing. Magic numbers — AC 15, +2 DC/attack, the poison/perception/initiative targets all RAW-cited above. Mechanical outcomes asserted — Ioun Stone advantage on initiative+perception (and no bleed to stealth); Robe AC 17 unarmored vs 12 without, magic-resistance advantage only when sourceIsMagical, +2 DC and +2 attack deltas; Belt poison resistance + poisoned-save advantage (and no advantage vs frightened). Tests — 9 new. Coverage snapshot gained the 3 items; full suite green (1882 passed), tsc clean. Docs: gaps Items count 64 → 67, new backlog row.
+
 **Content: magic-item buff sweep, 5 wires via existing primitives (slice 305)**
 
 Pure-content sweep, no engine changes. Five DMG magic items wired through primitives the engine already supports, each pinned by a test in [tests/unit/engine/slice-305-magic-item-wires.test.ts](tests/unit/engine/slice-305-magic-item-wires.test.ts):
