@@ -4,6 +4,19 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content: poison natural-weapon sweep — combined damage + condition riders (slice 322)**
+
+Pure content slice (no engine work) exercising the now-complete on-hit-rider family. Adds three iconic poison natural weapons, two of which carry a single `onHit` rider holding **both** extra poison damage (slice 316 `dice`) and an unconditional Poisoned (slice 321 `applyConditionId`) — a combination the prior slices' tests hadn't pinned.
+
+Content (3 natural weapons, modeled as wielded items like Ghoul's Claw / Couatl's Bite):
+- **Wyvern's Sting** (2d6 piercing, reach; +7d6 poison + Poisoned per hit).
+- **Ettercap's Bite** (1d6 piercing; +1d4 poison + Poisoned per hit).
+- **Merrow's Bite** (1d4 piercing; Poisoned per hit, no extra damage — same shape as Couatl's Bite).
+
+The base dice are the SRD natural-weapon dice; the printed +N attack/damage come from the wielder's ability + proficiency. The condition durations ("until the start/end of the creature's next turn") are consumer-managed (mirror of slices 286/319/321).
+
+Content audit: the three RAW lines (Wyvern Sting, Ettercap Bite, Merrow Bite) were copied from [references/srd-markdown/monsters-A-Z.md](references/srd-markdown/monsters-A-Z.md); each wires to the existing rider primitives with no new engine surface. **Tests** — 3 new ([tests/unit/engine/slice-322-combined-poison-rider.test.ts](tests/unit/engine/slice-322-combined-poison-rider.test.ts)) asserting the combined rider emits both a `7d6`/`1d4` poison component AND an attacker-sourced Poisoned with no `SaveRolled`, and that Merrow's single-arm rider applies the condition with no extra damage. Full suite green (1938 passed), tsc clean, coverage snapshot unchanged (natural weapons have no mastery, aren't magic items). Docs: gaps Items (weapons 49 → 52).
+
 **Engine + content: unconditional on-hit condition riders (slice 321)**
 
 The 2024 SRD's common natural-attack shape isn't save-for-half damage — it's an unconditional on-hit condition ("Hit: ... and the target has the Poisoned condition", with no save). This slice adds that arm to the `onHit` rider, completing the on-hit-rider family (extra damage / save-or-condition / unconditional-condition).
