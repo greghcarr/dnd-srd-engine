@@ -21,6 +21,7 @@ import { computeActionEconomyBudget } from '../../derive/action-economy.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { isMagicWeaponAttack } from '../../derive/magicality.js';
+import { resolveEnchantment } from '../../derive/enchantment.js';
 import {
   findMirrorImage,
   mirrorImageThreshold,
@@ -735,6 +736,12 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   const weaponBuffDamageBonus = weaponInstance.temporaryBuff?.damageBonus ?? 0;
   // Slice 316: intrinsic magic-weapon enhancement damage bonus.
   const intrinsicWeaponDamageBonus = weaponDef.damageBonus ?? 0;
+  // Slice 317: enchantment-overlay damage bonus + damage-type override
+  // + onHit riders (a base weapon instance carrying a multi-base
+  // enchantment like Frost Brand / Flame Tongue).
+  const enchantment = resolveEnchantment(weaponInstance, content);
+  const enchantmentDamageBonus = enchantment?.damageBonus ?? 0;
+  const effectiveDamageType = enchantment?.weaponDamageType ?? weaponDef.damageType;
   // Slice 117: consume the effect stack's 'damage' modifier sum.
   // Predicate-gated entries (Dueling: melee + off-hand-no-weapon;
   // Frenzy: melee) use the facts populated below. Predicate-less
@@ -766,8 +773,8 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   const damageRollPayload: DamageRoll = {
     expression: damageExpression,
     rolls: damageRolls,
-    modifier: damageAbilityMod + parsed.modifier + weaponBuffDamageBonus + intrinsicWeaponDamageBonus + damageModifierBonus,
-    type: weaponDef.damageType,
+    modifier: damageAbilityMod + parsed.modifier + weaponBuffDamageBonus + intrinsicWeaponDamageBonus + enchantmentDamageBonus + damageModifierBonus,
+    type: effectiveDamageType,
   };
 
   // Item-buff extra-damage rider (Elemental Weapon: +1d4/2d4/3d4 of
@@ -780,7 +787,9 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   // weapon definition, distinct from the consumable temporaryBuff rider.
   // Conditional riders (Sun Blade's +1d8 radiant vs Undead) stay
   // deferred — these fire on every hit.
-  const onHitRiderRolls = (weaponDef.onHit ?? []).map((r) =>
+  // Slice 317: enchantment onHit riders (Frost Brand +1d6 cold) fire
+  // alongside any intrinsic weapon-def riders.
+  const onHitRiderRolls = [...(weaponDef.onHit ?? []), ...(enchantment?.onHit ?? [])].map((r) =>
     rollExtraDamageDice(r.dice, r.damageType, rng, critical),
   );
 
@@ -802,7 +811,7 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
 
   const damageTotal = damageRolls.reduce((s, v) => s + v, 0) + damageRollPayload.modifier;
   const rawComponents: { amount: number; type: typeof weaponDef.damageType }[] = [
-    { amount: Math.max(0, damageTotal), type: weaponDef.damageType },
+    { amount: Math.max(0, damageTotal), type: effectiveDamageType },
   ];
   if (extraDamageRoll !== undefined) {
     const extraTotal = extraDamageRoll.rolls.reduce((s, v) => s + v, 0) + extraDamageRoll.modifier;

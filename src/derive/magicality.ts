@@ -28,6 +28,9 @@ export const isMagicWeaponAttack = (
   attackerHasUnarmedAsMagical: boolean = false,
 ): boolean => {
   if (instance.temporaryBuff !== undefined) return true;
+  // Slice 317: a base weapon instance carrying a multi-base enchantment
+  // (Frost Brand, "+1 weapon") counts as magical.
+  if (instance.enchantmentDefinitionId !== undefined) return true;
   if (def.itemKind === 'magic') return true;
   if (def.itemKind === 'weapon' && def.rarity !== undefined) return true;
   if (def.id === 'unarmed-strike' && attackerHasUnarmedAsMagical) return true;

@@ -3,6 +3,7 @@ import type { ItemInstance } from '../schemas/runtime/item-instance.js';
 import type { ResolvedContent } from '../content/pack.js';
 import { abilityModifier, effectiveAbilityScore, proficiencyBonus } from './ability.js';
 import { buildEffectStack } from './effect-stack.js';
+import { resolveEnchantment } from './enchantment.js';
 import { computeTotalLevel } from '../schemas/runtime/character.js';
 import type { Weapon } from '../schemas/content/item.js';
 
@@ -110,6 +111,13 @@ export const computeAttackBonus = (input: ComputeAttackInput): AttackResult => {
   // consumable temporaryBuff above.
   if (weapon.attackBonus !== undefined && weapon.attackBonus !== 0) {
     breakdown.push({ source: `magic-weapon:${weapon.id}`, value: weapon.attackBonus });
+  }
+
+  // Slice 317: enchantment-overlay bonus (a base weapon instance carrying
+  // a multi-base enchantment like Frost Brand / "+1 weapon").
+  const enchantment = resolveEnchantment(instance, input.content);
+  if (enchantment?.attackBonus !== undefined && enchantment.attackBonus !== 0) {
+    breakdown.push({ source: `enchantment:${enchantment.id}`, value: enchantment.attackBonus });
   }
 
   const total = breakdown.reduce((acc, e) => acc + e.value, 0);

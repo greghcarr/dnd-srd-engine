@@ -4,6 +4,20 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content: magic-equipment modeling, stage 3 — multi-base enchantment overlay (slice 317)**
+
+Final stage: the multi-base magic equipment whose base is chosen at creation (Frost Brand = any of 6 weapons, "+1 weapon" = any weapon, "+1 armor" = any armor) — which can't ship as a single `itemKind: 'weapon'/'armor'` definition the way stage 1/2's single-base items did. Modeled as an **enchantment overlay**: the magic item stays `itemKind: 'magic'` (the enchantment) and a base weapon/armor instance references it via the new `ItemInstance.enchantmentDefinitionId`, parallel to how `temporaryBuff` already overlays the attack planner.
+
+Engine:
+- `ItemInstance` gains `enchantmentDefinitionId`. `MagicItemSchema` gains the magic-equipment fields (`attackBonus`/`damageBonus`/`onHit`/`acBonus`/`weaponDamageType`), now shared with `WeaponSchema`/`ArmorSchema` via extracted `weaponEnhancementFields` / `armorEnhancementFields` fragments (the stage 1/2 inline fields were refactored onto these).
+- New `resolveEnchantment(instance, content)` helper. The overlay is read by: `computeAttackBonus` (+`attackBonus`), the attack planner (+`damageBonus`, `onHit` riders, `weaponDamageType` override on the main component), the AC derive (+`acBonus` on body armor + shields), `collectItemEffects` (projects the enchantment's `effects`, gated on the enchantment's own attunement), and `isMagicWeaponAttack` (an enchanted base counts as magical).
+
+Content (canonical-user enchantments, stay `itemKind: 'magic'`): Frost Brand (`onHit` +1d6 cold + the slice-312 fire resistance); the generic Weapon +1/+2/+3 (`attackBonus`/`damageBonus`) and Armor +1/+2/+3 (`acBonus`). The base is consumer-chosen via `enchantmentDefinitionId`, so these aren't single pre-wired pack items — they're the mechanism plus its drivers.
+
+Uncle Bob audit: **Names** — `enchantmentDefinitionId` / `resolveEnchantment` say what they are; the `*EnhancementFields` fragments name the shared shapes. **DRY** — the magic-field shapes are now defined once and spread into Weapon/Armor/MagicItem; the onHit roll reuses slice-316's `rollExtraDamageDice`; `resolveEnchantment` is the single overlay-resolution point used by all five consumers. **SRP** — each consumer reads the overlay in its own layer; resolution is centralized. **Magic numbers** — none new (the +N / 1d6 are RAW-cited per enchantment). **at-threading** — onHit riders roll in the planner, baked into `DamageRolled` (apply RNG-free). **Mechanical outcomes asserted** — a +2 weapon enchantment on a longsword adds +2 attack; an enchanted base counts as magical (plain doesn't); a real Frost Brand longsword hit emits a cold component + projects fire resistance; a +1 armor enchantment on plate yields AC 19. **Tests** — 5 new ([tests/unit/engine/slice-317-enchantment-overlay.test.ts](tests/unit/engine/slice-317-enchantment-overlay.test.ts)); full suite green (1925 passed), tsc clean, coverage snapshot unchanged (enchantments stay `itemKind: magic`). Docs: gaps Items + api-overview enchantment-overlay notes.
+
+This completes the magic-equipment modeling arc (stages 1-3, slices 315-317): single-base armor, single-base weapons, and multi-base enchantments are all now real equipment.
+
 **Engine + content: magic-equipment modeling, stage 2 — magic weapons (slice 316)**
 
 Second half of the magic-equipment modeling (stage 1 was magic armor, slice 315). Magic weapons were `itemKind: 'magic'`, so the attack planner (which requires `itemKind === 'weapon'`) couldn't wield them — they were decorative catalog entries with no link to an attack. This slice models single-base magic weapons as `itemKind: 'weapon'`, which also lands the on-hit elemental rider primitive (the original goal that kicked off this whole thread).

@@ -34,6 +34,26 @@ const MagicRaritySchema = z.enum([
   'artifact',
 ]);
 
+// Slice 315/316/317: magic-equipment overlay fields, shared between the
+// single-base inline forms (WeaponSchema / ArmorSchema, where the magic
+// item IS the weapon/armor) and the multi-base enchantment form
+// (MagicItemSchema, applied to a base instance via
+// ItemInstance.enchantmentDefinitionId). `weaponEnhancementFields`:
+// `attackBonus` / `damageBonus` flat enhancements + `onHit` per-hit
+// extra-damage riders. `armorEnhancementFields`: `acBonus`.
+const onHitRiderSchema = z.object({
+  dice: DiceExpressionSchema,
+  damageType: DamageTypeSchema,
+});
+const weaponEnhancementFields = {
+  attackBonus: z.number().int().optional(),
+  damageBonus: z.number().int().optional(),
+  onHit: z.array(onHitRiderSchema).optional(),
+} as const;
+const armorEnhancementFields = {
+  acBonus: z.number().int().optional(),
+} as const;
+
 export const WeaponSchema = ItemBaseSchema.extend({
   itemKind: z.literal('weapon'),
   category: z.enum(['simple', 'martial']),
@@ -60,11 +80,7 @@ export const WeaponSchema = ItemBaseSchema.extend({
   rarity: MagicRaritySchema.optional(),
   requiresAttunement: z.boolean().optional(),
   attunementCondition: z.string().optional(),
-  attackBonus: z.number().int().optional(),
-  damageBonus: z.number().int().optional(),
-  onHit: z
-    .array(z.object({ dice: DiceExpressionSchema, damageType: DamageTypeSchema }))
-    .optional(),
+  ...weaponEnhancementFields,
   effects: z.array(EffectSchema).optional(),
 });
 export type Weapon = z.infer<typeof WeaponSchema>;
@@ -87,7 +103,7 @@ export const ArmorSchema = ItemBaseSchema.extend({
   rarity: MagicRaritySchema.optional(),
   requiresAttunement: z.boolean().optional(),
   attunementCondition: z.string().optional(),
-  acBonus: z.number().int().optional(),
+  ...armorEnhancementFields,
   effects: z.array(EffectSchema).optional(),
 });
 export type Armor = z.infer<typeof ArmorSchema>;
@@ -238,6 +254,16 @@ export const MagicItemSchema = ItemBaseSchema.extend({
   effects: z.array(EffectSchema).default([]),
   onUse: z.array(UseActionSchema).default([]),
   destructionRoll: DestructionRollSchema.optional(),
+  // Slice 317: enchantment-overlay fields. When this magic item is a
+  // multi-base equipment enchantment (Frost Brand, "+1 weapon", "+1
+  // armor"), a base weapon/armor instance references it via
+  // ItemInstance.enchantmentDefinitionId, and the attack planner / AC
+  // derive overlay these onto the base. `weaponDamageType` overrides the
+  // base weapon's damage type (Flame Tongue → fire). `effects` (above)
+  // also project from an equipped enchanted base.
+  ...weaponEnhancementFields,
+  ...armorEnhancementFields,
+  weaponDamageType: DamageTypeSchema.optional(),
   // Slice 293. Cumulative time-budget on toggle-able items that
   // RAW-cap their activation duration per long rest (Boots of Speed:
   // 10 min/LR; Winged Boots: 4 hr/LR; etc.). Distinct from `charges`
