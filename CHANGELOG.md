@@ -4,6 +4,18 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine refactor: unify save-rolling on the shared `rollSaveAgainstDC` helper (slice 320)**
+
+Closes the slice-319 follow-up. The d20-roll + advantage-resolution + `SaveRolled`-assembly shape was inlined in four places once slice 319 added the on-hit-save rider; this slice routes the three legacy copies (use-item `Save`, recurring-save, breath-weapon) through the same `rollSaveAgainstDC` helper the rider already uses. No behavior change.
+
+Engine:
+- `rollSaveAgainstDC` ([src/engine/plan/_save-roll.ts](src/engine/plan/_save-roll.ts)) gains two optional inputs so it covers all four callers: `causedByEventId` (breath-weapon stamps its save with the `BreathWeaponFired` marker id) and `savePreventsCondition` (recurring-save threads the slice-291 Antitoxin gate into `computeSavingThrow`).
+- [use-item.ts](src/engine/plan/use-item.ts) `Save` action, [breath-weapon.ts](src/engine/plan/breath-weapon.ts), and [recurring-save.ts](src/engine/plan/recurring-save.ts) drop their inline save blocks (and the now-unused `computeSavingThrow` / `SaveRolledEvent` / `rollDie` / `D20_SIDES` imports) in favor of the helper. recurring-save still computes its own DC via `computeSpellSaveDC` and passes the result as the helper's fixed `dc`.
+
+No new tests: this is a behavior-preserving refactor, and the existing golden transcripts + replay-equivalence + RNG-capture suites pin the exact event streams (including d20 RNG-consumption order and `causedByEventId` links) for all three planners. Any drift would have failed them.
+
+Uncle Bob audit: **Names** — unchanged (the helper and its two new optional fields name what they carry). **DRY** — this is the DRY fix: one save-roller instead of four near-identical copies. **SRP** — the helper does one thing (roll a fixed-DC save → `{event, success}`); each caller keeps its own downstream branching (condition apply / action-consume / halved damage). **Magic numbers** — none. **at-threading** — each caller passes its single resolved `at` to the helper. **Mechanical outcomes asserted** — covered by the unchanged golden/replay/RNG-capture suites (1933 passed), tsc clean. **Tests** — none added (refactor; see above).
+
 **Engine + content: on-hit-save weapon riders (slice 319)**
 
 Extends the slice-316/317/318 `onHit` rider with a saving-throw arm: a rider can carry a `save` block (`ability` + fixed `dc` + `conditionOnFail`); on a hit the target makes the save and, on failure, gains the condition. The save fires only when the rider's slice-318 `condition` gate passes, so the gate and the save compose. This is the on-hit-save primitive that the slice-318 entry flagged as deferred.
@@ -17,7 +29,7 @@ Engine:
 Content (canonical user): **Ghoul's Claw** (`ghoul-claws`, a Ghoul natural weapon: simple melee 1d4 slashing) carries the RAW save rider — CON DC 10 or Paralyzed — gated on `not(any[target.creatureType = Undead, target.speciesId = elf])`. Monster natural attacks are modeled as wielded weapon items (the slice-13 Ogre/longsword pattern), so the claw is the canonical user.
 
 Open follow-ups:
-- The three legacy inlined save-roll blocks (use-item `Save`, recurring-save, breath-weapon) should route through the new `rollSaveAgainstDC` helper. **Still open** — left out of this slice to keep it focused on the primitive + canonical user rather than bundling a 3-planner refactor.
+- ~~The three legacy inlined save-roll blocks (use-item `Save`, recurring-save, breath-weapon) should route through the new `rollSaveAgainstDC` helper.~~ **Closed by slice 320.**
 - Magic-weapon on-hit-save users with extra gating stay deferred as content: Mace of Disruption's destroy-or-Frighten (low-HP-gated) and Dagger of Venom's poison (coat-gated, once/long-rest). The mechanism now exists; only their bespoke gates remain.
 - Poison Basic's DC 10 CON save vs Poisoned arm is still deferred: the save lives on the static weapon-def/enchantment `onHit` rider, not on the slice-76 `temporaryBuff` (consumable) shape. A future slice would add a `save` slot to `temporaryBuff`.
 

@@ -11,12 +11,10 @@ import type {
   ConditionRemovedEvent,
 } from '../../schemas/events/combat.js';
 import type { ItemChargeConsumedEvent } from '../../schemas/events/charges.js';
-import type { SaveRolledEvent } from '../../schemas/events/checks.js';
-import { D20_SIDES } from '../../internal/constants.js';
 import { newAppliedConditionId, newEventId } from '../../ids.js';
 import { nowIso } from '../../internal/clock.js';
 import { planCastSpell } from './cast-spell.js';
-import { computeSavingThrow } from '../../derive/save.js';
+import { rollSaveAgainstDC } from './_save-roll.js';
 import type { RNG } from '../../rng/index.js';
 import { rollDie } from '../../rng/dice.js';
 import type { UseAction } from '../../schemas/content/item.js';
@@ -376,48 +374,19 @@ export const planUseItem = (
       }
       const sourceIsMagical = action.sourceIsMagical ?? true;
       for (const saveTargetId of targetIds) {
-        const target = state.characters[saveTargetId];
-        if (!target) continue;
-        const saveDerivation = computeSavingThrow({
-          character: target,
-          itemInstances: state.itemInstances,
+        const saveResult = rollSaveAgainstDC({
+          state,
           content,
-          ability: action.saveAbility,
-          characters: state.characters,
-          sourceIsMagical,
-        });
-        const rolls: number[] = [rollDie(D20_SIDES, rng)];
-        if (saveDerivation.hasAdvantage || saveDerivation.hasDisadvantage) {
-          rolls.push(rollDie(D20_SIDES, rng));
-        }
-        const used = saveDerivation.hasAdvantage
-          ? 'advantage'
-          : saveDerivation.hasDisadvantage
-            ? 'disadvantage'
-            : 'none';
-        const usedD20 = saveDerivation.hasAdvantage
-          ? Math.max(...rolls)
-          : saveDerivation.hasDisadvantage
-            ? Math.min(...rolls)
-            : rolls[0]!;
-        const total = usedD20 + saveDerivation.total;
-        const success = total >= action.saveDC;
-        const saveEvent: SaveRolledEvent = {
-          id: newEventId() as ULID,
-          at,
-          type: 'SaveRolled',
-          targetId: saveTargetId as ULID,
+          targetId: saveTargetId,
           ability: action.saveAbility,
           dc: action.saveDC,
-          d20: rolls,
-          used,
-          bonus: saveDerivation.total,
-          total,
-          success,
-          breakdown: [...saveDerivation.breakdown],
-        };
-        events.push(saveEvent);
-        if (!success) {
+          sourceIsMagical,
+          rng,
+          at,
+        });
+        if (saveResult === undefined) continue;
+        events.push(saveResult.event);
+        if (!saveResult.success) {
           const condApplied: ConditionAppliedEvent = {
             id: newEventId() as ULID,
             at,

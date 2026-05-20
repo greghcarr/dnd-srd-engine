@@ -5,17 +5,15 @@ import type { RNG } from '../../rng/index.js';
 import type {
   DamageAppliedEvent,
 } from '../../schemas/events/combat.js';
-import type { SaveRolledEvent } from '../../schemas/events/checks.js';
 import type { ActionEconomyConsumedEvent } from '../../schemas/events/action-economy.js';
 import type {
   BreathWeaponFiredEvent,
   BreathWeaponRechargedEvent,
 } from '../../schemas/events/breath-weapon.js';
-import { computeSavingThrow } from '../../derive/save.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { rollDie, rollExpression } from '../../rng/dice.js';
-import { D20_SIDES } from '../../internal/constants.js';
+import { rollSaveAgainstDC } from './_save-roll.js';
 import { applyAll } from '../apply.js';
 import { newEventId } from '../../ids.js';
 import { nowIso } from '../../internal/clock.js';
@@ -121,47 +119,22 @@ export const planBreathWeapon = (
   for (const targetId of intent.targetIds) {
     const target = state.characters[targetId];
     if (target === undefined) continue;
-    const saveDerivation = computeSavingThrow({
-      character: target,
-      itemInstances: state.itemInstances,
+    // Breath weapons count as magical effects for Magic Resistance
+    // (slice 131 trait advantage fold).
+    const saveResult = rollSaveAgainstDC({
+      state,
       content,
-      ability: breath.saveAbility,
-      characters: state.characters,
-      // Breath weapons count as magical effects for Magic Resistance
-      // (slice 131 trait advantage fold).
-      sourceIsMagical: true,
-    });
-    const rolls: number[] = [rollDie(D20_SIDES, rng)];
-    if (saveDerivation.hasAdvantage || saveDerivation.hasDisadvantage) {
-      rolls.push(rollDie(D20_SIDES, rng));
-    }
-    const used = saveDerivation.hasAdvantage
-      ? 'advantage'
-      : saveDerivation.hasDisadvantage
-        ? 'disadvantage'
-        : 'none';
-    const usedD20 = saveDerivation.hasAdvantage
-      ? Math.max(...rolls)
-      : saveDerivation.hasDisadvantage
-        ? Math.min(...rolls)
-        : rolls[0]!;
-    const total = usedD20 + saveDerivation.total;
-    const success = total >= breath.saveDC;
-    const save: SaveRolledEvent = {
-      id: newEventId() as ULID,
-      at,
-      type: 'SaveRolled',
-      targetId: targetId as ULID,
+      targetId,
       ability: breath.saveAbility,
       dc: breath.saveDC,
-      d20: rolls,
-      used,
-      bonus: saveDerivation.total,
-      total,
-      success,
+      sourceIsMagical: true,
+      rng,
+      at,
       causedByEventId: fired.id,
-      breakdown: [...saveDerivation.breakdown],
-    };
+    });
+    if (saveResult === undefined) continue;
+    const save = saveResult.event;
+    const success = saveResult.success;
     events.push(save);
     stagedState = applyAll(stagedState, [save]);
 
