@@ -71,6 +71,7 @@ export {
   planDodge,
   planMistyStep,
   planThunderStep,
+  planDimensionDoor,
   chebyshevDistance,
   type MoveIntent,
   type DashIntent,
@@ -78,6 +79,7 @@ export {
   type DodgeIntent,
   type MistyStepIntent,
   type ThunderStepIntent,
+  type DimensionDoorIntent,
 } from './movement.js';
 export { planActionSurge, type ActionSurgeIntent } from './action-surge.js';
 export { planSacredWeapon, type SacredWeaponIntent } from './sacred-weapon.js';
@@ -92,6 +94,9 @@ export { planMagicWeapon, type MagicWeaponIntent } from './magic-weapon.js';
 export { planElementalWeapon, type ElementalWeaponIntent } from './elemental-weapon.js';
 export { planRecklessAttack, type RecklessAttackIntent } from './reckless-attack.js';
 export { planStunningStrike, type StunningStrikeIntent } from './stunning-strike.js';
+export { planFlurryOfBlows, type FlurryOfBlowsIntent } from './flurry-of-blows.js';
+export { planPatientDefense, type PatientDefenseIntent } from './patient-defense.js';
+export { planStepOfTheWind, type StepOfTheWindIntent } from './step-of-the-wind.js';
 export { planFrenzy, type FrenzyIntent } from './frenzy.js';
 export {
   planCuttingWords,

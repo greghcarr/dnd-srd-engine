@@ -5,6 +5,7 @@ import type { AbilityScore } from '../../schemas/primitives.js';
 import type { RNG } from '../../rng/index.js';
 import { rollDie } from '../../rng/dice.js';
 import { computeSavingThrow } from '../../derive/save.js';
+import { rollSaveBonusDice } from './_bonus-dice.js';
 import { newEventId } from '../../ids.js';
 import { D20_SIDES } from '../../internal/constants.js';
 import type { ULID } from '../ids-utils.js';
@@ -67,7 +68,11 @@ export const rollSaveAgainstDC = (input: RollSaveInput): SaveRollResult | undefi
     : derivation.hasDisadvantage
       ? Math.min(...rolls)
       : rolls[0]!;
-  const total = usedD20 + derivation.total;
+  // Slice 331: per-roll save bonus dice (Bless +1d4 / Bane -1d4), rolled
+  // after the d20(s) and folded into the bonus + total + breakdown.
+  const saveBonus = rollSaveBonusDice(derivation.bonusDice, input.rng);
+  const bonus = derivation.total + saveBonus.total;
+  const total = usedD20 + bonus;
   const success = total >= input.dc;
   const event: SaveRolledEvent = {
     id: newEventId() as ULID,
@@ -78,11 +83,11 @@ export const rollSaveAgainstDC = (input: RollSaveInput): SaveRollResult | undefi
     dc: input.dc,
     d20: rolls,
     used,
-    bonus: derivation.total,
+    bonus,
     total,
     success,
     ...(input.causedByEventId !== undefined ? { causedByEventId: input.causedByEventId } : {}),
-    breakdown: [...derivation.breakdown],
+    breakdown: [...derivation.breakdown, ...saveBonus.breakdown],
   };
   return { event, success };
 };

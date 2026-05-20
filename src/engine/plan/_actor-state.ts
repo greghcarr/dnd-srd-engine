@@ -28,6 +28,14 @@ const ACTION_BLOCKING_CONDITIONS: ReadonlySet<string> = new Set([
   'paralyzed',
   'petrified',
   'unconscious',
+  // Spell-bound variants that RAW-include Incapacitated. These carry
+  // their base condition's mechanical effects but a distinct id, so the
+  // id-keyed guard must list them explicitly. `held-paralyzed-active`
+  // (Hold Person / Hold Monster) was missing pre-slice 339 — a held
+  // creature could still take actions; `power-word-stunned-active`
+  // (Power Word Stun, slice 339) is the new entry.
+  'held-paralyzed-active',
+  'power-word-stunned-active',
 ]);
 
 /**

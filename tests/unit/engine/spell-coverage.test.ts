@@ -40,6 +40,7 @@ type Expectation =
   | { kind: 'summon' }
   | { kind: 'temp-hp' }
   | { kind: 'trap'; casterChoice?: CasterChoice }
+  | { kind: 'destroy' }
   | { kind: 'skip'; reason: string };
 
 const SPELL_EXPECTATIONS: Record<string, Expectation> = {
@@ -181,7 +182,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'dragons-breath': { kind: 'skip', reason: 'grants ally a breath-weapon reaction-style; on-action rider not modeled' },
   'enhance-ability': { kind: 'buff', conditionId: 'bulls-strength-active', casterChoice: { kind: 'variant', value: 'bulls-strength' } },
   'enlarge-reduce': { kind: 'buff', conditionId: 'enlarged-active', casterChoice: { kind: 'variant', value: 'enlarge' } },
-  'enthrall': { kind: 'skip', reason: 'WIS save against perception disadvantage on caster; perception-buff condition not modeled' },
+  'enthrall': { kind: 'save' },
   'find-steed': { kind: 'summon' },
   'find-traps': { kind: 'skip', reason: 'divination utility; detection mechanic not modeled' },
   'flaming-sphere': { kind: 'skip', reason: 'aura-damage mechanic (DEX save 2d6 fire, half on success); fires via engine.plan.tickAura at end of caster turn against adjacent creatures. RAW mobile-sphere movement is consumer-side.' },
@@ -193,7 +194,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'locate-object': { kind: 'skip', reason: 'divination utility, narrative only' },
   'magic-mouth': { kind: 'skip', reason: 'utility (programmed illusion), narrative only' },
   'magic-weapon': { kind: 'skip', reason: 'has dedicated engine.plan.magicWeapon (needs a specific weaponInstanceId target, not planCastSpell)' },
-  'mirror-image': { kind: 'skip', reason: 'creates three duplicates that intercept attacks; duplicate-pool condition not modeled' },
+  'mirror-image': { kind: 'buff', conditionId: 'mirror-image-active' },
   'arcanists-magic-aura': { kind: 'skip', reason: 'utility (anti-detect), narrative only' },
   'pass-without-trace': { kind: 'buff', conditionId: 'pass-without-trace-active' },
   'phantasmal-force': { kind: 'skip', reason: 'INT save illusion + recurring psychic damage; recurring-rider primitive not modeled' },
@@ -225,7 +226,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'daylight': { kind: 'skip', reason: 'utility (creates bright light), narrative only' },
   'elemental-weapon': { kind: 'skip', reason: 'has dedicated engine.plan.elementalWeapon (needs a specific weaponInstanceId + damageType, not planCastSpell)' },
   'fly': { kind: 'buff', conditionId: 'flying-active' },
-  'gaseous-form': { kind: 'skip', reason: 'transformation utility; transformation handler not modeled for spells' },
+  'gaseous-form': { kind: 'buff', conditionId: 'gaseous-form-active' },
   'glyph-of-warding': { kind: 'trap', casterChoice: { kind: 'damageType', value: 'fire' } },
   'haste': { kind: 'buff', conditionId: 'hasted-active' },
   'hunger-of-hadar': { kind: 'skip', reason: 'multi-component aura-damage (cold-on-enter no save + acid-on-turn-end with DEX save); fires via engine.plan.tickAura with per-call intent.trigger, not on cast' },
@@ -287,7 +288,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'confusion': { kind: 'save' },
   'control-water': { kind: 'skip', reason: 'water-shape utility; terrain primitive not modeled' },
   'death-ward': { kind: 'buff', conditionId: 'death-ward-active' },
-  'dimension-door': { kind: 'skip', reason: 'short-range teleport (with optional passenger); has a teleport-pattern similar to Misty Step but no dedicated planner yet' },
+  'dimension-door': { kind: 'skip', reason: 'has dedicated planDimensionDoor (action teleport up to 500 ft + optional willing passenger, not planCastSpell)' },
   'divination': { kind: 'skip', reason: 'cleric ritual divination; DM-resolution primitive not modeled' },
   'dominate-beast': { kind: 'skip', reason: 'WIS save → controlled-mind; domination semantics distinct from Charmed not modeled' },
   'fabricate': { kind: 'skip', reason: '10-minute creation ritual; crafting / material-transformation primitive not modeled' },
@@ -323,7 +324,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'creation': { kind: 'skip', reason: 'utility creation of vegetable / mineral matter; creation primitive not modeled' },
   'dispel-evil-and-good': { kind: 'skip', reason: 'aura + on-touch dispel + reaction-style banish; multi-mode spell not modeled' },
   'dream': { kind: 'skip', reason: 'narrative communication / nightmare; DM-resolution primitive not modeled' },
-  'flame-strike': { kind: 'skip', reason: 'AoE DEX save with multi-type damage (fire + radiant); multi-damage AoE primitive not modeled' },
+  'flame-strike': { kind: 'save' },
   'geas': { kind: 'skip', reason: '30-day forced compulsion + recurring psychic damage on disobedience; long-duration compulsion primitive not modeled' },
   'hallow': { kind: 'skip', reason: '24-hour ritual area ward with caster-chosen sub-effect; area-warding + choice primitive not modeled' },
   'legend-lore': { kind: 'skip', reason: 'ritual divination; DM-resolution primitive not modeled' },
@@ -411,7 +412,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'holy-aura': { kind: 'buff', conditionId: 'holy-aura-active' },
   'maze': { kind: 'skip', reason: 'banishes a target to a demiplane labyrinth; cross-plane single-target primitive not modeled' },
   'mind-blank': { kind: 'buff', conditionId: 'mind-blanked-active' },
-  'power-word-stun': { kind: 'skip', reason: 'tiered HP-threshold stun (≤150 HP); HP-threshold effect not modeled' },
+  'power-word-stun': { kind: 'buff', conditionId: 'power-word-stunned-active' },
   // PHB 2024 L9 spells with wired mechanics
   'mass-heal': { kind: 'heal' },
   'weird': { kind: 'save' },
@@ -422,7 +423,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'imprisonment': { kind: 'skip', reason: 'six variants of long-term imprisonment; multi-mode utility primitive not modeled' },
   'meteor-swarm': { kind: 'skip', reason: 'four 40-ft spheres dealing 20d6 fire + 20d6 bludgeoning; multi-AoE multi-damage primitive not modeled' },
   'power-word-heal': { kind: 'skip', reason: 'full heal + remove charmed/frightened/paralyzed/stunned; healing surge + remove-multiple-conditions composite' },
-  'power-word-kill': { kind: 'skip', reason: 'tiered HP-threshold instant death (≤100 HP); HP-threshold effect not modeled' },
+  'power-word-kill': { kind: 'destroy' },
   'prismatic-wall': { kind: 'skip', reason: 'multi-layer wall with seven distinct damage / save effects; area-wall + multi-damage primitive not modeled' },
   'shapechange': { kind: 'skip', reason: 'has dedicated transformation handler patterns (Wild Shape, Polymorph); a Shapechange-specific planner is the obvious follow-up' },
   'storm-of-vengeance': { kind: 'skip', reason: 'multi-round growing storm with stage-keyed damage; recurring multi-stage area-effect primitive not modeled' },
@@ -587,6 +588,12 @@ describe('spell coverage: each shipped spell emits the expected event kinds when
         }
         case 'trap': {
           expect(types, 'expected TrapArmed').toContain('TrapArmed');
+          break;
+        }
+        case 'destroy': {
+          // hp-threshold mechanic: the 50-HP dummy target is at or below
+          // Power Word Kill's 100-HP threshold, so the destroy arm fires.
+          expect(types, 'expected CreatureDestroyed').toContain('CreatureDestroyed');
           break;
         }
         case 'hp-pool-knockout': {

@@ -44,6 +44,22 @@ const SpellSaveMechanicSchema = z.object({
   damageDice: DiceExpressionSchema.optional(),
   damageType: DamageTypeSchema.optional(),
   halfOnSuccess: z.boolean().optional(),
+  // Slice 341: additional damage components of a *different* type,
+  // applied in the same save (Flame Strike: 5d6 Fire + 5d6 Radiant).
+  // Each is rolled once for the spell (AOE), receives the same
+  // success / Evasion halving as the primary `damageDice`, and lands
+  // as its own component in the single DamageApplied so per-type
+  // resistance / immunity is honored independently. Each entry carries
+  // its own `extraDicePerSlotLevel` (Flame Strike scales both types).
+  additionalDamage: z
+    .array(
+      z.object({
+        damageDice: DiceExpressionSchema,
+        damageType: DamageTypeSchema,
+        extraDicePerSlotLevel: z.number().int().min(0).optional(),
+      }),
+    )
+    .optional(),
   conditionOnFail: z.string().optional(),
   casterChoosesVariant: z
     .object({
@@ -308,6 +324,38 @@ export const cantripExtraDice = (characterLevel: number): number => {
   return extra;
 };
 
+// Slice 338: HP-threshold tier effect. The spell checks each target's
+// current Hit Points against `threshold` and applies one of two arms:
+// `atOrBelow` when current HP <= threshold, `above` otherwise. The
+// classic Power Word shape. Power Word Kill (the canonical user):
+// threshold 100, `destroy` at or below, 12d12 psychic `damage` above.
+//
+// Each arm is `destroy` (emits CreatureDestroyed, the instant-death
+// path that bypasses death saves, slice 323), `damage` (dice + type,
+// run through the same mitigation + fatal-damage intercept as any
+// other spell damage), or `condition` (applies a condition by id,
+// honoring condition immunity; slice 339, Power Word Stun). `above`
+// is optional: a spell may have no otherwise-effect. The two-arm shape
+// extends to the tiered Divine Word (a future multi-threshold variant)
+// without reshaping the cast dispatch.
+const HpThresholdArmSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('destroy') }),
+  z.object({
+    kind: z.literal('damage'),
+    damageDice: DiceExpressionSchema,
+    damageType: DamageTypeSchema,
+  }),
+  z.object({ kind: z.literal('condition'), conditionId: z.string() }),
+]);
+export type HpThresholdArm = z.infer<typeof HpThresholdArmSchema>;
+
+const SpellHpThresholdMechanicSchema = z.object({
+  kind: z.literal('hp-threshold'),
+  threshold: z.number().int().min(1),
+  atOrBelow: HpThresholdArmSchema,
+  above: HpThresholdArmSchema.optional(),
+});
+
 export const SpellMechanicSchema = z.discriminatedUnion('kind', [
   SpellAttackMechanicSchema,
   SpellSaveMechanicSchema,
@@ -322,6 +370,7 @@ export const SpellMechanicSchema = z.discriminatedUnion('kind', [
   SpellRecurringMechanicSchema,
   SpellSummonMechanicSchema,
   SpellTrapMechanicSchema,
+  SpellHpThresholdMechanicSchema,
 ]);
 export type SpellMechanic = z.infer<typeof SpellMechanicSchema>;
 

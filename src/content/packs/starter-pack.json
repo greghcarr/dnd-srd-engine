@@ -1663,7 +1663,7 @@
     { "id": "dispel-evil-and-good", "name": "Dispel Evil and Good", "level": 5, "school": "abjuration", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "powdered silver and iron" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["cleric", "paladin"], "mechanicalEffects": [] },
     { "id": "dominate-person", "name": "Dominate Person", "level": 5, "school": "enchantment", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "sorcerer", "wizard"], "mechanicalEffects": [{ "kind": "save", "ability": "WIS", "conditionOnFail": "charmed" }] },
     { "id": "dream", "name": "Dream", "level": 5, "school": "illusion", "castingTime": "1 minute", "range": "Special", "components": { "verbal": true, "somatic": true, "material": "a handful of sand" }, "duration": "8 hours", "concentration": false, "ritual": false, "classes": ["bard", "warlock", "wizard"], "mechanicalEffects": [] },
-    { "id": "flame-strike", "name": "Flame Strike", "level": 5, "school": "evocation", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true, "material": "a pinch of sulfur" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["cleric"], "targeting": { "shape": "cylinder", "size": 10 }, "mechanicalEffects": [] },
+    { "id": "flame-strike", "name": "Flame Strike", "level": 5, "school": "evocation", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true, "material": "a pinch of sulfur" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["cleric"], "targeting": { "shape": "cylinder", "size": 10 }, "mechanicalEffects": [{ "kind": "save", "ability": "DEX", "damageDice": "5d6", "damageType": "fire", "halfOnSuccess": true, "extraDicePerSlotLevel": 1, "additionalDamage": [{ "damageDice": "5d6", "damageType": "radiant", "extraDicePerSlotLevel": 1 }] }] },
     { "id": "geas", "name": "Geas", "level": 5, "school": "enchantment", "castingTime": "1 minute", "range": "60 feet", "components": { "verbal": true }, "duration": "30 days", "concentration": false, "ritual": false, "classes": ["bard", "cleric", "druid", "paladin", "wizard"], "mechanicalEffects": [] },
     { "id": "greater-restoration", "name": "Greater Restoration", "level": 5, "school": "abjuration", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "diamond dust worth 100+ GP, which the spell consumes" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["bard", "cleric", "druid", "paladin", "ranger"], "mechanicalEffects": [{ "kind": "remove-condition", "eligibleConditionIds": ["charmed", "petrified", "paralyzed", "stunned", "poisoned", "blinded", "deafened"] }] },
     { "id": "hallow", "name": "Hallow", "level": 5, "school": "abjuration", "castingTime": "24 hours", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "incense worth 1,000+ GP, which the spell consumes" }, "duration": "Until dispelled", "concentration": false, "ritual": false, "classes": ["cleric"], "mechanicalEffects": [] },
@@ -1747,7 +1747,7 @@
     { "id": "incendiary-cloud", "name": "Incendiary Cloud", "level": 8, "school": "conjuration", "castingTime": "Action", "range": "150 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["druid", "sorcerer", "wizard"], "targeting": { "shape": "sphere", "size": 20 }, "mechanicalEffects": [{ "kind": "save", "ability": "DEX", "damageDice": "10d8", "damageType": "fire", "halfOnSuccess": true }] },
     { "id": "maze", "name": "Maze", "level": 8, "school": "conjuration", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["wizard"], "mechanicalEffects": [] },
     { "id": "mind-blank", "name": "Mind Blank", "level": 8, "school": "abjuration", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true }, "duration": "24 hours", "concentration": false, "ritual": false, "classes": ["bard", "wizard"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "mind-blanked-active" }] },
-    { "id": "power-word-stun", "name": "Power Word Stun", "level": 8, "school": "enchantment", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["bard", "sorcerer", "warlock", "wizard"], "mechanicalEffects": [] },
+    { "id": "power-word-stun", "name": "Power Word Stun", "level": 8, "school": "enchantment", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["bard", "sorcerer", "warlock", "wizard"], "mechanicalEffects": [{ "kind": "hp-threshold", "threshold": 150, "atOrBelow": { "kind": "condition", "conditionId": "power-word-stunned-active" }, "above": { "kind": "condition", "conditionId": "power-word-speed-zero-active" } }] },
     { "id": "sunburst", "name": "Sunburst", "level": 8, "school": "evocation", "castingTime": "Action", "range": "150 feet", "components": { "verbal": true, "somatic": true, "material": "a piece of sunstone" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["cleric", "druid", "sorcerer", "wizard"], "targeting": { "shape": "sphere", "size": 60 }, "mechanicalEffects": [{ "kind": "save", "ability": "CON", "damageDice": "12d6", "damageType": "radiant", "halfOnSuccess": true }] },
     { "id": "tsunami", "name": "Tsunami", "level": 8, "school": "conjuration", "castingTime": "1 minute", "range": "1 mile", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 6 rounds", "concentration": true, "ritual": false, "classes": ["druid"], "mechanicalEffects": [{ "kind": "save", "ability": "STR", "damageDice": "6d10", "damageType": "bludgeoning", "halfOnSuccess": true }] },
     { "id": "astral-projection", "name": "Astral Projection", "level": 9, "school": "necromancy", "castingTime": "1 hour", "range": "10 feet", "components": { "verbal": true, "somatic": true, "material": "for each of the spell's targets, one jacinth worth 1,000+ GP and one silver bar worth 100+ GP, all of which the spell consumes" }, "duration": "Until dispelled", "concentration": false, "ritual": false, "classes": ["cleric", "warlock", "wizard"], "mechanicalEffects": [] },
@@ -1757,7 +1757,7 @@
     { "id": "mass-heal", "name": "Mass Heal", "level": 9, "school": "abjuration", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["cleric"], "mechanicalEffects": [{ "kind": "heal", "flatAmount": 70 }] },
     { "id": "meteor-swarm", "name": "Meteor Swarm", "level": 9, "school": "evocation", "castingTime": "Action", "range": "1 mile", "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["sorcerer", "wizard"], "targeting": { "shape": "sphere", "size": 40 }, "mechanicalEffects": [] },
     { "id": "power-word-heal", "name": "Power Word Heal", "level": 9, "school": "enchantment", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["bard", "cleric"], "mechanicalEffects": [] },
-    { "id": "power-word-kill", "name": "Power Word Kill", "level": 9, "school": "enchantment", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["bard", "sorcerer", "warlock", "wizard"], "mechanicalEffects": [] },
+    { "id": "power-word-kill", "name": "Power Word Kill", "level": 9, "school": "enchantment", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["bard", "sorcerer", "warlock", "wizard"], "mechanicalEffects": [{ "kind": "hp-threshold", "threshold": 100, "atOrBelow": { "kind": "destroy" }, "above": { "kind": "damage", "damageDice": "12d12", "damageType": "psychic" } }] },
     { "id": "prismatic-wall", "name": "Prismatic Wall", "level": 9, "school": "abjuration", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "10 minutes", "concentration": false, "ritual": false, "classes": ["bard", "wizard"], "mechanicalEffects": [] },
     { "id": "shapechange", "name": "Shapechange", "level": 9, "school": "transmutation", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "a jade circlet worth 1,500+ GP" }, "duration": "Concentration, up to 1 hour", "concentration": true, "ritual": false, "classes": ["druid", "wizard"], "mechanicalEffects": [] },
     { "id": "storm-of-vengeance", "name": "Storm of Vengeance", "level": 9, "school": "conjuration", "castingTime": "Action", "range": "1 mile", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["druid"], "mechanicalEffects": [] },
@@ -2019,7 +2019,7 @@
     { "id": "dragons-breath", "name": "Dragon's Breath", "level": 2, "school": "transmutation", "castingTime": "Bonus Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a hot pepper" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["sorcerer", "wizard"], "targeting": { "shape": "cone", "size": 15 }, "mechanicalEffects": [] },
     { "id": "enhance-ability", "name": "Enhance Ability", "level": 2, "school": "transmutation", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "fur or a feather" }, "duration": "Concentration, up to 1 hour", "concentration": true, "ritual": false, "classes": ["bard", "cleric", "druid", "ranger", "sorcerer", "wizard"], "mechanicalEffects": [{ "kind": "buff", "casterChoosesVariant": { "variants": [{ "key": "bulls-strength", "conditionId": "bulls-strength-active" }, { "key": "cats-grace", "conditionId": "cats-grace-active" }, { "key": "eagles-splendor", "conditionId": "eagles-splendor-active" }, { "key": "foxs-cunning", "conditionId": "foxs-cunning-active" }, { "key": "owls-wisdom", "conditionId": "owls-wisdom-active" }] } }] },
     { "id": "enlarge-reduce", "name": "Enlarge/Reduce", "level": 2, "school": "transmutation", "castingTime": "Action", "range": "30 feet", "components": { "verbal": true, "somatic": true, "material": "a pinch of powdered iron" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "druid", "sorcerer", "wizard"], "mechanicalEffects": [{ "kind": "buff", "casterChoosesVariant": { "variants": [{ "key": "enlarge", "conditionId": "enlarged-active" }, { "key": "reduce", "conditionId": "reduced-active" }] } }] },
-    { "id": "enthrall", "name": "Enthrall", "level": 2, "school": "enchantment", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "warlock"], "mechanicalEffects": [] },
+    { "id": "enthrall", "name": "Enthrall", "level": 2, "school": "enchantment", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "warlock"], "mechanicalEffects": [{ "kind": "save", "ability": "WIS", "conditionOnFail": "enthralled-active" }] },
     { "id": "find-steed", "name": "Find Steed", "level": 2, "school": "conjuration", "castingTime": "1 minute", "range": "30 feet", "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["paladin"], "mechanicalEffects": [{ "kind": "summon", "name": "Bonded Steed", "ac": 11, "hpBase": 30, "hpPerSlotAbove": 10, "baseSlotLevel": 2, "speedFeet": 60 }] },
     { "id": "find-traps", "name": "Find Traps", "level": 2, "school": "divination", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["cleric", "druid", "ranger"], "mechanicalEffects": [] },
     { "id": "flaming-sphere", "name": "Flaming Sphere", "level": 2, "school": "conjuration", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true, "material": "a ball of wax" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["druid", "sorcerer", "wizard"], "targeting": { "shape": "sphere", "size": 5 }, "mechanicalEffects": [{ "kind": "aura-damage", "rangeFeet": 5, "saveAbility": "DEX", "damageDice": "2d6", "damageType": "fire", "halfOnSuccess": true, "extraDicePerSlotLevel": 1 }] },
@@ -7850,23 +7850,23 @@
     {
       "id": "blessed",
       "name": "Blessed",
-      "description": "Bless spell effect. RAW (SRD 5.2.1): 'the target adds 1d4 to the attack roll or save.' Pack approximates the d4 as a flat +2 (the 2014 / pre-2024 fixed value); a future slice would replace the flat +2 with a per-roll d4 (would need a per-roll-bonus-die primitive distinct from AddModifier's static value). Slice 299 compressed the 6 per-ability save entries to 1 wildcard entry via the new save wildcard on ModifierTarget.",
+      "description": "Bless spell effect. RAW (SRD 5.2.1): 'the target adds 1d4 to the attack roll or save.' Fully RAW since slice 331: both arms are per-roll AddBonusDie 1d4 (attack arm slice 330; save arm slice 331, which threaded save bonus dice through every save-rolling planner via computeSavingThrow's bonusDice + the shared rollSaveBonusDice helper). The wildcard `save` target (slice 299) applies the die to every ability's save.",
       "stackable": false,
       "endsOn": [],
       "effects": [
-        { "kind": "AddModifier", "target": "attack", "value": 2 },
-        { "kind": "AddModifier", "target": { "kind": "save" }, "value": 2 }
+        { "kind": "AddBonusDie", "target": "attack", "dice": "1d4" },
+        { "kind": "AddBonusDie", "target": { "kind": "save" }, "dice": "1d4" }
       ]
     },
     {
       "id": "baned",
       "name": "Baned",
-      "description": "Bane spell effect. RAW (SRD 5.2.1): 'subtract 1d4 from each attack roll and saving throw the target makes.' Pack approximates the d4 as a flat -2 (same simplification as `blessed`'s flat +2). Slice 299 compressed the 6 per-ability save entries to 1 wildcard.",
+      "description": "Bane spell effect. RAW (SRD 5.2.1): 'subtract 1d4 from each attack roll and saving throw the target makes.' Fully RAW since slice 331: both arms are per-roll AddBonusDie 1d4 with subtract:true (attack arm slice 330; save arm slice 331).",
       "stackable": false,
       "endsOn": [],
       "effects": [
-        { "kind": "AddModifier", "target": "attack", "value": -2 },
-        { "kind": "AddModifier", "target": { "kind": "save" }, "value": -2 }
+        { "kind": "AddBonusDie", "target": "attack", "dice": "1d4", "subtract": true },
+        { "kind": "AddBonusDie", "target": { "kind": "save" }, "dice": "1d4", "subtract": true }
       ]
     },
     {
@@ -8306,6 +8306,29 @@
       "recurringSave": { "ability": "WIS", "trigger": "turnEnd", "onSuccess": "removeCondition" }
     },
     {
+      "id": "power-word-stunned-active",
+      "name": "Stunned (Power Word Stun)",
+      "description": "The spell-bound variant of Stunned applied by Power Word Stun to a target with 150 Hit Points or fewer. Same mechanical effects as the bare Stunned condition (auto-fail STR/DEX saves) plus action-blocking via ACTION_BLOCKING_CONDITIONS, plus a Constitution save at the end of each of the bearer's turns; on success the condition ends. The consumer calls `engine.plan.tickRecurringSave({ targetId, conditionId: 'power-word-stunned-active' })` at the end of the bearer's turn. RAW deviation: a creature immune to the bare Stunned condition is not auto-detected as immune to this variant id (same limitation as held-paralyzed-active).",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "STR" }, "mode": "auto-fail" },
+        { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "DEX" }, "mode": "auto-fail" }
+      ],
+      "recurringSave": { "ability": "CON", "trigger": "turnEnd", "onSuccess": "removeCondition" }
+    },
+    {
+      "id": "power-word-speed-zero-active",
+      "name": "Speed 0 (Power Word Stun)",
+      "description": "Applied by Power Word Stun to a target with more than 150 Hit Points: its Speed is 0 until the start of the caster's next turn. Modeled as a one-round speed-0 condition (ModifySpeed walk 0 + autoExpiry after one round on turnEnd). RAW deviation: the engine expires it at the bearer's next turn-end rather than the caster's next turn start; the brief duration is otherwise consumer-managed.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "ModifySpeed", "mode": "walk", "op": "set", "value": 0 }
+      ],
+      "autoExpiry": { "afterRounds": 1, "trigger": "turnEnd" }
+    },
+    {
       "id": "hideous-laughter-active",
       "name": "Hideous Laughter",
       "description": "The target falls Prone and is Incapacitated for the spell's duration, unable to stand up. At the end of each of its turns it makes a Wisdom save against the caster's spell DC; on success, the spell ends on it. The RAW 'extra save with advantage when damaged' branch is not modeled — only the end-of-turn save is wired. Bare Prone + Incapacitated currently carry empty mechanical effects in the pack, so this condition is also effects-empty; the recurring save is the load-bearing wire.",
@@ -8548,6 +8571,16 @@
       "endsOn": [],
       "effects": [
         { "kind": "AddModifier", "target": { "kind": "skill", "skill": "stealth" }, "value": 10 }
+      ]
+    },
+    {
+      "id": "enthralled-active",
+      "name": "Enthralled",
+      "description": "Applied by Enthrall on a failed Wisdom save: a -10 penalty to Wisdom (Perception) checks until the spell ends (concentration-linked, so it clears when the caster's concentration drops). RAW deviations: the -10 to Passive Perception is not modeled (no derive sums modifiers into passive Perception today; only the active-check penalty is wired), and the 'any creature you or your companions are fighting automatically succeeds on the save' clause is consumer-managed (the engine doesn't model combat relationships, so the caster omits such creatures from the cast's targets).",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "AddModifier", "target": { "kind": "skill", "skill": "perception" }, "value": -10 }
       ]
     },
     {

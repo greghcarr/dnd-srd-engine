@@ -258,8 +258,11 @@ describe('rules truth: class-feature scaling', () => {
 });
 
 describe('rules truth: blessed condition modifiers', () => {
-  // Bless adds +d4 (approximated as +2) to attacks and to every save.
-  it('blessed character with bare DEX 10 gets +2 attack, +2 to every save', () => {
+  // Bless adds a per-roll 1d4 to attacks and to every save (RAW). Slices
+  // 330/331 replaced the old flat +2 approximation with the AddBonusDie
+  // primitive: the save derivation no longer carries a static bonus; it
+  // surfaces a 1d4 bonus die that each save-rolling planner rolls fresh.
+  it('blessed character surfaces a 1d4 bonus die on every save (no static bonus)', () => {
     const blessed = CharacterSchema.parse({
       ...buildPC({ classId: 'fighter', level: 1 }),
       appliedConditions: [{ id: '01J0AAAAAAAAAAAAAAAAAAAAAB', conditionId: 'blessed', sourceEventId: '01J0AAAAAAAAAAAAAAAAAAAAAA' }],
@@ -273,7 +276,11 @@ describe('rules truth: blessed condition modifiers', () => {
       });
       const baseMod = abilityModifier(blessed.abilityScores[ability]);
       const profBonus = ability === 'STR' || ability === 'CON' ? proficiencyBonus(1) : 0;
-      expect(save.total, `${ability} save with Bless`).toBe(baseMod + profBonus + 2);
+      // No static +2 anymore — the Bless bonus is a per-roll die.
+      expect(save.total, `${ability} save base with Bless`).toBe(baseMod + profBonus);
+      expect(save.bonusDice, `${ability} save bonus die`).toHaveLength(1);
+      expect(save.bonusDice[0]!.dice).toBe('1d4');
+      expect(save.bonusDice[0]!.subtract).toBe(false);
     }
   });
 });

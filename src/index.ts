@@ -415,6 +415,7 @@ export type {
   DashIntent,
   DisengageIntent,
   MistyStepIntent,
+  DimensionDoorIntent,
   GrappleIntent,
   ShoveIntent,
   HideIntent,

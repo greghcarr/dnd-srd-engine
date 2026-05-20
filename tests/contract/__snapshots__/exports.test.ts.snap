@@ -470,6 +470,7 @@ exports[`public API contract: src/index.ts > source-level exports (runtime + typ
   "DiceExpressionSchema",
   "DiceRollResult",
   "DieRoll",
+  "DimensionDoorIntent",
   "DisengageIntent",
   "DismissCompanionIntent",
   "DismountedEvent",

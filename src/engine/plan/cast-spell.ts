@@ -16,6 +16,7 @@ import type {
   DamageAppliedEvent,
   ConditionAppliedEvent,
   ConditionRemovedEvent,
+  CreatureDestroyedEvent,
   HealedEvent,
   TempHPGrantedEvent,
 } from '../../schemas/events/combat.js';
@@ -33,7 +34,7 @@ import type { Character } from '../../schemas/runtime/character.js';
 import { computeTotalLevel } from '../../schemas/runtime/character.js';
 import type { AppliedConditionRef } from '../../schemas/runtime/effect-instance.js';
 import type { RNG } from '../../rng/index.js';
-import { rollDie, parseDiceExpression } from '../../rng/dice.js';
+import { rollDie, rollExpression, parseDiceExpression } from '../../rng/dice.js';
 import {
   newAppliedConditionId,
   newCharacterId,
@@ -46,6 +47,7 @@ import { effectiveSpellList } from '../../derive/effective-spell-list.js';
 import { computeAvailableSpellSlots } from '../../derive/spell-slots.js';
 import { computeAC } from '../../derive/ac.js';
 import { computeSavingThrow } from '../../derive/save.js';
+import { rollSaveBonusDice } from './_bonus-dice.js';
 import { abilityModifier } from '../../derive/ability.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
@@ -483,6 +485,9 @@ const planSaveMechanic = (
   // gated on `event.damageType`.
   let rawDamage = 0;
   let saveDamageModifierBonus = 0;
+  // Slice 341: additional damage components of a different type (Flame
+  // Strike's Radiant alongside its Fire), rolled once for the spell.
+  const additionalBase: { amount: number; type: DamageType }[] = [];
   if (mechanic.damageDice !== undefined && mechanic.damageType !== undefined) {
     const casterEffects = buildEffectStack({
       character,
@@ -495,6 +500,15 @@ const planSaveMechanic = (
     const { rolls: baseRolls, modifier } = rollDamage(mechanic.damageDice, bonusDice, rng, false);
     const scalingRolls = rollCantripScaling(mechanic.cantripScalingDice, cantripSteps, rng, false);
     rawDamage = [...baseRolls, ...scalingRolls].reduce((s, v) => s + v, 0) + modifier + saveDamageModifierBonus;
+    for (const comp of mechanic.additionalDamage ?? []) {
+      const compBonusDice = (comp.extraDicePerSlotLevel ?? 0) * Math.max(0, intent.slotLevel - spell.level);
+      const compMod = casterEffects.modifierSum('damage', new Map<string, unknown>([['event.damageType', comp.damageType]]));
+      const { rolls: compRolls, modifier: compModifier } = rollDamage(comp.damageDice, compBonusDice, rng, false);
+      additionalBase.push({
+        amount: compRolls.reduce((s, v) => s + v, 0) + compModifier + compMod,
+        type: comp.damageType,
+      });
+    }
   }
 
   for (const targetId of intent.targetIds) {
@@ -536,7 +550,11 @@ const planSaveMechanic = (
       : saveDerivation.hasDisadvantage
         ? Math.min(...rolls)
         : rolls[0]!;
-    const total = usedD20 + saveDerivation.total;
+    // Slice 331: per-roll save bonus dice (Bless +1d4 / Bane -1d4) on the
+    // target's save against this spell.
+    const saveBonus = rollSaveBonusDice(saveDerivation.bonusDice, rng);
+    const bonus = saveDerivation.total + saveBonus.total;
+    const total = usedD20 + bonus;
     const success = total >= dcResult.total;
     const saveEvent: SaveRolledEvent = {
       id: newEventId() as ULID,
@@ -547,11 +565,11 @@ const planSaveMechanic = (
       dc: dcResult.total,
       d20: rolls,
       used,
-      bonus: saveDerivation.total,
+      bonus,
       total,
       success,
       causedByEventId: declaredEventId as ULID,
-      breakdown: [...saveDerivation.breakdown],
+      breakdown: [...saveDerivation.breakdown, ...saveBonus.breakdown],
     };
     events.push(saveEvent);
 
@@ -569,21 +587,30 @@ const planSaveMechanic = (
         targetEffects.hasEvasion() &&
         mechanic.ability === 'DEX' &&
         mechanic.halfOnSuccess === true;
-      const finalAmount = evasionApplies
-        ? success
-          ? 0
-          : halveDamage(rawDamage)
-        : success && mechanic.halfOnSuccess === true
-          ? halveDamage(rawDamage)
-          : success
+      const outcomeAmount = (raw: number): number =>
+        evasionApplies
+          ? success
             ? 0
-            : rawDamage;
-      if (finalAmount > 0) {
+            : halveDamage(raw)
+          : success && mechanic.halfOnSuccess === true
+            ? halveDamage(raw)
+            : success
+              ? 0
+              : raw;
+      // Slice 341: primary + each additional component, each taking the
+      // same save / Evasion halving, merged into one DamageApplied so
+      // per-type resistance is honored independently (Flame Strike's
+      // Fire + Radiant).
+      const rawComponents = [
+        { amount: outcomeAmount(rawDamage), type: mechanic.damageType },
+        ...additionalBase.map((c) => ({ amount: outcomeAmount(c.amount), type: c.type })),
+      ].filter((c) => c.amount > 0);
+      if (rawComponents.length > 0) {
         const mitigated = mitigateDamage({
           character: target,
           itemInstances: state.itemInstances,
           content,
-          rawComponents: [{ amount: finalAmount, type: mechanic.damageType }],
+          rawComponents,
           characters: state.characters,
           sourceIsMagical: true,
         });
@@ -1041,6 +1068,99 @@ const planHPPoolKnockoutMechanic = (
   return events;
 };
 
+// Slice 338: HP-threshold tier effect (Power Word Kill, the canonical
+// user). For each target, read current Hit Points and pick the arm:
+// `atOrBelow` when current HP <= threshold, `above` otherwise. Power
+// Word Kill: threshold 100, destroy at or below, 12d12 psychic above.
+// The `destroy` arm reuses the slice-323 CreatureDestroyed instant-
+// death path (bypasses death saves); the `damage` arm runs through the
+// same mitigation + fatal-damage intercept as any other spell damage.
+const planHpThresholdMechanic = (
+  state: CampaignState,
+  content: ResolvedContent,
+  rng: RNG,
+  intent: CastSpellIntent,
+  spell: Spell,
+  mechanic: Extract<SpellMechanic, { kind: 'hp-threshold' }>,
+  declaredEventId: string,
+  at: string,
+): Event[] => {
+  const events: Event[] = [];
+  for (const targetId of intent.targetIds) {
+    const target = state.characters[targetId];
+    if (!target) continue;
+    const arm =
+      target.hp.current <= mechanic.threshold ? mechanic.atOrBelow : mechanic.above;
+    if (arm === undefined) continue;
+    if (arm.kind === 'destroy') {
+      events.push({
+        id: newEventId() as ULID,
+        at,
+        type: 'CreatureDestroyed',
+        targetId: targetId as ULID,
+        sourceCharacterId: intent.characterId as ULID,
+        source: spell.id,
+        causedByEventId: declaredEventId as ULID,
+      } satisfies CreatureDestroyedEvent);
+      continue;
+    }
+    if (arm.kind === 'condition') {
+      const immune = isImmuneToCondition({
+        state,
+        content,
+        targetId,
+        conditionId: arm.conditionId,
+        sourceCharacterId: intent.characterId,
+      });
+      if (!immune) {
+        events.push({
+          id: newEventId() as ULID,
+          at,
+          type: 'ConditionApplied',
+          targetId: targetId as ULID,
+          conditionId: arm.conditionId,
+          appliedConditionId: newAppliedConditionId(),
+          sourceCharacterId: intent.characterId as ULID,
+          causedByEventId: declaredEventId as ULID,
+        } satisfies ConditionAppliedEvent);
+      }
+      continue;
+    }
+    const rolled = rollExpression(arm.damageDice, rng).total;
+    if (rolled <= 0) continue;
+    const mitigated = mitigateDamage({
+      character: target,
+      itemInstances: state.itemInstances,
+      content,
+      rawComponents: [{ amount: rolled, type: arm.damageType }],
+      characters: state.characters,
+      sourceIsMagical: true,
+    });
+    const intercept = interceptFatalDamage({
+      state: applyAll(state, events),
+      content,
+      targetId,
+      mitigatedComponents: mitigated,
+      causedByEventId: declaredEventId,
+      at,
+    });
+    const damageApplied: DamageAppliedEvent = {
+      id: newEventId() as ULID,
+      at,
+      type: 'DamageApplied',
+      targetId,
+      components: intercept.components,
+      causedByEventId: declaredEventId as ULID,
+      sourceCharacterId: intent.characterId as ULID,
+      source: spell.id,
+    };
+    events.push(damageApplied);
+    events.push(...intercept.extraEvents);
+    events.push(...planConcentrationBreakOnDrop(target, intercept.components, damageApplied.id, at));
+  }
+  return events;
+};
+
 // Casts a summon spell (Find Familiar, Conjure Animals, Summon Beast, etc):
 // emits a single CompanionSummoned event. The reducer creates the
 // companion Character. HP scales by slot level via the spell mechanic's
@@ -1372,6 +1492,10 @@ export const planCastSpell = (
     } else if (mechanic.kind === 'trap') {
       events.push(
         ...planTrapMechanic(state, content, intent, spell, mechanic, declared.id, at, castingClassId),
+      );
+    } else if (mechanic.kind === 'hp-threshold') {
+      events.push(
+        ...planHpThresholdMechanic(state, content, rng, intent, spell, mechanic, declared.id, at),
       );
     } else {
       events.push(...planHealMechanic(state, content, rng, intent, spell, mechanic, declared.id, at));

@@ -8,6 +8,7 @@ import { D20_SIDES } from '../../internal/constants.js';
 import { nowIso } from '../../internal/clock.js';
 import type { ULID } from '../ids-utils.js';
 import { computeSavingThrow } from '../../derive/save.js';
+import { rollSaveBonusDice } from './_bonus-dice.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { applyAll } from '../apply.js';
@@ -97,7 +98,9 @@ export const planTriggerTrap = (
     : saveDerivation.hasDisadvantage
       ? Math.min(...rolls)
       : rolls[0]!;
-  const total = usedD20 + saveDerivation.total;
+  const saveBonus = rollSaveBonusDice(saveDerivation.bonusDice, rng);
+  const bonus = saveDerivation.total + saveBonus.total;
+  const total = usedD20 + bonus;
   const success = total >= trap.payload.saveDC;
   const saveEvent: SaveRolledEvent = {
     id: newEventId() as ULID,
@@ -108,10 +111,10 @@ export const planTriggerTrap = (
     dc: trap.payload.saveDC,
     d20: rolls,
     used,
-    bonus: saveDerivation.total,
+    bonus,
     total,
     success,
-    breakdown: [...saveDerivation.breakdown],
+    breakdown: [...saveDerivation.breakdown, ...saveBonus.breakdown],
   };
   events.push(saveEvent);
 

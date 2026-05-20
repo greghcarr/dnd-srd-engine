@@ -58,6 +58,13 @@ const wildcardKeyFor = (target: RollTarget): string | undefined => {
   return undefined;
 };
 
+export interface BonusDieContribution {
+  readonly source: string;
+  readonly dice: string;
+  readonly subtract: boolean;
+  readonly predicate?: Predicate;
+}
+
 export interface ModifierContribution {
   readonly source: string;
   readonly value: number;
@@ -99,6 +106,8 @@ export interface ResourceGrant {
 
 export class EffectAccumulator {
   private readonly modifiers = new Map<string, ModifierContribution[]>();
+  // Slice 330: per-roll bonus dice (AddBonusDie), keyed like `modifiers`.
+  private readonly bonusDice = new Map<string, BonusDieContribution[]>();
   private readonly advantages = new Map<string, AdvantageState>();
   // Slice 258: SetAdvantage entries that carry a predicate (e.g. Mantle
   // of Spell Resistance's "advantage on saves vs spells" gated on
@@ -223,6 +232,33 @@ export class EffectAccumulator {
       this.modifiers.set(key, list);
     }
     list.push(predicate !== undefined ? { source, value, predicate } : { source, value });
+  }
+
+  // Slice 330: per-roll bonus dice (Bless / Bane via AddBonusDie). Stored
+  // unrolled; the planner queries `bonusDiceFor` at roll time and rolls
+  // each die fresh (RNG stays in the planner).
+  addBonusDie(target: ModifierTarget, dice: string, subtract: boolean, source: string, predicate?: Predicate): void {
+    const key = modifierKey(target);
+    let list = this.bonusDice.get(key);
+    if (list === undefined) {
+      list = [];
+      this.bonusDice.set(key, list);
+    }
+    list.push({ source, dice, subtract, ...(predicate !== undefined ? { predicate } : {}) });
+  }
+
+  // The bonus dice that apply to a roll against `target`, merging the
+  // wildcard bucket (`save:*` / `check:*`) the same way `modifierSum`
+  // does, and dropping predicated entries whose gate fails.
+  bonusDiceFor(target: ModifierTarget, facts?: ReadonlyMap<string, unknown>): ReadonlyArray<BonusDieContribution> {
+    const filter = (list: BonusDieContribution[] | undefined): BonusDieContribution[] =>
+      list === undefined
+        ? []
+        : list.filter((c) => c.predicate === undefined || evaluatePredicate(c.predicate, { facts }));
+    const base = filter(this.bonusDice.get(modifierKey(target)));
+    const wildcardKey = modifierWildcardKeyFor(target);
+    if (wildcardKey === undefined) return base;
+    return [...base, ...filter(this.bonusDice.get(wildcardKey))];
   }
 
   setAdvantage(
@@ -910,6 +946,9 @@ export const applyEffectToBuilder = (
       }
       return;
     }
+    case 'AddBonusDie':
+      acc.addBonusDie(effect.target, effect.dice, effect.subtract === true, ctx.source, effect.condition);
+      return;
     case 'SetAdvantage':
       // Slice 258: thread `effect.condition` so predicated SetAdvantage
       // (e.g. Mantle of Spell Resistance's "advantage on saves vs spells")

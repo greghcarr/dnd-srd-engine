@@ -18,6 +18,7 @@ import type { RNG } from '../../rng/index.js';
 import { rollDie, rollExpression } from '../../rng/dice.js';
 import { D20_SIDES } from '../../internal/constants.js';
 import { computeSavingThrow } from '../../derive/save.js';
+import { rollSaveBonusDice } from './_bonus-dice.js';
 import { computeSpellSaveDC } from '../../derive/spell-dc.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
@@ -646,7 +647,9 @@ export const planThunderStep = (
       characters: state.characters,
     });
     const d20 = rollDie(D20_SIDES, rng);
-    const total = d20 + saveDerivation.total;
+    const saveBonus = rollSaveBonusDice(saveDerivation.bonusDice, rng);
+    const bonus = saveDerivation.total + saveBonus.total;
+    const total = d20 + bonus;
     const success = total >= dcResult.total;
     const saveEvent: SaveRolledEvent = {
       id: newEventId() as ULID,
@@ -657,10 +660,10 @@ export const planThunderStep = (
       dc: dcResult.total,
       d20: [d20],
       used: 'none',
-      bonus: saveDerivation.total,
+      bonus,
       total,
       success,
-      breakdown: [...saveDerivation.breakdown],
+      breakdown: [...saveDerivation.breakdown, ...saveBonus.breakdown],
     };
     events.push(saveEvent);
     stagedState = applyAll(stagedState, [saveEvent]);
@@ -725,6 +728,179 @@ export const planThunderStep = (
     events.push(allyMoved);
   }
 
+  return events;
+};
+
+const DIMENSION_DOOR_RANGE_FEET = 500;
+const DIMENSION_DOOR_MIN_SLOT_LEVEL = 4;
+const DIMENSION_DOOR_ALLY_PROXIMITY_FEET = 5; // ally must start within 5 ft of the caster
+const DIMENSION_DOOR_ALLY_ARRIVAL_FEET = 5; // ally arrives within 5 ft of the caster's destination
+
+export interface DimensionDoorIntent {
+  readonly type: 'DimensionDoor';
+  readonly casterId: string;
+  readonly to: Position;
+  readonly slotLevel?: number;
+  // Optional second teleportee. RAW: "You can also teleport one willing
+  // creature. The creature must be within 5 feet of you when you
+  // teleport, and it teleports to a space within 5 feet of your
+  // destination space."
+  readonly ally?: {
+    readonly combatantId: string;
+    readonly to: Position;
+  };
+  readonly at?: string;
+}
+
+/**
+ * RAW 2024 Dimension Door: 4th-level conjuration, Action, range 500 ft.
+ * Teleport to a location within range; optionally bring one willing
+ * creature that starts within 5 ft, arriving within 5 ft of the
+ * destination. No save / no damage in the wired path: the RAW 4d6 Force
+ * "arrive in an occupied space" clause is modeled by *rejecting* an
+ * occupied destination (same stance as Misty Step / Thunder Step, which
+ * the engine treats as the consumer's positioning responsibility rather
+ * than dealing failure damage).
+ *
+ * Event order: SpellCastDeclared, SpellSlotConsumed, ActionEconomyConsumed
+ * (action), CombatantMoved (caster), optional CombatantMoved (ally).
+ * Consumes no RNG.
+ */
+export const planDimensionDoor = (
+  state: CampaignState,
+  _content: ResolvedContent,
+  intent: DimensionDoorIntent,
+): ReadonlyArray<Event> => {
+  const caster = state.characters[intent.casterId];
+  invariant(caster !== undefined, `Caster ${intent.casterId} not found`);
+  const slotLevel = intent.slotLevel ?? DIMENSION_DOOR_MIN_SLOT_LEVEL;
+  invariant(slotLevel >= DIMENSION_DOOR_MIN_SLOT_LEVEL, 'Dimension Door is a 4th-level spell');
+  invariant(
+    caster.knownSpells.includes('dimension-door') || caster.preparedSpells.includes('dimension-door'),
+    `Caster ${intent.casterId} does not know Dimension Door`,
+  );
+
+  const { encounterId, combatant, isActive } = findCombatant(state, intent.casterId);
+  if (!isActive) {
+    throw new Error('Only the active combatant may cast Dimension Door on their turn');
+  }
+  assertActorCanAct(caster, 'cast Dimension Door');
+  if (combatant.position === undefined) {
+    throw new Error('Combatant has no position set');
+  }
+  if (combatant.turnUsage.actionUsed) {
+    throw new Error('Action already used this turn');
+  }
+
+  const origin = combatant.position;
+  const casterDistance = chebyshevDistance(origin, intent.to);
+  if (casterDistance > DIMENSION_DOOR_RANGE_FEET) {
+    throw new Error(
+      `Dimension Door destination is ${casterDistance}ft away (max ${DIMENSION_DOOR_RANGE_FEET}ft)`,
+    );
+  }
+
+  let allyCombatant: Combatant | undefined;
+  if (intent.ally !== undefined) {
+    allyCombatant = state.encounters[encounterId]?.combatants.find(
+      (c) => c.combatantId === intent.ally!.combatantId,
+    );
+    if (allyCombatant === undefined || allyCombatant.position === undefined) {
+      throw new Error(
+        `Dimension Door ally ${intent.ally.combatantId} is not in the active encounter or has no position`,
+      );
+    }
+    const allyStartDistance = chebyshevDistance(origin, allyCombatant.position);
+    if (allyStartDistance > DIMENSION_DOOR_ALLY_PROXIMITY_FEET) {
+      throw new Error(
+        `Dimension Door ally is ${allyStartDistance}ft from caster (RAW: must be within ${DIMENSION_DOOR_ALLY_PROXIMITY_FEET}ft)`,
+      );
+    }
+    const allyArrivalDistance = chebyshevDistance(intent.to, intent.ally.to);
+    if (allyArrivalDistance > DIMENSION_DOOR_ALLY_ARRIVAL_FEET) {
+      throw new Error(
+        `Dimension Door ally destination is ${allyArrivalDistance}ft from the caster's destination (RAW: must be within ${DIMENSION_DOOR_ALLY_ARRIVAL_FEET}ft)`,
+      );
+    }
+    if (intent.ally.to.x === intent.to.x && intent.ally.to.y === intent.to.y) {
+      throw new Error('Dimension Door ally cannot teleport to the same space as the caster');
+    }
+  }
+
+  const allyId = allyCombatant?.combatantId;
+  const assertUnoccupied = (dest: Position, selfId: string, otherVacatingId: string | undefined, label: string): void => {
+    const blocker = state.encounters[encounterId]?.combatants.find(
+      (c) =>
+        c.combatantId !== selfId &&
+        c.combatantId !== otherVacatingId &&
+        c.position !== undefined &&
+        c.position.x === dest.x &&
+        c.position.y === dest.y,
+    );
+    if (blocker !== undefined) {
+      const name = state.characters[blocker.combatantId]?.name ?? blocker.combatantId;
+      throw new Error(
+        `Dimension Door ${label} destination (${dest.x},${dest.y}) is occupied by ${name}`,
+      );
+    }
+  };
+  assertUnoccupied(intent.to, intent.casterId, allyId, 'caster');
+  if (intent.ally !== undefined && allyId !== undefined) {
+    assertUnoccupied(intent.ally.to, allyId, intent.casterId, 'ally');
+  }
+
+  const at = intent.at ?? nowIso();
+  const targetIds: ULID[] = [intent.casterId as ULID];
+  if (intent.ally !== undefined) targetIds.push(intent.ally.combatantId as ULID);
+  const declared: SpellCastDeclaredEvent = {
+    id: newEventId() as ULID,
+    at,
+    type: 'SpellCastDeclared',
+    characterId: intent.casterId,
+    spellId: 'dimension-door',
+    slotLevel,
+    slotSource: 'standard',
+    targetIds,
+    castAsRitual: false,
+  };
+  const slotConsumed: SpellSlotConsumedEvent = {
+    id: newEventId() as ULID,
+    at,
+    type: 'SpellSlotConsumed',
+    characterId: intent.casterId,
+    slotLevel,
+  };
+  const actionConsumed: ActionEconomyConsumedEvent = {
+    id: newEventId() as ULID,
+    at,
+    type: 'ActionEconomyConsumed',
+    encounterId,
+    combatantId: intent.casterId,
+    kind: 'action',
+  };
+  const casterMoved: CombatantMovedEvent = {
+    id: newEventId() as ULID,
+    at,
+    type: 'CombatantMoved',
+    encounterId,
+    combatantId: intent.casterId,
+    fromPosition: { ...origin },
+    toPosition: { ...intent.to },
+    feetTraveled: 0,
+  };
+  const events: Event[] = [declared, slotConsumed, actionConsumed, casterMoved];
+  if (intent.ally !== undefined && allyCombatant !== undefined) {
+    events.push({
+      id: newEventId() as ULID,
+      at,
+      type: 'CombatantMoved',
+      encounterId,
+      combatantId: intent.ally.combatantId,
+      fromPosition: { ...allyCombatant.position! },
+      toPosition: { ...intent.ally.to },
+      feetTraveled: 0,
+    });
+  }
   return events;
 };
 

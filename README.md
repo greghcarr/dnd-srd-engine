@@ -114,7 +114,7 @@ Pick the doc that matches what you want:
 At a glance:
 
 - **Engine architecture**: 100%. Locked.
-- **Effect-primitive vocabulary**: ~75% of the planned `EFFECT_KINDS` shipped (50 primitives + `Custom` escape hatch); the rest of the backlog enumerated in [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md).
+- **Effect-primitive vocabulary**: ~75% of the planned `EFFECT_KINDS` shipped (51 primitives + `Custom` escape hatch); the rest of the backlog enumerated in [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md).
 - **Classes / species / backgrounds / feats / conditions / spells / monsters / magic items**: SRD 5.2.1 catalog complete in every category. Spell mechanical wiring ~47% (164/351); magic-item mechanical wiring ~35% (~91/258, after single-base magic weapons/armor were re-modeled into the weapon/armor categories in slices 315-317); consumables ~65% (~45/69).
 - **Variant rules**: `grittyRest` + `heroPoints` enforce; `sanity` + `massCombat` toggle but don't enforce.
 

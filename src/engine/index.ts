@@ -48,6 +48,7 @@ import {
   planDodge,
   planMistyStep,
   planThunderStep,
+  planDimensionDoor,
   planActionSurge,
   planSacredWeapon,
   planInnateSorcery,
@@ -61,6 +62,9 @@ import {
   planElementalWeapon,
   planRecklessAttack,
   planStunningStrike,
+  planFlurryOfBlows,
+  planPatientDefense,
+  planStepOfTheWind,
   planFrenzy,
   planCuttingWords,
   planMetamagic,
@@ -168,6 +172,7 @@ import {
   type DodgeIntent,
   type MistyStepIntent,
   type ThunderStepIntent,
+  type DimensionDoorIntent,
   type ActionSurgeIntent,
   type SacredWeaponIntent,
   type InnateSorceryIntent,
@@ -181,6 +186,9 @@ import {
   type ElementalWeaponIntent,
   type RecklessAttackIntent,
   type StunningStrikeIntent,
+  type FlurryOfBlowsIntent,
+  type PatientDefenseIntent,
+  type StepOfTheWindIntent,
   type FrenzyIntent,
   type CuttingWordsIntent,
   type CuttingWordsOutcome,
@@ -288,6 +296,7 @@ export interface Engine {
     dodge(state: CampaignState, intent: Omit<DodgeIntent, 'type'>): PlanResult;
     mistyStep(state: CampaignState, intent: Omit<MistyStepIntent, 'type'>): PlanResult;
     thunderStep(state: CampaignState, intent: Omit<ThunderStepIntent, 'type'>): PlanResult;
+    dimensionDoor(state: CampaignState, intent: Omit<DimensionDoorIntent, 'type'>): PlanResult;
     actionSurge(state: CampaignState, intent: Omit<ActionSurgeIntent, 'type'>): PlanResult;
     sacredWeapon(state: CampaignState, intent: Omit<SacredWeaponIntent, 'type'>): PlanResult;
     innateSorcery(state: CampaignState, intent: Omit<InnateSorceryIntent, 'type'>): PlanResult;
@@ -301,6 +310,9 @@ export interface Engine {
     elementalWeapon(state: CampaignState, intent: Omit<ElementalWeaponIntent, 'type'>): PlanResult;
     recklessAttack(state: CampaignState, intent: Omit<RecklessAttackIntent, 'type'>): PlanResult;
     stunningStrike(state: CampaignState, intent: Omit<StunningStrikeIntent, 'type'>): PlanResult;
+    flurryOfBlows(state: CampaignState, intent: Omit<FlurryOfBlowsIntent, 'type'>): PlanResult;
+    patientDefense(state: CampaignState, intent: Omit<PatientDefenseIntent, 'type'>): PlanResult;
+    stepOfTheWind(state: CampaignState, intent: Omit<StepOfTheWindIntent, 'type'>): PlanResult;
     frenzy(state: CampaignState, intent: Omit<FrenzyIntent, 'type'>): PlanResult;
     cuttingWords(state: CampaignState, intent: Omit<CuttingWordsIntent, 'type'>): CuttingWordsOutcome;
     metamagic(state: CampaignState, intent: Omit<MetamagicIntent, 'type'>): PlanResult;
@@ -522,6 +534,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     thunderStep(state, intent) {
       return { events: planThunderStep(state, content, rng, { type: 'ThunderStep', ...intent }) };
     },
+    dimensionDoor(state, intent) {
+      return { events: planDimensionDoor(state, content, { type: 'DimensionDoor', ...intent }) };
+    },
     actionSurge(state, intent) {
       return { events: planActionSurge(state, content, { type: 'ActionSurge', ...intent }) };
     },
@@ -565,6 +580,15 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     stunningStrike(state, intent) {
       return { events: planStunningStrike(state, content, rng, { type: 'StunningStrike', ...intent }) };
+    },
+    flurryOfBlows(state, intent) {
+      return { events: planFlurryOfBlows(state, content, rng, { type: 'FlurryOfBlows', ...intent }) };
+    },
+    patientDefense(state, intent) {
+      return { events: planPatientDefense(state, content, rng, { type: 'PatientDefense', ...intent }) };
+    },
+    stepOfTheWind(state, intent) {
+      return { events: planStepOfTheWind(state, content, { type: 'StepOfTheWind', ...intent }) };
     },
     frenzy(state, intent) {
       return { events: planFrenzy(state, content, { type: 'Frenzy', ...intent }) };
