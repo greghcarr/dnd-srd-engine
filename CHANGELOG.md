@@ -4,6 +4,16 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content: wire Evoker Evocation Savant (slice 347)**
+
+Last clean Tier-A subclass spell-grant. **Evocation Savant** (Evoker L3) wired as an `OfferChoice oneOf:2` over the ten L1-2 evocation wizard spells in the pack (Burning Hands, Chromatic Orb, Magic Missile, Thunderwave, Acid Arrow, Continual Flame, Darkness, Gust of Wind, Scorching Ray, Shatter); each option grants its spell with `preparation: 'known'` (added to the spellbook). Resolving the choice (`ChoiceResolved`) folds the two picked spells into the effect stack's granted-spell list.
+
+RAW-scope decisions (documented on the feature prompt + this entry): SRD says "two Evocation spells no higher than level 2, add to your spellbook" — narrowed to **leveled** L1-2 spells because cantrips are not spellbook entries. The "in addition, add one evocation spell whenever you gain a new spell-slot level" arm is deferred (needs an on-slot-level-gain trigger the engine doesn't expose).
+
+Audit finding (no change made): the pack's `circle-of-the-land-cantrip` ("Circle of the Land: Bonus Cantrip") is a **2014-PHB feature, not in SRD 5.2.1** — verified against `references/srd-markdown/classes.md`, where the 2024 Circle of the Land L3 grants only Circle of the Land Spells + Land's Aid. Flagged in gaps-class-features.md + status.md as a content-authoring extra rather than an SRD stub to wire.
+
+Closes the third of the original twelve L3 `effects: []` stubs (now nine). New [tests/unit/engine/slice-347-evocation-savant.test.ts](tests/unit/engine/slice-347-evocation-savant.test.ts) pins the offered option set (ten spells, oneOf:2, each a `known` grant) and that resolving two picks grants exactly those two. No engine change (`OfferChoice` + `GrantSpell` already consumed); `tsc --noEmit` clean.
+
 **Content: wire two Tier-A subclass L3 features (slice 346)**
 
 First subclass-authoring slice off the reconciled queue. Pure content on existing, consumed primitives:

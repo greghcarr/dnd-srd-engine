@@ -1277,7 +1277,27 @@
           {
             "id": "evocation-savant",
             "name": "Evocation Savant",
-            "effects": []
+            "effects": [
+              {
+                "kind": "OfferChoice",
+                "choiceId": "evocation-savant",
+                "prompt": "Choose two Evocation wizard spells (level 1 or 2) to add to your spellbook.",
+                "oneOf": 2,
+                "when": "onAcquire",
+                "options": [
+                  { "id": "burning-hands", "label": "Burning Hands", "effects": [{ "kind": "GrantSpell", "spellId": "burning-hands", "preparation": "known" }] },
+                  { "id": "chromatic-orb", "label": "Chromatic Orb", "effects": [{ "kind": "GrantSpell", "spellId": "chromatic-orb", "preparation": "known" }] },
+                  { "id": "magic-missile", "label": "Magic Missile", "effects": [{ "kind": "GrantSpell", "spellId": "magic-missile", "preparation": "known" }] },
+                  { "id": "thunderwave", "label": "Thunderwave", "effects": [{ "kind": "GrantSpell", "spellId": "thunderwave", "preparation": "known" }] },
+                  { "id": "acid-arrow", "label": "Acid Arrow", "effects": [{ "kind": "GrantSpell", "spellId": "acid-arrow", "preparation": "known" }] },
+                  { "id": "continual-flame", "label": "Continual Flame", "effects": [{ "kind": "GrantSpell", "spellId": "continual-flame", "preparation": "known" }] },
+                  { "id": "darkness", "label": "Darkness", "effects": [{ "kind": "GrantSpell", "spellId": "darkness", "preparation": "known" }] },
+                  { "id": "gust-of-wind", "label": "Gust of Wind", "effects": [{ "kind": "GrantSpell", "spellId": "gust-of-wind", "preparation": "known" }] },
+                  { "id": "scorching-ray", "label": "Scorching Ray", "effects": [{ "kind": "GrantSpell", "spellId": "scorching-ray", "preparation": "known" }] },
+                  { "id": "shatter", "label": "Shatter", "effects": [{ "kind": "GrantSpell", "spellId": "shatter", "preparation": "known" }] }
+                ]
+              }
+            ]
           }
         ],
         "6": [

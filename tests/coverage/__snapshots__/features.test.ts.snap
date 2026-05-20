@@ -370,6 +370,7 @@ exports[`feature-coverage matrix: subclasses > wired subclass features catalog i
   "draconic-sorcery L5 draconic-spells-l5",
   "draconic-sorcery L6 elemental-affinity",
   "draconic-sorcery L7 draconic-spells-l7",
+  "evoker L3 evocation-savant",
   "fiend-patron L3 fiend-spells",
   "fiend-patron L5 fiend-spells-l5",
   "fiend-patron L6 dark-ones-own-luck",
