@@ -919,16 +919,27 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
       sourceCharacterId: input.attackerId as ULID,
     } satisfies ConditionAppliedEvent);
   };
+  const destroyTarget = (): void => {
+    onHitRiderEvents.push({
+      id: newEventId() as ULID,
+      at,
+      type: 'CreatureDestroyed',
+      targetId: input.targetId as ULID,
+      sourceCharacterId: input.attackerId as ULID,
+    } satisfies CreatureDestroyedEvent);
+  };
+  // Slice 323/325: HP threshold gates (save-gated destroy and the
+  // unconditional destroy arm) read the target's HP AFTER this hit's
+  // full damage chain — including the rider's own extra-damage component.
+  const postDamageHp = stateAfterDamage.characters[input.targetId]?.hp.current ?? 0;
+  const hpWithin = (threshold: number | undefined): boolean =>
+    threshold === undefined || postDamageHp <= threshold;
   for (const rider of applicableRiders) {
     if (rider.save !== undefined) {
       const save = rider.save;
-      // Slice 323: HP-threshold gate (Mace of Disruption: the save fires
-      // only if the target has <= 25 HP AFTER this hit's damage). Read
-      // the post-damage HP from the state that already applied the
-      // damage chain (including this rider's extra damage component).
-      const postDamageHp = stateAfterDamage.characters[input.targetId]?.hp.current ?? 0;
-      const thresholdMet = save.hpThreshold === undefined || postDamageHp <= save.hpThreshold;
-      if (thresholdMet) {
+      // Slice 323: the save fires only inside its HP threshold (Mace of
+      // Disruption: target has <= 25 HP after the radiant rider).
+      if (hpWithin(save.hpThreshold)) {
         const saveResult = rollSaveAgainstDC({
           state,
           content,
@@ -944,14 +955,7 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
           if (saveResult.success) {
             if (save.conditionOnSuccess !== undefined) applyRiderCondition(save.conditionOnSuccess);
           } else if (save.destroyOnFail === true) {
-            // Slice 323: instant death, bypassing death saves.
-            onHitRiderEvents.push({
-              id: newEventId() as ULID,
-              at,
-              type: 'CreatureDestroyed',
-              targetId: input.targetId as ULID,
-              sourceCharacterId: input.attackerId as ULID,
-            } satisfies CreatureDestroyedEvent);
+            destroyTarget();
           } else if (save.conditionOnFail !== undefined) {
             applyRiderCondition(save.conditionOnFail);
           }
@@ -959,6 +963,9 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
       }
     }
     if (rider.applyConditionId !== undefined) applyRiderCondition(rider.applyConditionId);
+    // Slice 325: unconditional (no-save) destroy arm (Mace of Smiting's
+    // Construct destroy when post-damage HP is at or below the threshold).
+    if (rider.destroy !== undefined && hpWithin(rider.destroy.hpThreshold)) destroyTarget();
   }
 
   return [

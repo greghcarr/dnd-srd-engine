@@ -121,13 +121,30 @@ const onHitRiderSchema = z
     // (+14 slashing), Vorpal (decapitation via the slice-323 destroy
     // arm, once a head/too-big immunity fact exists).
     requiresCritical: z.boolean().optional(),
+    // Slice 325: unconditional (no-save) destroy arm. When the rider
+    // fires (its gates pass) and the target's HP AFTER the hit's damage
+    // is at or below `hpThreshold` (or always, when omitted), the target
+    // is destroyed (CreatureDestroyed, bypassing death saves). RAW: Mace
+    // of Smiting's "If a Construct has 25 Hit Points or fewer after
+    // taking this damage, it is destroyed" — the unconditional sibling
+    // of the slice-323 save-gated `save.destroyOnFail`.
+    destroy: z
+      .object({ hpThreshold: z.number().int().min(1).optional() })
+      .optional(),
   })
   .refine((r) => (r.dice === undefined) === (r.damageType === undefined), {
     message: 'onHit rider dice and damageType must be set together',
   })
-  .refine((r) => r.dice !== undefined || r.save !== undefined || r.applyConditionId !== undefined, {
-    message: 'onHit rider must carry extra damage (dice), a save, or an applied condition',
-  });
+  .refine(
+    (r) =>
+      r.dice !== undefined ||
+      r.save !== undefined ||
+      r.applyConditionId !== undefined ||
+      r.destroy !== undefined,
+    {
+      message: 'onHit rider must carry extra damage (dice), a save, an applied condition, or a destroy arm',
+    },
+  );
 const weaponEnhancementFields = {
   attackBonus: z.number().int().optional(),
   damageBonus: z.number().int().optional(),

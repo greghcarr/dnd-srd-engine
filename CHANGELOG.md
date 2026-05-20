@@ -4,6 +4,20 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content: unconditional destroy rider arm + Mace of Smiting (slice 325)**
+
+Adds the no-save sibling of slice 323's save-gated destroy, completing Mace of Smiting (crit damage tiers + the Construct auto-destroy).
+
+Engine:
+- The `onHit` rider gains an optional `destroy: { hpThreshold? }` arm. When the rider fires (its gates pass) and the target's HP AFTER the hit's damage is at or below `hpThreshold` (or always, when omitted), the target is destroyed (`CreatureDestroyed`, bypassing death saves) — no save, unlike slice 323's `save.destroyOnFail`. Parallels how `applyConditionId` is the unconditional sibling of `save.conditionOnFail`.
+- The planner factored a `destroyTarget()` closure (reused by the save-gated and unconditional destroy paths) and an `hpWithin(threshold)` helper over the once-computed post-damage HP (shared by `save.hpThreshold` and `destroy.hpThreshold`).
+
+Content (canonical user): **Mace of Smiting** — its existing `itemKind: 'weapon'` entry gains two crit riders (slice 324 `requiresCritical` + the `0d6+N` flat shape): "+7 Bludgeoning on a 20, or +14 if it's a Construct" (gated `not Construct` / `eq Construct`), and the Construct rider carries `destroy: { hpThreshold: 25 }` for "If a Construct has 25 Hit Points or fewer after taking this damage, it is destroyed."
+
+Deferred: the "+3 vs a Construct" attack/damage bonus is a predicate-gated *base* enhancement (every hit, not just crits), a distinct primitive from the onHit riders — still deferred.
+
+Uncle Bob audit: **Names** — `destroy` / `hpThreshold` mirror the save arm's vocabulary; `destroyTarget` / `hpWithin` are intention-revealing. **DRY** — extracted `destroyTarget` (was an inline literal in the save branch) and `hpWithin` over a single post-damage-HP read, both now shared by the save-gated and unconditional paths. **SRP** — schema arm, planner emission, content wiring each in their layer. **Magic numbers** — 7 / 14 / 25 / Construct are RAW-cited on the item. **at-threading** — `CreatureDestroyed` carries the planner's single `at`; no new RNG. **Mechanical outcomes asserted** — a crit vs a Humanoid adds +7 flat bludgeoning and no destroy; a non-crit adds nothing; a crit vs a high-HP Construct adds +14 but doesn't destroy (over threshold); a crit that leaves a Construct at <= 25 HP destroys it (hp 0, 3 failures) with replay-equivalence + RNG-capture holding. **Tests** — 4 new ([tests/unit/engine/slice-325-mace-of-smiting.test.ts](tests/unit/engine/slice-325-mace-of-smiting.test.ts)); full suite green (1951 passed), tsc clean. Coverage snapshot unchanged. Docs: gaps Items.
+
 **Engine + content: crit-gated on-hit riders + Sword of Life Stealing (slice 324)**
 
 Adds the last trigger gate to the on-hit-rider family: a rider can fire only on a critical hit (the 2024 "When you roll a 20 on the attack roll, the target takes an extra ..." shape).
