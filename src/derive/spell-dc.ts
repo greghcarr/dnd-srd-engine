@@ -45,7 +45,8 @@ export const computeSpellSaveDC = (input: ComputeSpellDCInput): SpellDCResult =>
   const effects = buildEffectStack(input);
   const baseScore = input.character.abilityScores[ability];
   const floor = effects.effectiveAbilityScoreFloor(ability)?.value;
-  const abilityMod = abilityModifier(effectiveAbilityScore(baseScore, floor));
+  const increase = effects.effectiveAbilityScoreIncrease(ability);
+  const abilityMod = abilityModifier(effectiveAbilityScore(baseScore, floor, increase));
   const breakdown: SpellDCBreakdownEntry[] = [
     { source: 'base', value: SPELL_DC_BASE },
     { source: 'proficiency', value: proficiencyBonus(computeTotalLevel(input.character)) },
@@ -65,7 +66,8 @@ export const computeSpellAttackBonus = (input: ComputeSpellDCInput): SpellDCResu
   const effects = buildEffectStack(input);
   const baseScore = input.character.abilityScores[ability];
   const floor = effects.effectiveAbilityScoreFloor(ability)?.value;
-  const abilityMod = abilityModifier(effectiveAbilityScore(baseScore, floor));
+  const increase = effects.effectiveAbilityScoreIncrease(ability);
+  const abilityMod = abilityModifier(effectiveAbilityScore(baseScore, floor, increase));
   const breakdown: SpellDCBreakdownEntry[] = [
     { source: 'proficiency', value: proficiencyBonus(computeTotalLevel(input.character)) },
     { source: `${ability}-mod`, value: abilityMod },

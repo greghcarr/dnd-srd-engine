@@ -4,6 +4,23 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content: IncreaseAbilityScore primitive + 7 canonical users (slice 308)**
+
+New effect primitive `IncreaseAbilityScore { ability, amount, max }` — an additive ability-score increase capped at `max`, distinct from the existing `OverrideAbilityScore` (which *sets* / floors a score and would mask a wearer's own higher value). RAW shape: "Your [ability] increases by N, to a maximum of M." This was the highest-leverage row in the deferred-primitives backlog; it unblocks the six ability Ioun Stones and Belt of Dwarvenkind's Toughness arm in one slice.
+
+Engine:
+- `EFFECT_KINDS` gains `IncreaseAbilityScore` (now 51 kinds = 50 primitives + `Custom`); schema added to `EffectSchema`.
+- `EffectAccumulator` gains `addAbilityScoreIncrease` / `effectiveAbilityScoreIncrease(ability)`. Multiple sources on one ability sum their amounts and cap at the lowest `max` (realistic case is a single stone; summing handles a rare stack).
+- `effectiveAbilityScore(base, floor?, increase?)` gains an optional third arg. Composition is **floor-then-increase**, and the increase **only raises** (`max(score, min(score + amount, max))`) so it can never clamp a higher floor (e.g. Belt of Storm Giant Strength's STR 29) down to its own cap, and so Amulet of Health's CON-19 floor plus an Ioun Stone +2 composes to 20. All eight `effectiveAbilityScore` call sites (spell DC, spell attack, attack mod, AC, save, ability check, the attack planner's damage + cleave paths) thread the increase, mirroring the slice-229 floor exactly — the new primitive participates in every derivation that already honored the floor.
+
+Content (canonical users):
+- Six ability Ioun Stones — Strength/Agility/Fortitude/Intellect/Insight/Leadership → `IncreaseAbilityScore` on STR/DEX/CON/INT/WIS/CHA, +2 to max 20 (RAW: "Your [ability] increases by 2, to a maximum of 20, while this … orbits your head").
+- Belt of Dwarvenkind — Toughness arm (`CON +2 to max 20`) now wired alongside the slice-306 Resilience arm. The dwarf-conditional Darkvision and Persuasion-vs-dwarves arms remain deferred.
+
+Deferred (tracked, separate shape): the four Manual/Tome items permanently raise a score *and its max* on a one-time read — that needs a one-time-permanent application path, not a passive worn projection.
+
+Uncle Bob audit: **Names** — `IncreaseAbilityScore` parallels `OverrideAbilityScore`; `effectiveAbilityScoreIncrease` parallels `effectiveAbilityScoreFloor`. **DRY** — reused the slice-229 floor plumbing shape (map of entries, combine method, single free-function consumer) rather than a parallel system; the eight call sites each gained one mirror line. **SRP** — the primitive does one thing; composition logic lives solely in `effectiveAbilityScore`. **Magic numbers** — none in the engine; the +2/max-20 values are RAW-cited per item. **at-threading** — n/a (no events emitted; this is a derivation-only primitive). **Mechanical outcomes asserted** — increase adds + caps at max; never lowers a score above max; floor-then-increase composes to 20; Ioun Stone of Fortitude raises a CON save by exactly 1 (14→16), Ioun Stone of Intellect raises an INT check by 1, a CON-20 wearer sees no change, an unattuned stone does not project; Belt Toughness raises CON +2 while Resilience persists. **Tests** — 9 new (4 free-function composition cases pinning the never-lower / cap / floor-compose rules a future refactor could silently break; 5 integration cases through real derives). Coverage snapshot gained the six Ioun Stones; full suite green (1895 passed), tsc clean. Docs: api-overview kinds count 46 → 51 + new highlight, status primitive count 50 → 51, gaps backlog row struck closed + Items wired 69 → 75.
+
 **Content: magic-item buff sweep cont., 2 defensive wearables (slice 307)**
 
 Pure-content sweep, no engine changes. Two attunement-gated defensive wearables, passive arms wired via existing primitives; pinned by [tests/unit/engine/slice-307-magic-item-wires.test.ts](tests/unit/engine/slice-307-magic-item-wires.test.ts):

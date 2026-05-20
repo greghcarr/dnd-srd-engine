@@ -158,6 +158,11 @@ export class EffectAccumulator {
   private readonly acOverrides: ACOverride[] = [];
   private readonly acFloors: { value: number; source: string }[] = [];
   private readonly abilityScoreFloors = new Map<AbilityScore, { value: number; source: string }[]>();
+  // Slice 308. Additive ability-score increases (Ioun Stones, Belt of
+  // Dwarvenkind Toughness). Multiple sources on the same ability sum
+  // their amounts and cap at the lowest `max` (the realistic case is
+  // a single +2-to-max-20 stone; summing handles the rare stack).
+  private readonly abilityScoreIncreases = new Map<AbilityScore, { amount: number; max: number }[]>();
   private readonly regenerationEntries: Array<{ perTurn: number; suppressedBy: DamageType[] }> = [];
   private readonly resourceGrants: ResourceGrant[] = [];
   // Slice 127: granted senses (darkvision / blindsight / tremorsense /
@@ -326,6 +331,14 @@ export class EffectAccumulator {
     const existing = this.abilityScoreFloors.get(ability) ?? [];
     existing.push({ value, source });
     this.abilityScoreFloors.set(ability, existing);
+  }
+  // Slice 308. Records an additive ability-score increase capped at
+  // `max`. `effectiveAbilityScoreIncrease` combines all entries for an
+  // ability (sum of amounts, lowest cap).
+  addAbilityScoreIncrease(ability: AbilityScore, amount: number, max: number): void {
+    const existing = this.abilityScoreIncreases.get(ability) ?? [];
+    existing.push({ amount, max });
+    this.abilityScoreIncreases.set(ability, existing);
   }
   // Slice 232: records a Regeneration entry. Multiple sources stack
   // additively (rare in RAW, but two unrelated regen traits should
@@ -661,6 +674,17 @@ export class EffectAccumulator {
     if (entries === undefined || entries.length === 0) return undefined;
     return entries.reduce((best, current) => (current.value > best.value ? current : best));
   }
+  // Slice 308. Combined additive increase for an ability: sum of all
+  // `amount`s, capped at the lowest `max`. Returns undefined when no
+  // increase applies. Pass the result as the third arg to
+  // effectiveAbilityScore so the floor + increase compose.
+  effectiveAbilityScoreIncrease(ability: AbilityScore): { amount: number; max: number } | undefined {
+    const entries = this.abilityScoreIncreases.get(ability);
+    if (entries === undefined || entries.length === 0) return undefined;
+    const amount = entries.reduce((sum, e) => sum + e.amount, 0);
+    const max = entries.reduce((lowest, e) => Math.min(lowest, e.max), entries[0]!.max);
+    return { amount, max };
+  }
   // Slice 232: returns the bearer's Regeneration entries. Empty when
   // the bearer has no Regeneration trait.
   regenerations(): ReadonlyArray<{ perTurn: number; suppressedBy: ReadonlyArray<DamageType> }> {
@@ -933,6 +957,9 @@ export const applyEffectToBuilder = (
       return;
     case 'OverrideAbilityScore':
       acc.addAbilityScoreFloor(effect.ability, effect.value, ctx.source);
+      return;
+    case 'IncreaseAbilityScore':
+      acc.addAbilityScoreIncrease(effect.ability, effect.amount, effect.max);
       return;
     case 'Regeneration':
       acc.addRegeneration(effect.perTurn, effect.suppressedBy);

@@ -73,8 +73,9 @@ export const computeAttackBonus = (input: ComputeAttackInput): AttackResult => {
   const effects = buildEffectStack(input);
   const baseScore = input.character.abilityScores[ability];
   const floor = effects.effectiveAbilityScoreFloor(ability)?.value;
+  const increase = effects.effectiveAbilityScoreIncrease(ability);
   const breakdown: AttackBreakdownEntry[] = [
-    { source: `${ability}-mod`, value: abilityModifier(effectiveAbilityScore(baseScore, floor)) },
+    { source: `${ability}-mod`, value: abilityModifier(effectiveAbilityScore(baseScore, floor, increase)) },
   ];
 
   if (isWeaponProficient(input.character, weapon, input.content)) {

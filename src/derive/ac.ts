@@ -69,7 +69,8 @@ const computeUnarmoredOverrideAC = (
   const modForAbility = (ability: AbilityScore): number => {
     const baseScore = character.abilityScores[ability];
     const floor = effects.effectiveAbilityScoreFloor(ability)?.value;
-    return abilityModifier(effectiveAbilityScore(baseScore, floor));
+    const increase = effects.effectiveAbilityScoreIncrease(ability);
+    return abilityModifier(effectiveAbilityScore(baseScore, floor, increase));
   };
   const baseValue =
     typeof override.base === 'number'

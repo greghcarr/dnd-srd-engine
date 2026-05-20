@@ -81,7 +81,8 @@ export const computeSavingThrow = (input: ComputeSaveInput): SaveResult => {
   } else {
     const baseScore = input.character.abilityScores[input.ability];
     const floor = effects.effectiveAbilityScoreFloor(input.ability)?.value;
-    const abilityMod = abilityModifier(effectiveAbilityScore(baseScore, floor));
+    const increase = effects.effectiveAbilityScoreIncrease(input.ability);
+    const abilityMod = abilityModifier(effectiveAbilityScore(baseScore, floor, increase));
     breakdown.push({ source: `${input.ability}-mod`, value: abilityMod });
 
     const totalLevel = computeTotalLevel(input.character);
