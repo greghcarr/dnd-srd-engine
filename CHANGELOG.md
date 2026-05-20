@@ -4,6 +4,17 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content: wire two Tier-A subclass L3 features (slice 346)**
+
+First subclass-authoring slice off the reconciled queue. Pure content on existing, consumed primitives:
+
+- **Oath of Devotion, Devotion Spells**: the always-prepared oath-spell progression (`GrantSpell preparation: 'always-prepared'`) wired across L3 (Protection from Evil and Good, Shield of Faith), L5 (Aid, Zone of Truth), L9 (Beacon of Hope, Dispel Magic), L13 (Freedom of Movement, Guardian of Faith), and L17 (Commune, Flame Strike), the full SRD 5.2.1 table. Mirrors the Draconic / Fiend / Life Domain spell lists; level-gated by the subclass `levelGrants` machinery (a L9 paladin gets the L3+L5+L9 spells, not L13/L17).
+- **Draconic Sorcery, Draconic Resilience (HP)**: `AddModifier { target: 'hpMax', value: {kind:'level', classId:'sorcerer'} }`, i.e. HP max increases to match sorcerer level (RAW: +3 at L3, +1 per level thereafter), gated to L3+. Completes the feature (the AC half was already wired via `OverrideACFormula`).
+
+This closes two of the twelve L3 `effects: []` stubs (now ten). New [tests/unit/engine/slice-346-subclass-l3-wires.test.ts](tests/unit/engine/slice-346-subclass-l3-wires.test.ts) pins the devotion-spell progression at L3 / L9 / L17 (and the no-subclass / level-gating cases) and the per-level HP-max bonus (L3 / L6 / L20, with L2 and no-subclass at 0). gaps-class-features.md + status.md L3-stub lists updated.
+
+Content audit (RAW match): the devotion spell table and the Draconic Resilience HP formula match SRD 5.2.1 (`references/srd-markdown/classes.md`); all ten oath spells are in the pack. No engine change; both effect kinds (`GrantSpell`, `AddModifier` with a level Formula) were already consumed by `effective-spell-list` / `character-view`. `tsc --noEmit` clean.
+
 **Docs: reconcile the subclass documentation against the pack + SRD audit (slice 345)**
 
 Audit of the existing subclass work surfaced several stale / inaccurate doc claims (no code or content was wrong; the pack is SRD-accurate). Ground truth: 12 subclasses (one per class, all SRD 5.2.1-matched), 58 feature entries, 31 with effects, 27 `effects: []` (12 at L3, 15 at L6+). Corrected:

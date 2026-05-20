@@ -925,12 +925,55 @@
           {
             "id": "devotion-spells",
             "name": "Oath of Devotion Spells",
-            "effects": []
+            "effects": [
+              { "kind": "GrantSpell", "spellId": "protection-from-evil-and-good", "preparation": "always-prepared" },
+              { "kind": "GrantSpell", "spellId": "shield-of-faith", "preparation": "always-prepared" }
+            ]
           },
           {
             "id": "sacred-weapon",
             "name": "Channel Divinity: Sacred Weapon",
             "effects": [{ "kind": "Custom", "handlerId": "sacred-weapon" }]
+          }
+        ],
+        "5": [
+          {
+            "id": "devotion-spells-l5",
+            "name": "Oath of Devotion Spells (Level 5)",
+            "effects": [
+              { "kind": "GrantSpell", "spellId": "aid", "preparation": "always-prepared" },
+              { "kind": "GrantSpell", "spellId": "zone-of-truth", "preparation": "always-prepared" }
+            ]
+          }
+        ],
+        "9": [
+          {
+            "id": "devotion-spells-l9",
+            "name": "Oath of Devotion Spells (Level 9)",
+            "effects": [
+              { "kind": "GrantSpell", "spellId": "beacon-of-hope", "preparation": "always-prepared" },
+              { "kind": "GrantSpell", "spellId": "dispel-magic", "preparation": "always-prepared" }
+            ]
+          }
+        ],
+        "13": [
+          {
+            "id": "devotion-spells-l13",
+            "name": "Oath of Devotion Spells (Level 13)",
+            "effects": [
+              { "kind": "GrantSpell", "spellId": "freedom-of-movement", "preparation": "always-prepared" },
+              { "kind": "GrantSpell", "spellId": "guardian-of-faith", "preparation": "always-prepared" }
+            ]
+          }
+        ],
+        "17": [
+          {
+            "id": "devotion-spells-l17",
+            "name": "Oath of Devotion Spells (Level 17)",
+            "effects": [
+              { "kind": "GrantSpell", "spellId": "commune", "preparation": "always-prepared" },
+              { "kind": "GrantSpell", "spellId": "flame-strike", "preparation": "always-prepared" }
+            ]
           }
         ],
         "7": [
@@ -1047,7 +1090,9 @@
           {
             "id": "draconic-resilience-hp",
             "name": "Draconic Resilience (HP)",
-            "effects": []
+            "effects": [
+              { "kind": "AddModifier", "target": "hpMax", "value": { "kind": "level", "classId": "sorcerer" } }
+            ]
           },
           {
             "id": "draconic-spells",
