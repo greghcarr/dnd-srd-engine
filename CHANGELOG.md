@@ -4,6 +4,16 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Docs: reconcile the subclass documentation against the pack + SRD audit (slice 345)**
+
+Audit of the existing subclass work surfaced several stale / inaccurate doc claims (no code or content was wrong; the pack is SRD-accurate). Ground truth: 12 subclasses (one per class, all SRD 5.2.1-matched), 58 feature entries, 31 with effects, 27 `effects: []` (12 at L3, 15 at L6+). Corrected:
+
+- [docs/gaps-class-features.md](docs/gaps-class-features.md): the subclass paragraph was frozen at the "batch 1.x" snapshot and never updated for slices 204-218. Fixed three stale claims: Draconic **Elemental Affinity** is a full wire (slice 204 added the `modifierSum('damage')` fold), not "deferred"; Life Domain **Spells** are wired (`GrantSpell` has had an engine consumer since slice 212), not "schema-only"; Hunter **Defensive Tactics** is partially wired (Escape the Horde arm, slice 206), not an all-deferred stub; and Life Domain **Supreme Healing** is a full wire (`GrantMaxHealingDice`, slice 205). Added the missing Evoker note (it carries an L6 row). Rewrote the L3-stub list, which had mislabeled **Sculpt Spells** as an L3 stub (it is an L6 feature, matching SRD 5.2.1), listed Fiend Patron Spells as a stub (it is wired), and listed a main-class feature (Wild Shape forms); the corrected list is the 12 actual L3 `effects: []` stubs.
+- [docs/srd-5.2.1-audit-classes.md](docs/srd-5.2.1-audit-classes.md): the "Real level-placement drift (13 entries)" table presented already-fixed drifts as an open work queue, contradicting the prose ("all closed in slices 174-176"). Verified four entries plus Sculpt Spells against the current pack (all at their SRD levels) and relabeled the table as a resolved historical record. Reconciled the status-counts row, which still claimed "41 SRD-listed subclass features missing," with the post-batch figures (~40 beyond L3, ~8 wired/partial, ~13 outstanding; defers to Layer 4).
+- [docs/status.md](docs/status.md): fixed the same Sculpt-Spells-as-L3-stub error in the Subclasses row and listed the full set of L3 stubs.
+
+Pure docs reconciliation; no code, content, or counts in the pack changed. No new em/en dashes introduced (the three docs' pre-existing counts went down, not up). doc-size audit green.
+
 ## 0.1.0-alpha.11 - 2026-05-20
 
 **Release (slice 344): bump to 0.1.0-alpha.11**

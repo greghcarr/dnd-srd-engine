@@ -16,8 +16,8 @@ Outcome (slice 153): documentation pass. Identifies real drift and missing featu
 |---|---|---|---|
 | Classes (base names) | 12 | 12 | 12 / 12 |
 | Subclasses (names) | 12 | 12 (one per class) | 12 / 12 |
-| Main-class features (by first appearance) | ~110 | ~95 | ~95 in both; 12 with main-class level-placement drift; 1 subclass-feature drift |
-| Subclass features | ~25 | ~66 | ~25 in both; **41 SRD-listed subclass features missing from pack** |
+| Main-class features (by first appearance) | ~110 | ~95 | ~95 in both; the 12 main-class + 1 subclass level-placement drifts were all closed in slices 174-176 (see the resolved table below) |
+| Subclass features | ~31 wired / 58 entries | ~66 | Pack ships 58 subclass feature entries (31 with effects, 27 `effects: []`). Of the ~40 SRD features beyond the L3 baseline, batches 1.1-1.8 wired or partially wired ~8; the remainder are deferred-with-reason or unstarted (~13 outstanding); see "Layer 4" for the current per-feature status. |
 
 The class structure is clean. Drift surface concentrates in (a) per-feature level placements within main classes and (b) the depth of subclass coverage.
 
@@ -33,11 +33,11 @@ All 12 pack subclasses match the 12 SRD 5.2.1 subclasses (SRD ships exactly one 
 
 The pack models scaling features as separate level entries (e.g., `Bardic Inspiration (d6)` at L1, `Bardic Inspiration (d8)` at L5, `Bardic Inspiration (d12)` at L15) while SRD lists each feature once at first appearance with scaling described in the body. The audit normalizes pack entries to first-appearance for comparison.
 
-### Real level-placement drift (13 entries)
+### Real level-placement drift (13 entries): all closed (slices 174-176), historical record
 
-The pack places these features at different levels than SRD 5.2.1.
+**Resolved.** All entries below were corrected in slices 174-176; the pack now grants each feature at the SRD level. The "Pre-fix pack level" column records the placement before the fix and is retained as a historical record (verified against the current pack: e.g. Cleric Channel Divinity is now L2, Bard Expertise L2, Fighter Tactical Mind L2, Rogue Reliable Talent L7, and the one subclass entry, Evoker Sculpt Spells, is now L6, which matches SRD 5.2.1, so it was never a true drift). Do not treat this table as an open work queue.
 
-| Class | Feature | Pack level | SRD level |
+| Class | Feature | Pre-fix pack level | SRD level (now matched) |
 |---|---|---|---|
 | Barbarian | Improved Brutal Strike | L13 | L17 |
 | Bard | Expertise | L3 | L2 |
@@ -53,7 +53,7 @@ The pack places these features at different levels than SRD 5.2.1.
 | Rogue | Devious Strikes | L18 | L14 |
 | Wizard (Evoker subclass) | Sculpt Spells | L3 | L6 |
 
-These are content bugs where the engine grants a feature at the wrong character level compared to RAW. Each needs a per-class fix that moves the feature in `levelTable` to the correct level. Out of scope for the audit slice; tracked for follow-up.
+These were content bugs where the engine granted a feature at the wrong character level compared to RAW. Each was fixed by moving the feature in `levelTable` to the SRD level (slices 174-176); the table is kept only as a historical record of what was corrected.
 
 ### Pack-only main-class features (5 entries, PHB 2014-flavored)
 
