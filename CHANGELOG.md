@@ -4,6 +4,16 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content + audit: reclassify 4 mislabeled Potions + categorization guard (slice 309)**
+
+Pattern-check follow-up to slice 305. Slice 305 corrected three potions miscategorized as `itemKind: "magic"` (which carries only passive `effects` / `onUse` and can't express consumption) while wiring them, but the sweep was under-swept. A rigorous cross-reference of every `magic`-kind pack item against SRD item typing found four more SRD-"Potion"-typed items still mislabeled: **Oil of Etherealness**, **Philter of Love**, **Potion of Clairvoyance**, **Potion of Longevity**. All four are now `itemKind: "consumable"`.
+
+Their mechanics stay deferred (empty `onConsume`), so this is a categorization correctness fix, not a wiring change: Etherealness is a cross-plane primitive the engine doesn't model; Philter's "Charmed by the next creature you see within 10 minutes" needs a deferred-onset trigger keyed to a later perception event; Clairvoyance has a dedicated `planClairvoyance` (the `onConsume` `CastSpell` variant delegates to `planCastSpell`, not dedicated planners); Longevity's age change is narrative. The reclassification makes them *wireable* (a `magic` item can never carry `onConsume`) and corrects the coverage breakdown.
+
+Guard (promote-repeatable-sweep-to-audit norm): [tests/audit/srd-drift.test.ts](tests/audit/srd-drift.test.ts) gains a check — every SRD-"Potion"-typed item must ship as `itemKind: "consumable"`. The SRD item parser now captures the item-type word(s) before the first comma of the spec line. Scoped to "Potion" only: the three Dusts (Disappearance / Dryness / Sneezing and Choking) are RAW "Wondrous Item" (single-use but not Potion-typed), so `magic` stays defensible for them and they are not flagged. Negative proof: planting one reverted item makes the new check fail; restoring it goes green.
+
+Audit (content + audit): Names — no new identifiers beyond the SrdItem `type` field. DRY — reused the existing srd-drift SRD-parsing + name-match + `SRD_AVAILABLE` skip infrastructure rather than a new harness. SRP — the new it() checks one invariant. Magic numbers — none. Mechanical outcomes asserted — the four reclassified items now satisfy the guard; a planted regression is caught (verified). Tests — 1 new audit check (srd-drift 16 → 17). Full suite green (1896 passed), tsc clean, coverage snapshot unchanged (the four were unwired before and after). Docs: gaps Items breakdown (magic 289 → 285, consumables 55 → 59; wired count unchanged at 75).
+
 **Engine + content: IncreaseAbilityScore primitive + 7 canonical users (slice 308)**
 
 New effect primitive `IncreaseAbilityScore { ability, amount, max }` — an additive ability-score increase capped at `max`, distinct from the existing `OverrideAbilityScore` (which *sets* / floors a score and would mask a wearer's own higher value). RAW shape: "Your [ability] increases by N, to a maximum of M." This was the highest-leverage row in the deferred-primitives backlog; it unblocks the six ability Ioun Stones and Belt of Dwarvenkind's Toughness arm in one slice.
