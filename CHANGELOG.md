@@ -4,6 +4,16 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content: multi-damage save mechanic + Flame Strike (slice 341)**
+
+The `save` `SpellMechanic` gained an optional `additionalDamage` array (each entry: `damageDice` + `damageType` + its own `extraDicePerSlotLevel`). Each component is rolled once for the spell (AOE), takes the same success / Evasion halving as the primary `damageDice`, and lands as its own component in the single `DamageApplied` so per-type resistance / immunity is honored independently. Canonical user **Flame Strike** (DEX save, 5d6 Fire + 5d6 Radiant, half on success, both types +1d6 per slot above 5th) is the RAW 2024 shape; a creature resistant to one type still takes the other in full.
+
+Backward-compatible: spells without `additionalDamage` roll and emit exactly as before (the components array reduces to the single primary component, no extra RNG consumed), so the ~60 existing save spells and their transcripts are unchanged.
+
+Spell coverage: 191 -> 192 wired, 90 -> 89 deferred (the multi-damage-AoE cluster drops to prismatic-spray / meteor-swarm / prismatic-wall, which additionally need multi-AoE / RNG-damage-table shapes). New [tests/unit/engine/slice-341-flame-strike.test.ts](tests/unit/engine/slice-341-flame-strike.test.ts) pins the two-component DamageApplied (Fire + Radiant), the per-slot upcast on both types, and replay-equivalence; flame-strike flipped from `skip` to an active `save` expectation in the coverage smoke test.
+
+Uncle Bob audit: **Names** `additionalDamage` / `additionalBase` / `outcomeAmount` read as what they hold. **DRY** the success/Evasion halving was factored into one `outcomeAmount(raw)` applied to the primary and every additional component, replacing the inline `finalAmount`; mitigation + fatal-intercept run once over the merged component list. **SRP** the mechanic still does one thing (a save with damage); the multi-type is just more components into the existing pipeline. **Magic numbers** the 5d6 / +1d6-per-slot live in RAW-cited pack content. **at-threading** unchanged; additional dice roll in the planner alongside the primary, baked into `DamageApplied`. **Mechanical outcomes asserted** one DamageApplied carrying both `fire` and `radiant`, each within a 5d6 roll, both scaling on upcast; replay-equivalence. **Tests** prevent the second component being dropped or merged into the wrong type, and a regression in single-component spells (full suite). No em/en dashes. `tsc --noEmit` clean.
+
 **Docs: archive slices 329-336 out of the live CHANGELOG (slice 340)**
 
 The live CHANGELOG reached ~58 KB (approaching the 60 KB single-Read ceiling) across the post-alpha.10 Unreleased cohort. Per the doc-size discipline playbook, the per-slice detail for slices 329-336 moved to [docs/changelog/archive-slices-329-336.md](docs/changelog/archive-slices-329-336.md); the live file keeps a cohort summary + pointer (below) and the most recent slices (337-339) inline. The archive pointer-block index gained the new file. No code or content change; docs only. doc-size audit green; live CHANGELOG back to ~41 KB.

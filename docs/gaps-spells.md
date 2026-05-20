@@ -18,7 +18,7 @@ A prior version of this doc tracked the **full PHB 2024 spell list** as its deno
 
 ## Totals
 
-**351 in pack**: **191 wired** (152 cast-time, 13 zone-tick, 26 dedicated planner), **70 narrative**, **90 deferred** (genuine mechanical gap, grouped by needed primitive per level below).
+**351 in pack**: **192 wired** (153 cast-time, 13 zone-tick, 26 dedicated planner), **70 narrative**, **89 deferred** (genuine mechanical gap, grouped by needed primitive per level below).
 
 ## Biggest deferred clusters (the priority queue)
 
@@ -28,7 +28,7 @@ The remaining mechanical gap fragments across ~20 small primitives; there is no 
 - **HP-threshold tier effect** (2 remaining): divine-word, power-word-heal. The `hp-threshold` mechanic shipped in slice 338 (power-word-kill: destroy / 12d12 psychic) and gained a `condition` arm in slice 339 (power-word-stun: Stunned at or below 150 HP with a recurring CON save, else Speed 0). The remaining two need a multi-threshold tiered variant (divine-word) and a heal + multi-condition-remove arm (power-word-heal).
 - **Non-damage area zones** (~7): darkness, silence, zone-of-truth, tiny-hut, wind-wall, guardian-of-faith, compulsion. Need obscurement / silence / ward zone shapes distinct from the damage-zone `aura-damage` mechanic.
 - **Beyond-image illusion** (~5): seeming, mislead, project-image, programmed-illusion, mirage-arcane.
-- **Multi-damage AoE** (4): flame-strike, prismatic-spray, meteor-swarm, prismatic-wall.
+- **Multi-damage AoE** (3 remaining): prismatic-spray, meteor-swarm, prismatic-wall. The save mechanic gained an `additionalDamage` array in slice 341 (flame-strike: fire + radiant); the remaining three also need multi-AoE / RNG-damage-table shapes on top of multi-type.
 - **Terrain shaping** (~5): hallucinatory-terrain, passwall, wall-of-stone, move-earth, mirage-arcane (mostly consumer-side; the engine models no positions).
 - **On-hit smite rider via `castSpell`** (3): divine-smite, shining-smite, ensnaring-strike (the always-on smites already wire as one-shot buff conditions; these three need the cast-spell on-hit-rider path).
 - **Multi-target movement-restriction / force cage** (3): resilient-sphere, forcecage, wall-of-force.
@@ -122,16 +122,15 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 **Narrative (6):** control-water, divination, fabricate, private-sanctum, secret-chest, stone-shape.
 
-## Level 5 (38 in pack): 12 wired, 11 narrative, 15 deferred
+## Level 5 (38 in pack): 13 wired, 11 narrative, 14 deferred
 
-**Wired, cast-time (9):** cloudkill, cone-of-cold, conjure-elemental, contagion, dominate-person, greater-restoration, hold-monster, insect-plague, mass-cure-wounds.
+**Wired, cast-time (10):** cloudkill, cone-of-cold, conjure-elemental, contagion, dominate-person, flame-strike (`save` mechanic with `additionalDamage`: 5d6 fire + 5d6 radiant, DEX half, +1d6 each per slot; slice 341), greater-restoration, hold-monster, insect-plague, mass-cure-wounds.
 
 **Wired, planner (3):** raise-dead, reincarnate, scrying.
 
-**Deferred (15):**
+**Deferred (14):**
 - **terrain primitive:** passwall, wall-of-stone.
 - **area-wall (no damage, no save):** wall-of-force.
-- **multi-damage AoE:** flame-strike.
 - **illusion primitive:** seeming, mislead.
 - **controllable spell-construct (action menu):** arcane-hand, animate-objects.
 - **cross-plane / planar summon:** planar-binding.

@@ -324,7 +324,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'creation': { kind: 'skip', reason: 'utility creation of vegetable / mineral matter; creation primitive not modeled' },
   'dispel-evil-and-good': { kind: 'skip', reason: 'aura + on-touch dispel + reaction-style banish; multi-mode spell not modeled' },
   'dream': { kind: 'skip', reason: 'narrative communication / nightmare; DM-resolution primitive not modeled' },
-  'flame-strike': { kind: 'skip', reason: 'AoE DEX save with multi-type damage (fire + radiant); multi-damage AoE primitive not modeled' },
+  'flame-strike': { kind: 'save' },
   'geas': { kind: 'skip', reason: '30-day forced compulsion + recurring psychic damage on disobedience; long-duration compulsion primitive not modeled' },
   'hallow': { kind: 'skip', reason: '24-hour ritual area ward with caster-chosen sub-effect; area-warding + choice primitive not modeled' },
   'legend-lore': { kind: 'skip', reason: 'ritual divination; DM-resolution primitive not modeled' },

@@ -44,6 +44,22 @@ const SpellSaveMechanicSchema = z.object({
   damageDice: DiceExpressionSchema.optional(),
   damageType: DamageTypeSchema.optional(),
   halfOnSuccess: z.boolean().optional(),
+  // Slice 341: additional damage components of a *different* type,
+  // applied in the same save (Flame Strike: 5d6 Fire + 5d6 Radiant).
+  // Each is rolled once for the spell (AOE), receives the same
+  // success / Evasion halving as the primary `damageDice`, and lands
+  // as its own component in the single DamageApplied so per-type
+  // resistance / immunity is honored independently. Each entry carries
+  // its own `extraDicePerSlotLevel` (Flame Strike scales both types).
+  additionalDamage: z
+    .array(
+      z.object({
+        damageDice: DiceExpressionSchema,
+        damageType: DamageTypeSchema,
+        extraDicePerSlotLevel: z.number().int().min(0).optional(),
+      }),
+    )
+    .optional(),
   conditionOnFail: z.string().optional(),
   casterChoosesVariant: z
     .object({

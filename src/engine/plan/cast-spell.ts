@@ -485,6 +485,9 @@ const planSaveMechanic = (
   // gated on `event.damageType`.
   let rawDamage = 0;
   let saveDamageModifierBonus = 0;
+  // Slice 341: additional damage components of a different type (Flame
+  // Strike's Radiant alongside its Fire), rolled once for the spell.
+  const additionalBase: { amount: number; type: DamageType }[] = [];
   if (mechanic.damageDice !== undefined && mechanic.damageType !== undefined) {
     const casterEffects = buildEffectStack({
       character,
@@ -497,6 +500,15 @@ const planSaveMechanic = (
     const { rolls: baseRolls, modifier } = rollDamage(mechanic.damageDice, bonusDice, rng, false);
     const scalingRolls = rollCantripScaling(mechanic.cantripScalingDice, cantripSteps, rng, false);
     rawDamage = [...baseRolls, ...scalingRolls].reduce((s, v) => s + v, 0) + modifier + saveDamageModifierBonus;
+    for (const comp of mechanic.additionalDamage ?? []) {
+      const compBonusDice = (comp.extraDicePerSlotLevel ?? 0) * Math.max(0, intent.slotLevel - spell.level);
+      const compMod = casterEffects.modifierSum('damage', new Map<string, unknown>([['event.damageType', comp.damageType]]));
+      const { rolls: compRolls, modifier: compModifier } = rollDamage(comp.damageDice, compBonusDice, rng, false);
+      additionalBase.push({
+        amount: compRolls.reduce((s, v) => s + v, 0) + compModifier + compMod,
+        type: comp.damageType,
+      });
+    }
   }
 
   for (const targetId of intent.targetIds) {
@@ -575,21 +587,30 @@ const planSaveMechanic = (
         targetEffects.hasEvasion() &&
         mechanic.ability === 'DEX' &&
         mechanic.halfOnSuccess === true;
-      const finalAmount = evasionApplies
-        ? success
-          ? 0
-          : halveDamage(rawDamage)
-        : success && mechanic.halfOnSuccess === true
-          ? halveDamage(rawDamage)
-          : success
+      const outcomeAmount = (raw: number): number =>
+        evasionApplies
+          ? success
             ? 0
-            : rawDamage;
-      if (finalAmount > 0) {
+            : halveDamage(raw)
+          : success && mechanic.halfOnSuccess === true
+            ? halveDamage(raw)
+            : success
+              ? 0
+              : raw;
+      // Slice 341: primary + each additional component, each taking the
+      // same save / Evasion halving, merged into one DamageApplied so
+      // per-type resistance is honored independently (Flame Strike's
+      // Fire + Radiant).
+      const rawComponents = [
+        { amount: outcomeAmount(rawDamage), type: mechanic.damageType },
+        ...additionalBase.map((c) => ({ amount: outcomeAmount(c.amount), type: c.type })),
+      ].filter((c) => c.amount > 0);
+      if (rawComponents.length > 0) {
         const mitigated = mitigateDamage({
           character: target,
           itemInstances: state.itemInstances,
           content,
-          rawComponents: [{ amount: finalAmount, type: mechanic.damageType }],
+          rawComponents,
           characters: state.characters,
           sourceIsMagical: true,
         });
