@@ -4,6 +4,14 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content + audit: retain item descriptions + a permanent phantom-field audit (slice 373)**
+
+Closes the cosmetic data-loss the slice-372 sweep flagged and promotes the sweep itself to a CI guard. `ItemBaseSchema` lacked a `description` field (only `ConsumableSchema` / `GearSchema` declared it), so weapon / armor / tool / magic items had their authored `description` silently stripped at parse - 52 of the pack's 135 item descriptions were being dropped. Fix: moved `description` to `ItemBaseSchema` so every item kind inherits it (and removed the now-redundant per-kind declarations); all 135 descriptions are retained.
+
+**Guard:** new [tests/audit/phantom-fields.test.ts](tests/audit/phantom-fields.test.ts) generalizes the slices 370-372 per-schema `.strict()` guards into one comprehensive check. It deep-diffs the raw pack against its `ContentPackSchema`-parsed form across every content category (spells, conditions, items, monsters, classes, subclasses, species, backgrounds, feats) and fails on any field present in the raw entity but stripped after parsing - the exact signature of the four bugs fixed in 370-372. An `ALLOWED_STRIPS` allowlist (empty today) documents any intentional strip, with a companion accuracy check. The audit reads zero strips across the whole pack.
+
+New audit aside, no engine behavior change. Uncle Bob audit: **Names** `collectStrippedPaths` / `ALLOWED_STRIPS` read as what they do. **DRY** `description` lives once on the base instead of three copies; the diff walker is one recursive function reused for both the strip check and the allowlist-accuracy check. **SRP** the audit only compares raw vs parsed; it doesn't interpret semantics. **Magic numbers** none. **Tests** the audit prevents the entire phantom-field class (a field authored on a schema that drops it) anywhere in the pack, not just the three spell schemas now `.strict()`. No em/en dashes. `tsc --noEmit` clean; full suite green.
+
 **Bugfix: Ray of Frost / Shocking Grasp didn't scale with level (slice 372)**
 
 Generalized the slice-370/371 phantom-field sweep to **all** content (a raw-vs-Zod-parsed deep diff over every category). It surfaced a misplaced **top-level** `cantripScalingDice` map (`{ "5": "2d8", "11": "3d8", "17": "4d8" }`) on four cantrips - the engine reads only the per-mechanic `cantripScalingDice` string, so `SpellSchema` stripped the top-level map. **Ray of Frost and Shocking Grasp had it only at the top level** (not in their attack mechanic), so they stayed 1d8 at every level instead of scaling +1d8 at L5/11/17.
