@@ -102,7 +102,7 @@ describe('engine.plan.removeCurse', () => {
     const cleric = buildCleric();
     const victim = buildVictim();
     const curses = [
-      makeAppliedCurse(victim.id, 'cursed-ability-active', cleric.id),
+      makeAppliedCurse(victim.id, 'cursed-ability-str-active', cleric.id),
       makeAppliedCurse(victim.id, 'cursed-attacks-active', cleric.id),
       makeAppliedCurse(victim.id, 'cursed-inert-active', cleric.id),
       makeAppliedCurse(victim.id, 'cursed-vulnerable-active', cleric.id),
@@ -116,7 +116,7 @@ describe('engine.plan.removeCurse', () => {
     expect(removed).toHaveLength(4);
     const removedIds = removed.map((e) => e.conditionId).sort();
     expect(removedIds).toEqual([
-      'cursed-ability-active',
+      'cursed-ability-str-active',
       'cursed-attacks-active',
       'cursed-inert-active',
       'cursed-vulnerable-active',

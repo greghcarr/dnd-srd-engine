@@ -2216,7 +2216,7 @@
     { "id": "vampiric-touch", "name": "Vampiric Touch", "level": 3, "school": "necromancy", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["sorcerer", "warlock", "wizard"], "mechanicalEffects": [{ "kind": "attack", "attackKind": "melee", "damageDice": "3d6", "damageType": "necrotic", "extraDicePerSlotLevel": 1 }] },
     { "id": "animate-dead", "name": "Animate Dead", "level": 3, "school": "necromancy", "castingTime": "1 minute", "range": "10 feet", "components": { "verbal": true, "somatic": true, "material": "a drop of blood, a piece of flesh, and a pinch of bone dust" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["cleric", "wizard"], "mechanicalEffects": [{ "kind": "summon", "name": "Animated Skeleton", "ac": 12, "hpBase": 13, "hpPerSlotAbove": 4, "baseSlotLevel": 3, "speedFeet": 30 }] },
     { "id": "beacon-of-hope", "name": "Beacon of Hope", "level": 3, "school": "abjuration", "castingTime": "Action", "range": "30 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["cleric"], "mechanicalEffects": [] },
-    { "id": "bestow-curse", "name": "Bestow Curse", "level": 3, "school": "necromancy", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "cleric", "wizard"], "mechanicalEffects": [{ "kind": "save", "ability": "WIS", "casterChoosesVariant": { "variants": [{ "key": "ability-disadvantage", "conditionId": "cursed-ability-active" }, { "key": "attack-disadvantage", "conditionId": "cursed-attacks-active" }, { "key": "inactive-turn", "conditionId": "cursed-inert-active" }, { "key": "extra-damage", "conditionId": "cursed-vulnerable-active" }] } }] },
+    { "id": "bestow-curse", "name": "Bestow Curse", "level": 3, "school": "necromancy", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "cleric", "wizard"], "mechanicalEffects": [{ "kind": "save", "ability": "WIS", "casterChoosesVariant": { "variants": [{ "key": "ability-disadvantage-str", "conditionId": "cursed-ability-str-active" }, { "key": "ability-disadvantage-dex", "conditionId": "cursed-ability-dex-active" }, { "key": "ability-disadvantage-con", "conditionId": "cursed-ability-con-active" }, { "key": "ability-disadvantage-int", "conditionId": "cursed-ability-int-active" }, { "key": "ability-disadvantage-wis", "conditionId": "cursed-ability-wis-active" }, { "key": "ability-disadvantage-cha", "conditionId": "cursed-ability-cha-active" }, { "key": "attack-disadvantage", "conditionId": "cursed-attacks-active" }, { "key": "inactive-turn", "conditionId": "cursed-inert-active" }, { "key": "extra-damage", "conditionId": "cursed-vulnerable-active" }] } }] },
     { "id": "clairvoyance", "name": "Clairvoyance", "level": 3, "school": "divination", "castingTime": "10 minutes", "range": "1 mile", "components": { "verbal": true, "somatic": true, "material": "a focus worth 100+ GP, either a jeweled horn for hearing or a glass eye for seeing" }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["bard", "cleric", "sorcerer", "wizard"], "mechanicalEffects": [] },
     { "id": "conjure-animals", "name": "Conjure Animals", "level": 3, "school": "conjuration", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["druid", "ranger"], "mechanicalEffects": [{ "kind": "summon", "name": "Conjured Animal Spirit", "ac": 14, "hpBase": 30, "hpPerSlotAbove": 5, "baseSlotLevel": 3, "speedFeet": 30 }] },
     { "id": "create-food-and-water", "name": "Create Food and Water", "level": 3, "school": "conjuration", "castingTime": "Action", "range": "30 feet", "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["cleric", "paladin"], "mechanicalEffects": [] },
@@ -8427,12 +8427,57 @@
       ]
     },
     {
-      "id": "cursed-ability-active",
-      "name": "Cursed: Ability Score Disadvantage",
-      "description": "The caster chose one ability score at cast time; while Cursed, the target has Disadvantage on ability checks and saves made with that ability. The chosen ability isn't represented in the condition itself (the engine's casterChoosesVariant primitive is flat; a nested sub-choice for the specific ability isn't modeled), so the consumer carries the ability name out-of-band and enforces the disadvantage on checks/saves.",
+      "id": "cursed-ability-str-active",
+      "name": "Cursed: Strength Disadvantage",
+      "description": "Bestow Curse, Strength arm: while Cursed, the target has Disadvantage on Strength ability checks and Strength saving throws. The caster picks the ability at cast time via the `ability-disadvantage-str` casterChoosesVariant key.",
       "stackable": false,
       "endsOn": [],
-      "effects": [],
+      "effects": [{ "kind": "SetAdvantage", "on": { "kind": "check", "ability": "STR" }, "mode": "disadvantage" }, { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "STR" }, "mode": "disadvantage" }],
+      "category": "curse"
+    },
+    {
+      "id": "cursed-ability-dex-active",
+      "name": "Cursed: Dexterity Disadvantage",
+      "description": "Bestow Curse, Dexterity arm: while Cursed, the target has Disadvantage on Dexterity ability checks and Dexterity saving throws.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [{ "kind": "SetAdvantage", "on": { "kind": "check", "ability": "DEX" }, "mode": "disadvantage" }, { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "DEX" }, "mode": "disadvantage" }],
+      "category": "curse"
+    },
+    {
+      "id": "cursed-ability-con-active",
+      "name": "Cursed: Constitution Disadvantage",
+      "description": "Bestow Curse, Constitution arm: while Cursed, the target has Disadvantage on Constitution ability checks and Constitution saving throws.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [{ "kind": "SetAdvantage", "on": { "kind": "check", "ability": "CON" }, "mode": "disadvantage" }, { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "CON" }, "mode": "disadvantage" }],
+      "category": "curse"
+    },
+    {
+      "id": "cursed-ability-int-active",
+      "name": "Cursed: Intelligence Disadvantage",
+      "description": "Bestow Curse, Intelligence arm: while Cursed, the target has Disadvantage on Intelligence ability checks and Intelligence saving throws.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [{ "kind": "SetAdvantage", "on": { "kind": "check", "ability": "INT" }, "mode": "disadvantage" }, { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "INT" }, "mode": "disadvantage" }],
+      "category": "curse"
+    },
+    {
+      "id": "cursed-ability-wis-active",
+      "name": "Cursed: Wisdom Disadvantage",
+      "description": "Bestow Curse, Wisdom arm: while Cursed, the target has Disadvantage on Wisdom ability checks and Wisdom saving throws.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [{ "kind": "SetAdvantage", "on": { "kind": "check", "ability": "WIS" }, "mode": "disadvantage" }, { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "WIS" }, "mode": "disadvantage" }],
+      "category": "curse"
+    },
+    {
+      "id": "cursed-ability-cha-active",
+      "name": "Cursed: Charisma Disadvantage",
+      "description": "Bestow Curse, Charisma arm: while Cursed, the target has Disadvantage on Charisma ability checks and Charisma saving throws.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [{ "kind": "SetAdvantage", "on": { "kind": "check", "ability": "CHA" }, "mode": "disadvantage" }, { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "CHA" }, "mode": "disadvantage" }],
       "category": "curse"
     },
     {

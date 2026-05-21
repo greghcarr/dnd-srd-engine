@@ -365,7 +365,6 @@ describe('pack integrity: wired spells do not apply effect-less conditions', () 
     // do-nothing stub. Remove from this list when the bug is fixed (the
     // accuracy check below will then demand it).
     'resisted', // Resistance cantrip: no consume path + 2024 RAW drift
-    'cursed-ability-active', // Bestow Curse: needs per-ability parameterization
     'cursed-inert-active', // Bestow Curse: needs per-turn random incapacitation
     // Consumer-managed / narrative (no clean engine model):
     'commanded-approach-active',
