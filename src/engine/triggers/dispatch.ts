@@ -173,8 +173,11 @@ const rollAddDamage = (
   rng: RNG,
   critical: boolean,
   forgoDice: number = 0,
+  diceOverride?: string,
 ): { amount: number; rolls: number[] } => {
-  const parsed = parseDiceExpression(action.dice);
+  // Slice 390: a per-instance `riderDamageDice` (Absorb Elements' slot-
+  // scaled next-hit bonus) replaces the rider's declared dice.
+  const parsed = parseDiceExpression(diceOverride ?? action.dice);
   // Cunning Strike forgoes dice "before rolling"; a crit then doubles
   // whatever remains.
   const baseCount = Math.max(0, parsed.count - forgoDice);
@@ -209,11 +212,12 @@ const fireAddDamage = (
     content: ResolvedContent;
     sourceIsMagical: boolean;
     forgoDice?: number;
+    diceOverride?: string;
   },
 ): Event[] => {
   const { action, event, rng, causedByEventId, state, content, sourceIsMagical } = input;
   if (event.type !== 'AttackRolled') return [];
-  const { amount } = rollAddDamage(action, rng, event.critical, input.forgoDice ?? 0);
+  const { amount } = rollAddDamage(action, rng, event.critical, input.forgoDice ?? 0, input.diceOverride);
   if (amount <= 0) return [];
   const target = state.characters[event.targetId];
   const rawComponents = [{ amount, type: action.damageType }];
@@ -514,6 +518,7 @@ const fireTrigger = (
   content: ResolvedContent,
   sourceIsMagical: boolean,
   forgoDice: number = 0,
+  riderDamageDice?: string,
 ): FiredTrigger | null => {
   const cadence = cadencePayload(effect.oncePer);
   const triggerFired: TriggerFiredEvent = {
@@ -538,6 +543,7 @@ const fireTrigger = (
           content,
           sourceIsMagical,
           forgoDice: action.cunningStrikeEligible === true ? forgoDice : 0,
+          ...(riderDamageDice !== undefined ? { diceOverride: riderDamageDice } : {}),
         }),
       );
     } else if (action.kind === 'AddDamageToAttacker') {
@@ -756,6 +762,7 @@ export const dispatchTriggers = (input: DispatchInput): Event[] => {
         content,
         sourceIsMagical,
         forgoDice,
+        appliedFrom?.riderDamageDice,
       );
       if (fired === null) continue;
       emitted.push(...fired.events);

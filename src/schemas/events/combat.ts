@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ULIDSchema, DamageTypeSchema, AbilityScoreSchema } from '../primitives.js';
+import { ULIDSchema, DamageTypeSchema, AbilityScoreSchema, DiceExpressionSchema } from '../primitives.js';
 import { EventEnvelopeSchema } from './envelope.js';
 
 export const DAMAGE_MITIGATION_KINDS = ['resisted', 'immune', 'vulnerable'] as const;
@@ -71,6 +71,13 @@ export const ConditionAppliedEventSchema = EventEnvelopeSchema.extend({
   // (Cunning Strike Poison / Knock Out: 8 + the rogue's DEX mod + PB).
   recurringSaveDC: z.number().int().optional(),
   recurringSaveAbility: AbilityScoreSchema.optional(),
+  // Per-instance override for the dice of this condition's `OnEvent`
+  // `AddDamage` rider (slice 390). When set, the trigger dispatcher rolls
+  // this dice expression instead of the rider's declared `dice`, letting a
+  // slot-scaled rider live on a fixed condition. Canonical user: Absorb
+  // Elements' next-hit bonus (1d6 + 1d6 per slot level above 1st), baked
+  // at cast time as `${slotLevel}d6`.
+  riderDamageDice: DiceExpressionSchema.optional(),
 });
 export type ConditionAppliedEvent = z.infer<typeof ConditionAppliedEventSchema>;
 

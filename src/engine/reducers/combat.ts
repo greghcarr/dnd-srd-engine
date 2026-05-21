@@ -172,6 +172,7 @@ export const applyConditionApplied = (
     ...(event.recurringSaveAbility !== undefined
       ? { recurringSaveAbility: event.recurringSaveAbility }
       : {}),
+    ...(event.riderDamageDice !== undefined ? { riderDamageDice: event.riderDamageDice } : {}),
   });
   if (event.hpMaxBonusDelta !== undefined && event.hpMaxBonusDelta !== 0) {
     character.hp.maxBonus = (character.hp.maxBonus ?? 0) + event.hpMaxBonusDelta;

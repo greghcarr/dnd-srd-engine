@@ -4,6 +4,14 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 390): Absorb Elements slot-scaled next-hit rider**
+
+Converted a narrow deviation: Absorb Elements' next-hit bonus damage was always 1d6 regardless of the slot it was cast at. RAW: "the damage increases by 1d6 for each spell slot level above 1st" (so a 3rd-level cast adds 3d6). The bonus lives on the `absorb-elements-charged-<type>-active` condition's `OnEvent`/`AddDamage` rider, whose dice was fixed at `1d6` in the pack.
+
+New per-instance rider-dice override (same family as the slice-387/388 per-instance fields): `ConditionApplied` + `AppliedCondition` carry an optional `riderDamageDice`, and the trigger dispatcher rolls it instead of the rider's declared dice when the firing condition carries it. `planAbsorbElements` bakes `${slotLevel}d6` at cast time (only when upcast, keeping the 1st-level diff out). Reusable for any slot-scaled rider on a fixed condition.
+
+Uncle Bob audit (engine slice): **Names** `riderDamageDice` / `diceOverride` read as what they do. **DRY** the override threads through the existing `fireTrigger` -> `fireAddDamage` -> `rollAddDamage` path (one optional param each); no parallel roll logic. **SRP** the applied condition carries the dice, the dispatcher rolls it, the planner bakes it. **Magic numbers** none (the `${slotLevel}d6` cites RAW). **Mechanical outcomes asserted** a 3rd-level Absorb Elements bakes a `3d6` rider and a non-crit next hit can exceed 6 (impossible with 1d6); the default 1st-level cast still rides 1d6. **Tests** the existing rider test (1d6) plus the new upcast-scaling case. No content change. No em/en dashes. `tsc --noEmit` clean; full suite green.
+
 **Content (slice 389): Intimidating Presence end-of-turn repeat save**
 
 Closed the deferred arm of Path of the Berserker L14 Intimidating Presence, using the slice-388 primitive. RAW: a creature Frightened by Intimidating Presence "repeats the save at the end of each of its turns, ending the effect on a success." This was the canonical deferral that motivated the per-instance fixed-DC recurring save: the berserker isn't a spellcaster and the DC is a feature DC (8 + STR + PB), which the spell-DC recurring-save path couldn't drive.

@@ -59,6 +59,10 @@ export const AppliedConditionSchema = z.object({
   // instead of the condition definition's `recurringSave` + a spell DC.
   recurringSaveDC: z.number().int().optional(),
   recurringSaveAbility: AbilityScoreSchema.optional(),
+  // Per-instance override for this condition's OnEvent AddDamage rider
+  // dice (slice 390). Absorb Elements bakes `${slotLevel}d6` here so the
+  // next-hit bonus scales with the slot it was cast at.
+  riderDamageDice: z.string().optional(),
 });
 export type AppliedCondition = z.infer<typeof AppliedConditionSchema>;
 
