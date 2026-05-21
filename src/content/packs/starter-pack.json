@@ -9191,7 +9191,7 @@
     {
       "id": "resisted",
       "name": "Resisted",
-      "description": "May add 1d4 to one saving throw; consumed on use (Resistance cantrip). Same consumer-managed shape as Guidance: no engine event fires at consume time, the consumer rolls the d4 and removes the condition.",
+      "description": "Resistance cantrip (SRD 5.2.1): the bearer chose one damage type at cast time; when it takes damage of that type, it reduces the total by 1d4, once per turn, for the spell's duration. The consumer calls engine.plan.consumeResistance({ targetId, damageType, damageAmount }) when the bearer takes damage of the chosen type; the planner rolls the 1d4 and emits a compensating Healed for the reduction (mirroring Absorb Elements, since the triggering DamageApplied has already committed). The marker carries empty effects because the reduction is the consumer-invoked reaction, not a passive modifier. Consumer-coordinated edges (documented): the once-per-turn cap and that the supplied damageType matches the cast-chosen type (the generic marker does not pin the type, exactly as Absorb Elements trusts its consumer-supplied type). Earlier this condition was a 2014-flavored 'add 1d4 to a save' stub with no consumer; slice 369 wired the 2024 damage-reduction behavior.",
       "stackable": false,
       "endsOn": [],
       "effects": []

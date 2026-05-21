@@ -102,6 +102,7 @@ import {
   planSanctuaryWardSave,
   planProtection,
   planConsumeGuidance,
+  planConsumeResistance,
   planUncannyDodge,
   planWeaponMastery,
   planForage,
@@ -147,6 +148,8 @@ import {
   type ProtectionOutcome,
   type ConsumeGuidanceIntent,
   type ConsumeGuidanceOutcome,
+  type ConsumeResistanceIntent,
+  type ConsumeResistanceOutcome,
   type UncannyDodgeIntent,
   type UncannyDodgeOutcome,
   type WeaponMasteryIntent,
@@ -372,6 +375,10 @@ export interface Engine {
       state: CampaignState,
       intent: Omit<ConsumeGuidanceIntent, 'type'>,
     ): ConsumeGuidanceOutcome;
+    consumeResistance(
+      state: CampaignState,
+      intent: Omit<ConsumeResistanceIntent, 'type'>,
+    ): ConsumeResistanceOutcome;
     uncannyDodge(
       state: CampaignState,
       intent: Omit<UncannyDodgeIntent, 'type'>,
@@ -726,6 +733,12 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     consumeGuidance(state, intent) {
       return planConsumeGuidance(state, content, rng, {
         type: 'ConsumeGuidance',
+        ...intent,
+      });
+    },
+    consumeResistance(state, intent) {
+      return planConsumeResistance(state, content, rng, {
+        type: 'ConsumeResistance',
         ...intent,
       });
     },
