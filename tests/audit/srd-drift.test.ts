@@ -289,16 +289,16 @@ const FEATURE_ALIASES: Record<string, string> = {
 };
 
 // Genuine content gaps the audit surfaces, tracked in
-// docs/gaps-class-features.md for a follow-up content slice. Keyed
+// docs/gaps-class-features.md until a content slice closes them. Keyed
 // `<classId> L<level> <normalized feature>`. Slice 378 closed the three
-// Weapon Mastery gaps (Barbarian / Fighter / Paladin L1). Heightened
-// Focus stays: it modifies Flurry of Blows / Patient Defense / Step of
-// the Wind, so it needs Focus-action planner changes, not a simple
-// grant. Removing an entry here when its feature lands makes the audit
-// (via the stale-allowlist self-check) assert the fix stays.
-const KNOWN_FEATURE_GAPS = new Set([
-  'monk L10 heightened focus',
-]);
+// Weapon Mastery gaps (Barbarian / Fighter / Paladin L1); slice 379
+// closed Monk L10 Heightened Focus (the feature row; its two engine-
+// modelable arms were already live in the Flurry of Blows / Patient
+// Defense planners). The allowlist is now empty: every SRD-listed
+// feature is present in the pack. Add an entry here only when a genuine
+// gap is found and consciously deferred; the stale-allowlist self-check
+// then forces it to be removed once the feature lands.
+const KNOWN_FEATURE_GAPS = new Set<string>([]);
 
 // Lazy-parse SRD at module scope, guarded on SRD_AVAILABLE. The
 // describe() callbacks below are evaluated at test-discovery time

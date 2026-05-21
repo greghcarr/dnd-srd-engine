@@ -4,6 +4,14 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 379): add the Monk L10 Heightened Focus feature row (close the last slice-377 gap)**
+
+Closed the final slice-377 feature-presence gap, emptying the audit's `KNOWN_FEATURE_GAPS` allowlist. Investigating Heightened Focus revealed it was misfiled as needing engine work: the two engine-modelable arms were **already live in the planners**. The Flurry of Blows planner already makes three Unarmed Strikes (not two) at Monk level 10+, and the Patient Defense planner already grants two rolls of the Martial Arts die as Temporary Hit Points when the Focus Point is spent at L10+. Both gate directly on the monk's level, so they functioned without a content feature row. The third arm (Step of the Wind moving a willing Large-or-smaller creature within 5 feet without provoking Opportunity Attacks) was, and stays, consumer-managed, consistent with the engine's no-positional-geometry stance (documented in the Step of the Wind planner).
+
+So the gap was purely the missing **content feature row** the slice-377 presence audit flags. Added `heightened-focus` to Monk L10 as `Custom { handlerId: 'heightened-focus' }` (planner-backed, like `martial-arts`), so it reads as wired in the feature-coverage matrix rather than an `effects: []` stub that would understate the live implementation. No engine change was needed. pack-integrity's Custom-handlerId backing check passes without a `BACKED_INDIRECTLY` entry because the string is already referenced in the Patient Defense planner (its Temporary-HP `source` label).
+
+Uncle Bob audit (content sweep): **Names** `heightened-focus` matches the `martial-arts` planner-backed-feature convention. **DRY** no duplication; reuses the existing planner implementations. **Magic numbers** none new (the L10 threshold + 3-strikes / 2-dice values already live in the planners). **Mechanical outcomes asserted** the slice-377 feature-presence check passes with an empty allowlist; the feature-coverage snapshot gains exactly `monk L10 heightened-focus` (inspected); pack-integrity stays green. No em/en dashes. `tsc --noEmit` clean; full suite green.
+
 **Content (slice 378): close the slice-377 Weapon Mastery feature-presence gaps**
 
 Closed three of the four gaps the slice-377 class-feature drift audit surfaced: Weapon Mastery (L1) was wired for Ranger and Rogue but missing on Barbarian, Fighter, and Paladin, the three other martial classes RAW grants it to. Added `GrantWeaponMastery` to all three (Barbarian and Paladin slots 2, Fighter slots 3, per the SRD tables / prose) and removed those entries from the audit's `KNOWN_FEATURE_GAPS` allowlist, so the stale-allowlist self-check now asserts the fix stays.

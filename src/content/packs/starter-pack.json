@@ -555,7 +555,7 @@
         "7": { "proficiencyBonus": 3, "features": [{ "id": "evasion-monk", "name": "Evasion", "effects": [{ "kind": "GrantEvasion" }] }], "columns": {} },
         "8": { "proficiencyBonus": 3, "features": [], "columns": {} },
         "9": { "proficiencyBonus": 4, "features": [{ "id": "acrobatic-movement", "name": "Acrobatic Movement", "effects": [] }], "columns": {} },
-        "10": { "proficiencyBonus": 4, "features": [{ "id": "self-restoration", "name": "Self-Restoration", "effects": [{ "kind": "GrantSelfRestoration" }] }], "columns": {} },
+        "10": { "proficiencyBonus": 4, "features": [{ "id": "self-restoration", "name": "Self-Restoration", "effects": [{ "kind": "GrantSelfRestoration" }] }, { "id": "heightened-focus", "name": "Heightened Focus", "effects": [{ "kind": "Custom", "handlerId": "heightened-focus" }] }], "columns": {} },
         "11": { "proficiencyBonus": 4, "features": [{ "id": "martial-arts-die-d10", "name": "Martial Arts (d10)", "effects": [] }], "columns": {} },
         "12": { "proficiencyBonus": 4, "features": [], "columns": {} },
         "13": { "proficiencyBonus": 5, "features": [{ "id": "deflect-energy", "name": "Deflect Energy", "effects": [] }], "columns": {} },
