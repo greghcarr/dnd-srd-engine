@@ -4,6 +4,14 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 389): Intimidating Presence end-of-turn repeat save**
+
+Closed the deferred arm of Path of the Berserker L14 Intimidating Presence, using the slice-388 primitive. RAW: a creature Frightened by Intimidating Presence "repeats the save at the end of each of its turns, ending the effect on a success." This was the canonical deferral that motivated the per-instance fixed-DC recurring save: the berserker isn't a spellcaster and the DC is a feature DC (8 + STR + PB), which the spell-DC recurring-save path couldn't drive.
+
+`planIntimidatingPresence` now stamps the Frightened condition with `recurringSaveDC` (the same 8 + STR + PB feature DC) + `recurringSaveAbility: 'WIS'`, so the consumer ticks the end-of-turn repeat save via `tickRecurringSave` and a success lifts the fear. No new engine plumbing - a one-field-pair addition on top of slice 388. The 1-minute duration and the once-per-Long-Rest (rage-restorable) use stay consumer-managed.
+
+Uncle Bob audit (content sweep): **Names** unchanged; reuses `recurringSaveDC` / `recurringSaveAbility`. **DRY** rides the slice-388 tick path; no new mechanism. **SRP** the planner bakes the save data; the tick planner resolves it. **Magic numbers** the DC is the existing computed feature DC. **Mechanical outcomes asserted** a Frightened-by-Intimidating-Presence target carries the feature DC + WIS recurring save, and a tick rolls that WIS save at the feature DC with no spellcasting caster. No schema or engine change. No em/en dashes. `tsc --noEmit` clean; full suite green.
+
 **Engine (slice 388): per-instance fixed-DC recurring save (Poison / Knock Out repeat save)**
 
 Converted the Cunning Strike Poison / Knock Out repeat-save deviation to full RAW. RAW: a creature Poisoned (or Knocked Out) by Cunning Strike "repeats the save at the end of each of its turns, ending the effect on a success." The existing recurring-save path (`planTickRecurringSave`) computed a **spell** save DC and required a spellcasting caster, neither of which fits a Rogue's fixed feature DC (8 + DEX + PB), so Poison/Knock Out shipped as plain conditions with only a 1-minute `autoExpiry`.

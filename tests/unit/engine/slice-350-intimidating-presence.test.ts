@@ -4,9 +4,11 @@
 // emanation makes a Wisdom save (DC 8 + STR mod + Proficiency Bonus); on
 // a failure it has the Frightened condition. Wired as a dedicated
 // combat planner reusing the shared `rollSaveAgainstDC` helper + the
-// bare `frightened` condition. The end-of-turn repeat save (needs a
-// feature-DC recurring-save path), the 1-minute duration, and the
-// once-per-Long-Rest use (rage-restorable) are deferred / consumer-side.
+// bare `frightened` condition. Slice 389 added the RAW end-of-turn
+// repeat save: the Frightened condition carries the per-instance
+// fixed-DC recurring WIS save (slice 388), ticked via `tickRecurringSave`.
+// The 1-minute duration and the once-per-Long-Rest use (rage-restorable)
+// stay deferred / consumer-side.
 import { describe, expect, it } from 'vitest';
 import { createEngine } from '../../../src/engine/index.js';
 import { seededRNG } from '../../../src/rng/seeded.js';
@@ -97,6 +99,35 @@ describe('slice 350: Intimidating Presence', () => {
       // A failed save applies Frightened to that target; a success does not.
       expect(frightenedTargets.has(save.targetId)).toBe(!save.success);
     }
+  });
+
+  it('the Frightened condition carries a fixed-DC repeat WIS save the consumer can tick (slice 389)', () => {
+    // Find a seed where a foe fails and is Frightened, then tick the
+    // end-of-turn repeat save. The barbarian is not a spellcaster, so a
+    // tick that rolls a WIS save at the feature DC proves the per-instance
+    // fixed-DC path (no spell-DC / caster resolution).
+    for (let seed = 1; seed < 60; seed += 1) {
+      const s = seedScene(seed);
+      let campaign = commit(
+        s.campaign,
+        s.engine.plan.intimidatingPresence(s.campaign.state, { barbarianId: s.barbarianId, targetIds: s.foeIds }).events,
+      );
+      const frightenedFoe = s.foeIds.find((id) =>
+        campaign.state.characters[id]!.appliedConditions.some((c) => c.conditionId === 'frightened'),
+      );
+      if (frightenedFoe === undefined) continue;
+      const applied = campaign.state.characters[frightenedFoe]!.appliedConditions.find((c) => c.conditionId === 'frightened')!;
+      expect(applied.recurringSaveDC).toBe(EXPECTED_DC);
+      expect(applied.recurringSaveAbility).toBe('WIS');
+      const tick = s.engine.plan.tickRecurringSave(campaign.state, {
+        targetId: frightenedFoe, conditionId: 'frightened',
+      }).events;
+      const save = tick.find((e): e is SaveRolledEvent => e.type === 'SaveRolled');
+      expect(save?.ability).toBe('WIS');
+      expect(save?.dc).toBe(EXPECTED_DC);
+      return;
+    }
+    throw new Error('no seed produced a Frightened foe');
   });
 
   it('rejects a barbarian without Path of the Berserker at level 14', () => {
