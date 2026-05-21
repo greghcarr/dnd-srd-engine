@@ -381,6 +381,32 @@ const assertCunningStrikeUsable = (
   }
 };
 
+// "Next attack roll" one-shot conditions (Sap / Vex). After the bearer
+// makes an attack roll, remove any `consumeOnAttack` condition it carries
+// so the advantage/disadvantage applies to exactly one attack. A
+// source-keyed condition (Vex's `vexing-active`, which stamps
+// `sourceCharacterId` = the vexed target) is consumed only when the bearer
+// attacks that source; an unkeyed one (Sap's `sapped`) is consumed on any
+// attack. Conditions dedupe by id on apply, so id-based removal is precise.
+const buildConsumeOnAttackRemovals = (
+  attacker: Character,
+  targetId: string,
+  content: ResolvedContent,
+  at: string,
+): ConditionRemovedEvent[] =>
+  attacker.appliedConditions
+    .filter((applied) => {
+      if (content.conditions.get(applied.conditionId)?.consumeOnAttack !== true) return false;
+      return applied.sourceCharacterId === undefined || applied.sourceCharacterId === targetId;
+    })
+    .map((applied) => ({
+      id: newEventId() as ULID,
+      at,
+      type: 'ConditionRemoved',
+      targetId: attacker.id as ULID,
+      conditionId: applied.conditionId,
+    }));
+
 export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> => {
   const { state, content, rng, at } = input;
   const attacker = state.characters[input.attackerId];
@@ -757,7 +783,9 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     ...(input.isOpportunityAttack === true ? { isOpportunityAttack: true } : {}),
   };
 
-  const stateAfterAttack = applyAll(state, [attackRolled]);
+  // Sap / Vex are spent by this attack roll (RAW "next attack roll").
+  const consumed = buildConsumeOnAttackRemovals(attacker, input.targetId, content, at);
+  const stateAfterAttack = applyAll(state, [attackRolled, ...consumed]);
   const attackTriggers = dispatchTriggers({
     state: stateAfterAttack,
     content,
@@ -768,7 +796,7 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   });
 
   if (!hit) {
-    return [attackRolled, ...attackTriggers];
+    return [attackRolled, ...consumed, ...attackTriggers];
   }
 
   const damageAbility = chooseDamageAbility(attacker, weaponDef);
@@ -1060,6 +1088,7 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
 
   return [
     attackRolled,
+    ...consumed,
     ...attackTriggers,
     damageRolled,
     damageApplied,

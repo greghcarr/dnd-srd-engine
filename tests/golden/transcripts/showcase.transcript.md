@@ -500,17 +500,23 @@ _(Stoneheart, the Young Red consumes action)_
 
 **Stoneheart, the Young Red** attacks **Alyx** [disadvantage]: d20(19/8) + 10 = 18 vs AC 15 -> hit.
 
+**Stoneheart, the Young Red** is no longer Sapped.
+
 Damage rolled: 2d6=[6,4]+6 slashing.
 
 **Alyx** takes 16 damage from **Stoneheart, the Young Red** (16 slashing). (HP 19 -> 3)
 
 **Stoneheart, the Young Red** attacks **Alyx** [disadvantage]: d20(19/12) + 10 = 22 vs AC 15 -> hit.
 
+**Stoneheart, the Young Red** is no longer Sapped.
+
 Damage rolled: 2d6=[4,6]+6 slashing.
 
 **Alyx** takes 16 damage from **Stoneheart, the Young Red** (16 slashing). (HP 3 -> -13)
 
 **Stoneheart, the Young Red** attacks **Alyx** [disadvantage]: d20(17/5) + 10 = 15 vs AC 15 -> hit.
+
+**Stoneheart, the Young Red** is no longer Sapped.
 
 Damage rolled: 2d6=[6,1]+6 slashing.
 

@@ -97,5 +97,14 @@ export const ConditionSchema = z.object({
   recurringSave: RecurringSaveSchema.optional(),
   autoExpiry: AutoExpirySchema.optional(),
   category: ConditionCategorySchema.optional(),
+  // "Next attack roll" one-shot conditions (weapon-mastery Sap / Vex):
+  // the attack resolver removes the condition from its bearer after the
+  // bearer makes an attack roll, so the advantage/disadvantage applies to
+  // exactly one attack. A source-keyed condition (carries
+  // `sourceCharacterId`, e.g. Vex's `vexing-active`) is consumed only when
+  // the bearer attacks that source; an unkeyed one (Sap's `sapped`) is
+  // consumed on any attack. `autoExpiry` still bounds the "if no attack"
+  // case (RAW: before the start/end of your next turn).
+  consumeOnAttack: z.boolean().optional(),
 });
 export type Condition = z.infer<typeof ConditionSchema>;
