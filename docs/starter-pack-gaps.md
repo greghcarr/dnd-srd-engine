@@ -101,7 +101,7 @@ Twelve non-RAW conditions ship with `effects: []`. Each is applied by exactly on
 - `emotionally-indifferent-active` (Calm Emotions, "indifferent" arm): an attitude / roleplay change with no combat mechanic; its sibling `emotion-suppressed-active` (suppress Charmed / Frightened) is wired.
 - `water-breathing-active` (Water Breathing): purely environmental (breathe underwater), no combat mechanic.
 
-A future slice should promote this sweep to a permanent audit ("every condition applied by a wired spell either carries effects or is on a documented marker / consumer-managed allowlist") once the four open bugs above are fixed or explicitly allowlisted.
+**Promoted to a permanent audit (slice 363):** [tests/audit/pack-integrity.test.ts](../tests/audit/pack-integrity.test.ts) now asserts "every condition applied by a wired spell either carries effects or is on a documented `EFFECT_LESS_OK` allowlist." The four open bugs above are allowlisted with their reason; when one is fixed, the allowlist-accuracy check forces it off the list. The same slice added a content-cross-reference guard (every `spellId` / `parentClassId` / `enchantmentDefinitionId` / condition-id reference must resolve to a defined entity), so a renamed or deleted id can no longer leave a silent dangling reference.
 
 
 ## Future engine slices (what unblocks the deferred spells)

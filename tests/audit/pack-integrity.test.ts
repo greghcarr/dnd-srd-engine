@@ -70,6 +70,34 @@ const itemIsWired = (e: Entry): boolean =>
 
 const conditionIsWired = (e: Entry): boolean => (e.effects?.length ?? 0) > 0;
 
+// Walks any pack subtree and collects, per key of interest, the set of
+// string values found under that key. Shared by the cross-reference and
+// effect-less-condition guards below.
+const collectRefsByKey = (
+  root: unknown,
+  keys: ReadonlySet<string>,
+): Map<string, Set<string>> => {
+  const out = new Map<string, Set<string>>();
+  const walk = (node: unknown): void => {
+    if (Array.isArray(node)) {
+      for (const v of node) walk(v);
+      return;
+    }
+    if (node !== null && typeof node === 'object') {
+      for (const [k, v] of Object.entries(node)) {
+        if (keys.has(k) && typeof v === 'string') {
+          const set = out.get(k) ?? new Set<string>();
+          set.add(v);
+          out.set(k, set);
+        }
+        walk(v);
+      }
+    }
+  };
+  walk(root);
+  return out;
+};
+
 describe('pack integrity: spell scrolls are consumable', () => {
   // Slice 310 (pattern-check follow-up to slices 305 / 309). Spell
   // scrolls are consumed on use (RAW item type "Scroll"), so they must
@@ -252,5 +280,134 @@ describe('pack integrity: conditions with effects are reachable', () => {
       if (!stillExists || nowReferenced) stale.push(id);
     }
     expect(stale).toEqual([]);
+  });
+});
+
+describe('pack integrity: content cross-references resolve', () => {
+  // Catches a renamed / deleted / mistyped id that a content slice still
+  // references (e.g. a `GrantSpell` pointing at a spell id that no longer
+  // exists). Such a dangling reference is silent today: the grant just
+  // never resolves. This guard fails the build instead.
+  const full = pack as unknown as {
+    spells: Entry[];
+    items: Entry[];
+    conditions: Entry[];
+    classes?: Entry[];
+  };
+  const idsOf = (arr?: ReadonlyArray<Entry>): Set<string> =>
+    new Set((arr ?? []).map((e) => e.id));
+  const spellIds = idsOf(full.spells);
+  const itemIds = idsOf(full.items);
+  const conditionIds = idsOf(full.conditions);
+  const classIds = idsOf(full.classes);
+
+  // Reference key -> the id set it must resolve into.
+  const TARGETS: Record<string, Set<string>> = {
+    spellId: spellIds,
+    enchantmentDefinitionId: itemIds,
+    parentClassId: classIds,
+    conditionId: conditionIds,
+    conditionOnFail: conditionIds,
+    conditionOnSuccess: conditionIds,
+    allyConditionId: conditionIds,
+    applyConditionId: conditionIds,
+    bearerConditionId: conditionIds,
+  };
+  const refs = collectRefsByKey(pack, new Set(Object.keys(TARGETS)));
+
+  for (const key of Object.keys(TARGETS)) {
+    it(`${key} references resolve to a defined entity`, () => {
+      const target = TARGETS[key]!;
+      const dangling = [...(refs.get(key) ?? new Set<string>())]
+        .filter((v) => !target.has(v))
+        .sort();
+      expect(
+        dangling,
+        `${key}: references to undefined ids ${JSON.stringify(dangling)} (rename/delete left a dangling ref, or the referenced entry was never added)`,
+      ).toEqual([]);
+    });
+  }
+});
+
+describe('pack integrity: wired spells do not apply effect-less conditions', () => {
+  // A spell that ships mechanicalEffects (i.e. is "wired") but applies a
+  // condition whose own `effects: []` is empty does nothing mechanically
+  // on a successful application. Slice 361 swept all such cases by hand;
+  // this guard makes the sweep permanent so a new instance fails CI.
+  // Legitimate empty-effect conditions are allowlisted with their reason.
+  const CONDITION_REF_KEYS = new Set([
+    'conditionId',
+    'conditionOnFail',
+    'conditionOnSuccess',
+    'applyConditionId',
+    'bearerConditionId',
+  ]);
+  const condById = new Map(pack.conditions.map((c) => [c.id, c] as const));
+
+  // Conditions that legitimately ship `effects: []` even when a wired
+  // spell applies them. See docs/starter-pack-gaps.md "Empty-effect
+  // condition gaps" (slice 361) for the full rationale.
+  const EFFECT_LESS_OK: ReadonlySet<string> = new Set([
+    // Engine-hardcoded base RAW conditions (mechanics live in engine code,
+    // not in the condition's effects array):
+    'charmed',
+    'deafened',
+    'exhaustion',
+    'incapacitated',
+    // Engine-read markers (the mechanic lives in a planner / the attack
+    // resolver, keyed off the applied-condition id):
+    'guided', // consumed by planConsumeGuidance (rolls the d4)
+    'mirror-image-active', // read in the attack planner; appliedConditionLevel = image count
+    // KNOWN-OPEN bugs: the applying spell is wired but the condition is a
+    // do-nothing stub. Remove from this list when the bug is fixed (the
+    // accuracy check below will then demand it).
+    'resisted', // Resistance cantrip: no consume path + 2024 RAW drift
+    'hideous-laughter-active', // should impose Prone + Incapacitated
+    'cursed-ability-active', // Bestow Curse: needs per-ability parameterization
+    'cursed-inert-active', // Bestow Curse: needs per-turn random incapacitation
+    // Consumer-managed / narrative (no clean engine model):
+    'commanded-approach-active',
+    'commanded-drop-active',
+    'commanded-flee-active',
+    'confused-active',
+    'emotionally-indifferent-active',
+    'water-breathing-active',
+  ]);
+
+  const conditionsAppliedByWiredSpells = (): Set<string> => {
+    const out = new Set<string>();
+    for (const spell of pack.spells) {
+      if ((spell.mechanicalEffects?.length ?? 0) === 0) continue;
+      for (const set of collectRefsByKey(spell.mechanicalEffects, CONDITION_REF_KEYS).values()) {
+        for (const id of set) out.add(id);
+      }
+    }
+    return out;
+  };
+
+  it('every condition applied by a wired spell carries effects or is allowlisted', () => {
+    const offenders = [...conditionsAppliedByWiredSpells()]
+      .filter((id) => {
+        const c = condById.get(id);
+        return c !== undefined && (c.effects?.length ?? 0) === 0 && !EFFECT_LESS_OK.has(id);
+      })
+      .sort();
+    expect(
+      offenders,
+      `wired spells apply these effect-less conditions: ${JSON.stringify(offenders)}. Wire the condition's effects, or add it to EFFECT_LESS_OK with a documented reason + a starter-pack-gaps.md row.`,
+    ).toEqual([]);
+  });
+
+  it('the effect-less allowlist stays accurate (entries still exist and remain empty-effect)', () => {
+    const stale = [...EFFECT_LESS_OK]
+      .filter((id) => {
+        const c = condById.get(id);
+        return c === undefined || (c.effects?.length ?? 0) > 0;
+      })
+      .sort();
+    expect(
+      stale,
+      `EFFECT_LESS_OK entries that vanished or gained effects (remove them; if a known-open bug was fixed, drop it from the allowlist): ${JSON.stringify(stale)}`,
+    ).toEqual([]);
   });
 });
