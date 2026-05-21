@@ -21,14 +21,20 @@ const SRD_DIR = resolve(HERE, '../../references/srd-markdown');
 const SPELLS_MD = resolve(SRD_DIR, 'spells.md');
 const MONSTERS_MD = resolve(SRD_DIR, 'monsters-A-Z.md');
 const ITEMS_MD = resolve(SRD_DIR, 'magic-items.md');
+const CLASSES_MD = resolve(SRD_DIR, 'classes.md');
 const PACK_PATH = resolve(HERE, '../../src/content/packs/starter-pack.json');
 
 const SRD_AVAILABLE = existsSync(SPELLS_MD);
 
+interface PackClass {
+  id: string;
+  levelTable: Record<string, { proficiencyBonus?: number; features?: Array<{ name: string }> }>;
+}
 interface Pack {
   spells: Array<Record<string, unknown>>;
   monsters: Array<Record<string, unknown>>;
   items: Array<Record<string, unknown>>;
+  classes: PackClass[];
 }
 const pack: Pack = JSON.parse(readFileSync(PACK_PATH, 'utf8'));
 
@@ -206,6 +212,97 @@ function asStr(v: unknown): string {
   return v === undefined || v === null ? '<unset>' : String(v);
 }
 
+// ----- SRD class-feature-table parser (slice 377) --------------------
+//
+// Each class's progression lives in a `**<Class> Features**` HTML table
+// in classes.md, with columns Level / Proficiency Bonus / Class Features
+// (plus class-specific numeric columns the pack does not model). This
+// parser reads the two script-detectable columns: the Proficiency Bonus
+// and the comma-separated feature names per level. The numeric columns
+// (Rages, Sneak Attack, spell slots, etc.) and the per-feature numeric
+// values that live in body prose (e.g. Roving's "+10 feet") are NOT
+// table-parseable against the pack's milestone-compressed wiring, so the
+// audit deliberately covers only PB and feature presence/placement.
+
+interface SrdClassLevel {
+  pb: number;
+  feats: string[];
+}
+const CLASS_NAMES = [
+  'Barbarian', 'Bard', 'Cleric', 'Druid', 'Fighter', 'Monk',
+  'Paladin', 'Ranger', 'Rogue', 'Sorcerer', 'Warlock', 'Wizard',
+] as const;
+
+function parseSrdClassTables(): Map<string, Map<number, SrdClassLevel>> {
+  const text = readFileSync(CLASSES_MD, 'utf8');
+  const out = new Map<string, Map<number, SrdClassLevel>>();
+  for (const name of CLASS_NAMES) {
+    const marker = `**${name} Features**`;
+    const start = text.indexOf(marker);
+    if (start < 0) continue;
+    const tStart = text.indexOf('<table>', start);
+    const tEnd = text.indexOf('</table>', tStart);
+    const table = text.slice(tStart, tEnd);
+    const byLevel = new Map<number, SrdClassLevel>();
+    for (const tr of table.matchAll(/<tr>([\s\S]*?)<\/tr>/g)) {
+      const cells = [...(tr[1] ?? '').matchAll(/<td>([\s\S]*?)<\/td>/g)].map((m) => (m[1] ?? '').trim());
+      if (cells.length < 3) continue; // header row has <th>, not <td>
+      const level = Number.parseInt(cells[0] ?? '', 10);
+      if (!Number.isFinite(level)) continue;
+      const pb = Number.parseInt((cells[1] ?? '').replace('+', ''), 10);
+      const feats = (cells[2] ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+      byLevel.set(level, { pb, feats });
+    }
+    out.set(name.toLowerCase(), byLevel);
+  }
+  return out;
+}
+
+// Normalize a feature name for comparison: lowercase, drop parenthetical
+// qualifiers ("(two uses)", "(Mighty Roar)"), strip punctuation, collapse
+// whitespace. A pack feature matches an SRD feature when it equals the
+// normalized SRD name or extends it with trailing words (the pack appends
+// recharge / count suffixes: "Indomitable (2/long rest)", "Mystic Arcanum
+// 6th level", "Eldritch Invocations 2 known").
+const normFeature = (s: string): string =>
+  s.toLowerCase().replace(/\([^)]*\)/g, ' ').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+
+// SRD rows the pack models structurally rather than as a named feature
+// row, so their absence from levelTable is correct, not drift:
+//   - the em-dash placeholder marks a level whose only change is a
+//     numeric column (spell slots, etc.), not a new feature;
+//   - ASI / Epic Boon are feat-choice rows the feat system handles;
+//   - Spellcasting / Pact Magic are wired by the spell-slot derivation;
+//   - any "* Subclass" / "Subclass feature" marker is handled by
+//     subclassLevel + the subclass content.
+const STRUCTURAL_ROWS = new Set([
+  'ability score improvement', 'epic boon', 'spellcasting', 'pact magic',
+].map(normFeature));
+const isStructuralRow = (norm: string): boolean =>
+  norm === '' || norm === '-' || STRUCTURAL_ROWS.has(norm) || /subclass/.test(norm);
+
+// SRD wording that the pack legitimately renames. Maps the normalized
+// SRD name to the normalized pack feature it should match.
+const FEATURE_ALIASES: Record<string, string> = {
+  'two extra attacks': 'extra attack',
+  'three extra attacks': 'extra attack',
+};
+
+// Genuine content gaps the audit surfaces, tracked in
+// docs/starter-pack-gaps.md for a follow-up content slice. Keyed
+// `<classId> L<level> <normalized feature>`. Weapon Mastery is wired for
+// Ranger and Rogue but omitted on the three other martial classes that
+// RAW grants it; Heightened Focus needs Focus-action planner changes
+// (it modifies Flurry of Blows / Patient Defense / Step of the Wind), so
+// it is not a simple grant. Removing an entry here when its feature lands
+// makes the audit assert the fix stays.
+const KNOWN_FEATURE_GAPS = new Set([
+  'barbarian L1 weapon mastery',
+  'fighter L1 weapon mastery',
+  'paladin L1 weapon mastery',
+  'monk L10 heightened focus',
+]);
+
 // Lazy-parse SRD at module scope, guarded on SRD_AVAILABLE. The
 // describe() callbacks below are evaluated at test-discovery time
 // even when their .runIf gate is false (the gate only skips the
@@ -215,6 +312,9 @@ function asStr(v: unknown): string {
 const srdSpells = SRD_AVAILABLE ? parseSrdSpells() : new Map<string, SrdSpell>();
 const srdMonsters = SRD_AVAILABLE ? parseSrdMonsters() : new Map<string, SrdMonster>();
 const srdItems = SRD_AVAILABLE ? parseSrdItems() : new Map<string, SrdItem>();
+const srdClasses = SRD_AVAILABLE
+  ? parseSrdClassTables()
+  : new Map<string, Map<number, SrdClassLevel>>();
 
 // ----- Tests ---------------------------------------------------------
 
@@ -525,6 +625,80 @@ describe.runIf(SRD_AVAILABLE)('SRD 5.2.1 drift audit', () => {
         }
       }
       expect(offenders).toEqual([]);
+    });
+  });
+
+  // Slice 377. The class progression tables drift the same way spell /
+  // monster / item statblocks do: a feature can land at the wrong level
+  // or go missing, and the Proficiency Bonus column can be mistyped.
+  // These two columns are the script-detectable surface (see the parser
+  // note above for why the numeric columns and prose values are not).
+  describe('class features', () => {
+    const srd = srdClasses;
+    const packClass = (id: string): PackClass | undefined =>
+      pack.classes.find((c) => c.id === id);
+
+    it('parsed all 12 class tables with 20 levels each (guards against a vacuous-green reparse)', () => {
+      expect(srd.size).toBe(CLASS_NAMES.length);
+      for (const [classId, byLevel] of srd) {
+        expect(byLevel.size, `${classId} should have 20 level rows`).toBe(20);
+      }
+    });
+
+    it('Proficiency Bonus per level matches SRD for every class', () => {
+      const drift: string[] = [];
+      for (const [classId, byLevel] of srd) {
+        const pc = packClass(classId);
+        if (!pc) { drift.push(`${classId}: not in pack`); continue; }
+        for (const [level, srdRow] of byLevel) {
+          const packPb = pc.levelTable[String(level)]?.proficiencyBonus;
+          if (packPb !== srdRow.pb) {
+            drift.push(`${classId} L${level}: pack=${asStr(packPb)} SRD=${srdRow.pb}`);
+          }
+        }
+      }
+      expect(drift).toEqual([]);
+    });
+
+    it('every SRD-listed feature is present at its level in the pack', () => {
+      const drift: string[] = [];
+      for (const [classId, byLevel] of srd) {
+        const pc = packClass(classId);
+        if (!pc) { drift.push(`${classId}: not in pack`); continue; }
+        for (const [level, srdRow] of byLevel) {
+          const packNorms = (pc.levelTable[String(level)]?.features ?? []).map((f) => normFeature(f.name));
+          for (const feat of srdRow.feats) {
+            const nf = normFeature(feat);
+            if (isStructuralRow(nf)) continue;
+            if (KNOWN_FEATURE_GAPS.has(`${classId} L${level} ${nf}`)) continue;
+            const alias = FEATURE_ALIASES[nf];
+            const matches = (target: string): boolean =>
+              packNorms.some((np) => np === target || np.startsWith(`${target} `));
+            if (!matches(nf) && !(alias !== undefined && matches(alias))) {
+              drift.push(`${classId} L${level}: "${feat}" not found [pack: ${packNorms.join(' | ') || '(none)'}]`);
+            }
+          }
+        }
+      }
+      expect(drift).toEqual([]);
+    });
+
+    it('every tracked KNOWN_FEATURE_GAP is still genuinely absent (no stale allowlist entries)', () => {
+      // If a follow-up slice wires one of the tracked gaps but forgets to
+      // remove its allowlist entry, this catches the stale entry so the
+      // allowlist can only shrink as gaps close.
+      const stale: string[] = [];
+      for (const key of KNOWN_FEATURE_GAPS) {
+        const match = /^(\w+) L(\d+) (.+)$/.exec(key);
+        if (!match) { stale.push(`${key}: malformed key`); continue; }
+        const [, classId, levelStr, nf] = match;
+        const pc = packClass(classId as string);
+        const packNorms = (pc?.levelTable[String(levelStr)]?.features ?? []).map((f) => normFeature(f.name));
+        if (packNorms.some((np) => np === nf || np.startsWith(`${nf} `))) {
+          stale.push(`${key}: now present in pack, remove from KNOWN_FEATURE_GAPS`);
+        }
+      }
+      expect(stale).toEqual([]);
     });
   });
 });

@@ -4,6 +4,13 @@ Per-class catalog of which class features ship as `effects: []` stubs waiting on
 
 For the priority queue and "Future engine slices" backlog naming which primitive each stub waits on, see [starter-pack-gaps.md](starter-pack-gaps.md). For the SRD 5.2.1 audit cross-checking pack feature names + level placements, see [srd-5.2.1-audit-classes.md](srd-5.2.1-audit-classes.md).
 
+### Feature-presence gaps tracked by the slice-377 drift audit
+
+[tests/audit/srd-drift.test.ts](../tests/audit/srd-drift.test.ts) now parses the SRD class progression tables and asserts (a) per-class Proficiency Bonus and (b) that every SRD-listed feature is present at its level in the pack. Four genuine gaps are on its `KNOWN_FEATURE_GAPS` allowlist, pending a focused content slice (the audit's stale-allowlist self-check forces each entry to be removed when its feature lands):
+
+- **Weapon Mastery (L1) on Barbarian, Fighter, Paladin.** Wired for Ranger and Rogue (`GrantWeaponMastery`, slots 2) but omitted on the three other martial classes RAW grants it to (Barbarian slots 2, Fighter slots 3, Paladin slots 2). Deferred rather than fixed in-slice because the existing Ranger/Rogue `masteries` pool carries a non-RAW `"Flex"` entry that should be audited (and corrected across all five classes) before propagating it.
+- **Heightened Focus (Monk L10).** Not a simple grant: it modifies Flurry of Blows / Patient Defense / Step of the Wind, so it needs Focus-action planner changes. Ships absent today (the pack has the sibling L10 Self-Restoration).
+
 ---
 
 ## Class features

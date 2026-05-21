@@ -4,6 +4,22 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Audit (slice 377): extend srd-drift to parse the SRD class progression tables**
+
+Follow-up to slice 376's observation that class-feature drift (Roving's `+5` vs RAW `+10`) had gone uncaught because srd-drift only covered spells / monsters / items. Extended [tests/audit/srd-drift.test.ts](tests/audit/srd-drift.test.ts) with a parser for the `**<Class> Features**` HTML tables in classes.md and three new checks under a `class features` describe:
+
+1. **Proficiency Bonus per level** for all 12 classes (240 cells) against `levelTable[N].proficiencyBonus`. Zero drift today.
+2. **Feature presence/placement**: every SRD-listed feature must appear at its level in the pack. Structural rows (the em-dash placeholder, ASI, Epic Boon, Spellcasting / Pact Magic, subclass markers) are skipped; the pack's rename suffixes ("Indomitable (two uses)" -> "Indomitable (2/long rest)", "Mystic Arcanum (level 6 spell)" -> "Mystic Arcanum 6th level") resolve via paren-stripping + trailing-word matching, with a two-entry `FEATURE_ALIASES` map for "Two/Three Extra Attacks" -> "Extra Attack".
+3. **Stale-allowlist self-check**: each `KNOWN_FEATURE_GAPS` entry must still be genuinely absent, so the allowlist can only shrink as gaps close.
+
+Plus a sanity check that the parse found all 12 tables x 20 levels (guards against a future SRD reformat silently emptying the parse into a vacuous green).
+
+**Scope (stated honestly):** the tables expose PB + feature names; the per-feature numeric values that live in body prose (Roving's "+10 feet", die sizes, etc.) and the milestone-compressed numeric columns (Rages, Sneak Attack, spell slots) are **not** table-parseable against the pack's wiring, so those stay manual. This audit catches misplaced/missing features and PB typos, not prose-value drift like the one that motivated it.
+
+The feature-presence check surfaced **four genuine content gaps**, allowlisted and tracked in [docs/gaps-class-features.md](docs/gaps-class-features.md) for a focused content slice: Weapon Mastery (L1) is wired for Ranger and Rogue but missing on Barbarian / Fighter / Paladin (deferred, not fixed in-slice, because the existing `masteries` pool carries a non-RAW `"Flex"` entry to audit first), and Monk L10 Heightened Focus (needs Focus-action planner changes, not a simple grant).
+
+Uncle Bob audit (audit slice): **Names** `parseSrdClassTables` / `normFeature` / `STRUCTURAL_ROWS` / `FEATURE_ALIASES` / `KNOWN_FEATURE_GAPS` read as what they do and follow the existing srd-drift parser shape. **DRY** the table parser reuses the file's `<tr>`/`<td>` regex idiom; `normFeature` is the one normalizer. **SRP** each `it()` asserts one column / one invariant across all 12 classes. **Magic numbers** none (12 classes / 20 levels are asserted, not assumed). **Mechanical outcomes asserted** PB matches for 240 cells; every non-structural SRD feature is placed correctly; the four known gaps stay tracked. **Tests** the checks would have caught a feature authored at the wrong level or a mistyped PB, and the parse-sanity guard prevents a vacuous green. No content or engine change. No em/en dashes. `tsc --noEmit` clean; full audit suite green (srd-drift 24 checks + 1 self-skip).
+
 **Content+audit (slice 376): "climb/swim speed equal to your Speed" matchWalkSpeed sweep**
 
 Pattern-check finding while picking up subclass work: Thief's L3 **Second-Story Work** still wired its Climber arm as `ModifySpeed { mode: 'climb', op: 'set', value: 30 }` - the pre-slice-290 approximation that hardcodes a 30-ft climb. RAW 5.2.1 is "a Climb Speed equal to your Speed." Slice 290 introduced `op: 'matchWalkSpeed'` and converted Cloak of Arachnida / Slippers of Spider Climbing / the Spider Climb condition, but its sweep missed three siblings that carry the same RAW wording. Per the "same shape, elsewhere?" norm, fixed all three:
