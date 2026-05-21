@@ -4,6 +4,14 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Audit: Custom-handlerId backing guard (slice 365)**
+
+New describe block in [tests/audit/pack-integrity.test.ts](tests/audit/pack-integrity.test.ts): every pack `Custom { handlerId }` marker must have a backing implementation. A handlerId with no handler is a do-nothing feature. The guard asserts each of the 17 handlerIds is either referenced by name in the engine source or on a documented `BACKED_INDIRECTLY` allowlist (2 entries: `martial-arts`, backed by the attack planner's `martialArtsDie` / `applyMartialArtsDieScaling` which key off the monk class + weapon rather than the id string; and `slow-fall`, backed by `planFalling`'s `useSlowFall` arm). A companion accuracy check fails if an allowlisted handler vanishes from the pack or becomes referenced by name (then it's redundant and should be dropped). Reuses the source-scan pattern already used by the condition-reachability guard; hoisted that describe's `collectTsFiles` helper to module scope so both share it.
+
+This is the last of the silent-failure guards flagged in the slice-363/364 review: a renamed planner that leaves a handlerId marker pointing at nothing now fails CI.
+
+Uncle Bob audit (test slice): **Names** `BACKED_INDIRECTLY` / `referencedInSource` read as what they do. **DRY** `collectTsFiles` hoisted and shared with the condition-reachability guard; handlerIds derived from the pack via the existing `collectRefsByKey` walker, not hardcoded. **SRP** two checks (backing + allowlist accuracy), each one assertion. **Magic numbers** none. **Tests** prevent a do-nothing Custom marker and allowlist rot (a handler that gained a literal reference or left the pack). No em/en dashes. `tsc --noEmit` clean; pack-integrity now 22 checks (was 20).
+
 **Audit: planner-wiring guard (slice 364)**
 
 New [tests/audit/planner-wiring.test.ts](tests/audit/planner-wiring.test.ts) closes the one unguarded site in the ~6-site planner wiring. tsc already enforces the `plan/index.ts` export, the `engine/index.ts` import / `Engine.plan` interface method / impl, and apply.ts is exhaustive over the event union; but the `performIntent` dispatch in conveniences.ts is a plain `Record<string, ...>`, so a player-action planner can be wired everywhere else yet silently omitted from dispatch (then `performIntent({ type: 'NewThing' })` throws "Unknown intent type" only when a consumer happens to call it).

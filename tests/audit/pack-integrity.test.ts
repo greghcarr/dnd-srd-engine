@@ -70,6 +70,18 @@ const itemIsWired = (e: Entry): boolean =>
 
 const conditionIsWired = (e: Entry): boolean => (e.effects?.length ?? 0) > 0;
 
+// Recursively lists every .ts file under a directory. Shared by the
+// guards that scan the engine source for a referenced id.
+const collectTsFiles = (dir: string): string[] => {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...collectTsFiles(p));
+    else if (entry.name.endsWith('.ts')) out.push(p);
+  }
+  return out;
+};
+
 // Walks any pack subtree and collects, per key of interest, the set of
 // string values found under that key. Shared by the cross-reference and
 // effect-less-condition guards below.
@@ -206,16 +218,6 @@ describe('pack integrity: conditions with effects are reachable', () => {
     'absorb-elements-charged-lightning-active',
     'absorb-elements-charged-thunder-active',
   ]);
-
-  const collectTsFiles = (dir: string): string[] => {
-    const out: string[] = [];
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const p = join(dir, entry.name);
-      if (entry.isDirectory()) out.push(...collectTsFiles(p));
-      else if (entry.name.endsWith('.ts')) out.push(p);
-    }
-    return out;
-  };
 
   const collectReferencedIds = (): Set<string> => {
     const referenced = new Set<string>();
@@ -408,6 +410,52 @@ describe('pack integrity: wired spells do not apply effect-less conditions', () 
     expect(
       stale,
       `EFFECT_LESS_OK entries that vanished or gained effects (remove them; if a known-open bug was fixed, drop it from the allowlist): ${JSON.stringify(stale)}`,
+    ).toEqual([]);
+  });
+});
+
+describe('pack integrity: every Custom handlerId has a backing implementation', () => {
+  // A feature/condition effect `{ kind: 'Custom', handlerId }` is a marker
+  // that the mechanic is implemented in engine code (a planner, the attack
+  // resolver, etc.). A handlerId with no backing implementation is a
+  // do-nothing feature. This guard asserts every pack handlerId is either
+  // referenced by name in the engine source OR on a documented allowlist
+  // of handlers whose implementation does not reference the id string
+  // literally (the marker is decorative; the mechanic is keyed off the
+  // intent type / weapon / class instead).
+  const handlerIds = [
+    ...collectRefsByKey(pack, new Set(['handlerId'])).get('handlerId') ?? new Set<string>(),
+  ].sort();
+  const sourceBlob = collectTsFiles(SRC_DIR)
+    .map((f) => readFileSync(f, 'utf8'))
+    .join('\n');
+  const referencedInSource = (id: string): boolean => sourceBlob.includes(id);
+
+  // Handlers whose implementation does not contain the handlerId string.
+  // Each is genuinely backed; the allowlist documents where.
+  const BACKED_INDIRECTLY: ReadonlyMap<string, string> = new Map([
+    ['martial-arts', 'attack planner: martialArtsDie / applyMartialArtsDieScaling key off the monk class + weapon, not the handlerId'],
+    ['slow-fall', 'planFalling reduces fall damage via its `useSlowFall` arm (5 x monk level), keyed off the intent flag'],
+  ]);
+
+  it('every Custom handlerId is referenced in engine source or allowlisted as indirectly backed', () => {
+    const unbacked = handlerIds
+      .filter((id) => !referencedInSource(id) && !BACKED_INDIRECTLY.has(id))
+      .sort();
+    expect(
+      unbacked,
+      `Custom handlerIds with no backing implementation: ${JSON.stringify(unbacked)}. Implement the handler/planner, or (if the mechanic is keyed off something other than the id string) add it to BACKED_INDIRECTLY with where it lives.`,
+    ).toEqual([]);
+  });
+
+  it('the indirectly-backed allowlist stays accurate (entries still exist and are still indirect)', () => {
+    const present = new Set(handlerIds);
+    const stale = [...BACKED_INDIRECTLY.keys()]
+      .filter((id) => !present.has(id) || referencedInSource(id))
+      .sort();
+    expect(
+      stale,
+      `BACKED_INDIRECTLY entries that vanished from the pack or are now referenced by name (remove them): ${JSON.stringify(stale)}`,
     ).toEqual([]);
   });
 });
