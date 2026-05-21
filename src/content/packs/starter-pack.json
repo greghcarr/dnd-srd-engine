@@ -926,7 +926,7 @@
           {
             "id": "open-hand-technique",
             "name": "Open Hand Technique",
-            "effects": []
+            "effects": [{ "kind": "Custom", "handlerId": "open-hand-technique" }]
           }
         ],
         "6": [
@@ -8092,6 +8092,14 @@
         { "kind": "ImposeDisadvantageOnAttackers", "condition": { "kind": "all", "terms": [{ "kind": "eq", "path": "bearer.hasIncapacitated", "value": false }, { "kind": "eq", "path": "bearer.speedZero", "value": false }, { "kind": "not", "term": { "kind": "eq", "path": "bearer.canSeeAttacker", "value": false } }] } },
         { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "DEX" }, "mode": "advantage", "condition": { "kind": "all", "terms": [{ "kind": "eq", "path": "bearer.hasIncapacitated", "value": false }, { "kind": "eq", "path": "bearer.speedZero", "value": false }] } }
       ]
+    },
+    {
+      "id": "addled",
+      "name": "Addled",
+      "description": "RAW (Monk Open Hand Technique, Addle option): 'The target can't make Opportunity Attacks until the start of its next turn.' The opportunity-attack planner rejects an OA from an Addled reactor. Modeled like Dodging's 'until the start of your next turn' window via endsOn turnEnd (self); the consumer ticks the expiry. The 'can't make Opportunity Attacks' restriction isn't expressible as an effect primitive (it gates the OA planner, not a roll), so this is an engine-read marker with effects [] (in pack-integrity's EFFECT_LESS_OK allowlist).",
+      "stackable": false,
+      "endsOn": [{ "kind": "turnEnd", "ownerId": "self" }],
+      "effects": []
     },
     {
       "id": "blinded",

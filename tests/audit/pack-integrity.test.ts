@@ -363,6 +363,7 @@ describe('pack integrity: wired spells do not apply effect-less conditions', () 
     'hideous-laughter-active', // slice 366: action-blocking (ACTION_BLOCKING_CONDITIONS) + recurringSave; Incapacitated/Prone are engine-coded base conditions
     'cursed-inert-active', // slice 368: recurringSave { onFail: 'dodge' } drives it (save-or-Dodge); the mechanic is the recurring save, not the effects array
     'resisted', // slice 369: consumer-invoked planConsumeResistance rolls the 1d4 reduction (mirrors Absorb Elements); the marker just says Resistance is active
+    'addled', // slice 380: Open Hand Technique (Addle); the opportunity-attack planner reads the id to bar OAs (the "can't make Opportunity Attacks" restriction isn't an effect primitive)
     // (The slice-361 "known-open bugs" group is now empty — all four were fixed in slices 366-369.)
     // Consumer-managed / narrative (no clean engine model):
     'commanded-approach-active',
