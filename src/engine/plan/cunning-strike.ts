@@ -35,13 +35,17 @@ interface CunningStrikeSpec {
   // RAW "if the target is Large or smaller": the effect (save included)
   // only applies when the target is Large or smaller (Trip).
   readonly largeOrSmallerOnly?: boolean;
+  // RAW "repeats the save at the end of each of its turns, ending the
+  // effect on a success" (Poison, Knock Out). Bakes a per-instance
+  // fixed-DC recurring save onto the applied condition.
+  readonly repeatSave?: boolean;
 }
 const SPECS: Record<CunningStrikeOption, CunningStrikeSpec> = {
-  poison: { costDice: 1, save: { ability: 'CON', conditionId: 'poisoned' }, expiryRounds: ONE_MINUTE_ROUNDS },
+  poison: { costDice: 1, save: { ability: 'CON', conditionId: 'poisoned' }, expiryRounds: ONE_MINUTE_ROUNDS, repeatSave: true },
   trip: { costDice: 1, save: { ability: 'DEX', conditionId: 'prone' }, largeOrSmallerOnly: true },
   withdraw: { costDice: 1, withdraw: true },
   obscure: { costDice: 3, save: { ability: 'DEX', conditionId: 'blinded' }, devious: true, expiryRounds: END_OF_NEXT_TURN_ROUNDS },
-  knockout: { costDice: 6, save: { ability: 'CON', conditionId: 'unconscious' }, devious: true, expiryRounds: ONE_MINUTE_ROUNDS },
+  knockout: { costDice: 6, save: { ability: 'CON', conditionId: 'unconscious' }, devious: true, expiryRounds: ONE_MINUTE_ROUNDS, repeatSave: true },
 };
 
 const SAVE_DC_BASE = 8;
@@ -83,12 +87,13 @@ export interface CunningStrikeEffectsInput {
 //   - Obscure (Devious Strikes, L14): DEX save or Blinded until the end
 //     of its next turn.
 //   - Knock Out (Devious Strikes, L14): CON save or Unconscious (1 minute).
-// Trip's "Large or smaller" size gate IS modeled (slice 386): a bigger
-// target gets no save. RAW deviations still documented in
-// starter-pack-gaps.md: Poison's and Knock Out's end-of-turn repeat save,
-// Knock Out's "until it takes any damage" early end, and Withdraw's
-// half-Speed cap (the engine has no repeat-save / damage-end on the base
-// conditions, or movement-distance surface here).
+// Trip's size gate (slice 386) and Poison's / Knock Out's end-of-turn
+// repeat save (slice 388, via the per-instance fixed-DC `recurringSave*`
+// fields on the applied condition; the consumer ticks it through
+// `tickRecurringSave`) ARE modeled. RAW deviations still documented in
+// starter-pack-gaps.md: Knock Out's "until it takes any damage" early end
+// and Withdraw's half-Speed cap (no damage-end on the base condition, or
+// movement-distance surface here).
 export const buildCunningStrikeEffects = (input: CunningStrikeEffectsInput): Event[] => {
   const { state, content, rng, at, rogue, targetId, effects } = input;
   const dc = cunningStrikeSaveDC(rogue);
@@ -131,6 +136,13 @@ export const buildCunningStrikeEffects = (input: CunningStrikeEffectsInput): Eve
         appliedConditionId: newAppliedConditionId(),
         ...(spec.expiryRounds !== undefined && currentRound !== undefined
           ? { expiresOnRound: currentRound + spec.expiryRounds, expiryTrigger: 'turnEnd' as const }
+          : {}),
+        // RAW repeat save: at the end of each of its turns the target
+        // re-rolls the same save against the rogue's (fixed) DC, ending
+        // the condition on a success. The consumer ticks it via
+        // `engine.plan.tickRecurringSave`.
+        ...(spec.repeatSave === true
+          ? { recurringSaveDC: dc, recurringSaveAbility: spec.save.ability }
           : {}),
       };
       events.push(applied);

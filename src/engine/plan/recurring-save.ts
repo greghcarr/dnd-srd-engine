@@ -10,6 +10,7 @@ import { computeSpellSaveDC } from '../../derive/spell-dc.js';
 import { rollSaveAgainstDC } from './_save-roll.js';
 import type { ActionEconomyConsumedEvent } from '../../schemas/events/action-economy.js';
 import type { ConditionRemovedEvent, ConditionAppliedEvent } from '../../schemas/events/combat.js';
+import type { AbilityScore } from '../../schemas/primitives.js';
 
 export interface TickRecurringSaveIntent {
   readonly type: 'TickRecurringSave';
@@ -80,35 +81,59 @@ export const planTickRecurringSave = (
   if (!conditionDef) {
     throw new Error(`Condition '${intent.conditionId}' not found in content`);
   }
-  if (conditionDef.recurringSave === undefined) {
+  // Per-instance fixed-DC recurring save (slice 388): a non-spell source
+  // (Cunning Strike Poison / Knock Out) bakes the save ability + DC onto
+  // the applied condition. When present, re-roll that save at the bearer's
+  // baked DC and end the condition on a success, with no caster /
+  // spellcasting-class resolution. Otherwise fall back to the definition's
+  // `recurringSave` against the source's spell DC (Hold Person, etc.).
+  const instanceFixed =
+    applied.recurringSaveDC !== undefined && applied.recurringSaveAbility !== undefined
+      ? { ability: applied.recurringSaveAbility, dc: applied.recurringSaveDC }
+      : undefined;
+  if (instanceFixed === undefined && conditionDef.recurringSave === undefined) {
     throw new Error(
       `Condition '${intent.conditionId}' has no recurringSave metadata`,
     );
   }
 
-  const casterId = intent.casterId ?? applied.sourceCharacterId;
-  if (casterId === undefined) {
-    throw new Error(
-      `Cannot tick recurring save for '${intent.conditionId}' on ${target.name}: no casterId in intent and no sourceCharacterId on the applied condition`,
-    );
+  let dc: number;
+  let saveAbility: AbilityScore;
+  let onSuccess: 'removeCondition' | undefined;
+  let onFail: 'consumeAction' | 'dodge' | undefined;
+  if (instanceFixed !== undefined) {
+    dc = instanceFixed.dc;
+    saveAbility = instanceFixed.ability;
+    onSuccess = 'removeCondition'; // a fixed-DC instance always ends on a success
+    onFail = undefined;
+  } else {
+    const def = conditionDef.recurringSave;
+    if (def === undefined) throw new Error(`Condition '${intent.conditionId}' has no recurringSave metadata`);
+    saveAbility = def.ability;
+    onSuccess = def.onSuccess;
+    onFail = def.onFail;
+    const casterId = intent.casterId ?? applied.sourceCharacterId;
+    if (casterId === undefined) {
+      throw new Error(
+        `Cannot tick recurring save for '${intent.conditionId}' on ${target.name}: no casterId in intent and no sourceCharacterId on the applied condition`,
+      );
+    }
+    const caster = state.characters[casterId];
+    if (!caster) throw new Error(`Unknown caster ${casterId}`);
+    const castingClassId =
+      intent.castingClassId ?? findPrimarySpellcastingClass(caster, content);
+    if (castingClassId === undefined) {
+      throw new Error(`Caster ${caster.name} has no spellcasting class`);
+    }
+    dc = computeSpellSaveDC({
+      character: caster,
+      itemInstances: state.itemInstances,
+      content,
+      pendingChoices: state.pendingChoices,
+      classId: castingClassId,
+      characters: state.characters,
+    }).total;
   }
-  const caster = state.characters[casterId];
-  if (!caster) throw new Error(`Unknown caster ${casterId}`);
-
-  const castingClassId =
-    intent.castingClassId ?? findPrimarySpellcastingClass(caster, content);
-  if (castingClassId === undefined) {
-    throw new Error(`Caster ${caster.name} has no spellcasting class`);
-  }
-
-  const dcResult = computeSpellSaveDC({
-    character: caster,
-    itemInstances: state.itemInstances,
-    content,
-    pendingChoices: state.pendingChoices,
-    classId: castingClassId,
-    characters: state.characters,
-  });
 
   const at = intent.at ?? nowIso();
   // Slice 133: conditions with a recurringSave entry are spell-applied
@@ -123,12 +148,12 @@ export const planTickRecurringSave = (
     state,
     content,
     targetId: intent.targetId,
-    ability: conditionDef.recurringSave.ability,
-    dc: dcResult.total,
+    ability: saveAbility,
+    dc,
     sourceIsMagical: true,
     rng,
     at,
-    ...(conditionDef.recurringSave.onSuccess === 'removeCondition'
+    ...(onSuccess === 'removeCondition'
       ? { savePreventsCondition: intent.conditionId }
       : {}),
   });
@@ -141,7 +166,6 @@ export const planTickRecurringSave = (
   const events: Event[] = [];
   events.push(saveEvent);
 
-  const onFail = conditionDef.recurringSave.onFail;
   if (!success && (onFail === 'consumeAction' || onFail === 'dodge')) {
     const activeEncounterId = state.activeEncounterId;
     if (activeEncounterId !== undefined) {
@@ -177,7 +201,7 @@ export const planTickRecurringSave = (
     }
   }
 
-  if (success && conditionDef.recurringSave.onSuccess === 'removeCondition') {
+  if (success && onSuccess === 'removeCondition') {
     const removed: ConditionRemovedEvent = {
       id: newEventId() as ULID,
       at,

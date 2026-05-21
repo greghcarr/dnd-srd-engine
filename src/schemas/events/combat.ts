@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ULIDSchema, DamageTypeSchema } from '../primitives.js';
+import { ULIDSchema, DamageTypeSchema, AbilityScoreSchema } from '../primitives.js';
 import { EventEnvelopeSchema } from './envelope.js';
 
 export const DAMAGE_MITIGATION_KINDS = ['resisted', 'immune', 'vulnerable'] as const;
@@ -63,6 +63,14 @@ export const ConditionAppliedEventSchema = EventEnvelopeSchema.extend({
   // Slice 110: parent concentration effect for rider-applied conditions.
   // See AppliedCondition.sourceEffectInstanceId for the full semantics.
   sourceEffectInstanceId: ULIDSchema.optional(),
+  // Per-instance fixed-DC recurring save (slice 388). When both are set,
+  // `planTickRecurringSave` re-rolls this ability save against `recurringSaveDC`
+  // at the end of each of the bearer's turns and removes the condition on a
+  // success, WITHOUT requiring the source to be a spellcaster (the existing
+  // recurringSave path computes a spell DC). The DC is baked at apply time
+  // (Cunning Strike Poison / Knock Out: 8 + the rogue's DEX mod + PB).
+  recurringSaveDC: z.number().int().optional(),
+  recurringSaveAbility: AbilityScoreSchema.optional(),
 });
 export type ConditionAppliedEvent = z.infer<typeof ConditionAppliedEventSchema>;
 

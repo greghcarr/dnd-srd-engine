@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  AbilityScoreSchema,
   AbilityScoresSchema,
   CharacterLevelSchema,
   DamageTypeSchema,
@@ -51,6 +52,13 @@ export const AppliedConditionSchema = z.object({
   // `EffectInstance.conditionsApplied` instead) and for riders
   // applied by non-concentration sources (class features, magic items).
   sourceEffectInstanceId: ULIDSchema.optional(),
+  // Per-instance fixed-DC recurring save (slice 388). Stamped from the
+  // ConditionApplied event when a non-spell source (Cunning Strike Poison
+  // / Knock Out) wants the bearer to repeat a save at the end of each of
+  // its turns to shake the condition. `planTickRecurringSave` uses these
+  // instead of the condition definition's `recurringSave` + a spell DC.
+  recurringSaveDC: z.number().int().optional(),
+  recurringSaveAbility: AbilityScoreSchema.optional(),
 });
 export type AppliedCondition = z.infer<typeof AppliedConditionSchema>;
 

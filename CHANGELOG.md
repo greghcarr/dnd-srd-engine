@@ -4,6 +4,16 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 388): per-instance fixed-DC recurring save (Poison / Knock Out repeat save)**
+
+Converted the Cunning Strike Poison / Knock Out repeat-save deviation to full RAW. RAW: a creature Poisoned (or Knocked Out) by Cunning Strike "repeats the save at the end of each of its turns, ending the effect on a success." The existing recurring-save path (`planTickRecurringSave`) computed a **spell** save DC and required a spellcasting caster, neither of which fits a Rogue's fixed feature DC (8 + DEX + PB), so Poison/Knock Out shipped as plain conditions with only a 1-minute `autoExpiry`.
+
+New per-instance recurring save: the `ConditionApplied` event + `AppliedCondition` carry optional `recurringSaveDC` + `recurringSaveAbility`. When set, `planTickRecurringSave` re-rolls that ability save against the baked DC and removes the condition on a success, with **no caster / spellcasting-class resolution**. The condition definition's `recurringSave` + spell-DC path is the fallback (Hold Person, Bestow Curse, etc., unchanged). Cunning Strike applies the **base** `poisoned` / `unconscious` condition (so condition immunity and base-id behavior are preserved) with the fixed-DC repeat save baked on; the consumer ticks it via `tickRecurringSave` at the end of the target's turns.
+
+Generalizes the recurring-save primitive to non-spell, fixed-DC sources, which also unblocks the deferred Intimidating Presence end-of-turn repeat save (deferred precisely because recurring saves computed a spell DC). Still deferred on Knock Out: the "until it takes any damage" early end (no per-instance damage-end on the base condition).
+
+Uncle Bob audit (engine slice): **Names** `recurringSaveDC` / `recurringSaveAbility` / `instanceFixed` read as what they do. **DRY** the tick's save roll + removal stay one path; only the DC + ability + on-success/on-fail resolution branch on the per-instance vs definition source. **SRP** the applied condition carries the data, the tick planner decides, Cunning Strike bakes it. **Magic numbers** none new (the DC is `cunningStrikeSaveDC`, baked at apply). **Mechanical outcomes asserted** the tick rolls a CON save at the baked DC with no caster, a success removes the condition and a failure leaves it, and a Cunning-Strike-poisoned target carries DC 15 (8 + 4 + 3) and ticks. **Tests** each pins behavior the spell-DC path couldn't reach (a non-spellcaster bearer); the existing recurring-save consumers stay green. No em/en dashes. `tsc --noEmit` clean; full suite green.
+
 **Engine (slice 387): Sap / Vex are one-shot (full-RAW conversion)**
 
 Converted the most mechanically-impactful documented deviation to full RAW. Sap gives the target Disadvantage on its **next** attack roll; Vex gives the attacker Advantage on their **next** attack roll against the vexed creature. The `sapped` / `vexing-active` conditions lasted a full round (`autoExpiry`), so a second attack the same turn (Extra Attack) wrongly kept the disadvantage/advantage.
