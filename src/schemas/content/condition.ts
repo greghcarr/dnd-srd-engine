@@ -29,7 +29,13 @@ export const RecurringSaveSchema = z
     //   'consumeAction' = ActionEconomyConsumed (action) for the bearer
     //                     (only emitted when the bearer is a combatant
     //                     in the active encounter).
-    onFail: z.enum(['consumeAction']).optional(),
+    //   'dodge'         = forced to take the Dodge action: consumes the
+    //                     action AND applies the `dodged` condition (so
+    //                     the bearer also gains Dodge's defensive
+    //                     benefit), the SRD 5.2.1 Bestow Curse
+    //                     inactive-turn arm. Active-encounter-gated like
+    //                     'consumeAction'.
+    onFail: z.enum(['consumeAction', 'dodge']).optional(),
     // What happens on a successful save:
     //   'removeCondition' = ConditionRemoved for this condition on the
     //                       bearer (the spell ends on the target).

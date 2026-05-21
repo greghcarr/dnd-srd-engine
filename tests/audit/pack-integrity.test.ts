@@ -361,11 +361,11 @@ describe('pack integrity: wired spells do not apply effect-less conditions', () 
     'guided', // consumed by planConsumeGuidance (rolls the d4)
     'mirror-image-active', // read in the attack planner; appliedConditionLevel = image count
     'hideous-laughter-active', // slice 366: action-blocking (ACTION_BLOCKING_CONDITIONS) + recurringSave; Incapacitated/Prone are engine-coded base conditions
+    'cursed-inert-active', // slice 368: recurringSave { onFail: 'dodge' } drives it (save-or-Dodge); the mechanic is the recurring save, not the effects array
     // KNOWN-OPEN bugs: the applying spell is wired but the condition is a
     // do-nothing stub. Remove from this list when the bug is fixed (the
     // accuracy check below will then demand it).
     'resisted', // Resistance cantrip: no consume path + 2024 RAW drift
-    'cursed-inert-active', // Bestow Curse: needs per-turn random incapacitation
     // Consumer-managed / narrative (no clean engine model):
     'commanded-approach-active',
     'commanded-drop-active',
