@@ -784,7 +784,7 @@
           {
             "id": "lands-aid",
             "name": "Land's Aid",
-            "effects": []
+            "effects": [{ "kind": "Custom", "handlerId": "lands-aid" }]
           },
           {
             "id": "circle-of-the-land-spells",

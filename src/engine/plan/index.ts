@@ -100,6 +100,7 @@ export { planStepOfTheWind, type StepOfTheWindIntent } from './step-of-the-wind.
 export { planIntimidatingPresence, type IntimidatingPresenceIntent } from './intimidating-presence.js';
 export { planDragonWings, type DragonWingsIntent } from './dragon-wings.js';
 export { planPreserveLife, type PreserveLifeIntent } from './preserve-life.js';
+export { planLandsAid, type LandsAidIntent } from './lands-aid.js';
 export { planFrenzy, type FrenzyIntent } from './frenzy.js';
 export {
   planCuttingWords,
