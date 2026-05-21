@@ -117,9 +117,14 @@ export const planFlurryOfBlows = (
   } satisfies ResourceSpentEvent);
 
   const strikes = monkLevel >= HEIGHTENED_FOCUS_LEVEL ? HEIGHTENED_STRIKES : BASE_STRIKES;
+  // Thread state across strikes so each sees the prior ones' effects: a
+  // Prone target (from an Open Hand Topple) grants advantage to the next
+  // strike, a Push has moved it, and one-shot conditions on the monk are
+  // consumed by the first strike. `apply` is pure -> replay-deterministic.
+  let workingState = applyAll(state, events);
   for (let i = 0; i < strikes; i += 1) {
     const resolution = resolveAttack({
-      state,
+      state: workingState,
       content,
       rng,
       attackerId: intent.monkId,
@@ -128,23 +133,23 @@ export const planFlurryOfBlows = (
       at,
     });
     events.push(...resolution);
+    workingState = applyAll(workingState, resolution);
 
-    // Open Hand Technique fires on a hit. Resolve against post-strike
-    // state (Push reads the target's current position; a prior strike's
-    // Push may have moved it) so the technique sees up-to-date positions.
+    // Open Hand Technique fires on a hit, resolved against the post-strike
+    // state so Push reads the target's current position.
     if (intent.openHandTechnique !== undefined) {
       const struck = resolution.find((e): e is AttackRolledEvent => e.type === 'AttackRolled');
       if (struck?.hit === true) {
-        events.push(
-          ...applyOpenHandTechnique({
-            state: applyAll(state, events),
-            monk,
-            targetId: intent.targetId,
-            technique: intent.openHandTechnique,
-            rng,
-            at,
-          }),
-        );
+        const ohEvents = applyOpenHandTechnique({
+          state: workingState,
+          monk,
+          targetId: intent.targetId,
+          technique: intent.openHandTechnique,
+          rng,
+          at,
+        });
+        events.push(...ohEvents);
+        workingState = applyAll(workingState, ohEvents);
       }
     }
   }

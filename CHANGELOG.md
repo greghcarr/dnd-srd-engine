@@ -4,6 +4,14 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 392): Flurry / Multiattack thread state across strikes**
+
+Took on the last of the documented deviations. `planFlurryOfBlows` and `planMultiattack` resolved every strike against the original pre-action state, so each strike saw the same world: a one-shot condition on the attacker (Sap / Vex) wrongly applied to all strikes rather than just the first, a Prone applied by an earlier strike (Open Hand Topple) didn't grant advantage to the next, and the target's HP wasn't threaded. Both planners now carry a `workingState` (`applyAll(state, eventsSoFar)`) and resolve each strike against it, so a strike sees the prior strikes' effects. `apply` is pure, so this stays replay-deterministic.
+
+This is the RAW-correct one-shot semantics for a multiattacker: a creature Sapped before its turn now rolls Disadvantage on only its first attack (the showcase's Stoneheart multiattack lost two spurious `[disadvantage]` swings and two redundant "no longer Sapped" lines). It also lets Open Hand Technique's Topple-induced Prone and Push-induced reposition affect the same flurry's later strikes.
+
+Uncle Bob audit (engine slice): **Names** `workingState` reads as what it is. **DRY** both planners use the same `applyAll`-per-strike threading; the flurry's open-hand follow-up already built post-strike state, now folded into the running state. **SRP** the planners own strike sequencing; `resolveAttack` is unchanged. **Magic numbers** none. **Mechanical outcomes asserted** a Sapped monk's 3-strike Flurry rolls Disadvantage on only the first strike and removes `sapped` exactly once; an HP-threaded Flurry resolves cleanly. **Tests** the one-shot-per-multiattack semantics the stale state got wrong; the showcase transcript regenerated (only the expected roll cascade + the removed spurious lines; replay-equivalence held). No content change. No em/en dashes. `tsc --noEmit` clean; full suite green.
+
 **Engine (slice 391): "ends if the bearer takes any damage" (Sleep + Knock Out)**
 
 Took on one of the bigger remaining mechanisms. RAW Sleep ends "on a creature if it takes damage"; RAW Knock Out (Rogue Devious Strikes) is Unconscious "until it takes any damage." Both apply the base `unconscious` condition, which must NOT always end on damage (a creature unconscious at 0 HP doesn't wake from a hit), so the clause had to be per-instance. The `endsOn: { kind: 'damageTaken' }` schema field was vestigial (never enforced anywhere).

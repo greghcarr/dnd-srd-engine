@@ -6,6 +6,7 @@ import type { RNG } from '../../rng/index.js';
 import { newEventId } from '../../ids.js';
 import { nowIso } from '../../internal/clock.js';
 import { resolveAttack } from './attack.js';
+import { applyAll } from '../apply.js';
 import type { ULID } from '../ids-utils.js';
 
 export interface MultiattackIntent {
@@ -49,10 +50,16 @@ export const planMultiattack = (
     }
   }
 
+  // Thread state across swings so each attack sees the prior ones'
+  // effects: a target dropped to lower HP, a condition applied (a Prone
+  // target grants advantage to the next swing), and one-shot conditions on
+  // the attacker (Sap / Vex) consumed by the first swing rather than every
+  // swing. `apply` is pure, so this stays replay-deterministic.
+  let workingState = applyAll(state, events);
   for (const swing of pattern.attacks) {
     for (let i = 0; i < swing.count; i++) {
       const resolution = resolveAttack({
-        state,
+        state: workingState,
         content,
         rng,
         attackerId: intent.attackerId,
@@ -61,6 +68,7 @@ export const planMultiattack = (
         at,
       });
       events.push(...resolution);
+      workingState = applyAll(workingState, resolution);
     }
   }
   return events;
