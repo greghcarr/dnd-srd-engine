@@ -103,6 +103,10 @@ Eleven non-RAW conditions ship with `effects: []`. Each is applied by exactly on
 
 **Promoted to a permanent audit (slice 363):** [tests/audit/pack-integrity.test.ts](../tests/audit/pack-integrity.test.ts) now asserts "every condition applied by a wired spell either carries effects or is on a documented `EFFECT_LESS_OK` allowlist." All four are now closed (slices 366-369: Hideous Laughter, Bestow Curse's ability arm, Bestow Curse's inactive-turn arm, and the Resistance cantrip), so the known-open-bugs group is empty; the allowlisted empty-effect conditions are now all engine-read markers (action-blocking variants, recurring-save-driven, or consumer-invoked reactions) plus the consumer-managed / narrative placeholders. The same slice added a content-cross-reference guard (every `spellId` / `parentClassId` / `enchantmentDefinitionId` / condition-id reference must resolve to a defined entity), so a renamed or deleted id can no longer leave a silent dangling reference.
 
+### Phantom-field strip findings (slice 370 sweep)
+
+A raw-vs-Zod-resolved diff of every spell mechanic surfaced fields authored on a mechanic that the schema doesn't have, so Zod silently drops them. Slice 370 fixed the severe case (Sacred Flame / Burning Hands / Thunderwave used a `save.onFailure` shape -> dealt zero damage) and made `SpellSaveMechanicSchema` `.strict()` so future phantom fields fail to parse. **Open follow-up:** `attack.attackKind` is stripped from 16 attack spells; cast-spell hardcodes `attackKind: 'ranged'`, so the 5 melee spell attacks (Shocking Grasp, Vampiric Touch, Flame Blade, Produce Flame's melee mode, Chill Touch is ranged) are tagged ranged. Fix: add `attackKind` to `SpellAttackMechanicSchema`, have cast-spell read `mechanic.attackKind` (default `ranged`) when stamping the AttackRolled event, then `.strict()` the attack schema. This matters once a rule gates on melee-vs-ranged for spell attacks (e.g. the ranged-attack-in-melee disadvantage). **Still open.**
+
 
 ## Future engine slices (what unblocks the deferred spells)
 

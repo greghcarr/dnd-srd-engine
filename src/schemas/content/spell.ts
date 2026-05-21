@@ -80,7 +80,14 @@ const SpellSaveMechanicSchema = z.object({
   pushedFeetOnFail: z.number().int().min(0).optional(),
   extraDicePerSlotLevel: z.number().int().min(0).optional(),
   cantripScalingDice: DiceExpressionSchema.optional(),
-});
+})
+  // Slice 370: `.strict()` so an authored field the engine doesn't
+  // support (e.g. the `onFailure` / `onSuccess` shape that Sacred Flame /
+  // Burning Hands / Thunderwave used) fails to parse loudly instead of
+  // being silently dropped by Zod, which had left those spells dealing
+  // zero damage at runtime while the SRD-drift audit (which reads the raw
+  // authored fields) still passed.
+  .strict();
 
 const SpellHealMechanicSchema = z.object({
   kind: z.literal('heal'),

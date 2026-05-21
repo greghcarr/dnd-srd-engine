@@ -1543,7 +1543,7 @@
       "ritual": false,
       "classes": ["cleric"],
       "cantripScalingDice": { "5": "2d8", "11": "3d8", "17": "4d8" },
-      "mechanicalEffects": [{ "kind": "save", "ability": "DEX", "onFailure": { "damageDice": "1d8", "damageType": "radiant" } }]
+      "mechanicalEffects": [{ "kind": "save", "ability": "DEX", "damageDice": "1d8", "damageType": "radiant", "cantripScalingDice": "1d8" }]
     },
     {
       "id": "eldritch-blast",
@@ -1701,7 +1701,7 @@
       "ritual": false,
       "classes": ["sorcerer", "wizard"],
       "targeting": { "shape": "cone", "size": 15 },
-      "mechanicalEffects": [{ "kind": "save", "ability": "DEX", "onFailure": { "damageDice": "3d6", "damageType": "fire", "extraDicePerSlotLevel": 1 }, "onSuccess": "half" }]
+      "mechanicalEffects": [{ "kind": "save", "ability": "DEX", "damageDice": "3d6", "damageType": "fire", "halfOnSuccess": true, "extraDicePerSlotLevel": 1 }]
     },
     {
       "id": "thunderwave",
@@ -1716,7 +1716,7 @@
       "ritual": false,
       "classes": ["bard", "druid", "sorcerer", "wizard"],
       "targeting": { "shape": "cube", "size": 15 },
-      "mechanicalEffects": [{ "kind": "save", "ability": "CON", "onFailure": { "damageDice": "2d8", "damageType": "thunder", "extraDicePerSlotLevel": 1 }, "onSuccess": "half" }]
+      "mechanicalEffects": [{ "kind": "save", "ability": "CON", "damageDice": "2d8", "damageType": "thunder", "halfOnSuccess": true, "extraDicePerSlotLevel": 1, "pushedFeetOnFail": 10 }]
     },
     {
       "id": "mage-armor",
