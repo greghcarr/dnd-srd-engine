@@ -4,6 +4,20 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+## 0.1.0-alpha.12 - 2026-05-21
+
+**Release (slice 375): bump to 0.1.0-alpha.12**
+
+Promotes the post-alpha.11 cohort (slices 345-374) to a tagged release. `package.json` bumped from `0.1.0-alpha.11` to `0.1.0-alpha.12`; `package-lock.json` updated to match. `SCHEMA_VERSION` stays 1 (no persisted-shape changes - the cohort added content and content-schema fields, not runtime-state shapes). The suite is green at 320 files / 2114 passing.
+
+Cohort highlights, in three arcs:
+
+- **Subclass features (345-360):** closed the Tier-A subclass spell-grant queue and wired a run of post-L3 features - Hunter Colossus Slayer (the new `event.targetMissingHp` fact), Fiend Dark One's Blessing (the new `GrantTempHP` trigger action), the L14 Intimidating Presence + Dragon Wings, Life Domain Preserve Life, Circle of the Land Land's Aid, Warrior of the Open Hand Wholeness of Body, College of Lore Peerless Skill, Evoker Empowered Evocation (the new `event.spellSchool` damage fact), and Oath of Devotion's Aura of Devotion ally-half.
+- **CI guard suite (361-365):** a project-wide doc reconciliation plus five permanent audits that close recurring drift classes at commit time - count-drift (doc counts vs source), content cross-reference resolution, effect-less conditions on wired spells, planner-wiring (every `engine.plan` method dispatch-routed or allowlisted), and Custom-handlerId backing.
+- **Two bug-class arcs (366-374):** the empty-effect-condition class (Hideous Laughter now action-blocking; Bestow Curse's ability + inactive-turn arms; the Resistance cantrip's 1d4 reduction) and the phantom-field-strip class (three save spells that dealt zero damage, five melee spell attacks mistagged ranged, Ray of Frost / Shocking Grasp that didn't scale, 52 dropped item descriptions), each closed and permanently guarded - the spell schemas are now `.strict()`, a phantom-field audit deep-diffs the whole pack, and srd-drift gained four monster secondary-field checks.
+
+Per-slice detail for the whole cohort is in the per-cohort archives under [docs/changelog/](docs/changelog/) (slices 345-373) plus the slice-374 entry below.
+
 **Audit: guard monster secondary defensive fields against SRD drift (slice 374)**
 
 Investigated a bug class - monster secondary-field drift. The SRD-drift audit checked only AC / HP / CR / ability scores for monsters; condition immunities, damage immunities, damage resistances, and Speed got a one-time sweep at slices 154-163 but the ~100 monsters added since (batches 5.x) were unguarded. A fresh sweep of all 235 SRD-matched monsters found the **content is clean** on all four fields (zero drift) - but unguarded. Per the "promote a repeatable sweep to a permanent audit" norm, extended [tests/audit/srd-drift.test.ts](tests/audit/srd-drift.test.ts) with four monster checks: condition immunities, damage immunities, damage resistances, and walk speed, parsed from the merged 2024 `**Immunities**` line (damage types before the `;`, conditions after), the `**Resistances**` line, and the `**Speed**` line.
