@@ -4,6 +4,14 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 391): "ends if the bearer takes any damage" (Sleep + Knock Out)**
+
+Took on one of the bigger remaining mechanisms. RAW Sleep ends "on a creature if it takes damage"; RAW Knock Out (Rogue Devious Strikes) is Unconscious "until it takes any damage." Both apply the base `unconscious` condition, which must NOT always end on damage (a creature unconscious at 0 HP doesn't wake from a hit), so the clause had to be per-instance. The `endsOn: { kind: 'damageTaken' }` schema field was vestigial (never enforced anywhere).
+
+New per-instance `endsOnDamage` flag on `ConditionApplied` + `AppliedCondition`, swept at the **damage chokepoint**: `interceptFatalDamage` (which every damage emitter already calls between mitigation and the DamageApplied, and which already returns `ConditionRemoved` events for Death Ward) now also, on any positive post-mitigation damage, removes the bearer's `endsOnDamage` conditions - independent of whether the hit is fatal. Centralizing it there means no per-emitter changes (attack, cast-spell, riders, masteries, breath weapon, traps, falling all route through it). Sleep's `hp-pool-knockout` and Knock Out both stamp `endsOnDamage: true` on the `unconscious` they apply; a normal 0-HP unconscious is unflagged and unaffected.
+
+Uncle Bob audit (engine slice): **Names** `endsOnDamage` / `endsOnDamageRemovals` read as what they do. **DRY** reuses the single damage chokepoint and its existing `ConditionRemoved` return channel; the removal sweep is computed once and threaded through every return path. **SRP** the applied condition carries the flag, the chokepoint removes it; emitters are untouched. **Magic numbers** none (any positive damage). **Mechanical outcomes asserted** a damage hit removes an `endsOnDamage` unconscious but not a plain one, and Sleep applies an `unconscious` flagged `endsOnDamage`. **Tests** the per-instance distinction (the whole point) plus the Sleep stamping; existing Sleep + Devious Strikes tests stay green. No content change. No em/en dashes. `tsc --noEmit` clean; full suite green.
+
 **Engine (slice 390): Absorb Elements slot-scaled next-hit rider**
 
 Converted a narrow deviation: Absorb Elements' next-hit bonus damage was always 1d6 regardless of the slot it was cast at. RAW: "the damage increases by 1d6 for each spell slot level above 1st" (so a 3rd-level cast adds 3d6). The bonus lives on the `absorb-elements-charged-<type>-active` condition's `OnEvent`/`AddDamage` rider, whose dice was fixed at `1d6` in the pack.

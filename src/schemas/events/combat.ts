@@ -78,6 +78,13 @@ export const ConditionAppliedEventSchema = EventEnvelopeSchema.extend({
   // Elements' next-hit bonus (1d6 + 1d6 per slot level above 1st), baked
   // at cast time as `${slotLevel}d6`.
   riderDamageDice: DiceExpressionSchema.optional(),
+  // Per-instance "ends if the bearer takes any damage" (slice 391). The
+  // damage chokepoint (`interceptFatalDamage`) removes the condition when
+  // its bearer takes positive damage. Per-instance because the same base
+  // condition can be applied without this clause: Sleep / Knock Out apply
+  // base `unconscious` that ends on damage, but a 0-HP unconscious does
+  // not. Canonical users: Sleep, Rogue Devious Strikes Knock Out.
+  endsOnDamage: z.boolean().optional(),
 });
 export type ConditionAppliedEvent = z.infer<typeof ConditionAppliedEventSchema>;
 

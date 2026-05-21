@@ -63,6 +63,10 @@ export const AppliedConditionSchema = z.object({
   // dice (slice 390). Absorb Elements bakes `${slotLevel}d6` here so the
   // next-hit bonus scales with the slot it was cast at.
   riderDamageDice: z.string().optional(),
+  // Per-instance "ends if the bearer takes any damage" (slice 391). Set by
+  // Sleep / Knock Out (which apply base `unconscious`); the damage
+  // chokepoint removes the condition when the bearer takes positive damage.
+  endsOnDamage: z.boolean().optional(),
 });
 export type AppliedCondition = z.infer<typeof AppliedConditionSchema>;
 

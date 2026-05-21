@@ -39,13 +39,16 @@ interface CunningStrikeSpec {
   // effect on a success" (Poison, Knock Out). Bakes a per-instance
   // fixed-DC recurring save onto the applied condition.
   readonly repeatSave?: boolean;
+  // RAW "or until it takes any damage" (Knock Out): the condition ends
+  // when the bearer takes positive damage (slice 391 per-instance flag).
+  readonly endsOnDamage?: boolean;
 }
 const SPECS: Record<CunningStrikeOption, CunningStrikeSpec> = {
   poison: { costDice: 1, save: { ability: 'CON', conditionId: 'poisoned' }, expiryRounds: ONE_MINUTE_ROUNDS, repeatSave: true },
   trip: { costDice: 1, save: { ability: 'DEX', conditionId: 'prone' }, largeOrSmallerOnly: true },
   withdraw: { costDice: 1, withdraw: true },
   obscure: { costDice: 3, save: { ability: 'DEX', conditionId: 'blinded' }, devious: true, expiryRounds: END_OF_NEXT_TURN_ROUNDS },
-  knockout: { costDice: 6, save: { ability: 'CON', conditionId: 'unconscious' }, devious: true, expiryRounds: ONE_MINUTE_ROUNDS, repeatSave: true },
+  knockout: { costDice: 6, save: { ability: 'CON', conditionId: 'unconscious' }, devious: true, expiryRounds: ONE_MINUTE_ROUNDS, repeatSave: true, endsOnDamage: true },
 };
 
 const SAVE_DC_BASE = 8;
@@ -90,9 +93,10 @@ export interface CunningStrikeEffectsInput {
 // Trip's size gate (slice 386) and Poison's / Knock Out's end-of-turn
 // repeat save (slice 388, via the per-instance fixed-DC `recurringSave*`
 // fields on the applied condition; the consumer ticks it through
-// `tickRecurringSave`) ARE modeled. RAW deviations still documented in
-// starter-pack-gaps.md: Knock Out's "until it takes any damage" early end
-// and Withdraw's half-Speed cap (no damage-end on the base condition, or
+// `tickRecurringSave`) ARE modeled, as is Knock Out's "until it takes any
+// damage" early end (slice 391, the per-instance `endsOnDamage` flag swept
+// by the damage chokepoint). RAW deviation still documented in
+// starter-pack-gaps.md: Withdraw's half-Speed cap (the engine has no
 // movement-distance surface here).
 export const buildCunningStrikeEffects = (input: CunningStrikeEffectsInput): Event[] => {
   const { state, content, rng, at, rogue, targetId, effects } = input;
@@ -144,6 +148,7 @@ export const buildCunningStrikeEffects = (input: CunningStrikeEffectsInput): Eve
         ...(spec.repeatSave === true
           ? { recurringSaveDC: dc, recurringSaveAbility: spec.save.ability }
           : {}),
+        ...(spec.endsOnDamage === true ? { endsOnDamage: true } : {}),
       };
       events.push(applied);
     }

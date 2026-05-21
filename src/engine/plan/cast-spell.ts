@@ -1089,6 +1089,8 @@ const planHPPoolKnockoutMechanic = (
       conditionId: mechanic.conditionId,
       appliedConditionId: newAppliedConditionId(),
       causedByEventId: declaredEventId as ULID,
+      // RAW Sleep: "the effect ends on a creature if it takes damage."
+      endsOnDamage: true,
     };
     events.push(cond);
   }
