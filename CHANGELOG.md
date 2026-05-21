@@ -4,6 +4,22 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine+content (slice 384): Rogue Cunning Strike + Improved Cunning Strike**
+
+Wired the Rogue's Cunning Strike (L5) and Improved Cunning Strike (L11), the highest-payoff item left on the subclass/class-feature menu (it unblocks the dice-trade family). RAW: when the rogue deals Sneak Attack damage, they may forgo Sneak Attack dice ("remove the die before rolling") to add an effect, each effect costing a number of d6.
+
+The primitive is a seam in the Sneak Attack trigger:
+
+- New `cunningStrikeEligible` flag on the `AddDamage` trigger action marks the Sneak Attack rider as the one Cunning Strike trades from. The pack's 9 Sneak Attack rows (L3-L19) carry it.
+- `AttackIntent.cunningStrike` (and `ResolveAttackInput.cunningStrike`) carries the chosen effects. The attack planner validates at plan time: the attacker has the feature (Rogue L5+), the effect count is within the level cap (1 at L5-10, 2 at L11+ via Improved Cunning Strike), and enough Sneak Attack dice exist to forgo (read from the `cunningStrikeEligible` rider, not a hardcoded formula).
+- The trigger dispatcher forgoes the chosen effects' combined die cost from the Sneak Attack `AddDamage` before rolling (a crit then doubles what remains), and emits the effects right after the damage, only when the Sneak Attack trigger actually fires (so an unqualifying attack resolves nothing).
+
+The three L5 options ship in the new [cunning-strike.ts](src/engine/plan/cunning-strike.ts): **Poison** (CON save vs 8 + DEX + PB or Poisoned, 1 minute), **Trip** (DEX save or Prone), **Withdraw** (the rogue Disengages). Both features wire as `Custom { handlerId: 'cunning-strike' }` (Improved is the same mechanic with the cap gated on level). **Devious Strikes (L14: Daze / Knock Out / Obscure) is deferred** - the dice-trade machinery now exists, so those are mostly option-table additions plus a Daze condition and a repeat-save shape.
+
+RAW deviations (documented in [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md) / gaps-class-features.md): Poison's end-of-turn repeat save (base Poisoned carries none), Trip's "Large or smaller" size gate, Withdraw's half-Speed cap (the engine's movement is position-free; Disengage is the closest primitive), and the Poison "Poisoner's Kit on your person" requirement are not modeled.
+
+Uncle Bob audit (engine slice): **Names** `cunningStrikeEligible` / `cunningStrikeForgoDice` / `cunningStrikeSaveDC` / `buildCunningStrikeEffects` / `assertCunningStrikeUsable` / `sneakAttackDiceCount` are intention-revealing. **DRY** the save rolls reuse `rollSaveAgainstDC`; the dice forgo flows through the existing `rollAddDamage` (one new param) rather than a parallel path; the option metadata lives in one `SPECS` table. **SRP** the planner validates, the dispatcher forgoes + emits, the cunning-strike module owns the effect/cost vocabulary. **Magic numbers** the L5 / L11 gates, the 1d6 costs, and the DC formula cite SRD. **at-threading** the dispatcher's single `at` flows to every emitted effect event. **Mechanical outcomes asserted** eight cases: the forgo shrinks the Sneak Attack (non-crit max 2d6 with Poison vs 3d6 without), Poison CON-save + Poisoned, Trip DEX-save + Prone, Withdraw Disengages, Improved allows two effects, and three validation throws (below L5, two effects at L5, non-rogue). **Tests** each pins an arm the stub couldn't do. No em/en dashes. `tsc --noEmit` clean; full suite green.
+
 **Engine+content (slice 383): Evoker L3 Potent Cantrip**
 
 Wired the Evoker's L3 Potent Cantrip (it wasn't even a stub row in the pack). RAW: "When you cast a cantrip at a creature and you miss with the attack roll or the target succeeds on a saving throw against the cantrip, the target takes half the cantrip's damage (if any) but suffers no additional effect."

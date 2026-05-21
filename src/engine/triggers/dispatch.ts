@@ -26,6 +26,11 @@ import type {
 import { newAppliedConditionId } from '../../ids.js';
 import type { ConcentrationBrokenEvent } from '../../schemas/events/concentration.js';
 import type { TriggerFiredEvent } from '../../schemas/events/triggers.js';
+import {
+  buildCunningStrikeEffects,
+  cunningStrikeForgoDice,
+  type CunningStrikeOption,
+} from '../plan/cunning-strike.js';
 
 type OnEventEffect = Extract<Effect, { kind: 'OnEvent' }>;
 type AddDamageAction = Extract<OnEventEffect['actions'][number], { kind: 'AddDamage' }>;
@@ -167,9 +172,13 @@ const rollAddDamage = (
   action: AddDamageAction,
   rng: RNG,
   critical: boolean,
+  forgoDice: number = 0,
 ): { amount: number; rolls: number[] } => {
   const parsed = parseDiceExpression(action.dice);
-  const count = critical ? parsed.count * 2 : parsed.count;
+  // Cunning Strike forgoes dice "before rolling"; a crit then doubles
+  // whatever remains.
+  const baseCount = Math.max(0, parsed.count - forgoDice);
+  const count = critical ? baseCount * 2 : baseCount;
   const rolls: number[] = [];
   for (let i = 0; i < count; i++) {
     rolls.push(rollDie(parsed.die, rng));
@@ -199,11 +208,12 @@ const fireAddDamage = (
     state: CampaignState;
     content: ResolvedContent;
     sourceIsMagical: boolean;
+    forgoDice?: number;
   },
 ): Event[] => {
   const { action, event, rng, causedByEventId, state, content, sourceIsMagical } = input;
   if (event.type !== 'AttackRolled') return [];
-  const { amount } = rollAddDamage(action, rng, event.critical);
+  const { amount } = rollAddDamage(action, rng, event.critical, input.forgoDice ?? 0);
   if (amount <= 0) return [];
   const target = state.characters[event.targetId];
   const rawComponents = [{ amount, type: action.damageType }];
@@ -503,6 +513,7 @@ const fireTrigger = (
   state: CampaignState,
   content: ResolvedContent,
   sourceIsMagical: boolean,
+  forgoDice: number = 0,
 ): FiredTrigger | null => {
   const cadence = cadencePayload(effect.oncePer);
   const triggerFired: TriggerFiredEvent = {
@@ -526,6 +537,7 @@ const fireTrigger = (
           state,
           content,
           sourceIsMagical,
+          forgoDice: action.cunningStrikeEligible === true ? forgoDice : 0,
         }),
       );
     } else if (action.kind === 'AddDamageToAttacker') {
@@ -648,6 +660,12 @@ export interface DispatchInput {
   readonly rng: RNG;
   readonly event: Event;
   readonly at: string;
+  // Rogue Cunning Strike: the effects the attacker chose to add to this
+  // attack's Sneak Attack. The dispatcher forgoes their combined die cost
+  // from the `cunningStrikeEligible` Sneak Attack rider and emits the
+  // effects right after the damage. Applies only to the attacker's own
+  // sneak-attack trigger.
+  readonly cunningStrike?: ReadonlyArray<CunningStrikeOption>;
 }
 
 // Locates the AppliedCondition (if any) that contributed the given
@@ -714,6 +732,17 @@ export const dispatchTriggers = (input: DispatchInput): Event[] => {
         : undefined;
       // Slice 113: rider-damage magicality for the mitigation pipeline.
       const sourceIsMagical = isRiderMagical(runningState, content, event, appliedFrom);
+      // Rogue Cunning Strike: when the attacker chose effects and this is
+      // their own `cunningStrikeEligible` Sneak Attack rider, forgo the
+      // chosen effects' combined die cost before rolling, then emit the
+      // effects after the damage.
+      const cunningStrikeApplies =
+        input.cunningStrike !== undefined &&
+        input.cunningStrike.length > 0 &&
+        event.type === 'AttackRolled' &&
+        characterId === event.attackerId &&
+        effect.actions.some((a) => a.kind === 'AddDamage' && a.cunningStrikeEligible === true);
+      const forgoDice = cunningStrikeApplies ? cunningStrikeForgoDice(input.cunningStrike!) : 0;
       const fired = fireTrigger(
         effect,
         currentCharacter,
@@ -726,10 +755,24 @@ export const dispatchTriggers = (input: DispatchInput): Event[] => {
         runningState,
         content,
         sourceIsMagical,
+        forgoDice,
       );
       if (fired === null) continue;
       emitted.push(...fired.events);
       runningState = applyAll(runningState, fired.events);
+      if (cunningStrikeApplies && event.type === 'AttackRolled') {
+        const csEvents = buildCunningStrikeEffects({
+          state: runningState,
+          content,
+          rng,
+          at,
+          rogue: currentCharacter,
+          targetId: event.targetId,
+          effects: input.cunningStrike!,
+        });
+        emitted.push(...csEvents);
+        runningState = applyAll(runningState, csEvents);
+      }
       if (effect.consumeOnTrigger === true) {
         const triggerFiredId = fired.events[0]?.id;
         if (triggerFiredId !== undefined) {

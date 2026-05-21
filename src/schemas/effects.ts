@@ -85,7 +85,11 @@ export const RollTargetSchema: z.ZodType<RollTarget> = z.union([
 ]);
 
 export type TriggerAction =
-  | { kind: 'AddDamage'; dice: DiceExpression; damageType: DamageType }
+  // `cunningStrikeEligible` marks the Sneak Attack damage rider as the one
+  // a Rogue's Cunning Strike trades dice from (Rogue L5+). When the attack
+  // intent supplies cunning-strike effects, the dispatcher forgoes that
+  // many d6 from this rider before rolling and emits the chosen effects.
+  | { kind: 'AddDamage'; dice: DiceExpression; damageType: DamageType; cunningStrikeEligible?: boolean }
   // Retaliation variant of AddDamage: emits damage to the attacker of
   // the triggering event instead of the target. Used by Fire Shield's
   // "creature that hits you takes 2d8" rider; the same shape will fit
@@ -138,6 +142,7 @@ export const TriggerActionSchema: z.ZodType<TriggerAction> = z.union([
     kind: z.literal('AddDamage'),
     dice: DiceExpressionSchema,
     damageType: DamageTypeSchema,
+    cunningStrikeEligible: z.boolean().optional(),
   }),
   z.object({
     kind: z.literal('AddDamageToAttacker'),
