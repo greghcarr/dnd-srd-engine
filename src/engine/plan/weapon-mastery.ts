@@ -46,6 +46,24 @@ const recordMasteryEvent = (
   ...(targetId !== undefined ? { targetId } : {}),
 });
 
+// Stamps the round-based expiry for a mastery condition that carries an
+// `autoExpiry` (Sap / Slow expire at the start of the attacker's next
+// turn, Vex at the end). Mirrors the cast-spell stamping; outside an
+// active encounter expiry stays consumer-managed (no fields emitted).
+const masteryExpiryFields = (
+  state: CampaignState,
+  content: ResolvedContent,
+  conditionId: string,
+): { expiresOnRound?: number; expiryTrigger?: 'turnStart' | 'turnEnd' } => {
+  const autoExpiry = content.conditions.get(conditionId)?.autoExpiry;
+  const currentRound = state.activeEncounterId
+    ? state.encounters[state.activeEncounterId]?.round
+    : undefined;
+  return autoExpiry !== undefined && currentRound !== undefined
+    ? { expiresOnRound: currentRound + autoExpiry.afterRounds, expiryTrigger: autoExpiry.trigger }
+    : {};
+};
+
 export interface WeaponMasteryIntent {
   readonly type: 'WeaponMastery';
   readonly mastery: WeaponMastery;
@@ -85,6 +103,8 @@ export const planWeaponMastery = (
 
   switch (intent.mastery) {
     case 'Sap':
+      // The struck creature attacks with Disadvantage (the bearer's own
+      // SetAdvantage(attack) folds into its attack rolls).
       events.push({
         id: newEventId() as ULID,
         at,
@@ -92,16 +112,24 @@ export const planWeaponMastery = (
         targetId: intent.targetId,
         conditionId: 'sapped',
         appliedConditionId: newAppliedConditionId(),
+        ...masteryExpiryFields(state, content, 'sapped'),
       } satisfies ConditionAppliedEvent);
       break;
     case 'Vex':
+      // Vex grants the ATTACKER Advantage on their next attack against the
+      // struck creature. The condition rides the attacker with
+      // sourceCharacterId set to the target, so SetAdvantageVsSource only
+      // contributes when the attacker next targets that creature (the
+      // mirror of Bestow Curse's cursed-attacks-active).
       events.push({
         id: newEventId() as ULID,
         at,
         type: 'ConditionApplied',
-        targetId: intent.targetId,
-        conditionId: 'vexed-by',
+        targetId: intent.attackerId as ULID,
+        conditionId: 'vexing-active',
+        sourceCharacterId: intent.targetId as ULID,
         appliedConditionId: newAppliedConditionId(),
+        ...masteryExpiryFields(state, content, 'vexing-active'),
       } satisfies ConditionAppliedEvent);
       break;
     case 'Slow':
@@ -112,6 +140,7 @@ export const planWeaponMastery = (
         targetId: intent.targetId,
         conditionId: 'slowed-10ft',
         appliedConditionId: newAppliedConditionId(),
+        ...masteryExpiryFields(state, content, 'slowed-10ft'),
       } satisfies ConditionAppliedEvent);
       break;
     case 'Topple': {

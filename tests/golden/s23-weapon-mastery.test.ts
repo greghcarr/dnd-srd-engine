@@ -36,7 +36,7 @@ describe('golden: weapon mastery (Slice 23)', () => {
     ).toBe(true);
   });
 
-  it('Vex applies a vexed-by marker condition on the target', () => {
+  it('Vex applies vexing-active to the attacker, keyed to the struck target', () => {
     const engine = createEngine({ contentPacks: [TEST_PACK], rng: seededRNG(23) });
     const attacker = buildFighter({ name: 'A' });
     const target = buildFighter({ name: 'T' });
@@ -56,9 +56,17 @@ describe('golden: weapon mastery (Slice 23)', () => {
         weaponInstanceId: rapier.id,
       }).events,
     );
+    // RAW Vex grants the ATTACKER advantage on their next attack vs the
+    // target, so the condition rides the attacker with sourceCharacterId
+    // set to the target (the SetAdvantageVsSource keying).
+    const vexing = campaign.state.characters[attacker.id]?.appliedConditions.find(
+      (c) => c.conditionId === 'vexing-active',
+    );
+    expect(vexing).toBeDefined();
+    expect(vexing?.sourceCharacterId).toBe(target.id);
     expect(
-      campaign.state.characters[target.id]?.appliedConditions.some((c) => c.conditionId === 'vexed-by'),
-    ).toBe(true);
+      campaign.state.characters[target.id]?.appliedConditions.some((c) => c.conditionId === 'vexing-active'),
+    ).toBe(false);
   });
 
   it('Slow on a longbow applies slowed-10ft', async () => {

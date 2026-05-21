@@ -8102,6 +8102,33 @@
       "effects": []
     },
     {
+      "id": "sapped",
+      "name": "Sapped",
+      "description": "RAW (weapon mastery Sap): 'If you hit a creature with this weapon, that creature has Disadvantage on its next attack roll before the start of your next turn.' The bearer attacks with Disadvantage (folded in by the attack resolver's attacker-self advantage). RAW deviation (documented in starter-pack-gaps.md): the engine models 'next attack roll' as Disadvantage on all the bearer's attacks until the start of the attacker's next turn (autoExpiry afterRounds 1, turnStart); with Extra Attack this over-applies vs RAW's single attack. A one-shot-consumption primitive would close the gap.",
+      "stackable": false,
+      "endsOn": [],
+      "autoExpiry": { "afterRounds": 1, "trigger": "turnStart" },
+      "effects": [{ "kind": "SetAdvantage", "on": "attack", "mode": "disadvantage" }]
+    },
+    {
+      "id": "slowed-10ft",
+      "name": "Slowed (Slow mastery)",
+      "description": "RAW (weapon mastery Slow): 'If you hit a creature with this weapon and deal damage to it, you can reduce its Speed by 10 feet until the start of your next turn.' Modeled as ModifySpeed walk -10 with autoExpiry afterRounds 1, turnStart (the same shape as power-word-speed-zero-active). RAW caps the reduction at 10 ft even from multiple Slow sources; stackable is false so re-application doesn't compound.",
+      "stackable": false,
+      "endsOn": [],
+      "autoExpiry": { "afterRounds": 1, "trigger": "turnStart" },
+      "effects": [{ "kind": "ModifySpeed", "mode": "walk", "op": "add", "value": -10 }]
+    },
+    {
+      "id": "vexing-active",
+      "name": "Vexing (Vex mastery)",
+      "description": "RAW (weapon mastery Vex): 'If you hit a creature with this weapon and deal damage to the creature, you have Advantage on your next attack roll against that creature before the end of your next turn.' Applied to the ATTACKER (the vexer) with sourceCharacterId set to the vexed target; SetAdvantageVsSource grants the bearer Advantage on attacks against that source (the mirror of Bestow Curse's cursed-attacks-active). RAW deviation (documented in starter-pack-gaps.md): modeled as Advantage on all the vexer's attacks against that target until the end of the vexer's next turn (autoExpiry afterRounds 1, turnEnd); with Extra Attack this over-applies vs RAW's single attack.",
+      "stackable": false,
+      "endsOn": [],
+      "autoExpiry": { "afterRounds": 1, "trigger": "turnEnd" },
+      "effects": [{ "kind": "SetAdvantageVsSource", "on": "attack", "mode": "advantage" }]
+    },
+    {
       "id": "blinded",
       "name": "Blinded",
       "stackable": false,

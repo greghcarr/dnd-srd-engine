@@ -4,6 +4,24 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine+content (slice 381): Sap / Vex / Slow weapon masteries were silently inert**
+
+Investigation (prompted by the slice-380 note that the weapon-mastery conditions weren't defined) confirmed a real bug: `planWeaponMastery` emitted `ConditionApplied` for `sapped`, `vexed-by`, and `slowed-10ft`, but **none of the three were defined in the pack**. `collectConditionEffects` (effect-stack.ts) only applies a condition's effects `if (condition)` resolves, and nothing read these by id, so three of the eight weapon masteries did nothing: Sap didn't impose Disadvantage, Slow didn't reduce Speed, Vex didn't grant Advantage. The marker was stored (so transcripts and the s23 golden's marker-only assertions looked fine), but no mechanic fired. starter-pack-gaps.md additionally claimed these conditions "ship to back rider effects" - false.
+
+Fix (RAW deviations documented):
+
+- **Slow** (`slowed-10ft`): defined with `ModifySpeed { walk, -10 }` + `autoExpiry { afterRounds: 1, turnStart }` (the `power-word-speed-zero-active` shape). Fully correct; the speed derive folds it in.
+- **Sap** (`sapped`): defined with `SetAdvantage { attack, disadvantage }` + autoExpiry. The attack resolver's attacker-self advantage folds it in. Deviation: RAW is the target's *next* attack only; the engine imposes it until the start of the attacker's next turn (with Extra Attack this over-applies).
+- **Vex**: RAW grants the **attacker** Advantage on their next attack against the struck creature, so the condition was restructured to ride the attacker (`vexing-active`, `sourceCharacterId` = target) with `SetAdvantageVsSource { attack, advantage }` - the mirror of Bestow Curse's `cursed-attacks-active`. The attack resolver's `advantageVsSource('attack', targetId)` grants advantage only when the vexer next attacks that target. Same one-shot -> persistent deviation as Sap. (The old target-side `vexed-by` id is gone.)
+
+`planWeaponMastery` now stamps round-based expiry from each condition's `autoExpiry` (mirroring cast-spell). New condition count: 130 (was 127); rider 115.
+
+**Permanent audit (the real protection):** added a pack-integrity check that scans engine source for `conditionId: '<literal>'` emissions and asserts each is a defined pack condition (the mirror of the existing orphan-condition reachability check, with a stale-allowlist self-check). This would have caught the bug at commit time; it's the "promote a repeatable sweep to an audit" norm applied to the inverse direction.
+
+**Tests:** the s23 golden's Vex case now asserts the attacker carries `vexing-active` keyed to the target (not a target-side marker); a new [slice-381 unit test](tests/unit/engine/slice-381-mastery-conditions.test.ts) pins the three observable mechanics against the starter pack (Slow reduces effective speed by 10; a Sapped creature rolls attacks with disadvantage / two d20s; a Vexer has advantage vs the vexed target only, `none` vs a bystander).
+
+Uncle Bob audit (engine slice): **Names** `masteryExpiryFields` / `vexing-active` are intention-revealing. **DRY** the expiry stamper mirrors cast-spell's inline logic, now a named helper at its second call site. **SRP** each switch arm builds one mastery's events; the helper owns expiry. **Magic numbers** the -10 speed, the autoExpiry afterRounds, and the DCs cite SRD. **at-threading** the planner's single `at` flows to every emitted event. **Mechanical outcomes asserted** the three masteries' real effects (speed / attack-disadvantage / attack-advantage), the Vex keying, and the new emitted-but-undefined guard. **Tests** each pins a mastery that previously did nothing. No em/en dashes. `tsc --noEmit` clean; full suite green.
+
 **Engine+content (slice 380): Monk Open Hand Technique (Warrior of the Open Hand L3)**
 
 Wired the defining L3 feature of the Open Hand monk, previously an `effects: []` stub. Open Hand Technique rides Flurry of Blows: whenever a Flurry strike hits, the monk may impose one of three effects on the target. Added an optional `openHandTechnique` field (`'addle' | 'push' | 'topple'`) to `FlurryOfBlowsIntent`; the Flurry planner applies the chosen effect after each strike that hits, resolving against post-strike state so a Push reads the target's current position.
