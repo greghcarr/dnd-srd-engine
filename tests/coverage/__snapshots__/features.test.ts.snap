@@ -375,6 +375,7 @@ exports[`feature-coverage matrix: subclasses > wired subclass features catalog i
   "draconic-sorcery L7 draconic-spells-l7",
   "draconic-sorcery L14 dragon-wings",
   "evoker L3 evocation-savant",
+  "evoker L10 empowered-evocation",
   "fiend-patron L3 dark-ones-blessing",
   "fiend-patron L3 fiend-spells",
   "fiend-patron L5 fiend-spells-l5",

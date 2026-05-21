@@ -345,7 +345,10 @@ const planAttackMechanic = (
     itemInstances: state.itemInstances,
     pendingChoices: state.pendingChoices,
   });
-  const damageFacts = new Map<string, unknown>([['event.damageType', damageType]]);
+  const damageFacts = new Map<string, unknown>([
+    ['event.damageType', damageType],
+    ['event.spellSchool', spell.school],
+  ]);
   const damageModifierBonus = casterEffects.modifierSum('damage', damageFacts);
   const events: Event[] = [];
   for (const targetId of intent.targetIds) {
@@ -495,7 +498,15 @@ const planSaveMechanic = (
       itemInstances: state.itemInstances,
       pendingChoices: state.pendingChoices,
     });
-    const damageFacts = new Map<string, unknown>([['event.damageType', mechanic.damageType]]);
+    // Slice 359: `event.spellSchool` fact added alongside `event.damageType`
+    // so school-gated damage riders fire. Canonical user: Evoker L10
+    // Empowered Evocation (+INT-mod to one damage roll of an Evocation
+    // spell). Added only to the primary component (not the additional-
+    // damage loop below), honoring RAW "one damage roll of that spell."
+    const damageFacts = new Map<string, unknown>([
+      ['event.damageType', mechanic.damageType],
+      ['event.spellSchool', spell.school],
+    ]);
     saveDamageModifierBonus = casterEffects.modifierSum('damage', damageFacts);
     const { rolls: baseRolls, modifier } = rollDamage(mechanic.damageDice, bonusDice, rng, false);
     const scalingRolls = rollCantripScaling(mechanic.cantripScalingDice, cantripSteps, rng, false);

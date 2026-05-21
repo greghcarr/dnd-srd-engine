@@ -1389,6 +1389,20 @@
             "name": "Sculpt Spells",
             "effects": []
           }
+        ],
+        "10": [
+          {
+            "id": "empowered-evocation",
+            "name": "Empowered Evocation",
+            "effects": [
+              {
+                "kind": "AddModifier",
+                "target": "damage",
+                "value": { "kind": "abilityMod", "ability": "INT" },
+                "condition": { "kind": "eq", "path": "event.spellSchool", "value": "evocation" }
+              }
+            ]
+          }
         ]
       }
     }
