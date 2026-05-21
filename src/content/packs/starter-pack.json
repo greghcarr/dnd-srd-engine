@@ -1542,7 +1542,6 @@
       "concentration": false,
       "ritual": false,
       "classes": ["cleric"],
-      "cantripScalingDice": { "5": "2d8", "11": "3d8", "17": "4d8" },
       "mechanicalEffects": [{ "kind": "save", "ability": "DEX", "damageDice": "1d8", "damageType": "radiant", "cantripScalingDice": "1d8" }]
     },
     {
@@ -1557,7 +1556,6 @@
       "concentration": false,
       "ritual": false,
       "classes": ["warlock"],
-      "cantripScalingDice": { "5": "2d10", "11": "3d10", "17": "4d10" },
       "mechanicalEffects": [{ "kind": "attack", "attackKind": "ranged", "damageDice": "1d10", "damageType": "force" }]
     },
     {
@@ -1572,8 +1570,7 @@
       "concentration": false,
       "ritual": false,
       "classes": ["wizard", "sorcerer"],
-      "cantripScalingDice": { "5": "2d8", "11": "3d8", "17": "4d8" },
-      "mechanicalEffects": [{ "kind": "attack", "attackKind": "ranged", "damageDice": "1d8", "damageType": "cold" }]
+      "mechanicalEffects": [{ "kind": "attack", "attackKind": "ranged", "damageDice": "1d8", "damageType": "cold", "cantripScalingDice": "1d8" }]
     },
     {
       "id": "shocking-grasp",
@@ -1587,8 +1584,7 @@
       "concentration": false,
       "ritual": false,
       "classes": ["wizard", "sorcerer"],
-      "cantripScalingDice": { "5": "2d8", "11": "3d8", "17": "4d8" },
-      "mechanicalEffects": [{ "kind": "attack", "attackKind": "melee", "damageDice": "1d8", "damageType": "lightning" }]
+      "mechanicalEffects": [{ "kind": "attack", "attackKind": "melee", "damageDice": "1d8", "damageType": "lightning", "cantripScalingDice": "1d8" }]
     },
     {
       "id": "guidance",

@@ -4,6 +4,16 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Bugfix: Ray of Frost / Shocking Grasp didn't scale with level (slice 372)**
+
+Generalized the slice-370/371 phantom-field sweep to **all** content (a raw-vs-Zod-parsed deep diff over every category). It surfaced a misplaced **top-level** `cantripScalingDice` map (`{ "5": "2d8", "11": "3d8", "17": "4d8" }`) on four cantrips - the engine reads only the per-mechanic `cantripScalingDice` string, so `SpellSchema` stripped the top-level map. **Ray of Frost and Shocking Grasp had it only at the top level** (not in their attack mechanic), so they stayed 1d8 at every level instead of scaling +1d8 at L5/11/17.
+
+Fix: added `cantripScalingDice: '1d8'` to the Ray of Frost + Shocking Grasp attack mechanics (RAW Cantrip Upgrade) and removed the dead top-level maps from all four. **Guard:** `SpellSchema` is now `.strict()`, so a misplaced top-level field fails to parse loudly. Two residual notes (documented in [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md)): **Eldritch Blast** scales by adding beams (separate attack rolls), not dice, so its map was a wrong model - removed and left a documented deferral (needs a multi-beam spell-attack primitive); **`items.description` is stripped from 52 items** (cosmetic data-loss, no mechanics) - a follow-up should add `description` to the item-kind schemas that lack it.
+
+New [tests/unit/engine/slice-372-cantrip-scaling.test.ts](tests/unit/engine/slice-372-cantrip-scaling.test.ts): Ray of Frost and Shocking Grasp each roll more than a single 1d8 (8) on a non-critical hit at level 5 but not at level 1 (proving the scaling, excluding crits which double dice), the scaling lives on the mechanic, and `SpellSchema` rejects a misplaced top-level `cantripScalingDice`. No spell count change.
+
+Uncle Bob audit: **Names** the per-mechanic `cantripScalingDice` is the engine's one scaling field; the misplaced top-level map is gone. **DRY** the fix uses the existing cantrip-scaling path (same as Fire Bolt); no new mechanism. **SRP** one `.strict()` on `SpellSchema` + the content field move. **Magic numbers** the 1d8 is RAW-cited content. **Mechanical outcomes asserted** the level-5-exceeds-1d8 scaling (crit-excluded), the mechanic carrying the field, and the `.strict()` rejection. **Tests** prevent a regression to non-scaling cantrips and a future misplaced top-level field. No em/en dashes. `tsc --noEmit` clean; full suite green; SRD-drift + spell-coverage green.
+
 **Bugfix: melee spell attacks were tagged ranged (slice 371)**
 
 Closes the second half of the slice-370 phantom-field sweep. The five RAW melee spell attacks - Shocking Grasp, Spiritual Weapon, Chill Touch, Flame Blade, Vampiric Touch - carried `attackKind: 'melee'`, but `SpellAttackMechanicSchema` had no `attackKind` field, so Zod stripped it and cast-spell hardcoded `attackKind: 'ranged'` on the `AttackRolled` event. The `event.attackKind` predicate fact ([src/engine/triggers/dispatch.ts](src/engine/triggers/dispatch.ts)) was therefore `'ranged'` for them, so melee-gated riders wouldn't fire and the ranged-in-melee disadvantage could wrongly apply.

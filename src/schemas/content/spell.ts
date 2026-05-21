@@ -415,5 +415,11 @@ export const SpellSchema = z.object({
   description: z.string().optional(),
   mechanicalEffects: z.array(SpellMechanicSchema).default([]),
   targeting: SpellTargetingSchema.optional(),
-});
+})
+  // Slice 372: `.strict()` so a top-level field the schema doesn't have
+  // fails to parse loudly instead of being silently dropped. Caught a
+  // misplaced top-level `cantripScalingDice` map on four cantrips
+  // (Ray of Frost / Shocking Grasp didn't scale because the engine only
+  // reads the per-mechanic `cantripScalingDice` string).
+  .strict();
 export type Spell = z.infer<typeof SpellSchema>;
