@@ -7,6 +7,7 @@ import { newEventId, newAppliedConditionId } from '../../ids.js';
 import { abilityModifier, proficiencyBonus } from '../../derive/ability.js';
 import { computeTotalLevel } from '../../schemas/runtime/character.js';
 import { rollSaveAgainstDC } from './_save-roll.js';
+import { creatureSize, isLargeOrSmaller } from '../../derive/creature-size.js';
 import type { ConditionAppliedEvent } from '../../schemas/events/combat.js';
 import type { DisengagedEvent } from '../../schemas/events/movement.js';
 import type { AbilityScore } from '../../schemas/primitives.js';
@@ -31,10 +32,13 @@ interface CunningStrikeSpec {
   readonly devious?: boolean;
   // Round-based expiry stamped on the applied condition (turnEnd trigger).
   readonly expiryRounds?: number;
+  // RAW "if the target is Large or smaller": the effect (save included)
+  // only applies when the target is Large or smaller (Trip).
+  readonly largeOrSmallerOnly?: boolean;
 }
 const SPECS: Record<CunningStrikeOption, CunningStrikeSpec> = {
   poison: { costDice: 1, save: { ability: 'CON', conditionId: 'poisoned' }, expiryRounds: ONE_MINUTE_ROUNDS },
-  trip: { costDice: 1, save: { ability: 'DEX', conditionId: 'prone' } },
+  trip: { costDice: 1, save: { ability: 'DEX', conditionId: 'prone' }, largeOrSmallerOnly: true },
   withdraw: { costDice: 1, withdraw: true },
   obscure: { costDice: 3, save: { ability: 'DEX', conditionId: 'blinded' }, devious: true, expiryRounds: END_OF_NEXT_TURN_ROUNDS },
   knockout: { costDice: 6, save: { ability: 'CON', conditionId: 'unconscious' }, devious: true, expiryRounds: ONE_MINUTE_ROUNDS },
@@ -79,11 +83,12 @@ export interface CunningStrikeEffectsInput {
 //   - Obscure (Devious Strikes, L14): DEX save or Blinded until the end
 //     of its next turn.
 //   - Knock Out (Devious Strikes, L14): CON save or Unconscious (1 minute).
-// RAW deviations (documented in starter-pack-gaps.md): Poison's and Knock
-// Out's end-of-turn repeat save, Knock Out's "until it takes any damage"
-// early end, Trip's "Large or smaller" size gate, and Withdraw's half-Speed
-// cap are not modeled (the engine has no repeat-save / damage-end on the
-// base conditions, size, or movement-distance surface here).
+// Trip's "Large or smaller" size gate IS modeled (slice 386): a bigger
+// target gets no save. RAW deviations still documented in
+// starter-pack-gaps.md: Poison's and Knock Out's end-of-turn repeat save,
+// Knock Out's "until it takes any damage" early end, and Withdraw's
+// half-Speed cap (the engine has no repeat-save / damage-end on the base
+// conditions, or movement-distance surface here).
 export const buildCunningStrikeEffects = (input: CunningStrikeEffectsInput): Event[] => {
   const { state, content, rng, at, rogue, targetId, effects } = input;
   const dc = cunningStrikeSaveDC(rogue);
@@ -105,6 +110,12 @@ export const buildCunningStrikeEffects = (input: CunningStrikeEffectsInput): Eve
       continue;
     }
     if (spec.save === undefined) continue;
+    // RAW Trip applies only to a Large-or-smaller target (no save against
+    // a bigger creature).
+    if (spec.largeOrSmallerOnly === true) {
+      const target = state.characters[targetId];
+      if (target === undefined || !isLargeOrSmaller(creatureSize(target, content))) continue;
+    }
     const save = rollSaveAgainstDC({
       state, content, targetId, ability: spec.save.ability, dc, sourceIsMagical: false, rng, at,
     });

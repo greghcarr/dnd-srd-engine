@@ -4,6 +4,14 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 386): "Large or smaller" size gate (full-RAW conversion + pattern-check)**
+
+Converted a documented deviation to full RAW: two effects gate on target size, and both ignored it. Cunning Strike Trip ("If the target is Large or smaller, it must succeed on a Dexterity saving throw or have the Prone condition") and weapon-mastery Push ("you can push the creature ... if it is Large or smaller"). The pattern-check found both instances, so this fixes the whole size-gate family at once.
+
+New shared helper [src/derive/creature-size.ts](src/derive/creature-size.ts): `creatureSize(character, content)` resolves a character's size from its monster statblock when it's a monster instance, else its species, else Medium; `isLargeOrSmaller(size)` is the gate predicate (Tiny..Large). Cunning Strike Trip now skips the save entirely against a Huge-or-larger target (RAW: no clause applies), and weapon-mastery Push only emits the shove for a Large-or-smaller target.
+
+Uncle Bob audit (engine slice): **Names** `creatureSize` / `isLargeOrSmaller` read as what they do. **DRY** the size resolution + gate live once and are consumed by both Trip and Push (the pattern-check made this a shared helper rather than two copies). **SRP** the helper only derives size; each call site owns its gate. **Magic numbers** the `LARGE_OR_SMALLER` set cites the SRD size ladder. **Mechanical outcomes asserted** four cases: the helper (Medium PC vs Huge monster-instance), Trip rolls a save on a Medium target but none on a Huge one (no Prone), and Push moves a Medium target but not a Huge one. **Tests** each pins a gate that previously fired unconditionally. No content change. No em/en dashes. `tsc --noEmit` clean; full suite green.
+
 **Content (slice 385): Rogue Devious Strikes (L14) - Obscure + Knock Out**
 
 Extended the slice-384 Cunning Strike dice-trade with two of the three Devious Strikes (Rogue L14) options. Both are option-table + level-gate additions on the existing seam (no new engine plumbing):

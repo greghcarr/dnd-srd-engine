@@ -19,6 +19,7 @@ import { planConcentrationBreakOnDrop } from './concentration.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { isMagicWeaponAttack } from '../../derive/magicality.js';
+import { creatureSize, isLargeOrSmaller } from '../../derive/creature-size.js';
 import { applyAll } from '../apply.js';
 
 const UNARMED_DC_BASE = 8;
@@ -175,7 +176,8 @@ export const planWeaponMastery = (
       break;
     }
     case 'Push': {
-      const encounter = state.activeEncounterId !== undefined
+      // RAW: Push only moves the target "if it is Large or smaller."
+      const encounter = isLargeOrSmaller(creatureSize(target, content)) && state.activeEncounterId !== undefined
         ? state.encounters[state.activeEncounterId]
         : undefined;
       const targetCombatant = encounter?.combatants.find((c) => c.combatantId === intent.targetId);
