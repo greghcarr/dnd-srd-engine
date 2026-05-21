@@ -1003,7 +1003,8 @@
             "id": "aura-of-devotion",
             "name": "Aura of Devotion",
             "effects": [
-              { "kind": "GrantConditionImmunity", "conditionId": "charmed" }
+              { "kind": "GrantConditionImmunity", "conditionId": "charmed" },
+              { "kind": "GrantAura", "auraId": "aura-of-devotion", "rangeFeet": 10, "allyConditionId": "aura-of-devotion-active", "description": "You and allies within 10 ft have Immunity to the Charmed condition." }
             ]
           }
         ],
@@ -8259,6 +8260,16 @@
       "endsOn": [],
       "effects": [
         { "kind": "GrantConditionImmunity", "conditionId": "frightened" }
+      ]
+    },
+    {
+      "id": "aura-of-devotion-active",
+      "name": "Aura of Devotion Active",
+      "description": "Charmed immunity granted by a nearby Oath of Devotion Paladin's L7+ Aura of Devotion.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "GrantConditionImmunity", "conditionId": "charmed" }
       ]
     },
     {
