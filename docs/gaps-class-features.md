@@ -6,10 +6,10 @@ For the priority queue and "Future engine slices" backlog naming which primitive
 
 ### Feature-presence gaps tracked by the slice-377 drift audit
 
-[tests/audit/srd-drift.test.ts](../tests/audit/srd-drift.test.ts) now parses the SRD class progression tables and asserts (a) per-class Proficiency Bonus and (b) that every SRD-listed feature is present at its level in the pack. Four genuine gaps are on its `KNOWN_FEATURE_GAPS` allowlist, pending a focused content slice (the audit's stale-allowlist self-check forces each entry to be removed when its feature lands):
+[tests/audit/srd-drift.test.ts](../tests/audit/srd-drift.test.ts) now parses the SRD class progression tables and asserts (a) per-class Proficiency Bonus and (b) that every SRD-listed feature is present at its level in the pack. The audit's stale-allowlist self-check forces each `KNOWN_FEATURE_GAPS` entry to be removed when its feature lands:
 
-- **Weapon Mastery (L1) on Barbarian, Fighter, Paladin.** Wired for Ranger and Rogue (`GrantWeaponMastery`, slots 2) but omitted on the three other martial classes RAW grants it to (Barbarian slots 2, Fighter slots 3, Paladin slots 2). Deferred rather than fixed in-slice because the existing Ranger/Rogue `masteries` pool carries a non-RAW `"Flex"` entry that should be audited (and corrected across all five classes) before propagating it.
-- **Heightened Focus (Monk L10).** Not a simple grant: it modifies Flurry of Blows / Patient Defense / Step of the Wind, so it needs Focus-action planner changes. Ships absent today (the pack has the sibling L10 Self-Restoration).
+- ~~**Weapon Mastery (L1) on Barbarian, Fighter, Paladin.**~~ **Closed by slice 378.** Added `GrantWeaponMastery` to all three (Barbarian / Paladin slots 2, Fighter slots 3), matching the Ranger / Rogue wiring. The "Flex" question resolved: `Flex` is an intentional engine extension (a versatile-weapon 1H/2H damage toggle the attack planner reads, documented in [tests/coverage/features.test.ts](../tests/coverage/features.test.ts)), not RAW and inert in a class mastery pool (no SRD weapon carries it), so slice 378 set the pool to the 8 RAW masteries for all five classes (removing `Flex` from Ranger / Rogue too). Note: the granted-mastery pool is not yet mechanically enforced (the attack planner reads each weapon's own `mastery`, not the character's learned pool), and the per-level slot growth (Barbarian 2->3 at L4, Fighter's later bumps) is unwired, matching the pre-existing Ranger / Rogue limitation.
+- **Heightened Focus (Monk L10).** Still open. Not a simple grant: it modifies Flurry of Blows / Patient Defense / Step of the Wind, so it needs Focus-action planner changes. Ships absent today (the pack has the sibling L10 Self-Restoration).
 
 ---
 

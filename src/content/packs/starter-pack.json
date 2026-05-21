@@ -144,6 +144,13 @@
                   ]
                 }
               ]
+            },
+            {
+              "id": "weapon-mastery-fighter",
+              "name": "Weapon Mastery",
+              "effects": [
+                { "kind": "GrantWeaponMastery", "masteries": ["Sap", "Vex", "Topple", "Push", "Slow", "Cleave", "Nick", "Graze"], "slots": 3 }
+              ]
             }
           ],
           "columns": {}
@@ -281,7 +288,7 @@
               ]
             },
             { "id": "expertise-rogue", "name": "Expertise", "effects": [{ "kind": "OfferChoice", "choiceId": "rogue-expertise-l1", "prompt": "Choose two skills you are proficient in to gain Expertise.", "oneOf": 2, "when": "onAcquire", "options": [{ "id": "acrobatics", "label": "Acrobatics", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "acrobatics", "level": "expertise" }] }, { "id": "athletics", "label": "Athletics", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "athletics", "level": "expertise" }] }, { "id": "deception", "label": "Deception", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "deception", "level": "expertise" }] }, { "id": "insight", "label": "Insight", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "insight", "level": "expertise" }] }, { "id": "intimidation", "label": "Intimidation", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "intimidation", "level": "expertise" }] }, { "id": "investigation", "label": "Investigation", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "investigation", "level": "expertise" }] }, { "id": "perception", "label": "Perception", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "perception", "level": "expertise" }] }, { "id": "performance", "label": "Performance", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "performance", "level": "expertise" }] }, { "id": "persuasion", "label": "Persuasion", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "persuasion", "level": "expertise" }] }, { "id": "sleight-of-hand", "label": "Sleight of Hand", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "sleight-of-hand", "level": "expertise" }] }, { "id": "stealth", "label": "Stealth", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "stealth", "level": "expertise" }] }] }] },
-            { "id": "weapon-mastery-rogue", "name": "Weapon Mastery", "effects": [{ "kind": "GrantWeaponMastery", "masteries": ["Sap", "Vex", "Topple", "Push", "Slow", "Cleave", "Nick", "Graze", "Flex"], "slots": 2 }] },
+            { "id": "weapon-mastery-rogue", "name": "Weapon Mastery", "effects": [{ "kind": "GrantWeaponMastery", "masteries": ["Sap", "Vex", "Topple", "Push", "Slow", "Cleave", "Nick", "Graze"], "slots": 2 }] },
             { "id": "thieves-cant", "name": "Thieves' Cant", "effects": [] }
           ],
           "columns": {}
@@ -354,7 +361,7 @@
       "skillChoices": { "choices": 2, "from": ["athletics", "insight", "intimidation", "medicine", "persuasion", "religion"] },
       "subclassLevel": 3,
       "levelTable": {
-        "1": { "proficiencyBonus": 2, "features": [{ "id": "lay-on-hands", "name": "Lay on Hands", "effects": [{ "kind": "GrantResource", "resourceId": "lay-on-hands", "max": { "kind": "multiply", "terms": [{ "kind": "level", "classId": "paladin" }, { "kind": "const", "value": 5 }] }, "recharge": "longRest" }] }], "columns": {} },
+        "1": { "proficiencyBonus": 2, "features": [{ "id": "lay-on-hands", "name": "Lay on Hands", "effects": [{ "kind": "GrantResource", "resourceId": "lay-on-hands", "max": { "kind": "multiply", "terms": [{ "kind": "level", "classId": "paladin" }, { "kind": "const", "value": 5 }] }, "recharge": "longRest" }] }, { "id": "weapon-mastery-paladin", "name": "Weapon Mastery", "effects": [{ "kind": "GrantWeaponMastery", "masteries": ["Sap", "Vex", "Topple", "Push", "Slow", "Cleave", "Nick", "Graze"], "slots": 2 }] }], "columns": {} },
         "2": { "proficiencyBonus": 2, "features": [{ "id": "fighting-style-paladin", "name": "Fighting Style", "effects": [{ "kind": "OfferChoice", "choiceId": "fighting-style-paladin", "prompt": "Choose a Fighting Style.", "oneOf": 1, "when": "onAcquire", "options": [ { "id": "defense", "label": "Defense", "effects": [{ "kind": "AddModifier", "target": "ac", "value": 1, "condition": { "kind": "eq", "path": "bearer.wearingArmor", "value": true } }] }, { "id": "dueling", "label": "Dueling", "effects": [{ "kind": "AddModifier", "target": "damage", "value": 2, "condition": { "kind": "all", "terms": [{ "kind": "eq", "path": "event.attackKind", "value": "melee" }, { "kind": "eq", "path": "bearer.offHandHasWeapon", "value": false }] } }] }, { "id": "great-weapon", "label": "Great Weapon Fighting", "effects": [{ "kind": "GrantGreatWeaponFighting" }] }, { "id": "protection", "label": "Protection", "effects": [{ "kind": "GrantProtectionFightingStyle" }] } ] }] }, { "id": "paladins-smite", "name": "Paladin's Smite", "effects": [{ "kind": "Custom", "handlerId": "paladins-smite" }] }], "columns": {} },
         "3": { "proficiencyBonus": 2, "features": [{ "id": "channel-divinity-paladin", "name": "Channel Divinity", "effects": [{ "kind": "GrantResource", "resourceId": "channel-divinity", "max": 2, "recharge": "shortRest" }] }], "columns": {} },
         "4": { "proficiencyBonus": 2, "features": [], "columns": {} },
@@ -396,7 +403,8 @@
           "proficiencyBonus": 2,
           "features": [
             { "id": "rage", "name": "Rage", "effects": [{ "kind": "GrantResource", "resourceId": "rage", "max": 2, "recharge": "longRest" }] },
-            { "id": "unarmored-defense-barbarian-feature", "name": "Unarmored Defense", "effects": [{ "kind": "OverrideACFormula", "base": 10, "abilityModifiers": ["DEX", "CON"], "priority": 50 }] }
+            { "id": "unarmored-defense-barbarian-feature", "name": "Unarmored Defense", "effects": [{ "kind": "OverrideACFormula", "base": 10, "abilityModifiers": ["DEX", "CON"], "priority": 50 }] },
+            { "id": "weapon-mastery-barbarian", "name": "Weapon Mastery", "effects": [{ "kind": "GrantWeaponMastery", "masteries": ["Sap", "Vex", "Topple", "Push", "Slow", "Cleave", "Nick", "Graze"], "slots": 2 }] }
           ],
           "columns": {}
         },
@@ -572,7 +580,7 @@
       "skillChoices": { "choices": 3, "from": ["animal-handling", "athletics", "insight", "investigation", "nature", "perception", "stealth", "survival"] },
       "subclassLevel": 3,
       "levelTable": {
-        "1": { "proficiencyBonus": 2, "features": [{ "id": "favored-enemy", "name": "Favored Enemy", "effects": [{ "kind": "GrantResource", "resourceId": "hunters-mark", "max": 2, "recharge": "longRest" }] }, { "id": "weapon-mastery-ranger", "name": "Weapon Mastery", "effects": [{ "kind": "GrantWeaponMastery", "masteries": ["Sap", "Vex", "Topple", "Push", "Slow", "Cleave", "Nick", "Graze", "Flex"], "slots": 2 }] }], "columns": {} },
+        "1": { "proficiencyBonus": 2, "features": [{ "id": "favored-enemy", "name": "Favored Enemy", "effects": [{ "kind": "GrantResource", "resourceId": "hunters-mark", "max": 2, "recharge": "longRest" }] }, { "id": "weapon-mastery-ranger", "name": "Weapon Mastery", "effects": [{ "kind": "GrantWeaponMastery", "masteries": ["Sap", "Vex", "Topple", "Push", "Slow", "Cleave", "Nick", "Graze"], "slots": 2 }] }], "columns": {} },
         "2": { "proficiencyBonus": 2, "features": [{ "id": "deft-explorer", "name": "Deft Explorer (Expertise)", "effects": [{ "kind": "OfferChoice", "choiceId": "deft-explorer-expertise", "prompt": "Choose one skill to gain Expertise in.", "oneOf": 1, "when": "onAcquire", "options": [ { "id": "perception", "label": "Perception", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "perception", "level": "expertise" }] }, { "id": "stealth", "label": "Stealth", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "stealth", "level": "expertise" }] }, { "id": "survival", "label": "Survival", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "survival", "level": "expertise" }] }, { "id": "nature", "label": "Nature", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "nature", "level": "expertise" }] }, { "id": "animal-handling", "label": "Animal Handling", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "animal-handling", "level": "expertise" }] } ] }] }, { "id": "fighting-style-ranger", "name": "Fighting Style", "effects": [{ "kind": "OfferChoice", "choiceId": "fighting-style-ranger", "prompt": "Choose a Fighting Style.", "oneOf": 1, "when": "onAcquire", "options": [ { "id": "archery", "label": "Archery", "effects": [{ "kind": "AddModifier", "target": "attack", "value": 2, "condition": { "kind": "eq", "path": "event.attackKind", "value": "ranged" } }] }, { "id": "defense", "label": "Defense", "effects": [{ "kind": "AddModifier", "target": "ac", "value": 1, "condition": { "kind": "eq", "path": "bearer.wearingArmor", "value": true } }] }, { "id": "dueling", "label": "Dueling", "effects": [{ "kind": "AddModifier", "target": "damage", "value": 2, "condition": { "kind": "all", "terms": [{ "kind": "eq", "path": "event.attackKind", "value": "melee" }, { "kind": "eq", "path": "bearer.offHandHasWeapon", "value": false }] } }] }, { "id": "two-weapon", "label": "Two-Weapon Fighting", "effects": [{ "kind": "GrantTwoWeaponFighting" }] } ] }] }], "columns": {} },
         "3": { "proficiencyBonus": 2, "features": [], "columns": {} },
         "4": { "proficiencyBonus": 2, "features": [], "columns": {} },

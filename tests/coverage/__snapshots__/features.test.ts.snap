@@ -4,6 +4,7 @@ exports[`feature-coverage matrix: class features > wired class features catalog 
 [
   "barbarian L1 rage",
   "barbarian L1 unarmored-defense-barbarian-feature",
+  "barbarian L1 weapon-mastery-barbarian",
   "barbarian L2 danger-sense",
   "barbarian L2 reckless-attack",
   "barbarian L3 rage-uses-3",
@@ -37,6 +38,7 @@ exports[`feature-coverage matrix: class features > wired class features catalog 
   "druid L17 wild-shape-uses-4",
   "fighter L1 fighting-style-fighter",
   "fighter L1 second-wind",
+  "fighter L1 weapon-mastery-fighter",
   "fighter L2 action-surge",
   "fighter L4 second-wind-3",
   "fighter L5 extra-attack",
@@ -61,6 +63,7 @@ exports[`feature-coverage matrix: class features > wired class features catalog 
   "monk L14 disciplined-survivor",
   "monk L18 superior-defense",
   "paladin L1 lay-on-hands",
+  "paladin L1 weapon-mastery-paladin",
   "paladin L2 fighting-style-paladin",
   "paladin L2 paladins-smite",
   "paladin L3 channel-divinity-paladin",

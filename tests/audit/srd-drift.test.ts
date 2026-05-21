@@ -289,17 +289,14 @@ const FEATURE_ALIASES: Record<string, string> = {
 };
 
 // Genuine content gaps the audit surfaces, tracked in
-// docs/starter-pack-gaps.md for a follow-up content slice. Keyed
-// `<classId> L<level> <normalized feature>`. Weapon Mastery is wired for
-// Ranger and Rogue but omitted on the three other martial classes that
-// RAW grants it; Heightened Focus needs Focus-action planner changes
-// (it modifies Flurry of Blows / Patient Defense / Step of the Wind), so
-// it is not a simple grant. Removing an entry here when its feature lands
-// makes the audit assert the fix stays.
+// docs/gaps-class-features.md for a follow-up content slice. Keyed
+// `<classId> L<level> <normalized feature>`. Slice 378 closed the three
+// Weapon Mastery gaps (Barbarian / Fighter / Paladin L1). Heightened
+// Focus stays: it modifies Flurry of Blows / Patient Defense / Step of
+// the Wind, so it needs Focus-action planner changes, not a simple
+// grant. Removing an entry here when its feature lands makes the audit
+// (via the stale-allowlist self-check) assert the fix stays.
 const KNOWN_FEATURE_GAPS = new Set([
-  'barbarian L1 weapon mastery',
-  'fighter L1 weapon mastery',
-  'paladin L1 weapon mastery',
   'monk L10 heightened focus',
 ]);
 

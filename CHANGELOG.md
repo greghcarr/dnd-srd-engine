@@ -4,6 +4,16 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 378): close the slice-377 Weapon Mastery feature-presence gaps**
+
+Closed three of the four gaps the slice-377 class-feature drift audit surfaced: Weapon Mastery (L1) was wired for Ranger and Rogue but missing on Barbarian, Fighter, and Paladin, the three other martial classes RAW grants it to. Added `GrantWeaponMastery` to all three (Barbarian and Paladin slots 2, Fighter slots 3, per the SRD tables / prose) and removed those entries from the audit's `KNOWN_FEATURE_GAPS` allowlist, so the stale-allowlist self-check now asserts the fix stays.
+
+Resolved the "Flex" question that motivated deferring this in slice 377: `Flex` is an intentional engine extension (a versatile-weapon 1H/2H damage toggle the attack planner reads, documented in [tests/coverage/features.test.ts](tests/coverage/features.test.ts)), not one of the 8 RAW 2024 mastery properties, and inert inside a class's mastery pool because no SRD weapon carries it. So this slice set the granted pool to the 8 RAW masteries (Cleave / Graze / Nick / Push / Sap / Slow / Topple / Vex) for all five martial classes, removing `Flex` from the Ranger and Rogue pools too. `Flex` stays a valid `WEAPON_MASTERIES` enum value for the engine's versatile toggle; it just isn't advertised in a class's learnable pool where it has no effect.
+
+Carried-forward limitations (pre-existing, shared with Ranger / Rogue): the granted-mastery pool is not yet mechanically enforced (the attack planner reads each weapon's own `mastery`, not the character's learned pool), and the per-level slot growth (Barbarian 2 -> 3 at L4, Fighter's later bumps) is unwired. The remaining slice-377 gap, Monk L10 Heightened Focus, stays tracked (it needs Focus-action planner changes, not a simple grant).
+
+Uncle Bob audit (content sweep): **Names** the three new feature ids follow the `weapon-mastery-<class>` convention of the existing two. **DRY** all five classes now share one 8-mastery pool shape; removing `Flex` collapsed the two slightly-different pools into one. **Magic numbers** slot counts (2 / 3 / 2) cited to the SRD Barbarian / Fighter Weapon Mastery columns and the Paladin "two kinds of weapons" prose. **Mechanical outcomes asserted** the slice-377 feature-presence + stale-allowlist checks now pass with the three gaps closed; the feature-coverage snapshot gains exactly the three new wired features (inspected, nothing else). No engine change. No em/en dashes. `tsc --noEmit` clean; full suite green.
+
 **Audit (slice 377): extend srd-drift to parse the SRD class progression tables**
 
 Follow-up to slice 376's observation that class-feature drift (Roving's `+5` vs RAW `+10`) had gone uncaught because srd-drift only covered spells / monsters / items. Extended [tests/audit/srd-drift.test.ts](tests/audit/srd-drift.test.ts) with a parser for the `**<Class> Features**` HTML tables in classes.md and three new checks under a `class features` describe:
