@@ -662,7 +662,7 @@
           {
             "id": "intimidating-presence",
             "name": "Intimidating Presence",
-            "effects": []
+            "effects": [{ "kind": "Custom", "handlerId": "intimidating-presence" }]
           }
         ]
       }
@@ -686,6 +686,13 @@
             "id": "cutting-words",
             "name": "Cutting Words",
             "effects": [{ "kind": "Custom", "handlerId": "cutting-words" }]
+          }
+        ],
+        "14": [
+          {
+            "id": "peerless-skill",
+            "name": "Peerless Skill",
+            "effects": [{ "kind": "Custom", "handlerId": "peerless-skill" }]
           }
         ]
       }
@@ -721,7 +728,7 @@
           {
             "id": "preserve-life",
             "name": "Channel Divinity: Preserve Life",
-            "effects": []
+            "effects": [{ "kind": "Custom", "handlerId": "preserve-life" }]
           }
         ],
         "5": [
@@ -784,7 +791,7 @@
           {
             "id": "lands-aid",
             "name": "Land's Aid",
-            "effects": []
+            "effects": [{ "kind": "Custom", "handlerId": "lands-aid" }]
           },
           {
             "id": "circle-of-the-land-spells",
@@ -913,6 +920,21 @@
             "name": "Open Hand Technique",
             "effects": []
           }
+        ],
+        "6": [
+          {
+            "id": "wholeness-of-body",
+            "name": "Wholeness of Body",
+            "effects": [
+              {
+                "kind": "GrantResource",
+                "resourceId": "wholeness-of-body",
+                "max": { "kind": "max", "terms": [{ "kind": "const", "value": 1 }, { "kind": "abilityMod", "ability": "WIS" }] },
+                "recharge": "longRest"
+              },
+              { "kind": "Custom", "handlerId": "wholeness-of-body" }
+            ]
+          }
         ]
       }
     },
@@ -925,7 +947,10 @@
           {
             "id": "devotion-spells",
             "name": "Oath of Devotion Spells",
-            "effects": []
+            "effects": [
+              { "kind": "GrantSpell", "spellId": "protection-from-evil-and-good", "preparation": "always-prepared" },
+              { "kind": "GrantSpell", "spellId": "shield-of-faith", "preparation": "always-prepared" }
+            ]
           },
           {
             "id": "sacred-weapon",
@@ -933,12 +958,53 @@
             "effects": [{ "kind": "Custom", "handlerId": "sacred-weapon" }]
           }
         ],
+        "5": [
+          {
+            "id": "devotion-spells-l5",
+            "name": "Oath of Devotion Spells (Level 5)",
+            "effects": [
+              { "kind": "GrantSpell", "spellId": "aid", "preparation": "always-prepared" },
+              { "kind": "GrantSpell", "spellId": "zone-of-truth", "preparation": "always-prepared" }
+            ]
+          }
+        ],
+        "9": [
+          {
+            "id": "devotion-spells-l9",
+            "name": "Oath of Devotion Spells (Level 9)",
+            "effects": [
+              { "kind": "GrantSpell", "spellId": "beacon-of-hope", "preparation": "always-prepared" },
+              { "kind": "GrantSpell", "spellId": "dispel-magic", "preparation": "always-prepared" }
+            ]
+          }
+        ],
+        "13": [
+          {
+            "id": "devotion-spells-l13",
+            "name": "Oath of Devotion Spells (Level 13)",
+            "effects": [
+              { "kind": "GrantSpell", "spellId": "freedom-of-movement", "preparation": "always-prepared" },
+              { "kind": "GrantSpell", "spellId": "guardian-of-faith", "preparation": "always-prepared" }
+            ]
+          }
+        ],
+        "17": [
+          {
+            "id": "devotion-spells-l17",
+            "name": "Oath of Devotion Spells (Level 17)",
+            "effects": [
+              { "kind": "GrantSpell", "spellId": "commune", "preparation": "always-prepared" },
+              { "kind": "GrantSpell", "spellId": "flame-strike", "preparation": "always-prepared" }
+            ]
+          }
+        ],
         "7": [
           {
             "id": "aura-of-devotion",
             "name": "Aura of Devotion",
             "effects": [
-              { "kind": "GrantConditionImmunity", "conditionId": "charmed" }
+              { "kind": "GrantConditionImmunity", "conditionId": "charmed" },
+              { "kind": "GrantAura", "auraId": "aura-of-devotion", "rangeFeet": 10, "allyConditionId": "aura-of-devotion-active", "description": "You and allies within 10 ft have Immunity to the Charmed condition." }
             ]
           }
         ],
@@ -972,7 +1038,41 @@
           {
             "id": "hunters-prey",
             "name": "Hunter's Prey",
-            "effects": []
+            "effects": [
+              {
+                "kind": "OfferChoice",
+                "choiceId": "hunters-prey",
+                "prompt": "Choose Colossus Slayer (when you hit a creature that is already missing Hit Points, the weapon deals an extra 1d8 damage, once per turn) or Horde Breaker (deferred-stub: once per turn, a second weapon attack against a different nearby creature; needs an extra-attack-vs-different-target primitive the engine doesn't expose).",
+                "oneOf": 1,
+                "when": "onAcquire",
+                "options": [
+                  {
+                    "id": "colossus-slayer",
+                    "label": "Colossus Slayer",
+                    "effects": [
+                      {
+                        "kind": "OnEvent",
+                        "id": "colossus-slayer",
+                        "trigger": {
+                          "eventType": "AttackRolled",
+                          "filter": {
+                            "kind": "all",
+                            "terms": [
+                              { "kind": "eq", "path": "event.attackerIsSelf", "value": true },
+                              { "kind": "eq", "path": "event.hit", "value": true },
+                              { "kind": "eq", "path": "event.targetMissingHp", "value": true }
+                            ]
+                          }
+                        },
+                        "actions": [{ "kind": "AddDamage", "dice": "1d8", "damageType": "piercing" }],
+                        "oncePer": "turn"
+                      }
+                    ]
+                  },
+                  { "id": "horde-breaker", "label": "Horde Breaker", "effects": [] }
+                ]
+              }
+            ]
           }
         ],
         "7": [
@@ -1047,7 +1147,9 @@
           {
             "id": "draconic-resilience-hp",
             "name": "Draconic Resilience (HP)",
-            "effects": []
+            "effects": [
+              { "kind": "AddModifier", "target": "hpMax", "value": { "kind": "level", "classId": "sorcerer" } }
+            ]
           },
           {
             "id": "draconic-spells",
@@ -1106,7 +1208,7 @@
           {
             "id": "dragon-wings",
             "name": "Dragon Wings",
-            "effects": []
+            "effects": [{ "kind": "Custom", "handlerId": "dragon-wings" }]
           }
         ],
         "18": [
@@ -1127,7 +1229,34 @@
           {
             "id": "dark-ones-blessing",
             "name": "Dark One's Blessing",
-            "effects": []
+            "effects": [
+              {
+                "kind": "OnEvent",
+                "id": "dark-ones-blessing",
+                "trigger": {
+                  "eventType": "DamageApplied",
+                  "filter": {
+                    "kind": "all",
+                    "terms": [
+                      { "kind": "eq", "path": "event.sourceIsSelf", "value": true },
+                      { "kind": "eq", "path": "event.targetReducedToZero", "value": true }
+                    ]
+                  }
+                },
+                "actions": [
+                  {
+                    "kind": "GrantTempHP",
+                    "amount": {
+                      "kind": "max",
+                      "terms": [
+                        { "kind": "const", "value": 1 },
+                        { "kind": "add", "terms": [{ "kind": "abilityMod", "ability": "CHA" }, { "kind": "level", "classId": "warlock" }] }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
           },
           {
             "id": "fiend-spells",
@@ -1232,7 +1361,27 @@
           {
             "id": "evocation-savant",
             "name": "Evocation Savant",
-            "effects": []
+            "effects": [
+              {
+                "kind": "OfferChoice",
+                "choiceId": "evocation-savant",
+                "prompt": "Choose two Evocation wizard spells (level 1 or 2) to add to your spellbook.",
+                "oneOf": 2,
+                "when": "onAcquire",
+                "options": [
+                  { "id": "burning-hands", "label": "Burning Hands", "effects": [{ "kind": "GrantSpell", "spellId": "burning-hands", "preparation": "known" }] },
+                  { "id": "chromatic-orb", "label": "Chromatic Orb", "effects": [{ "kind": "GrantSpell", "spellId": "chromatic-orb", "preparation": "known" }] },
+                  { "id": "magic-missile", "label": "Magic Missile", "effects": [{ "kind": "GrantSpell", "spellId": "magic-missile", "preparation": "known" }] },
+                  { "id": "thunderwave", "label": "Thunderwave", "effects": [{ "kind": "GrantSpell", "spellId": "thunderwave", "preparation": "known" }] },
+                  { "id": "acid-arrow", "label": "Acid Arrow", "effects": [{ "kind": "GrantSpell", "spellId": "acid-arrow", "preparation": "known" }] },
+                  { "id": "continual-flame", "label": "Continual Flame", "effects": [{ "kind": "GrantSpell", "spellId": "continual-flame", "preparation": "known" }] },
+                  { "id": "darkness", "label": "Darkness", "effects": [{ "kind": "GrantSpell", "spellId": "darkness", "preparation": "known" }] },
+                  { "id": "gust-of-wind", "label": "Gust of Wind", "effects": [{ "kind": "GrantSpell", "spellId": "gust-of-wind", "preparation": "known" }] },
+                  { "id": "scorching-ray", "label": "Scorching Ray", "effects": [{ "kind": "GrantSpell", "spellId": "scorching-ray", "preparation": "known" }] },
+                  { "id": "shatter", "label": "Shatter", "effects": [{ "kind": "GrantSpell", "spellId": "shatter", "preparation": "known" }] }
+                ]
+              }
+            ]
           }
         ],
         "6": [
@@ -1240,6 +1389,20 @@
             "id": "sculpt-spells",
             "name": "Sculpt Spells",
             "effects": []
+          }
+        ],
+        "10": [
+          {
+            "id": "empowered-evocation",
+            "name": "Empowered Evocation",
+            "effects": [
+              {
+                "kind": "AddModifier",
+                "target": "damage",
+                "value": { "kind": "abilityMod", "ability": "INT" },
+                "condition": { "kind": "eq", "path": "event.spellSchool", "value": "evocation" }
+              }
+            ]
           }
         ]
       }
@@ -1379,8 +1542,7 @@
       "concentration": false,
       "ritual": false,
       "classes": ["cleric"],
-      "cantripScalingDice": { "5": "2d8", "11": "3d8", "17": "4d8" },
-      "mechanicalEffects": [{ "kind": "save", "ability": "DEX", "onFailure": { "damageDice": "1d8", "damageType": "radiant" } }]
+      "mechanicalEffects": [{ "kind": "save", "ability": "DEX", "damageDice": "1d8", "damageType": "radiant", "cantripScalingDice": "1d8" }]
     },
     {
       "id": "eldritch-blast",
@@ -1394,7 +1556,6 @@
       "concentration": false,
       "ritual": false,
       "classes": ["warlock"],
-      "cantripScalingDice": { "5": "2d10", "11": "3d10", "17": "4d10" },
       "mechanicalEffects": [{ "kind": "attack", "attackKind": "ranged", "damageDice": "1d10", "damageType": "force" }]
     },
     {
@@ -1409,8 +1570,7 @@
       "concentration": false,
       "ritual": false,
       "classes": ["wizard", "sorcerer"],
-      "cantripScalingDice": { "5": "2d8", "11": "3d8", "17": "4d8" },
-      "mechanicalEffects": [{ "kind": "attack", "attackKind": "ranged", "damageDice": "1d8", "damageType": "cold" }]
+      "mechanicalEffects": [{ "kind": "attack", "attackKind": "ranged", "damageDice": "1d8", "damageType": "cold", "cantripScalingDice": "1d8" }]
     },
     {
       "id": "shocking-grasp",
@@ -1424,8 +1584,7 @@
       "concentration": false,
       "ritual": false,
       "classes": ["wizard", "sorcerer"],
-      "cantripScalingDice": { "5": "2d8", "11": "3d8", "17": "4d8" },
-      "mechanicalEffects": [{ "kind": "attack", "attackKind": "melee", "damageDice": "1d8", "damageType": "lightning" }]
+      "mechanicalEffects": [{ "kind": "attack", "attackKind": "melee", "damageDice": "1d8", "damageType": "lightning", "cantripScalingDice": "1d8" }]
     },
     {
       "id": "guidance",
@@ -1538,7 +1697,7 @@
       "ritual": false,
       "classes": ["sorcerer", "wizard"],
       "targeting": { "shape": "cone", "size": 15 },
-      "mechanicalEffects": [{ "kind": "save", "ability": "DEX", "onFailure": { "damageDice": "3d6", "damageType": "fire", "extraDicePerSlotLevel": 1 }, "onSuccess": "half" }]
+      "mechanicalEffects": [{ "kind": "save", "ability": "DEX", "damageDice": "3d6", "damageType": "fire", "halfOnSuccess": true, "extraDicePerSlotLevel": 1 }]
     },
     {
       "id": "thunderwave",
@@ -1553,7 +1712,7 @@
       "ritual": false,
       "classes": ["bard", "druid", "sorcerer", "wizard"],
       "targeting": { "shape": "cube", "size": 15 },
-      "mechanicalEffects": [{ "kind": "save", "ability": "CON", "onFailure": { "damageDice": "2d8", "damageType": "thunder", "extraDicePerSlotLevel": 1 }, "onSuccess": "half" }]
+      "mechanicalEffects": [{ "kind": "save", "ability": "CON", "damageDice": "2d8", "damageType": "thunder", "halfOnSuccess": true, "extraDicePerSlotLevel": 1, "pushedFeetOnFail": 10 }]
     },
     {
       "id": "mage-armor",
@@ -2053,7 +2212,7 @@
     { "id": "vampiric-touch", "name": "Vampiric Touch", "level": 3, "school": "necromancy", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["sorcerer", "warlock", "wizard"], "mechanicalEffects": [{ "kind": "attack", "attackKind": "melee", "damageDice": "3d6", "damageType": "necrotic", "extraDicePerSlotLevel": 1 }] },
     { "id": "animate-dead", "name": "Animate Dead", "level": 3, "school": "necromancy", "castingTime": "1 minute", "range": "10 feet", "components": { "verbal": true, "somatic": true, "material": "a drop of blood, a piece of flesh, and a pinch of bone dust" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["cleric", "wizard"], "mechanicalEffects": [{ "kind": "summon", "name": "Animated Skeleton", "ac": 12, "hpBase": 13, "hpPerSlotAbove": 4, "baseSlotLevel": 3, "speedFeet": 30 }] },
     { "id": "beacon-of-hope", "name": "Beacon of Hope", "level": 3, "school": "abjuration", "castingTime": "Action", "range": "30 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["cleric"], "mechanicalEffects": [] },
-    { "id": "bestow-curse", "name": "Bestow Curse", "level": 3, "school": "necromancy", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "cleric", "wizard"], "mechanicalEffects": [{ "kind": "save", "ability": "WIS", "casterChoosesVariant": { "variants": [{ "key": "ability-disadvantage", "conditionId": "cursed-ability-active" }, { "key": "attack-disadvantage", "conditionId": "cursed-attacks-active" }, { "key": "inactive-turn", "conditionId": "cursed-inert-active" }, { "key": "extra-damage", "conditionId": "cursed-vulnerable-active" }] } }] },
+    { "id": "bestow-curse", "name": "Bestow Curse", "level": 3, "school": "necromancy", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "cleric", "wizard"], "mechanicalEffects": [{ "kind": "save", "ability": "WIS", "casterChoosesVariant": { "variants": [{ "key": "ability-disadvantage-str", "conditionId": "cursed-ability-str-active" }, { "key": "ability-disadvantage-dex", "conditionId": "cursed-ability-dex-active" }, { "key": "ability-disadvantage-con", "conditionId": "cursed-ability-con-active" }, { "key": "ability-disadvantage-int", "conditionId": "cursed-ability-int-active" }, { "key": "ability-disadvantage-wis", "conditionId": "cursed-ability-wis-active" }, { "key": "ability-disadvantage-cha", "conditionId": "cursed-ability-cha-active" }, { "key": "attack-disadvantage", "conditionId": "cursed-attacks-active" }, { "key": "inactive-turn", "conditionId": "cursed-inert-active" }, { "key": "extra-damage", "conditionId": "cursed-vulnerable-active" }] } }] },
     { "id": "clairvoyance", "name": "Clairvoyance", "level": 3, "school": "divination", "castingTime": "10 minutes", "range": "1 mile", "components": { "verbal": true, "somatic": true, "material": "a focus worth 100+ GP, either a jeweled horn for hearing or a glass eye for seeing" }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["bard", "cleric", "sorcerer", "wizard"], "mechanicalEffects": [] },
     { "id": "conjure-animals", "name": "Conjure Animals", "level": 3, "school": "conjuration", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["druid", "ranger"], "mechanicalEffects": [{ "kind": "summon", "name": "Conjured Animal Spirit", "ac": 14, "hpBase": 30, "hpPerSlotAbove": 5, "baseSlotLevel": 3, "speedFeet": 30 }] },
     { "id": "create-food-and-water", "name": "Create Food and Water", "level": 3, "school": "conjuration", "castingTime": "Action", "range": "30 feet", "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["cleric", "paladin"], "mechanicalEffects": [] },
@@ -8100,6 +8259,16 @@
       ]
     },
     {
+      "id": "aura-of-devotion-active",
+      "name": "Aura of Devotion Active",
+      "description": "Charmed immunity granted by a nearby Oath of Devotion Paladin's L7+ Aura of Devotion.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "GrantConditionImmunity", "conditionId": "charmed" }
+      ]
+    },
+    {
       "id": "heroic-active",
       "name": "Heroic",
       "description": "Immune to Frightened while concentrating on Heroism. The per-turn temp HP grant fires via engine.plan.tickRecurring at the start of each target's turn (not stored on this condition).",
@@ -8113,6 +8282,16 @@
       "id": "flying-active",
       "name": "Flying",
       "description": "Gains a flying speed of 60 ft for the duration. The engine's `getEffectiveSpeed` planner currently reads `character.speedFeet` (walking) directly and doesn't consume `ModifySpeed` effects from features or conditions; this entry ships as discoverable metadata so consumers can read 'fly 60 ft' from the effect stack.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "ModifySpeed", "mode": "fly", "op": "set", "value": 60 }
+      ]
+    },
+    {
+      "id": "dragon-wings-active",
+      "name": "Dragon Wings",
+      "description": "Draconic Sorcery L14 Dragon Wings: a Fly Speed of 60 feet (observable via getEffectiveFlySpeed). Applied by engine.plan.dragonWings. A dedicated condition (rather than reusing flying-active) so dismissing the Fly spell never removes the sorcerer's wings. Consumer-managed: the 1-hour duration, dismissal (no action: remove the condition), and the once-per-Long-Rest use restorable by spending 3 Sorcery Points.",
       "stackable": false,
       "endsOn": [],
       "effects": [
@@ -8244,12 +8423,57 @@
       ]
     },
     {
-      "id": "cursed-ability-active",
-      "name": "Cursed: Ability Score Disadvantage",
-      "description": "The caster chose one ability score at cast time; while Cursed, the target has Disadvantage on ability checks and saves made with that ability. The chosen ability isn't represented in the condition itself (the engine's casterChoosesVariant primitive is flat; a nested sub-choice for the specific ability isn't modeled), so the consumer carries the ability name out-of-band and enforces the disadvantage on checks/saves.",
+      "id": "cursed-ability-str-active",
+      "name": "Cursed: Strength Disadvantage",
+      "description": "Bestow Curse, Strength arm: while Cursed, the target has Disadvantage on Strength ability checks and Strength saving throws. The caster picks the ability at cast time via the `ability-disadvantage-str` casterChoosesVariant key.",
       "stackable": false,
       "endsOn": [],
-      "effects": [],
+      "effects": [{ "kind": "SetAdvantage", "on": { "kind": "check", "ability": "STR" }, "mode": "disadvantage" }, { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "STR" }, "mode": "disadvantage" }],
+      "category": "curse"
+    },
+    {
+      "id": "cursed-ability-dex-active",
+      "name": "Cursed: Dexterity Disadvantage",
+      "description": "Bestow Curse, Dexterity arm: while Cursed, the target has Disadvantage on Dexterity ability checks and Dexterity saving throws.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [{ "kind": "SetAdvantage", "on": { "kind": "check", "ability": "DEX" }, "mode": "disadvantage" }, { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "DEX" }, "mode": "disadvantage" }],
+      "category": "curse"
+    },
+    {
+      "id": "cursed-ability-con-active",
+      "name": "Cursed: Constitution Disadvantage",
+      "description": "Bestow Curse, Constitution arm: while Cursed, the target has Disadvantage on Constitution ability checks and Constitution saving throws.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [{ "kind": "SetAdvantage", "on": { "kind": "check", "ability": "CON" }, "mode": "disadvantage" }, { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "CON" }, "mode": "disadvantage" }],
+      "category": "curse"
+    },
+    {
+      "id": "cursed-ability-int-active",
+      "name": "Cursed: Intelligence Disadvantage",
+      "description": "Bestow Curse, Intelligence arm: while Cursed, the target has Disadvantage on Intelligence ability checks and Intelligence saving throws.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [{ "kind": "SetAdvantage", "on": { "kind": "check", "ability": "INT" }, "mode": "disadvantage" }, { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "INT" }, "mode": "disadvantage" }],
+      "category": "curse"
+    },
+    {
+      "id": "cursed-ability-wis-active",
+      "name": "Cursed: Wisdom Disadvantage",
+      "description": "Bestow Curse, Wisdom arm: while Cursed, the target has Disadvantage on Wisdom ability checks and Wisdom saving throws.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [{ "kind": "SetAdvantage", "on": { "kind": "check", "ability": "WIS" }, "mode": "disadvantage" }, { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "WIS" }, "mode": "disadvantage" }],
+      "category": "curse"
+    },
+    {
+      "id": "cursed-ability-cha-active",
+      "name": "Cursed: Charisma Disadvantage",
+      "description": "Bestow Curse, Charisma arm: while Cursed, the target has Disadvantage on Charisma ability checks and Charisma saving throws.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [{ "kind": "SetAdvantage", "on": { "kind": "check", "ability": "CHA" }, "mode": "disadvantage" }, { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "CHA" }, "mode": "disadvantage" }],
       "category": "curse"
     },
     {
@@ -8265,12 +8489,12 @@
     },
     {
       "id": "cursed-inert-active",
-      "name": "Cursed: Inactive Turn",
-      "description": "While Cursed, the target must make a Wisdom saving throw at the start of each of its turns against the curse caster's spell DC. On a failed save, it wastes its action that turn. The consumer calls `engine.plan.tickRecurringSave({ targetId, conditionId: 'cursed-inert-active' })` at the start of the bearer's turn while the curse holds; the planner emits SaveRolled + (on fail, when in encounter) ActionEconomyConsumed action.",
+      "name": "Cursed: Forced Dodge",
+      "description": "Bestow Curse, inactive-turn arm (SRD 5.2.1): in combat, the target must make a Wisdom saving throw at the start of each of its turns against the curse caster's spell DC, or be forced to take the Dodge action on that turn. The consumer calls `engine.plan.tickRecurringSave({ targetId, conditionId: 'cursed-inert-active' })` at the start of the bearer's turn while the curse holds; on a failed save (when the bearer is a combatant in the active encounter) the planner emits ActionEconomyConsumed (action) and applies the `dodged` condition, so the bearer loses its action AND gains Dodge's defensive benefit (attackers have Disadvantage, DEX saves with Advantage), exactly like a voluntary Dodge. The curse persists regardless of the save; only Remove Curse / concentration drop ends it. Carries empty mechanical `effects` because the recurring save is the load-bearing wire.",
       "stackable": false,
       "endsOn": [],
       "effects": [],
-      "recurringSave": { "ability": "WIS", "onFail": "consumeAction" },
+      "recurringSave": { "ability": "WIS", "trigger": "turnStart", "onFail": "dodge" },
       "category": "curse"
     },
     {
@@ -8331,7 +8555,7 @@
     {
       "id": "hideous-laughter-active",
       "name": "Hideous Laughter",
-      "description": "The target falls Prone and is Incapacitated for the spell's duration, unable to stand up. At the end of each of its turns it makes a Wisdom save against the caster's spell DC; on success, the spell ends on it. The RAW 'extra save with advantage when damaged' branch is not modeled — only the end-of-turn save is wired. Bare Prone + Incapacitated currently carry empty mechanical effects in the pack, so this condition is also effects-empty; the recurring save is the load-bearing wire.",
+      "description": "The target falls Prone and is Incapacitated for the spell's duration, unable to stand up. Action-blocking via ACTION_BLOCKING_CONDITIONS (the Incapacitated half), like the bare Incapacitated / Stunned conditions and the held-paralyzed-active spell-bound variant. At the end of each of its turns it makes a Wisdom save against the caster's spell DC; on success, the spell ends on it (the consumer calls engine.plan.tickRecurringSave). RAW deviations: the Prone attacker-side rule (melee attackers have Advantage, ranged Disadvantage) is keyed off the literal 'prone' condition id and is not reproduced by this variant id (same limitation as held-paralyzed-active not reproducing Paralyzed's attacker-side bonuses); the extra repeat save with Advantage when the target takes damage is not modeled (only the end-of-turn save is wired); a creature immune to the bare Incapacitated / Prone conditions is not auto-detected as immune to this variant id. Carries empty mechanical effects because Incapacitated and Prone are themselves engine-coded base conditions (Incapacitated via the action-blocking allowlist, Prone via the literal-id attack logic), so the action-block + recurring save are the load-bearing wires.",
       "stackable": false,
       "endsOn": [],
       "effects": [],
@@ -8963,7 +9187,7 @@
     {
       "id": "resisted",
       "name": "Resisted",
-      "description": "May add 1d4 to one saving throw; consumed on use (Resistance cantrip). Same consumer-managed shape as Guidance: no engine event fires at consume time, the consumer rolls the d4 and removes the condition.",
+      "description": "Resistance cantrip (SRD 5.2.1): the bearer chose one damage type at cast time; when it takes damage of that type, it reduces the total by 1d4, once per turn, for the spell's duration. The consumer calls engine.plan.consumeResistance({ targetId, damageType, damageAmount }) when the bearer takes damage of the chosen type; the planner rolls the 1d4 and emits a compensating Healed for the reduction (mirroring Absorb Elements, since the triggering DamageApplied has already committed). The marker carries empty effects because the reduction is the consumer-invoked reaction, not a passive modifier. Consumer-coordinated edges (documented): the once-per-turn cap and that the supplied damageType matches the cast-chosen type (the generic marker does not pin the type, exactly as Absorb Elements trusts its consumer-supplied type). Earlier this condition was a 2014-flavored 'add 1d4 to a save' stub with no consumer; slice 369 wired the 2024 damage-reduction behavior.",
       "stackable": false,
       "endsOn": [],
       "effects": []

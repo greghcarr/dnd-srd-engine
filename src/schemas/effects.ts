@@ -94,6 +94,14 @@ export type TriggerAction =
   // against AttackRolled triggers (the only event with an attackerId).
   | { kind: 'AddDamageToAttacker'; dice: DiceExpression; damageType: DamageType }
   | { kind: 'Heal'; amount: number | Formula }
+  // Slice 349. Grants Temporary Hit Points to the rider's bearer (not
+  // the triggering event's target). `amount` is resolved against the
+  // bearer's formula context, so it can scale with the bearer's level
+  // and ability modifiers. Canonical user: Warlock Fiend Patron's Dark
+  // One's Blessing (temp HP = CHA mod + Warlock level, min 1, when the
+  // bearer reduces an enemy to 0 HP). Emits a TempHPGranted event,
+  // which uses max-not-additive temp-HP semantics (slice 75).
+  | { kind: 'GrantTempHP'; amount: number | Formula }
   | { kind: 'ApplyCondition'; conditionId: string; durationRounds?: number }
   // Retaliation variant of ApplyCondition: stamps the condition on
   // the attacker of the triggering event instead of the target. Used
@@ -138,6 +146,10 @@ export const TriggerActionSchema: z.ZodType<TriggerAction> = z.union([
   }),
   z.object({
     kind: z.literal('Heal'),
+    amount: z.union([z.number(), FormulaSchema]),
+  }),
+  z.object({
+    kind: z.literal('GrantTempHP'),
     amount: z.union([z.number(), FormulaSchema]),
   }),
   z.object({

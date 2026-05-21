@@ -24,7 +24,7 @@ _(Sir Borin consumes reaction)_
 
 Damage rolled: 1d8=[8]+4 slashing.
 
-**Goblin Scout** takes 12 damage (12 slashing). (HP 14 -> 2)
+**Goblin Scout** takes 12 damage from **Sir Borin** (12 slashing). (HP 14 -> 2)
 
 End of Goblin Scout's turn.
 
@@ -42,4 +42,4 @@ _(Sir Borin consumes reaction)_
 
 Damage rolled: 1d8=[5]+4 slashing.
 
-**Goblin Scout** takes 9 damage (9 slashing). (HP 2 -> -7)
+**Goblin Scout** takes 9 damage from **Sir Borin** (9 slashing). (HP 2 -> -7)

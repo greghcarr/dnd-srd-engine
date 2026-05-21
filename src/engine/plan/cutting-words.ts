@@ -9,7 +9,7 @@ import { newEventId } from '../../ids.js';
 import { nowIso } from '../../internal/clock.js';
 import type { ULID } from '../ids-utils.js';
 
-const BARDIC_INSPIRATION_RESOURCE_ID = 'bardic-inspiration';
+export const BARDIC_INSPIRATION_RESOURCE_ID = 'bardic-inspiration';
 const BI_DIE_THRESHOLD_LEVELS = [5, 10, 15] as const;
 const BI_DIE_SIDES = [6, 8, 10, 12] as const;
 
@@ -34,7 +34,7 @@ export interface CuttingWordsOutcome {
   readonly preventedHit: boolean;
 }
 
-const bardicInspirationDieFor = (bardLevel: number): number => {
+export const bardicInspirationDieFor = (bardLevel: number): number => {
   let idx = 0;
   for (const threshold of BI_DIE_THRESHOLD_LEVELS) {
     if (bardLevel >= threshold) idx += 1;

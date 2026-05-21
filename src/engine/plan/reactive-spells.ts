@@ -768,6 +768,100 @@ export const planConsumeGuidance = (
   return { events, d4 };
 };
 
+// SRD 5.2.1 Resistance lists exactly these eleven damage types (Force
+// and Psychic are excluded).
+const RESISTANCE_TYPES: readonly DamageType[] = [
+  'acid',
+  'bludgeoning',
+  'cold',
+  'fire',
+  'lightning',
+  'necrotic',
+  'piercing',
+  'poison',
+  'radiant',
+  'slashing',
+  'thunder',
+];
+const RESISTANCE_DIE_SIDES = 4;
+const RESISTED_CONDITION_ID = 'resisted';
+
+export interface ConsumeResistanceIntent {
+  readonly type: 'ConsumeResistance';
+  readonly targetId: string;
+  // The damage type the protected creature is taking. Must be the type
+  // chosen at cast time and one of the eleven Resistance types. The
+  // consumer supplies it (the chosen type is consumer-coordinated, the
+  // same way Absorb Elements takes its triggering `damageType`).
+  readonly damageType: DamageType;
+  // The amount of that damage the creature just took (the reduction is
+  // capped at this, so a small hit can't net into healing).
+  readonly damageAmount: number;
+  readonly at?: string;
+}
+
+export interface ConsumeResistanceOutcome {
+  readonly events: ReadonlyArray<Event>;
+  readonly d4: number;
+  // The damage actually reduced (min(d4, damageAmount)).
+  readonly reduction: number;
+}
+
+/**
+ * SRD 5.2.1 Resistance: cantrip, V/S, touch, concentration up to 1 minute.
+ * You choose a damage type at cast time; when the creature takes damage of
+ * that type before the spell ends, it reduces the total by 1d4. A creature
+ * can benefit only once per turn.
+ *
+ * Implementation mirrors Absorb Elements: the triggering DamageApplied has
+ * already committed, so rather than mutate it we roll the 1d4 here and emit
+ * a compensating `Healed` for the reduced amount (capped at the damage
+ * taken). The consumer calls this when their `resisted` creature takes
+ * damage of the chosen type. Two edges are consumer-coordinated (documented
+ * on the `resisted` condition): the once-per-turn cap and that the supplied
+ * `damageType` matches the type chosen at cast (the generic `resisted`
+ * marker doesn't pin the type, exactly as Absorb Elements trusts its
+ * consumer-supplied type). The reaction costs no action and does not end
+ * the spell (Resistance persists for its duration).
+ */
+export const planConsumeResistance = (
+  state: CampaignState,
+  _content: ResolvedContent,
+  rng: RNG,
+  intent: ConsumeResistanceIntent,
+): ConsumeResistanceOutcome => {
+  const target = state.characters[intent.targetId];
+  invariant(target !== undefined, `Target ${intent.targetId} not found`);
+  invariant(
+    target.appliedConditions.some((c) => c.conditionId === RESISTED_CONDITION_ID),
+    `Target ${intent.targetId} does not have the resisted condition (Resistance not active)`,
+  );
+  if (!RESISTANCE_TYPES.includes(intent.damageType)) {
+    throw new Error(
+      `Resistance damage type '${intent.damageType}' not in allowed list [${RESISTANCE_TYPES.join(', ')}]`,
+    );
+  }
+  if (intent.damageAmount < 0) {
+    throw new Error('Resistance damageAmount must be non-negative');
+  }
+
+  const at = intent.at ?? nowIso();
+  const d4 = rollDie(RESISTANCE_DIE_SIDES, rng);
+  const reduction = Math.min(d4, intent.damageAmount);
+  const events: Event[] = [];
+  if (reduction > 0) {
+    events.push({
+      id: newEventId() as ULID,
+      at,
+      type: 'Healed',
+      targetId: intent.targetId as ULID,
+      amount: reduction,
+      source: 'resistance',
+    } satisfies HealedEvent);
+  }
+  return { events, d4, reduction };
+};
+
 const SANCTUARY_CONDITION_ID = 'sanctuary-active';
 
 const findPrimarySpellcastingClass = (

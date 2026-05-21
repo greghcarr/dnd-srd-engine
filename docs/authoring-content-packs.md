@@ -249,7 +249,7 @@ Subclass features dedupe by id the same way class features do.
 | `targeting` | `{ shape, size }` | no | AoE shape; `shape` is `cone`/`cube`/`line`/`sphere`/`cylinder` |
 | `mechanicalEffects` | `SpellMechanic[]` | no, default `[]` | See below |
 
-`SpellMechanic` is a discriminated union by `kind`. The starter pack uses thirteen kinds:
+`SpellMechanic` is a discriminated union by `kind`. It has fourteen kinds:
 
 | `kind` | Use | Fields |
 |---|---|---|
@@ -266,6 +266,7 @@ Subclass features dedupe by id the same way class features do.
 | `recurring` | Per-turn effect while concentrating (Heroism). Consumer calls `engine.plan.tickRecurring({casterId, targetId})` at the start of each target's turn. `effect` is `temp-hp` / `heal` / `damage`. | `effect`, `amountDice?`, `flatAmount?`, `addCasterAbilityMod?`, `damageType?` |
 | `summon` | Creates a controlled companion (find-familiar, summon-X family, find-steed, animate-dead, phantom-steed, etc.). Emits `CompanionSummoned`; the reducer instantiates a Character with `summonSource` pointing to controller / spell / slot / effect. HP scales by slot level. Concentration auto-dismiss. | `name`, `ac`, `hpBase`, `hpPerSlotAbove?`, `baseSlotLevel`, `speedFeet?` |
 | `trap` | Primes a placed trap (Glyph of Warding, Cordon of Arrows). Cast-time emits `TrapArmed`; the consumer detects the trigger condition and calls `engine.plan.triggerTrap({trapId, triggeringCharacterId})`. DC pre-baked from caster's spell save DC at arm time (or `fixedDC`). `damageType` can be `casterChoosesDamageType` (Glyph: caster picks from a list at cast). | `saveAbility`, `damageDice`, `damageType?` or `casterChoosesDamageType?`, `halfOnSuccess?`, `charges`, `label`, `fixedDC?` |
+| `hp-threshold` | Reads each target's current HP and applies one of two arms by threshold (Power Word Kill / Power Word Stun). Each arm is `destroy` (emits `CreatureDestroyed`, bypassing death saves), `damage` (`damageDice` + `damageType`, run through the normal mitigation pipeline), or `condition` (`conditionId`, immunity-checked). | `threshold`, `atOrBelow` (arm), `above?` (arm) |
 
 A spell can have multiple `mechanicalEffects` entries — for instance a spell that both damages and applies a condition would have two `save` entries (or one `save` with both `damageDice` and `conditionOnFail`).
 
@@ -376,7 +377,7 @@ Note that monster statblocks ship the *flat* values for AC, saves, and skills �
 
 ## Effect primitives reference
 
-Effects are the building blocks that classes, feats, species, items, and conditions all use. There are 46 effect kinds; the canonical list lives in `EFFECT_KINDS` in [src/schemas/effects.ts](../src/schemas/effects.ts). The reference below documents the most-used kinds — for the full vocabulary including the recently added markers (`GrantUncannyDodge`, `GrantInnateSorcerySpendAlternative`, `GrantSelfRestoration`, `GrantMaxHealingDice`, `GrantUnarmedAsMagical`, `CancelAdvantageOnAttackers`, `ExpandAuraRange`, etc.), consult the schema.
+Effects are the building blocks that classes, feats, species, items, and conditions all use. There are 52 effect kinds (51 primitives plus the `Custom` escape hatch); the canonical list lives in `EFFECT_KINDS` in [src/schemas/effects.ts](../src/schemas/effects.ts). The reference below documents the most-used kinds — for the full vocabulary including the recently added markers (`GrantUncannyDodge`, `GrantInnateSorcerySpendAlternative`, `GrantSelfRestoration`, `GrantMaxHealingDice`, `GrantUnarmedAsMagical`, `CancelAdvantageOnAttackers`, `ExpandAuraRange`, etc.), consult the schema.
 
 ### Modifiers and rolls
 

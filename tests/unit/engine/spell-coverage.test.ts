@@ -218,7 +218,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   // PHB 2024 L3 spells shipped schema-only; see docs/starter-pack-gaps.md.
   'animate-dead': { kind: 'summon' },
   'beacon-of-hope': { kind: 'skip', reason: 'multi-buff condition (advantage on WIS + death saves + max heal); composite-buff condition not modeled' },
-  'bestow-curse': { kind: 'save', casterChoice: { kind: 'variant', value: 'ability-disadvantage' } },
+  'bestow-curse': { kind: 'save', casterChoice: { kind: 'variant', value: 'ability-disadvantage-str' } },
   'clairvoyance': { kind: 'skip', reason: 'has dedicated planClairvoyance (places a remote Sensor entity with caster-mediated sight/hearing toggle and concentration-bound lifetime)' },
   'conjure-animals': { kind: 'summon' },
   'create-food-and-water': { kind: 'skip', reason: 'utility (food creation), narrative only' },

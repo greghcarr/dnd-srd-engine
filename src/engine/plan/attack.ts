@@ -898,6 +898,11 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     targetId: input.targetId,
     components: intercept.components,
     causedByEventId: damageRolled.id,
+    // Slice 349: attribute the attack's damage to the attacker so
+    // DamageApplied riders can gate on "you dealt this" (Dark One's
+    // Blessing's `event.sourceIsSelf`). Previously unset on weapon
+    // attacks; the spell / trap damage emitters already set it.
+    sourceCharacterId: input.attackerId as ULID,
   };
   const concentrationBreak = planConcentrationBreakOnDrop(
     target,

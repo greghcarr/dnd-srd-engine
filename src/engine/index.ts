@@ -65,6 +65,12 @@ import {
   planFlurryOfBlows,
   planPatientDefense,
   planStepOfTheWind,
+  planIntimidatingPresence,
+  planDragonWings,
+  planPreserveLife,
+  planLandsAid,
+  planWholenessOfBody,
+  planPeerlessSkill,
   planFrenzy,
   planCuttingWords,
   planMetamagic,
@@ -96,6 +102,7 @@ import {
   planSanctuaryWardSave,
   planProtection,
   planConsumeGuidance,
+  planConsumeResistance,
   planUncannyDodge,
   planWeaponMastery,
   planForage,
@@ -141,6 +148,8 @@ import {
   type ProtectionOutcome,
   type ConsumeGuidanceIntent,
   type ConsumeGuidanceOutcome,
+  type ConsumeResistanceIntent,
+  type ConsumeResistanceOutcome,
   type UncannyDodgeIntent,
   type UncannyDodgeOutcome,
   type WeaponMasteryIntent,
@@ -189,6 +198,13 @@ import {
   type FlurryOfBlowsIntent,
   type PatientDefenseIntent,
   type StepOfTheWindIntent,
+  type IntimidatingPresenceIntent,
+  type DragonWingsIntent,
+  type PreserveLifeIntent,
+  type LandsAidIntent,
+  type WholenessOfBodyIntent,
+  type PeerlessSkillIntent,
+  type PeerlessSkillOutcome,
   type FrenzyIntent,
   type CuttingWordsIntent,
   type CuttingWordsOutcome,
@@ -313,6 +329,12 @@ export interface Engine {
     flurryOfBlows(state: CampaignState, intent: Omit<FlurryOfBlowsIntent, 'type'>): PlanResult;
     patientDefense(state: CampaignState, intent: Omit<PatientDefenseIntent, 'type'>): PlanResult;
     stepOfTheWind(state: CampaignState, intent: Omit<StepOfTheWindIntent, 'type'>): PlanResult;
+    intimidatingPresence(state: CampaignState, intent: Omit<IntimidatingPresenceIntent, 'type'>): PlanResult;
+    dragonWings(state: CampaignState, intent: Omit<DragonWingsIntent, 'type'>): PlanResult;
+    preserveLife(state: CampaignState, intent: Omit<PreserveLifeIntent, 'type'>): PlanResult;
+    landsAid(state: CampaignState, intent: Omit<LandsAidIntent, 'type'>): PlanResult;
+    wholenessOfBody(state: CampaignState, intent: Omit<WholenessOfBodyIntent, 'type'>): PlanResult;
+    peerlessSkill(state: CampaignState, intent: Omit<PeerlessSkillIntent, 'type'>): PeerlessSkillOutcome;
     frenzy(state: CampaignState, intent: Omit<FrenzyIntent, 'type'>): PlanResult;
     cuttingWords(state: CampaignState, intent: Omit<CuttingWordsIntent, 'type'>): CuttingWordsOutcome;
     metamagic(state: CampaignState, intent: Omit<MetamagicIntent, 'type'>): PlanResult;
@@ -353,6 +375,10 @@ export interface Engine {
       state: CampaignState,
       intent: Omit<ConsumeGuidanceIntent, 'type'>,
     ): ConsumeGuidanceOutcome;
+    consumeResistance(
+      state: CampaignState,
+      intent: Omit<ConsumeResistanceIntent, 'type'>,
+    ): ConsumeResistanceOutcome;
     uncannyDodge(
       state: CampaignState,
       intent: Omit<UncannyDodgeIntent, 'type'>,
@@ -590,6 +616,24 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     stepOfTheWind(state, intent) {
       return { events: planStepOfTheWind(state, content, { type: 'StepOfTheWind', ...intent }) };
     },
+    intimidatingPresence(state, intent) {
+      return { events: planIntimidatingPresence(state, content, rng, { type: 'IntimidatingPresence', ...intent }) };
+    },
+    dragonWings(state, intent) {
+      return { events: planDragonWings(state, content, { type: 'DragonWings', ...intent }) };
+    },
+    preserveLife(state, intent) {
+      return { events: planPreserveLife(state, content, { type: 'PreserveLife', ...intent }) };
+    },
+    landsAid(state, intent) {
+      return { events: planLandsAid(state, content, rng, { type: 'LandsAid', ...intent }) };
+    },
+    wholenessOfBody(state, intent) {
+      return { events: planWholenessOfBody(state, content, rng, { type: 'WholenessOfBody', ...intent }) };
+    },
+    peerlessSkill(state, intent) {
+      return planPeerlessSkill(state, content, rng, { type: 'PeerlessSkill', ...intent });
+    },
     frenzy(state, intent) {
       return { events: planFrenzy(state, content, { type: 'Frenzy', ...intent }) };
     },
@@ -689,6 +733,12 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     consumeGuidance(state, intent) {
       return planConsumeGuidance(state, content, rng, {
         type: 'ConsumeGuidance',
+        ...intent,
+      });
+    },
+    consumeResistance(state, intent) {
+      return planConsumeResistance(state, content, rng, {
+        type: 'ConsumeResistance',
         ...intent,
       });
     },

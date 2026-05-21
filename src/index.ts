@@ -426,6 +426,8 @@ export type {
   ShieldOutcome,
   ConsumeGuidanceIntent,
   ConsumeGuidanceOutcome,
+  ConsumeResistanceIntent,
+  ConsumeResistanceOutcome,
   WeaponMasteryIntent,
   ForageIntent,
   NavigationCheckIntent,

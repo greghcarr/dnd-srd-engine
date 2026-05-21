@@ -1,0 +1,19 @@
+# CHANGELOG archive: slices 352-353 (post-alpha.11 cohort, part 3)
+
+Per-slice detail for slices 352-353, moved out of the live [CHANGELOG.md](../../CHANGELOG.md) in slice 355 to keep it under the 60 KB single-Read ceiling. Part of the post-alpha.11 Unreleased cohort (see also [archive-slices-345-349.md](archive-slices-345-349.md) and [archive-slices-350-351.md](archive-slices-350-351.md)). Slice 352 is the Life Domain L3 Preserve Life planner; slice 353 was itself a CHANGELOG archive split.
+
+---
+
+**Docs: archive slices 350-351 out of the live CHANGELOG (slice 353)**
+
+The live CHANGELOG reached ~60 KB (the single-Read ceiling). Per the doc-size playbook, the per-slice detail for slices 350-351 moved to [archive-slices-350-351.md](archive-slices-350-351.md); the live file keeps the most recent slice (352) inline plus a pointer, dropping to ~54 KB. Added the new file to the archive index. No code or content change; doc-size audit green.
+
+**Engine + content: Life Domain Preserve Life (slice 352)**
+
+New `planPreserveLife` ([src/engine/plan/preserve-life.ts](../../src/engine/plan/preserve-life.ts)) + `engine.plan.preserveLife`. RAW 2024 (Life Domain L3 Channel Divinity): expend a Channel Divinity use to restore a pool of 5 x Cleric level Hit Points, divided among chosen Bloodied creatures within 30 ft, restoring each to no more than half its Hit Point maximum. The planner validates Life Domain at level 3+, spends the `channel-divinity` resource (`ResourceSpent`), validates the requested allocation total against the pool, and emits a `Healed` event per allocation. Each heal is capped so the target rises to no more than half its HP max; that cap also enforces the "Bloodied creatures" target rule (a creature at or above half max receives 0). The subclass feature carries a `Custom { handlerId }` planner marker, preserving the invariant that every pack `Custom` handlerId pairs with an engine planner.
+
+Action economy (a Magic action): consumed only when the cleric is the active combatant in an encounter (mirrors `planDragonWings` / `planStunningStrike`); out of combat the healing is simply applied. Range + target choice + the per-target allocation split are consumer-supplied.
+
+Closes the L3 Preserve Life stub. Six of the original twelve L3 `effects: []` stubs are now closed (slices 346-352); the remaining six are Circle of the Land's nature cantrip (2014-PHB extra) + Land's Aid + Circle Spells, Hunter's Lore (narrative), Thief Fast Hands, and Monk Open Hand Technique. New [tests/unit/engine/slice-352-preserve-life.test.ts](../../tests/unit/engine/slice-352-preserve-life.test.ts): pool division across two Bloodied targets + the Channel Divinity spend, the half-max cap (over-allocation capped), a non-Bloodied target receiving nothing, pool-overflow rejection, and the Life-Domain / Channel-Divinity guards.
+
+Uncle Bob audit: **Names** `planPreserveLife` matches the feature; `PRESERVE_LIFE_HP_PER_LEVEL` / `CHANNEL_DIVINITY_RESOURCE_ID` named. **DRY** reuses the `Healed` event + reducer, the `channel-divinity` `ResourceSpent` shape, the `planDragonWings` in/out-of-encounter gating, and the Sacred Weapon `Custom`-marker convention. **SRP** the planner validates + (conditionally) consumes the action + spends the resource + emits the capped heals; the max-HP cap math is local and small. **Magic numbers** the 5x-per-level pool + the half-max cap are RAW-cited named constants / derived from `hp.max`. **at-threading** single `nowIso()`; no RNG. **Mechanical outcomes asserted** the pool split, the half-max cap, the no-heal-on-non-Bloodied, the overflow rejection, and the guards. **Tests** prevent over-healing past half max, healing a non-Bloodied target, and a non-qualifying actor using it. No em/en dashes. Full suite green (305 files), `tsc --noEmit` clean.

@@ -12,4 +12,4 @@ Item acquired: Unarmed Strike.
 
 Damage rolled: 1d8=[3]+2 bludgeoning.
 
-**Warded** takes 5 damage (5 bludgeoning). (HP 50 -> 45)
+**Warded** takes 5 damage from **Kai** (5 bludgeoning). (HP 50 -> 45)

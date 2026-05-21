@@ -21,7 +21,7 @@ ln -s ../dnd-srd-engine/references references
 npx vitest run
 ```
 
-`npm install` is required because `node_modules` is gitignored and per-worktree. The `references/` symlink points at the primary worktree's copy of the SRD markdown and PDF, which are gitignored. Without it the sibling sessions will try to fetch 5e content from the web (typically getting 2014-PHB-flavored answers that produce drift bugs). Confirm the suite is green (~1951 tests as of slice 328) and the symlink resolves (`ls references/srd-markdown/classes.md` shows the file) before starting Claude in the new window.
+`npm install` is required because `node_modules` is gitignored and per-worktree. The `references/` symlink points at the primary worktree's copy of the SRD markdown and PDF, which are gitignored. Without it the sibling sessions will try to fetch 5e content from the web (typically getting 2014-PHB-flavored answers that produce drift bugs). Confirm the suite is green (~2060 tests as of slice 361) and the symlink resolves (`ls references/srd-markdown/classes.md` shows the file) before starting Claude in the new window.
 
 For subsequent batches, after merging batch N back to `main`, branch off again from inside the worktree. `main` is already checked out in the primary worktree, so you can't `git checkout main` here. Branch directly off the freshly-fetched remote tip instead: `git fetch origin && git checkout -b content/authoring-batch-2 origin/main`. Or reuse the same branch name if you removed the worktree at cleanup.
 

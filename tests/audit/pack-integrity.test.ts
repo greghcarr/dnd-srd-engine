@@ -70,6 +70,46 @@ const itemIsWired = (e: Entry): boolean =>
 
 const conditionIsWired = (e: Entry): boolean => (e.effects?.length ?? 0) > 0;
 
+// Recursively lists every .ts file under a directory. Shared by the
+// guards that scan the engine source for a referenced id.
+const collectTsFiles = (dir: string): string[] => {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...collectTsFiles(p));
+    else if (entry.name.endsWith('.ts')) out.push(p);
+  }
+  return out;
+};
+
+// Walks any pack subtree and collects, per key of interest, the set of
+// string values found under that key. Shared by the cross-reference and
+// effect-less-condition guards below.
+const collectRefsByKey = (
+  root: unknown,
+  keys: ReadonlySet<string>,
+): Map<string, Set<string>> => {
+  const out = new Map<string, Set<string>>();
+  const walk = (node: unknown): void => {
+    if (Array.isArray(node)) {
+      for (const v of node) walk(v);
+      return;
+    }
+    if (node !== null && typeof node === 'object') {
+      for (const [k, v] of Object.entries(node)) {
+        if (keys.has(k) && typeof v === 'string') {
+          const set = out.get(k) ?? new Set<string>();
+          set.add(v);
+          out.set(k, set);
+        }
+        walk(v);
+      }
+    }
+  };
+  walk(root);
+  return out;
+};
+
 describe('pack integrity: spell scrolls are consumable', () => {
   // Slice 310 (pattern-check follow-up to slices 305 / 309). Spell
   // scrolls are consumed on use (RAW item type "Scroll"), so they must
@@ -179,16 +219,6 @@ describe('pack integrity: conditions with effects are reachable', () => {
     'absorb-elements-charged-thunder-active',
   ]);
 
-  const collectTsFiles = (dir: string): string[] => {
-    const out: string[] = [];
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const p = join(dir, entry.name);
-      if (entry.isDirectory()) out.push(...collectTsFiles(p));
-      else if (entry.name.endsWith('.ts')) out.push(p);
-    }
-    return out;
-  };
-
   const collectReferencedIds = (): Set<string> => {
     const referenced = new Set<string>();
     const walk = (node: unknown): void => {
@@ -252,5 +282,177 @@ describe('pack integrity: conditions with effects are reachable', () => {
       if (!stillExists || nowReferenced) stale.push(id);
     }
     expect(stale).toEqual([]);
+  });
+});
+
+describe('pack integrity: content cross-references resolve', () => {
+  // Catches a renamed / deleted / mistyped id that a content slice still
+  // references (e.g. a `GrantSpell` pointing at a spell id that no longer
+  // exists). Such a dangling reference is silent today: the grant just
+  // never resolves. This guard fails the build instead.
+  const full = pack as unknown as {
+    spells: Entry[];
+    items: Entry[];
+    conditions: Entry[];
+    classes?: Entry[];
+  };
+  const idsOf = (arr?: ReadonlyArray<Entry>): Set<string> =>
+    new Set((arr ?? []).map((e) => e.id));
+  const spellIds = idsOf(full.spells);
+  const itemIds = idsOf(full.items);
+  const conditionIds = idsOf(full.conditions);
+  const classIds = idsOf(full.classes);
+
+  // Reference key -> the id set it must resolve into.
+  const TARGETS: Record<string, Set<string>> = {
+    spellId: spellIds,
+    enchantmentDefinitionId: itemIds,
+    parentClassId: classIds,
+    conditionId: conditionIds,
+    conditionOnFail: conditionIds,
+    conditionOnSuccess: conditionIds,
+    allyConditionId: conditionIds,
+    applyConditionId: conditionIds,
+    bearerConditionId: conditionIds,
+  };
+  const refs = collectRefsByKey(pack, new Set(Object.keys(TARGETS)));
+
+  for (const key of Object.keys(TARGETS)) {
+    it(`${key} references resolve to a defined entity`, () => {
+      const target = TARGETS[key]!;
+      const dangling = [...(refs.get(key) ?? new Set<string>())]
+        .filter((v) => !target.has(v))
+        .sort();
+      expect(
+        dangling,
+        `${key}: references to undefined ids ${JSON.stringify(dangling)} (rename/delete left a dangling ref, or the referenced entry was never added)`,
+      ).toEqual([]);
+    });
+  }
+});
+
+describe('pack integrity: wired spells do not apply effect-less conditions', () => {
+  // A spell that ships mechanicalEffects (i.e. is "wired") but applies a
+  // condition whose own `effects: []` is empty does nothing mechanically
+  // on a successful application. Slice 361 swept all such cases by hand;
+  // this guard makes the sweep permanent so a new instance fails CI.
+  // Legitimate empty-effect conditions are allowlisted with their reason.
+  const CONDITION_REF_KEYS = new Set([
+    'conditionId',
+    'conditionOnFail',
+    'conditionOnSuccess',
+    'applyConditionId',
+    'bearerConditionId',
+  ]);
+  const condById = new Map(pack.conditions.map((c) => [c.id, c] as const));
+
+  // Conditions that legitimately ship `effects: []` even when a wired
+  // spell applies them. See docs/starter-pack-gaps.md "Empty-effect
+  // condition gaps" (slice 361) for the full rationale.
+  const EFFECT_LESS_OK: ReadonlySet<string> = new Set([
+    // Engine-hardcoded base RAW conditions (mechanics live in engine code,
+    // not in the condition's effects array):
+    'charmed',
+    'deafened',
+    'exhaustion',
+    'incapacitated',
+    // Engine-read markers (the mechanic lives in a planner / the attack
+    // resolver / an id-keyed allowlist, not in the effects array):
+    'guided', // consumed by planConsumeGuidance (rolls the d4)
+    'mirror-image-active', // read in the attack planner; appliedConditionLevel = image count
+    'hideous-laughter-active', // slice 366: action-blocking (ACTION_BLOCKING_CONDITIONS) + recurringSave; Incapacitated/Prone are engine-coded base conditions
+    'cursed-inert-active', // slice 368: recurringSave { onFail: 'dodge' } drives it (save-or-Dodge); the mechanic is the recurring save, not the effects array
+    'resisted', // slice 369: consumer-invoked planConsumeResistance rolls the 1d4 reduction (mirrors Absorb Elements); the marker just says Resistance is active
+    // (The slice-361 "known-open bugs" group is now empty — all four were fixed in slices 366-369.)
+    // Consumer-managed / narrative (no clean engine model):
+    'commanded-approach-active',
+    'commanded-drop-active',
+    'commanded-flee-active',
+    'confused-active',
+    'emotionally-indifferent-active',
+    'water-breathing-active',
+  ]);
+
+  const conditionsAppliedByWiredSpells = (): Set<string> => {
+    const out = new Set<string>();
+    for (const spell of pack.spells) {
+      if ((spell.mechanicalEffects?.length ?? 0) === 0) continue;
+      for (const set of collectRefsByKey(spell.mechanicalEffects, CONDITION_REF_KEYS).values()) {
+        for (const id of set) out.add(id);
+      }
+    }
+    return out;
+  };
+
+  it('every condition applied by a wired spell carries effects or is allowlisted', () => {
+    const offenders = [...conditionsAppliedByWiredSpells()]
+      .filter((id) => {
+        const c = condById.get(id);
+        return c !== undefined && (c.effects?.length ?? 0) === 0 && !EFFECT_LESS_OK.has(id);
+      })
+      .sort();
+    expect(
+      offenders,
+      `wired spells apply these effect-less conditions: ${JSON.stringify(offenders)}. Wire the condition's effects, or add it to EFFECT_LESS_OK with a documented reason + a starter-pack-gaps.md row.`,
+    ).toEqual([]);
+  });
+
+  it('the effect-less allowlist stays accurate (entries still exist and remain empty-effect)', () => {
+    const stale = [...EFFECT_LESS_OK]
+      .filter((id) => {
+        const c = condById.get(id);
+        return c === undefined || (c.effects?.length ?? 0) > 0;
+      })
+      .sort();
+    expect(
+      stale,
+      `EFFECT_LESS_OK entries that vanished or gained effects (remove them; if a known-open bug was fixed, drop it from the allowlist): ${JSON.stringify(stale)}`,
+    ).toEqual([]);
+  });
+});
+
+describe('pack integrity: every Custom handlerId has a backing implementation', () => {
+  // A feature/condition effect `{ kind: 'Custom', handlerId }` is a marker
+  // that the mechanic is implemented in engine code (a planner, the attack
+  // resolver, etc.). A handlerId with no backing implementation is a
+  // do-nothing feature. This guard asserts every pack handlerId is either
+  // referenced by name in the engine source OR on a documented allowlist
+  // of handlers whose implementation does not reference the id string
+  // literally (the marker is decorative; the mechanic is keyed off the
+  // intent type / weapon / class instead).
+  const handlerIds = [
+    ...collectRefsByKey(pack, new Set(['handlerId'])).get('handlerId') ?? new Set<string>(),
+  ].sort();
+  const sourceBlob = collectTsFiles(SRC_DIR)
+    .map((f) => readFileSync(f, 'utf8'))
+    .join('\n');
+  const referencedInSource = (id: string): boolean => sourceBlob.includes(id);
+
+  // Handlers whose implementation does not contain the handlerId string.
+  // Each is genuinely backed; the allowlist documents where.
+  const BACKED_INDIRECTLY: ReadonlyMap<string, string> = new Map([
+    ['martial-arts', 'attack planner: martialArtsDie / applyMartialArtsDieScaling key off the monk class + weapon, not the handlerId'],
+    ['slow-fall', 'planFalling reduces fall damage via its `useSlowFall` arm (5 x monk level), keyed off the intent flag'],
+  ]);
+
+  it('every Custom handlerId is referenced in engine source or allowlisted as indirectly backed', () => {
+    const unbacked = handlerIds
+      .filter((id) => !referencedInSource(id) && !BACKED_INDIRECTLY.has(id))
+      .sort();
+    expect(
+      unbacked,
+      `Custom handlerIds with no backing implementation: ${JSON.stringify(unbacked)}. Implement the handler/planner, or (if the mechanic is keyed off something other than the id string) add it to BACKED_INDIRECTLY with where it lives.`,
+    ).toEqual([]);
+  });
+
+  it('the indirectly-backed allowlist stays accurate (entries still exist and are still indirect)', () => {
+    const present = new Set(handlerIds);
+    const stale = [...BACKED_INDIRECTLY.keys()]
+      .filter((id) => !present.has(id) || referencedInSource(id))
+      .sort();
+    expect(
+      stale,
+      `BACKED_INDIRECTLY entries that vanished from the pack or are now referenced by name (remove them): ${JSON.stringify(stale)}`,
+    ).toEqual([]);
   });
 });

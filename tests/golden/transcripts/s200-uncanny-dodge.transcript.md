@@ -22,7 +22,7 @@ _(Bruiser consumes attack)_
 
 Damage rolled: 1d8=[1]+4 slashing.
 
-**Veska** takes 5 damage (5 slashing). (HP 30 -> 25)
+**Veska** takes 5 damage from **Bruiser** (5 slashing). (HP 30 -> 25)
 
 _(Veska consumes reaction)_
 

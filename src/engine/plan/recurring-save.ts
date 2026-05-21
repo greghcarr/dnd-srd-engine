@@ -3,13 +3,13 @@ import type { ResolvedContent } from '../../content/pack.js';
 import type { Event } from '../../schemas/events/index.js';
 import type { Character } from '../../schemas/runtime/character.js';
 import type { RNG } from '../../rng/index.js';
-import { newEventId } from '../../ids.js';
+import { newEventId, newAppliedConditionId } from '../../ids.js';
 import { nowIso } from '../../internal/clock.js';
 import type { ULID } from '../ids-utils.js';
 import { computeSpellSaveDC } from '../../derive/spell-dc.js';
 import { rollSaveAgainstDC } from './_save-roll.js';
 import type { ActionEconomyConsumedEvent } from '../../schemas/events/action-economy.js';
-import type { ConditionRemovedEvent } from '../../schemas/events/combat.js';
+import type { ConditionRemovedEvent, ConditionAppliedEvent } from '../../schemas/events/combat.js';
 
 export interface TickRecurringSaveIntent {
   readonly type: 'TickRecurringSave';
@@ -141,7 +141,8 @@ export const planTickRecurringSave = (
   const events: Event[] = [];
   events.push(saveEvent);
 
-  if (!success && conditionDef.recurringSave.onFail === 'consumeAction') {
+  const onFail = conditionDef.recurringSave.onFail;
+  if (!success && (onFail === 'consumeAction' || onFail === 'dodge')) {
     const activeEncounterId = state.activeEncounterId;
     if (activeEncounterId !== undefined) {
       const encounter = state.encounters[activeEncounterId];
@@ -156,6 +157,22 @@ export const planTickRecurringSave = (
           causedByEventId: saveEvent.id,
         };
         events.push(consumed);
+        // 'dodge' (Bestow Curse inactive-turn arm): forced to take the
+        // Dodge action, so the bearer also gains Dodge's defensive
+        // benefit. Mirrors planDodge: a plain ConditionApplied('dodged');
+        // expiry comes from the condition's own `endsOn` (turn end).
+        if (onFail === 'dodge') {
+          const dodged: ConditionAppliedEvent = {
+            id: newEventId() as ULID,
+            at,
+            type: 'ConditionApplied',
+            targetId: intent.targetId as ULID,
+            conditionId: 'dodged',
+            appliedConditionId: newAppliedConditionId(),
+            causedByEventId: saveEvent.id,
+          };
+          events.push(dodged);
+        }
       }
     }
   }

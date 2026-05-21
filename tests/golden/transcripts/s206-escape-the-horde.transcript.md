@@ -26,4 +26,4 @@ _(Skull consumes reaction)_
 
 Damage rolled: 1d8=[2]+4 slashing.
 
-**Aria** takes 6 damage (6 slashing). (HP 60 -> 54)
+**Aria** takes 6 damage from **Skull** (6 slashing). (HP 60 -> 54)

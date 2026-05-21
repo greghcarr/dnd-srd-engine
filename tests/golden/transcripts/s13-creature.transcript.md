@@ -10,10 +10,10 @@ Item acquired: Longsword.
 
 Damage rolled: 1d8=[8]+4 slashing.
 
-**Cassius** takes 12 damage (12 slashing). (HP 40 -> 28)
+**Cassius** takes 12 damage from **Grimtooth** (12 slashing). (HP 40 -> 28)
 
 **Grimtooth** attacks **Cassius**: d20(14) + 6 = 20 vs AC 12 -> hit.
 
 Damage rolled: 1d8=[5]+4 slashing.
 
-**Cassius** takes 9 damage (9 slashing). (HP 28 -> 19)
+**Cassius** takes 9 damage from **Grimtooth** (9 slashing). (HP 28 -> 19)

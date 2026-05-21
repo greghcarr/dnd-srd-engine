@@ -94,12 +94,38 @@ function parseSrdSpells(): Map<string, SrdSpell> {
   return out;
 }
 
+// The 15 RAW conditions and the 13 damage types, used to classify the
+// tokens in a monster's `**Immunities**` / `**Resistances**` lines.
+// Word-boundary matching distinguishes "Poison" (damage) from "Poisoned"
+// (condition) and tolerates parenthetical qualifiers ("Charmed (except
+// from its vampire master)").
+const RAW_CONDITION_NAMES = [
+  'blinded', 'charmed', 'deafened', 'exhaustion', 'frightened', 'grappled',
+  'incapacitated', 'invisible', 'paralyzed', 'petrified', 'poisoned', 'prone',
+  'restrained', 'stunned', 'unconscious',
+] as const;
+const DAMAGE_TYPE_NAMES = [
+  'acid', 'bludgeoning', 'cold', 'fire', 'force', 'lightning', 'necrotic',
+  'piercing', 'poison', 'psychic', 'radiant', 'slashing', 'thunder',
+] as const;
+const wordBoundaryMatches = (text: string, vocab: readonly string[]): Set<string> =>
+  new Set(vocab.filter((v) => new RegExp(`\\b${v}\\b`, 'i').test(text)));
+const setEq = (a: ReadonlySet<string>, b: ReadonlySet<string>): boolean =>
+  a.size === b.size && [...a].every((x) => b.has(x));
+
 interface SrdMonster {
   name: string;
   ac: number;
   hp: number;
   cr: string;
   abilities: Record<string, number>;
+  // Slice 374: secondary defensive fields. Parsed from the merged 2024
+  // `**Immunities**` line (damage types before the `;`, conditions after)
+  // and the `**Resistances**` / `**Speed**` lines.
+  conditionImmunities: Set<string>;
+  damageImmunities: Set<string>;
+  damageResistances: Set<string>;
+  walkSpeed: number; // NaN when the statblock has no walk Speed (fly/swim-only)
 }
 
 function parseSrdMonsters(): Map<string, SrdMonster> {
@@ -118,7 +144,19 @@ function parseSrdMonsters(): Map<string, SrdMonster> {
     for (let m = abRe.exec(headerBlock); m !== null; m = abRe.exec(headerBlock)) {
       abilities[m[1]!] = Number.parseInt(m[2]!, 10);
     }
-    if (!Number.isNaN(ac)) out.set(name, { name, ac, hp, cr, abilities });
+    const immLine = (/\*\*Immunities\*\*\s*(.+)/.exec(headerBlock)?.[1] ?? '').split('<br>')[0] ?? '';
+    const resLine = (/\*\*Resistances\*\*\s*(.+)/.exec(headerBlock)?.[1] ?? '').split('<br>')[0] ?? '';
+    const speedLine = (/\*\*Speed\*\*\s*(.+)/.exec(headerBlock)?.[1] ?? '').split('<br>')[0] ?? '';
+    const conditionImmunities = wordBoundaryMatches(immLine, RAW_CONDITION_NAMES);
+    const damageImmunities = wordBoundaryMatches(immLine, DAMAGE_TYPE_NAMES);
+    const damageResistances = wordBoundaryMatches(resLine, DAMAGE_TYPE_NAMES);
+    const walkSpeed = Number.parseInt(/^\s*(\d+)\s*ft/.exec(speedLine)?.[1] ?? '', 10);
+    if (!Number.isNaN(ac)) {
+      out.set(name, {
+        name, ac, hp, cr, abilities,
+        conditionImmunities, damageImmunities, damageResistances, walkSpeed,
+      });
+    }
   }
   return out;
 }
@@ -376,6 +414,61 @@ describe.runIf(SRD_AVAILABLE)('SRD 5.2.1 drift audit', () => {
           const packV = packAbs[ab];
           if (packV !== srdV) drift.push(`${m.id as string}.${ab}: pack=${asStr(packV)} SRD=${srdV}`);
         }
+      }
+      expect(drift).toEqual([]);
+    });
+
+    // Slice 374: secondary defensive fields. srd-drift previously checked
+    // only AC / HP / CR / abilities, so the ~100 monsters added in batches
+    // 5.x after the one-time slice-154-163 secondary-field audit were
+    // unguarded on these. All four read clean today.
+    it('condition immunities match SRD', () => {
+      const drift: string[] = [];
+      for (const m of pack.monsters) {
+        const s = srd.get(m.name as string);
+        if (!s) continue;
+        const pack_ci = new Set(((m.conditionImmunities as string[] | undefined) ?? []).map((c) => c.toLowerCase()));
+        if (!setEq(pack_ci, s.conditionImmunities)) {
+          drift.push(`${m.id as string}: pack=${JSON.stringify([...pack_ci].sort())} SRD=${JSON.stringify([...s.conditionImmunities].sort())}`);
+        }
+      }
+      expect(drift).toEqual([]);
+    });
+
+    it('damage immunities match SRD', () => {
+      const drift: string[] = [];
+      for (const m of pack.monsters) {
+        const s = srd.get(m.name as string);
+        if (!s) continue;
+        const pack_di = new Set(((m.damageImmunities as string[] | undefined) ?? []).map((c) => c.toLowerCase()));
+        if (!setEq(pack_di, s.damageImmunities)) {
+          drift.push(`${m.id as string}: pack=${JSON.stringify([...pack_di].sort())} SRD=${JSON.stringify([...s.damageImmunities].sort())}`);
+        }
+      }
+      expect(drift).toEqual([]);
+    });
+
+    it('damage resistances match SRD', () => {
+      const drift: string[] = [];
+      for (const m of pack.monsters) {
+        const s = srd.get(m.name as string);
+        if (!s) continue;
+        const pack_dr = new Set(((m.damageResistances as string[] | undefined) ?? []).map((c) => c.toLowerCase()));
+        if (!setEq(pack_dr, s.damageResistances)) {
+          drift.push(`${m.id as string}: pack=${JSON.stringify([...pack_dr].sort())} SRD=${JSON.stringify([...s.damageResistances].sort())}`);
+        }
+      }
+      expect(drift).toEqual([]);
+    });
+
+    it('walk speed matches SRD', () => {
+      const drift: string[] = [];
+      for (const m of pack.monsters) {
+        const s = srd.get(m.name as string);
+        if (!s || Number.isNaN(s.walkSpeed)) continue; // skip fly/swim-only statblocks
+        const packWalk = (m.speed as Record<string, unknown> | undefined)?.walk;
+        if (typeof packWalk !== 'number') continue;
+        if (packWalk !== s.walkSpeed) drift.push(`${m.id as string}: pack=${asStr(packWalk)} SRD=${s.walkSpeed}`);
       }
       expect(drift).toEqual([]);
     });

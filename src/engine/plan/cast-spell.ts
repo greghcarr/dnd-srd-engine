@@ -345,7 +345,10 @@ const planAttackMechanic = (
     itemInstances: state.itemInstances,
     pendingChoices: state.pendingChoices,
   });
-  const damageFacts = new Map<string, unknown>([['event.damageType', damageType]]);
+  const damageFacts = new Map<string, unknown>([
+    ['event.damageType', damageType],
+    ['event.spellSchool', spell.school],
+  ]);
   const damageModifierBonus = casterEffects.modifierSum('damage', damageFacts);
   const events: Event[] = [];
   for (const targetId of intent.targetIds) {
@@ -377,12 +380,13 @@ const planAttackMechanic = (
       targetAC: targetAC.total,
       hit,
       critical: isCrit,
-      // Every currently-wired PHB 2024 spell attack is a ranged spell
-      // attack (Eldritch Blast, Fire Bolt, Inflict Wounds, Chromatic
-      // Orb, etc.). When the first melee spell attack ships, add a
-      // `meleeSpellAttack?: boolean` field on SpellAttackMechanicSchema
-      // and branch here.
-      attackKind: 'ranged',
+      // Melee vs Ranged Spell Attack, from the mechanic (defaults to
+      // 'ranged'). Slice 371: the five RAW melee spell attacks (Shocking
+      // Grasp, Spiritual Weapon, Chill Touch, Flame Blade, Vampiric Touch)
+      // carry `attackKind: 'melee'`; this stamps the `event.attackKind`
+      // fact correctly so melee-gated riders fire and the ranged-in-melee
+      // disadvantage doesn't wrongly apply.
+      attackKind: mechanic.attackKind,
       causedByEventId: declaredEventId as ULID,
     };
     events.push(attackEvent);
@@ -495,7 +499,15 @@ const planSaveMechanic = (
       itemInstances: state.itemInstances,
       pendingChoices: state.pendingChoices,
     });
-    const damageFacts = new Map<string, unknown>([['event.damageType', mechanic.damageType]]);
+    // Slice 359: `event.spellSchool` fact added alongside `event.damageType`
+    // so school-gated damage riders fire. Canonical user: Evoker L10
+    // Empowered Evocation (+INT-mod to one damage roll of an Evocation
+    // spell). Added only to the primary component (not the additional-
+    // damage loop below), honoring RAW "one damage roll of that spell."
+    const damageFacts = new Map<string, unknown>([
+      ['event.damageType', mechanic.damageType],
+      ['event.spellSchool', spell.school],
+    ]);
     saveDamageModifierBonus = casterEffects.modifierSum('damage', damageFacts);
     const { rolls: baseRolls, modifier } = rollDamage(mechanic.damageDice, bonusDice, rng, false);
     const scalingRolls = rollCantripScaling(mechanic.cantripScalingDice, cantripSteps, rng, false);

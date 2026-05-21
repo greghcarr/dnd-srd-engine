@@ -202,7 +202,7 @@ export interface BuildEffectStackInput {
   readonly characters?: Readonly<Record<string, Character>>;
 }
 
-const buildFormulaContext = (character: Character): FormulaContext => {
+export const buildFormulaContext = (character: Character): FormulaContext => {
   const totalLevel = computeTotalLevel(character);
   const classLevels = new Map<string, number>();
   for (const enrollment of character.classes) {

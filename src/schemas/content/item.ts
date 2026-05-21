@@ -13,6 +13,10 @@ import { PredicateSchema } from '../predicate.js';
 const ItemBaseSchema = z.object({
   id: z.string(),
   name: z.string(),
+  // Flavor text. Shared by every item kind (was previously declared only
+  // on Consumable / Gear, so weapon / armor / tool / magic items had their
+  // authored `description` silently stripped at parse — slice 373).
+  description: z.string().optional(),
   weight: z.number().nonnegative().optional(),
   cost: z
     .object({
@@ -488,13 +492,11 @@ export type ConsumeAction = z.infer<typeof ConsumeActionSchema>;
 export const ConsumableSchema = ItemBaseSchema.extend({
   itemKind: z.literal('consumable'),
   onConsume: z.array(ConsumeActionSchema).default([]),
-  description: z.string().optional(),
 });
 export type Consumable = z.infer<typeof ConsumableSchema>;
 
 export const GearSchema = ItemBaseSchema.extend({
   itemKind: z.literal('gear'),
-  description: z.string().optional(),
 });
 export type Gear = z.infer<typeof GearSchema>;
 

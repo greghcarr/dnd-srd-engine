@@ -36,6 +36,10 @@ const ACTION_BLOCKING_CONDITIONS: ReadonlySet<string> = new Set([
   // (Power Word Stun, slice 339) is the new entry.
   'held-paralyzed-active',
   'power-word-stunned-active',
+  // `hideous-laughter-active` (Hideous Laughter) RAW-includes
+  // Incapacitated; it was missing here pre-slice 366, so a creature
+  // incapacitated by laughter could still take actions.
+  'hideous-laughter-active',
 ]);
 
 /**

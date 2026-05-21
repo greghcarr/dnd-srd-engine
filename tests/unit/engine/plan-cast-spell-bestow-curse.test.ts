@@ -71,9 +71,10 @@ const castUntilFail = (variantKey: string): ConditionAppliedEvent => {
   throw new Error(`No seed produced a failed WIS save for variant ${variantKey}`);
 };
 
-describe('Bestow Curse caster-chosen variant (4-variant save)', () => {
+describe('Bestow Curse caster-chosen variant (9-variant save)', () => {
   it.each([
-    ['ability-disadvantage', 'cursed-ability-active'],
+    ['ability-disadvantage-str', 'cursed-ability-str-active'],
+    ['ability-disadvantage-wis', 'cursed-ability-wis-active'],
     ['attack-disadvantage', 'cursed-attacks-active'],
     ['inactive-turn', 'cursed-inert-active'],
     ['extra-damage', 'cursed-vulnerable-active'],

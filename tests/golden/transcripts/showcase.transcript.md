@@ -120,7 +120,7 @@ _(sneak-attack triggers for Vex)_
 
 Damage rolled: 1d4=[4]+4 piercing.
 
-**Goblin Scout A** takes 8 damage (8 piercing). (HP 4 -> -4)
+**Goblin Scout A** takes 8 damage from **Vex** (8 piercing). (HP 4 -> -4)
 
 _(nick triggers for Vex)_
 
@@ -138,7 +138,7 @@ _(Alyx consumes attack)_
 
 Damage rolled: 1d8=[8]+4 slashing.
 
-**Goblin Shaman** takes 12 damage (12 slashing). (HP 22 -> 10)
+**Goblin Shaman** takes 12 damage from **Alyx** (12 slashing). (HP 22 -> 10)
 
 Mastery: Sap against **Goblin Shaman** (Alyx).
 
@@ -154,7 +154,7 @@ _(Alyx consumes attack)_
 
 Damage rolled: 1d8=[2]+4 slashing.
 
-**Goblin Shaman** takes 6 damage (6 slashing). (HP 10 -> 4)
+**Goblin Shaman** takes 6 damage from **Alyx** (6 slashing). (HP 10 -> 4)
 
 End of Alyx's turn.
 
@@ -338,7 +338,7 @@ _(sneak-attack triggers for Vex)_
 
 Damage rolled: 1d4=[2]+4 piercing.
 
-**Slag the Ogre** takes 6 damage (6 piercing). (HP 56 -> 50)
+**Slag the Ogre** takes 6 damage from **Vex** (6 piercing). (HP 56 -> 50)
 
 End of Vex's turn.
 
@@ -352,7 +352,7 @@ _(Alyx consumes attack)_
 
 Damage rolled: 1d8=[7]+4 slashing.
 
-**Slag the Ogre** takes 11 damage (11 slashing). (HP 50 -> 39)
+**Slag the Ogre** takes 11 damage from **Alyx** (11 slashing). (HP 50 -> 39)
 
 End of Alyx's turn.
 
@@ -384,13 +384,13 @@ _(Slag the Ogre consumes action)_
 
 Damage rolled: 2d8=[6,1]+4 bludgeoning.
 
-**Alyx** takes 11 damage (11 bludgeoning). (HP 168 -> 157)
+**Alyx** takes 11 damage from **Slag the Ogre** (11 bludgeoning). (HP 168 -> 157)
 
 **Slag the Ogre** attacks **Alyx**: d20(17) + 6 = 23 vs AC 12 -> hit.
 
 Damage rolled: 2d8=[8,1]+4 bludgeoning.
 
-**Alyx** takes 13 damage (13 bludgeoning). (HP 157 -> 144)
+**Alyx** takes 13 damage from **Slag the Ogre** (13 bludgeoning). (HP 157 -> 144)
 
 End of Slag the Ogre's turn.
 
@@ -448,7 +448,7 @@ _(sneak-attack triggers for Vex)_
 
 Damage rolled: 1d4=[2]+4 piercing.
 
-**Stoneheart, the Young Red** takes 6 damage (6 piercing). (HP 168 -> 162)
+**Stoneheart, the Young Red** takes 6 damage from **Vex** (6 piercing). (HP 168 -> 162)
 
 End of Vex's turn.
 
@@ -502,19 +502,19 @@ _(Stoneheart, the Young Red consumes action)_
 
 Damage rolled: 2d6=[3,6]+6 slashing.
 
-**Alyx** takes 15 damage (15 slashing). (HP 19 -> 4)
+**Alyx** takes 15 damage from **Stoneheart, the Young Red** (15 slashing). (HP 19 -> 4)
 
 **Stoneheart, the Young Red** attacks **Alyx**: d20(11) + 10 = 21 vs AC 15 -> hit.
 
 Damage rolled: 2d6=[6,4]+6 slashing.
 
-**Alyx** takes 16 damage (16 slashing). (HP 4 -> -12)
+**Alyx** takes 16 damage from **Stoneheart, the Young Red** (16 slashing). (HP 4 -> -12)
 
 **Stoneheart, the Young Red** attacks **Alyx**: d20(11) + 10 = 21 vs AC 15 -> hit.
 
 Damage rolled: 2d6=[6,5]+6 slashing.
 
-**Alyx** takes 17 damage (17 slashing). (HP -12 -> -29)
+**Alyx** takes 17 damage from **Stoneheart, the Young Red** (17 slashing). (HP -12 -> -29)
 
 End of Stoneheart, the Young Red's turn.
 

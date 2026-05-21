@@ -97,6 +97,12 @@ export { planStunningStrike, type StunningStrikeIntent } from './stunning-strike
 export { planFlurryOfBlows, type FlurryOfBlowsIntent } from './flurry-of-blows.js';
 export { planPatientDefense, type PatientDefenseIntent } from './patient-defense.js';
 export { planStepOfTheWind, type StepOfTheWindIntent } from './step-of-the-wind.js';
+export { planIntimidatingPresence, type IntimidatingPresenceIntent } from './intimidating-presence.js';
+export { planDragonWings, type DragonWingsIntent } from './dragon-wings.js';
+export { planPreserveLife, type PreserveLifeIntent } from './preserve-life.js';
+export { planLandsAid, type LandsAidIntent } from './lands-aid.js';
+export { planWholenessOfBody, type WholenessOfBodyIntent } from './wholeness-of-body.js';
+export { planPeerlessSkill, type PeerlessSkillIntent, type PeerlessSkillOutcome } from './peerless-skill.js';
 export { planFrenzy, type FrenzyIntent } from './frenzy.js';
 export {
   planCuttingWords,
@@ -163,6 +169,7 @@ export {
   planSanctuaryWardSave,
   planProtection,
   planConsumeGuidance,
+  planConsumeResistance,
   planUncannyDodge,
   type CounterspellIntent,
   type DispelMagicIntent,
@@ -178,6 +185,8 @@ export {
   type ProtectionOutcome,
   type ConsumeGuidanceIntent,
   type ConsumeGuidanceOutcome,
+  type ConsumeResistanceIntent,
+  type ConsumeResistanceOutcome,
   type UncannyDodgeIntent,
   type UncannyDodgeOutcome,
 } from './reactive-spells.js';

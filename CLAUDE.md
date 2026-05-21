@@ -114,6 +114,8 @@ At the close of every slice, update the docs the slice touched:
 - [docs/roadmap.md](docs/roadmap.md) — when a phase-level milestone closes.
 - [README.md](README.md) — only when the at-a-glance Status / Roadmap summary needs to reflect the new state. Most slices don't touch README directly.
 
+**Headline content counts are CI-guarded.** When a slice changes a count that the front-door docs cite (conditions, items-by-kind, monsters, spell total, feats / species / backgrounds, `EFFECT_KINDS`), [tests/audit/doc-counts.test.ts](tests/audit/doc-counts.test.ts) fails until the docs are updated in the **same** slice. This is the structural backstop against count drift accumulating between periodic batch reconciliations (slices 337 and 361 were such reconciliations; slice 362 added the audit so they shouldn't recur). The audit names the exact doc + stale count when it fires. If you intentionally rephrase a guarded citation, update the regex in that test in the same slice so the guard stays live. The spell wired/narrative/deferred split has its own guard at [tests/audit/gaps-spells-counts.test.ts](tests/audit/gaps-spells-counts.test.ts). Counts that are NOT auto-guarded (test totals, mechanical-wiring percentages, the spell-mechanic / planner sub-splits) still need a manual eye when they move materially.
+
 ### Doc size discipline (the single-Read ceiling)
 
 Index-type docs in this repo (README.md, CHANGELOG.md, docs/status.md, docs/roadmap.md, docs/starter-pack-gaps.md, the docs/gaps-*.md per-category catalogs, and every file under docs/changelog/) must each fit in a single Read tool call. The Claude Code Read tool refuses files over **~25,000 tokens** (roughly **60 KB** for our dense technical prose, give or take). Beyond that ceiling an agent has to read with offset/limit, which is fine for spot lookups but breaks the fresh-agent discovery path (the very first Read on the front-door doc errors out).
@@ -226,7 +228,7 @@ The seam doesn't need to be perfect today, just clean enough that Slice 47 is a 
 
 - **Event-sourced.** State changes are events. `apply(state, event) -> state` is pure.
 - **Plan/commit split.** `engine.plan(state, intent)` is the only place RNG is consumed; resolution events carry baked rolls. `apply()` never touches RNG. Replays read baked rolls.
-- **Effect primitives.** Features are described via a fixed vocabulary of 46 primitives. Wild Shape, Polymorph, Wish and similar drop to code handlers (the `CustomEffect` escape hatch). Canonical list: `EFFECT_KINDS` in [src/schemas/effects.ts](src/schemas/effects.ts).
+- **Effect primitives.** Features are described via a fixed vocabulary of 51 primitives (52 `EFFECT_KINDS` entries counting the `Custom` escape hatch). Wild Shape, Polymorph, Wish and similar drop to code handlers (the `CustomEffect` escape hatch). Canonical list: `EFFECT_KINDS` in [src/schemas/effects.ts](src/schemas/effects.ts).
 - **Branded IDs + ULIDs.** Per-kind branded string types (`CharacterId`, `SpellId`, `ItemDefinitionId` versus `ItemInstanceId`, etc.) backed by ULIDs.
 - **Normalized state.** Entities live in `Record<Id, Entity>` maps under `CampaignState`, not nested arrays.
 - **Immer internally, immutable externally.** `apply()` uses Immer for clean reducers; output is frozen.
@@ -376,6 +378,6 @@ Conventions:
 - Throw `Error` with a sentence the consumer could surface; never return error tuples.
 - ID-form fields use plain `string` on the intent (consumer-facing); cast to branded IDs only when constructing events.
 - `at` defaults to `nowIso()`; pass-through to every emitted event so a single planner call gets one timestamp.
-- Wire the planner into [src/engine/plan/index.ts](src/engine/plan/index.ts) and (if part of the public API) into [src/engine/index.ts](src/engine/index.ts) and the convenience surface in [src/engine/conveniences.ts](src/engine/conveniences.ts).
+- Wire the planner into [src/engine/plan/index.ts](src/engine/plan/index.ts) and (if part of the public API) into [src/engine/index.ts](src/engine/index.ts) and the convenience surface in [src/engine/conveniences.ts](src/engine/conveniences.ts). The `performIntent` dispatch site is the one wiring site tsc does NOT enforce (the dispatch is a plain `Record`); [tests/audit/planner-wiring.test.ts](tests/audit/planner-wiring.test.ts) guards it. Every `engine.plan` method must be either routed by the `performIntent` dispatch or on that audit's `EXCLUDED_FROM_DISPATCH` allowlist (reactions, ticks, lifecycle, transformations, special casts). A new player-action planner that forgets its dispatch entry fails the audit; a new reaction/tick/lifecycle planner is added to the allowlist with its category.
 
 Reference examples: [plan/sacred-weapon.ts](src/engine/plan/sacred-weapon.ts) (small, no RNG), [plan/attack.ts](src/engine/plan/attack.ts) (large, RNG + triggers + multi-event resolution chain).
