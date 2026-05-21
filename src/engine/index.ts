@@ -67,6 +67,7 @@ import {
   planStepOfTheWind,
   planIntimidatingPresence,
   planDragonWings,
+  planPreserveLife,
   planFrenzy,
   planCuttingWords,
   planMetamagic,
@@ -193,6 +194,7 @@ import {
   type StepOfTheWindIntent,
   type IntimidatingPresenceIntent,
   type DragonWingsIntent,
+  type PreserveLifeIntent,
   type FrenzyIntent,
   type CuttingWordsIntent,
   type CuttingWordsOutcome,
@@ -319,6 +321,7 @@ export interface Engine {
     stepOfTheWind(state: CampaignState, intent: Omit<StepOfTheWindIntent, 'type'>): PlanResult;
     intimidatingPresence(state: CampaignState, intent: Omit<IntimidatingPresenceIntent, 'type'>): PlanResult;
     dragonWings(state: CampaignState, intent: Omit<DragonWingsIntent, 'type'>): PlanResult;
+    preserveLife(state: CampaignState, intent: Omit<PreserveLifeIntent, 'type'>): PlanResult;
     frenzy(state: CampaignState, intent: Omit<FrenzyIntent, 'type'>): PlanResult;
     cuttingWords(state: CampaignState, intent: Omit<CuttingWordsIntent, 'type'>): CuttingWordsOutcome;
     metamagic(state: CampaignState, intent: Omit<MetamagicIntent, 'type'>): PlanResult;
@@ -601,6 +604,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     dragonWings(state, intent) {
       return { events: planDragonWings(state, content, { type: 'DragonWings', ...intent }) };
+    },
+    preserveLife(state, intent) {
+      return { events: planPreserveLife(state, content, { type: 'PreserveLife', ...intent }) };
     },
     frenzy(state, intent) {
       return { events: planFrenzy(state, content, { type: 'Frenzy', ...intent }) };

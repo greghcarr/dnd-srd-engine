@@ -40,6 +40,7 @@ export const performIntent = (
     StepOfTheWind: (i) => engine.plan.stepOfTheWind(campaign.state, i),
     IntimidatingPresence: (i) => engine.plan.intimidatingPresence(campaign.state, i),
     DragonWings: (i) => engine.plan.dragonWings(campaign.state, i),
+    PreserveLife: (i) => engine.plan.preserveLife(campaign.state, i),
     Frenzy: (i) => engine.plan.frenzy(campaign.state, i),
     Metamagic: (i) => engine.plan.metamagic(campaign.state, i),
     WildCompanion: (i) => engine.plan.wildCompanion(campaign.state, i),

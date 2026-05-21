@@ -721,7 +721,7 @@
           {
             "id": "preserve-life",
             "name": "Channel Divinity: Preserve Life",
-            "effects": []
+            "effects": [{ "kind": "Custom", "handlerId": "preserve-life" }]
           }
         ],
         "5": [
