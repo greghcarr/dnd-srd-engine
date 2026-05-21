@@ -42,6 +42,7 @@ export const performIntent = (
     DragonWings: (i) => engine.plan.dragonWings(campaign.state, i),
     PreserveLife: (i) => engine.plan.preserveLife(campaign.state, i),
     LandsAid: (i) => engine.plan.landsAid(campaign.state, i),
+    WholenessOfBody: (i) => engine.plan.wholenessOfBody(campaign.state, i),
     Frenzy: (i) => engine.plan.frenzy(campaign.state, i),
     Metamagic: (i) => engine.plan.metamagic(campaign.state, i),
     WildCompanion: (i) => engine.plan.wildCompanion(campaign.state, i),

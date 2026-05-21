@@ -69,6 +69,7 @@ import {
   planDragonWings,
   planPreserveLife,
   planLandsAid,
+  planWholenessOfBody,
   planFrenzy,
   planCuttingWords,
   planMetamagic,
@@ -197,6 +198,7 @@ import {
   type DragonWingsIntent,
   type PreserveLifeIntent,
   type LandsAidIntent,
+  type WholenessOfBodyIntent,
   type FrenzyIntent,
   type CuttingWordsIntent,
   type CuttingWordsOutcome,
@@ -325,6 +327,7 @@ export interface Engine {
     dragonWings(state: CampaignState, intent: Omit<DragonWingsIntent, 'type'>): PlanResult;
     preserveLife(state: CampaignState, intent: Omit<PreserveLifeIntent, 'type'>): PlanResult;
     landsAid(state: CampaignState, intent: Omit<LandsAidIntent, 'type'>): PlanResult;
+    wholenessOfBody(state: CampaignState, intent: Omit<WholenessOfBodyIntent, 'type'>): PlanResult;
     frenzy(state: CampaignState, intent: Omit<FrenzyIntent, 'type'>): PlanResult;
     cuttingWords(state: CampaignState, intent: Omit<CuttingWordsIntent, 'type'>): CuttingWordsOutcome;
     metamagic(state: CampaignState, intent: Omit<MetamagicIntent, 'type'>): PlanResult;
@@ -613,6 +616,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     landsAid(state, intent) {
       return { events: planLandsAid(state, content, rng, { type: 'LandsAid', ...intent }) };
+    },
+    wholenessOfBody(state, intent) {
+      return { events: planWholenessOfBody(state, content, rng, { type: 'WholenessOfBody', ...intent }) };
     },
     frenzy(state, intent) {
       return { events: planFrenzy(state, content, { type: 'Frenzy', ...intent }) };

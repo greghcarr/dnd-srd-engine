@@ -913,6 +913,21 @@
             "name": "Open Hand Technique",
             "effects": []
           }
+        ],
+        "6": [
+          {
+            "id": "wholeness-of-body",
+            "name": "Wholeness of Body",
+            "effects": [
+              {
+                "kind": "GrantResource",
+                "resourceId": "wholeness-of-body",
+                "max": { "kind": "max", "terms": [{ "kind": "const", "value": 1 }, { "kind": "abilityMod", "ability": "WIS" }] },
+                "recharge": "longRest"
+              },
+              { "kind": "Custom", "handlerId": "wholeness-of-body" }
+            ]
+          }
         ]
       }
     },

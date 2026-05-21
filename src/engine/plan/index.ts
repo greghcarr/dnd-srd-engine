@@ -101,6 +101,7 @@ export { planIntimidatingPresence, type IntimidatingPresenceIntent } from './int
 export { planDragonWings, type DragonWingsIntent } from './dragon-wings.js';
 export { planPreserveLife, type PreserveLifeIntent } from './preserve-life.js';
 export { planLandsAid, type LandsAidIntent } from './lands-aid.js';
+export { planWholenessOfBody, type WholenessOfBodyIntent } from './wholeness-of-body.js';
 export { planFrenzy, type FrenzyIntent } from './frenzy.js';
 export {
   planCuttingWords,
