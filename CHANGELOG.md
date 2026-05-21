@@ -4,6 +4,19 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Docs + audit: reconcile stale counts and sweep empty-effect conditions (slice 361)**
+
+Reconciled the live current-state docs against ground truth (the pack JSON + the count-audited [docs/gaps-spells.md](docs/gaps-spells.md) + the suite). Conditions: the engine ships **121** (15 RAW + 106 mechanic-rider; 105 carry effects), not the stale 116/101 (status.md), 120/105 (starter-pack-gaps.md), or 116/101 (getting-started.md). Spell wiring: **194 wired / 70 narrative / 87 schema-only** (~55%), not the stale "164/351 (~47%)" (README.md + three status.md cells) or "11 dedicated planners" (now 26 + 13 zone-tick). Test count in status.md refreshed from "1951 across 288 files" to "2060 across 310 files." Left the point-in-time audit-snapshot docs (content-attribution.md, trustworthiness-roadmap.md, roadmap.md) untouched: every count in them is tied to a past slice era, so piecemeal updates would worsen their internal consistency.
+
+Bug sweep (the explicit ask): audited all **16 empty-effect conditions** (`effects: []`). Findings, logged in [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md) "Empty-effect condition gaps":
+- **4 RAW base + 2 engine-read markers** (`guided` consumed by `planConsumeGuidance`; `mirror-image-active` read in the attack planner): not bugs.
+- **4 tracked bugs / gaps**, each applied by a *wired* spell that therefore does nothing: `resisted` (Resistance cantrip is non-functional, no consume path, and the 2024 SRD shape is damage-reduction-by-1d4-of-a-chosen-type-once-per-turn, not the 2014 +1d4-save the stub implies); `hideous-laughter-active` (failed save should give Prone + Incapacitated); `cursed-ability-active` + `cursed-inert-active` (Bestow Curse arms needing per-ability parameterization / per-turn random incapacitation). All marked **Open** with the precise fix each needs.
+- **6 consumer-managed / narrative** placeholders (Command's approach/drop/flee, Confusion, Calm Emotions' indifferent arm, Water Breathing): empty is acceptable, documented.
+
+Complementary sweeps run clean: no dangling condition references (every `conditionId` / `conditionOnFail` / `allyConditionId` / `applyConditionId` resolves to a defined condition), and every `Custom` handlerId has a backing implementation (`martial-arts` via the attack planner, `slow-fall` via `planFalling`'s `useSlowFall` arm, the rest via dedicated planners). Recommended a future permanent audit ("a condition applied by a wired spell must carry effects or be on a documented marker allowlist") once the 4 open bugs are fixed.
+
+No code or content change. doc-size + gaps-spells-counts audits green; full suite green (310 files, 2060 passing). No em/en dashes introduced.
+
 **Content: Oath of Devotion Aura of Devotion ally-side half (slice 360)**
 
 Pure content slice on the existing `GrantAura` primitive (shipped for the paladin's Aura of Protection / Aura of Courage). Completes the partial Aura of Devotion wire: the L7 feature already granted the paladin self-immunity to Charmed via `GrantConditionImmunity`; this adds the ally-projecting half by mirroring Aura of Courage exactly. The feature gains a `GrantAura { auraId: 'aura-of-devotion', rangeFeet: 10, allyConditionId: 'aura-of-devotion-active' }`, and a new `aura-of-devotion-active` condition (mirroring `aura-of-courage-active`) grants Charmed immunity to allies the aura lands on. RAW 2024: "You and your allies have Immunity to the Charmed condition while in your Aura of Protection." As with the other auras, the aura's metadata is self-describing and the actual in-range application is consumer territory (positions aren't modeled).
