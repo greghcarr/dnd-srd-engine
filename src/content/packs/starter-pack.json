@@ -687,6 +687,13 @@
             "name": "Cutting Words",
             "effects": [{ "kind": "Custom", "handlerId": "cutting-words" }]
           }
+        ],
+        "14": [
+          {
+            "id": "peerless-skill",
+            "name": "Peerless Skill",
+            "effects": [{ "kind": "Custom", "handlerId": "peerless-skill" }]
+          }
         ]
       }
     },

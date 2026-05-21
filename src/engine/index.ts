@@ -70,6 +70,7 @@ import {
   planPreserveLife,
   planLandsAid,
   planWholenessOfBody,
+  planPeerlessSkill,
   planFrenzy,
   planCuttingWords,
   planMetamagic,
@@ -199,6 +200,8 @@ import {
   type PreserveLifeIntent,
   type LandsAidIntent,
   type WholenessOfBodyIntent,
+  type PeerlessSkillIntent,
+  type PeerlessSkillOutcome,
   type FrenzyIntent,
   type CuttingWordsIntent,
   type CuttingWordsOutcome,
@@ -328,6 +331,7 @@ export interface Engine {
     preserveLife(state: CampaignState, intent: Omit<PreserveLifeIntent, 'type'>): PlanResult;
     landsAid(state: CampaignState, intent: Omit<LandsAidIntent, 'type'>): PlanResult;
     wholenessOfBody(state: CampaignState, intent: Omit<WholenessOfBodyIntent, 'type'>): PlanResult;
+    peerlessSkill(state: CampaignState, intent: Omit<PeerlessSkillIntent, 'type'>): PeerlessSkillOutcome;
     frenzy(state: CampaignState, intent: Omit<FrenzyIntent, 'type'>): PlanResult;
     cuttingWords(state: CampaignState, intent: Omit<CuttingWordsIntent, 'type'>): CuttingWordsOutcome;
     metamagic(state: CampaignState, intent: Omit<MetamagicIntent, 'type'>): PlanResult;
@@ -619,6 +623,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     wholenessOfBody(state, intent) {
       return { events: planWholenessOfBody(state, content, rng, { type: 'WholenessOfBody', ...intent }) };
+    },
+    peerlessSkill(state, intent) {
+      return planPeerlessSkill(state, content, rng, { type: 'PeerlessSkill', ...intent });
     },
     frenzy(state, intent) {
       return { events: planFrenzy(state, content, { type: 'Frenzy', ...intent }) };

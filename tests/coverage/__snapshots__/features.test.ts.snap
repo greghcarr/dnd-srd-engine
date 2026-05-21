@@ -366,6 +366,7 @@ exports[`feature-coverage matrix: subclasses > wired subclass features catalog i
   "circle-of-the-land L10 natures-ward",
   "college-of-lore L3 cutting-words",
   "college-of-lore L3 lore-bonus-proficiencies",
+  "college-of-lore L14 peerless-skill",
   "draconic-sorcery L3 draconic-resilience-ac",
   "draconic-sorcery L3 draconic-resilience-hp",
   "draconic-sorcery L3 draconic-spells",
