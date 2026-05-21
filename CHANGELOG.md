@@ -4,6 +4,14 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Audit: planner-wiring guard (slice 364)**
+
+New [tests/audit/planner-wiring.test.ts](tests/audit/planner-wiring.test.ts) closes the one unguarded site in the ~6-site planner wiring. tsc already enforces the `plan/index.ts` export, the `engine/index.ts` import / `Engine.plan` interface method / impl, and apply.ts is exhaustive over the event union; but the `performIntent` dispatch in conveniences.ts is a plain `Record<string, ...>`, so a player-action planner can be wired everywhere else yet silently omitted from dispatch (then `performIntent({ type: 'NewThing' })` throws "Unknown intent type" only when a consumer happens to call it).
+
+The guard uses the allowlist pattern (same shape as pack-integrity's `EFFECT_LESS_OK`): every method on `engine.plan` (99 today) must be either routed by the `performIntent` dispatch (43) or on the documented `EXCLUDED_FROM_DISPATCH` allowlist (56: reactions, per-moment ticks, encounter lifecycle, transformations, sensor/illusion management, item-use, and special-cast planners that don't fit the intent -> events -> commit shape). Adding a planner now forces a conscious choice: dispatch it or allowlist it. Three companion checks keep both sides honest: dispatch targets must be real planners, allowlist entries must be real planners (no rot), and the two sets must not overlap. The engine surface is introspected at runtime (`Object.keys(engine.plan)`) and the dispatch targets parsed from the canonical `engine.plan.X(campaign.state, i)` shape, so the audit tracks the real wiring rather than a hand-maintained list. [CLAUDE.md](CLAUDE.md)'s "Planner shape" section now points at the guard.
+
+Uncle Bob audit (test slice): **Names** `dispatchTargets` / `EXCLUDED_FROM_DISPATCH` / `planners` read as what they hold. **DRY** the planner set is derived from the live engine and the dispatch set from the source, not duplicated; the allowlist is the only hand-maintained list and it is the deliberately-out-of-dispatch set. **SRP** four focused checks (unaccounted, stale dispatch, stale allowlist, overlap), each one assertion. **Magic numbers** none. **Tests** prevent a forgotten `performIntent` dispatch entry (the silent gap), a stale dispatch target, allowlist rot, and a planner being both dispatched and excluded. No em/en dashes. `tsc --noEmit` clean; full suite green.
+
 **Audit: content cross-reference + effect-less-condition guards (slice 363)**
 
 Two new content-integrity guards in [tests/audit/pack-integrity.test.ts](tests/audit/pack-integrity.test.ts), each catching a class of silent bug that today only surfaces via a manual sweep:
