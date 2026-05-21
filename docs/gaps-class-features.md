@@ -149,14 +149,14 @@ Open item: Divine Smite is L2 in PHB 2024 (the paladin can deal +2d8 radiant dam
 
 ### Ranger stub features (effects: [], waiting on engine work)
 
-Slice 59 filled L5 (addition), L6, L9, L10, L13, L17, L18, L20. Six wired entries: Hunter's Mark use-count tiers at L5 / L9 / L13 / L17 (3 / 4 / 5 / 6 uses, matching the 2024 PB-uses-per-long-rest formula by hardcoding milestones), Roving at L6 (`ModifySpeed walk +5` — the climb/swim "equal to walking speed" portion of Roving is not yet expressed because the schema's `ModifySpeed` only adjusts the named mode, not "match another mode"), and Feral Senses at L18 (`GrantSense blindsight 30` — exact RAW shape for 2024). Stubs:
+Slice 59 filled L5 (addition), L6, L9, L10, L13, L17, L18, L20. Six wired entries: Hunter's Mark use-count tiers at L5 / L9 / L13 / L17 (3 / 4 / 5 / 6 uses, matching the 2024 PB-uses-per-long-rest formula by hardcoding milestones), Roving at L6 (fully wired as of slice 376: `ModifySpeed walk +10` plus climb and swim via `op: 'matchWalkSpeed'`; the L6 entry originally shipped a `+5` walk drift and omitted the climb/swim arms — the only remaining deviation is the "while you aren't wearing Heavy armor" gate on the +10, which the speed derive can't honor because it has no heavy-armor-category fact and doesn't evaluate `ModifySpeed` conditions), and Feral Senses at L18 (`GrantSense blindsight 30` — exact RAW shape for 2024). Stubs:
 
 - `natures-veil` (L9) — bonus action: become Invisible until the start of your next turn, expending a Hunter's Mark use. Needs an action surface that consumes a resource and applies the Invisible condition for a duration; the Invisible condition ships and `SpendResource` is a `TriggerAction`, but they're not bundled into a single feature shape.
 - `tireless` (L10) — gain temp HP when finishing a Short Rest (10 + WIS mod), and Hunter's Mark uses refresh on Short Rest. Needs a temp-HP grant primitive (the deferred temp-HP slice in the spell engine table covers this) plus a recharge-frequency-override on the existing `hunters-mark` resource.
 - `relentless-hunter` (L13) — taking damage while concentrating on Hunter's Mark doesn't break concentration. Needs a per-spell concentration-immunity flag or a condition that the concentration-check planner consults.
 - `foe-slayer` (L20) — once per turn, add WIS modifier to one weapon attack roll or damage roll against a creature marked by Hunter's Mark. Needs an on-attack-or-damage trigger filtered on the target's marked state.
 
-The Roving climb/swim "equal to walking speed" pattern recurs across classes that gain climb / swim modes (some subclass features do the same). A `ModifySpeed mode: 'climb' op: 'matchWalk'` extension would wire several deferred features in one shot.
+The "climb / swim speed equal to your Speed" pattern recurs across classes, subclasses, and magic items. The `ModifySpeed op: 'matchWalkSpeed'` op (slice 290) expresses it; slice 376 swept the three siblings the slice-290 pass missed (Thief Second-Story Work, Ranger Roving, Gloves of Swimming and Climbing). Alter Self's Aquatic Adaptation arm is the last "equal to your Speed" content left, blocked on a caster-chosen non-walk speed (not on the op).
 
 ### Rogue stub features (effects: [], waiting on engine work)
 

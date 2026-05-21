@@ -196,20 +196,21 @@ export const getEffectiveFlySpeed = (input: GetEffectiveSpeedInput): number =>
 
 /**
  * Slice 288. Effective swim speed in feet. Canonical users: Gloves
- * of Swimming and Climbing swim 30 (slice 132 retrofit), Ring of
- * Swimming swim 40, Aquatic species natural swim speeds, Alter
- * Self's Aquatic Adaptation arm (pending the `matchWalkSpeed`
- * ModifySpeed op).
+ * of Swimming and Climbing (swim = walk via matchWalkSpeed, slice
+ * 376), Ring of Swimming swim 40, Ranger Roving (swim = walk, slice
+ * 376), Aquatic species natural swim speeds. Alter Self's Aquatic
+ * Adaptation arm still needs a caster-chosen non-walk speed.
  */
 export const getEffectiveSwimSpeed = (input: GetEffectiveSpeedInput): number =>
   getEffectiveSpeedForMode(input, 'swim');
 
 /**
  * Slice 288. Effective climb speed in feet. Canonical users: Gloves
- * of Swimming and Climbing climb 30, Slippers of Spider Climbing
- * climb 30 (slice-227 row was approximated; this slice projects it
- * mechanically), Spider Climb spell (climb=walk), Cloak of Arachnida
- * (pending the `matchWalkSpeed` ModifySpeed op).
+ * of Swimming and Climbing (climb = walk, slice 376), Slippers of
+ * Spider Climbing (climb = walk via matchWalkSpeed, slice 290),
+ * Spider Climb spell (climb = walk), Cloak of Arachnida (climb =
+ * walk, slice 290), Thief Second-Story Work + Ranger Roving (climb =
+ * walk, slice 376).
  */
 export const getEffectiveClimbSpeed = (input: GetEffectiveSpeedInput): number =>
   getEffectiveSpeedForMode(input, 'climb');

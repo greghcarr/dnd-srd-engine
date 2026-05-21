@@ -4,6 +4,18 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content+audit (slice 376): "climb/swim speed equal to your Speed" matchWalkSpeed sweep**
+
+Pattern-check finding while picking up subclass work: Thief's L3 **Second-Story Work** still wired its Climber arm as `ModifySpeed { mode: 'climb', op: 'set', value: 30 }` - the pre-slice-290 approximation that hardcodes a 30-ft climb. RAW 5.2.1 is "a Climb Speed equal to your Speed." Slice 290 introduced `op: 'matchWalkSpeed'` and converted Cloak of Arachnida / Slippers of Spider Climbing / the Spider Climb condition, but its sweep missed three siblings that carry the same RAW wording. Per the "same shape, elsewhere?" norm, fixed all three:
+
+- **Thief Second-Story Work** (subclass feature, the surfacing case): climb `set 30` -> `matchWalkSpeed`. A hasted Thief now climbs at 60, not a capped 30.
+- **Gloves of Swimming and Climbing** (magic item): climb + swim both `set 30` -> `matchWalkSpeed` (RAW: "Climb Speed and a Swim Speed equal to your Speed"). The +5 Athletics arm was already wired; added the RAW description string.
+- **Ranger Roving** (L6 class feature): also carried a separate **drift bug** - `walk +5` where RAW 5.2.1 is **+10**. Fixed the value and added the missing climb + swim `matchWalkSpeed` arms ("You also have a Climb Speed and a Swim Speed equal to your Speed"). The class-feature surface isn't covered by the srd-drift audit (spells/monsters/items only), so the +5 had gone uncaught.
+
+The `matchWalkSpeed` op is mode-generic (sets the mode to the effective walk speed after Fast Movement / Haste / etc.), so this is a pure content sweep - no engine change. RAW deviation carried forward (was already absent): Roving's "while you aren't wearing Heavy armor" gate on the +10 is unwired because the speed derive has no heavy-armor-category fact and doesn't evaluate `ModifySpeed` conditions. Alter Self's Aquatic Adaptation is now the last "equal to your Speed" content left, blocked on a caster-chosen non-walk speed, not on the op.
+
+Uncle Bob audit (content sweep): **Names** reuse the existing `matchWalkSpeed` vocabulary; no new identifiers. **DRY** all three siblings now share the one op the engine already resolves, removing the hardcoded-30 duplication. **Magic numbers** Roving's `+10` and the `matchWalkSpeed` op cited to SRD 5.2.1. **Mechanical outcomes asserted** four new cases in [match-walk-speed.test.ts](tests/unit/engine/match-walk-speed.test.ts): Second-Story Work climb = walk (30, and 60 when hasted - proving it's no longer capped), Roving walk = 40 (+10) with climb + swim both 40, Gloves climb + swim track a Barbarian's 40-ft walk. **Tests** each pins a feature that the old `set 30` / `+5` wires got wrong. No em/en dashes. `tsc --noEmit` clean; full suite green (320 files / 2118 passing).
+
 ## 0.1.0-alpha.12 - 2026-05-21
 
 **Release (slice 375): bump to 0.1.0-alpha.12**

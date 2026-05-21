@@ -14,7 +14,11 @@ import { createEngine } from '../../../src/engine/index.js';
 import { seededRNG } from '../../../src/rng/seeded.js';
 import { loadStarterPack } from '../../../src/content/packs/starter.js';
 import { resolveContent } from '../../../src/content/pack.js';
-import { getEffectiveClimbSpeed, getEffectiveSpeed } from '../../../src/engine/plan/_actor-state.js';
+import {
+  getEffectiveClimbSpeed,
+  getEffectiveSpeed,
+  getEffectiveSwimSpeed,
+} from '../../../src/engine/plan/_actor-state.js';
 import { CharacterSchema, type Character } from '../../../src/schemas/runtime/character.js';
 import {
   ItemInstanceSchema,
@@ -150,6 +154,73 @@ describe('slice 290: ModifySpeed matchWalkSpeed op', () => {
       });
       const barb = seed(buildBarbarian(5, [slippers.id], [slippers.id]));
       expect(getEffectiveClimbSpeed(speedInput(barb, { [slippers.id]: slippers }))).toBe(40);
+    });
+  });
+
+  describe('slice 376: matchWalkSpeed sweep (subclass + feature + item)', () => {
+    // Slice 290 introduced matchWalkSpeed and applied it to Slippers /
+    // Cloak of Arachnida / Spider Climb, but missed three siblings that
+    // RAW also says "equal to your Speed": Thief Second-Story Work,
+    // Gloves of Swimming and Climbing, and Ranger Roving. Slice 376
+    // swept them. Roving also had a drift bug: +5 walk vs RAW +10.
+    const buildRogueThief = (conditions: string[] = []): Character =>
+      seed(
+        CharacterSchema.parse({
+          id: newCharacterId(),
+          name: 'Garrett',
+          speciesId: 'human',
+          backgroundId: 'criminal',
+          classes: [{ classId: 'rogue', level: 3, hitDiceRemaining: 3, subclassId: 'thief' }],
+          abilityScores: { STR: 10, DEX: 16, CON: 12, INT: 12, WIS: 10, CHA: 10 },
+          hp: { current: 24, max: 24, temp: 0 },
+        }),
+        conditions,
+      );
+
+    const buildRanger = (): Character =>
+      seed(
+        CharacterSchema.parse({
+          id: newCharacterId(),
+          name: 'Aragorn',
+          speciesId: 'human',
+          backgroundId: 'outlander',
+          classes: [{ classId: 'ranger', level: 6, hitDiceRemaining: 6, subclassId: 'hunter' }],
+          abilityScores: { STR: 12, DEX: 16, CON: 14, INT: 10, WIS: 14, CHA: 10 },
+          hp: { current: 48, max: 48, temp: 0 },
+        }),
+      );
+
+    it("Thief Second-Story Work: climb = walk (30), no longer hardcoded to 30", () => {
+      const thief = buildRogueThief();
+      expect(getEffectiveSpeed(speedInput(thief))).toBe(30);
+      expect(getEffectiveClimbSpeed(speedInput(thief))).toBe(30);
+    });
+
+    it("Thief Second-Story Work: a hasted Thief (walk × 2 = 60) climbs at 60, proving it scales", () => {
+      // The old `set: 30` wire would have capped climb at 30 here.
+      const thief = buildRogueThief(['hasted-active']);
+      expect(getEffectiveSpeed(speedInput(thief))).toBe(60);
+      expect(getEffectiveClimbSpeed(speedInput(thief))).toBe(60);
+    });
+
+    it("Ranger Roving: walk +10 (RAW 5.2.1, was a +5 drift), climb and swim both match walk (40)", () => {
+      const ranger = buildRanger();
+      expect(getEffectiveSpeed(speedInput(ranger))).toBe(40);
+      expect(getEffectiveClimbSpeed(speedInput(ranger))).toBe(40);
+      expect(getEffectiveSwimSpeed(speedInput(ranger))).toBe(40);
+    });
+
+    it("Gloves of Swimming and Climbing: climb and swim track walk, not a flat 30", () => {
+      const gloves = ItemInstanceSchema.parse({
+        id: newItemInstanceId(),
+        definitionId: 'gloves-of-swimming-and-climbing',
+      });
+      // A Barbarian L5 (walk 40 via Fast Movement) gets climb 40 / swim 40.
+      const barb = seed(buildBarbarian(5, [gloves.id], [gloves.id]));
+      const input = speedInput(barb, { [gloves.id]: gloves });
+      expect(getEffectiveSpeed(input)).toBe(40);
+      expect(getEffectiveClimbSpeed(input)).toBe(40);
+      expect(getEffectiveSwimSpeed(input)).toBe(40);
     });
   });
 
