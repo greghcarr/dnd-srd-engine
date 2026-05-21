@@ -12,27 +12,44 @@ import type { DisengagedEvent } from '../../schemas/events/movement.js';
 import type { AbilityScore } from '../../schemas/primitives.js';
 import type { ULID } from '../ids-utils.js';
 
-// Rogue Cunning Strike (L5) options. Each forgoes a number of Sneak
-// Attack d6 ("the die cost") and applies an effect immediately after the
-// Sneak Attack damage. Devious Strikes (L14: Daze / Knock Out / Obscure)
-// are deferred; this module covers the three L5 options.
-export type CunningStrikeOption = 'poison' | 'trip' | 'withdraw';
+// Rogue Cunning Strike options. Each forgoes a number of Sneak Attack d6
+// ("the die cost") and applies an effect immediately after the Sneak
+// Attack damage. The L5 options are Poison / Trip / Withdraw; Devious
+// Strikes (L14) adds Obscure and Knock Out. Daze (L14) is deferred: "on
+// its next turn it can do only one of move / action / Bonus Action" needs
+// a partial-action-economy primitive the engine doesn't model.
+export type CunningStrikeOption = 'poison' | 'trip' | 'withdraw' | 'obscure' | 'knockout';
+
+const ONE_MINUTE_ROUNDS = 10;
+const END_OF_NEXT_TURN_ROUNDS = 1;
 
 interface CunningStrikeSpec {
   readonly costDice: number; // Sneak Attack d6 forgone
   readonly save?: { readonly ability: AbilityScore; readonly conditionId: string };
   readonly withdraw?: boolean;
+  // Devious Strikes (Rogue L14) options; require that level.
+  readonly devious?: boolean;
+  // Round-based expiry stamped on the applied condition (turnEnd trigger).
+  readonly expiryRounds?: number;
 }
 const SPECS: Record<CunningStrikeOption, CunningStrikeSpec> = {
-  poison: { costDice: 1, save: { ability: 'CON', conditionId: 'poisoned' } },
+  poison: { costDice: 1, save: { ability: 'CON', conditionId: 'poisoned' }, expiryRounds: ONE_MINUTE_ROUNDS },
   trip: { costDice: 1, save: { ability: 'DEX', conditionId: 'prone' } },
   withdraw: { costDice: 1, withdraw: true },
+  obscure: { costDice: 3, save: { ability: 'DEX', conditionId: 'blinded' }, devious: true, expiryRounds: END_OF_NEXT_TURN_ROUNDS },
+  knockout: { costDice: 6, save: { ability: 'CON', conditionId: 'unconscious' }, devious: true, expiryRounds: ONE_MINUTE_ROUNDS },
 };
 
 const SAVE_DC_BASE = 8;
-const POISON_DURATION_ROUNDS = 10; // 1 minute
+const CUNNING_STRIKE_LEVEL = 5;
+const DEVIOUS_STRIKES_LEVEL = 14;
 
-export const CUNNING_STRIKE_OPTIONS: ReadonlyArray<CunningStrikeOption> = ['poison', 'trip', 'withdraw'];
+export const CUNNING_STRIKE_OPTIONS: ReadonlyArray<CunningStrikeOption> = ['poison', 'trip', 'withdraw', 'obscure', 'knockout'];
+
+// The minimum Rogue level required for a chosen set of effects: L14 if any
+// is a Devious Strikes option (Obscure / Knock Out), else L5.
+export const cunningStrikeMinLevel = (effects: ReadonlyArray<CunningStrikeOption>): number =>
+  effects.some((e) => SPECS[e].devious === true) ? DEVIOUS_STRIKES_LEVEL : CUNNING_STRIKE_LEVEL;
 
 // Total Sneak Attack dice forgone for a chosen set of Cunning Strike
 // effects (each L5 option costs 1d6).
@@ -56,13 +73,17 @@ export interface CunningStrikeEffectsInput {
 
 // Builds the events for the chosen Cunning Strike effects, fired right
 // after the Sneak Attack damage:
-//   - Poison: CON save vs the rogue's DC or Poisoned (1 minute).
-//   - Trip:   DEX save vs the rogue's DC or Prone.
+//   - Poison:   CON save vs the rogue's DC or Poisoned (1 minute).
+//   - Trip:     DEX save vs the rogue's DC or Prone.
 //   - Withdraw: the rogue Disengages (movement won't provoke).
-// RAW deviations (documented in starter-pack-gaps.md): the Poison's
-// end-of-turn repeat save, Trip's "Large or smaller" size gate, and
-// Withdraw's half-Speed cap are not modeled (the engine has no
-// repeat-save-on-base-Poisoned, size, or movement-distance surface here).
+//   - Obscure (Devious Strikes, L14): DEX save or Blinded until the end
+//     of its next turn.
+//   - Knock Out (Devious Strikes, L14): CON save or Unconscious (1 minute).
+// RAW deviations (documented in starter-pack-gaps.md): Poison's and Knock
+// Out's end-of-turn repeat save, Knock Out's "until it takes any damage"
+// early end, Trip's "Large or smaller" size gate, and Withdraw's half-Speed
+// cap are not modeled (the engine has no repeat-save / damage-end on the
+// base conditions, size, or movement-distance surface here).
 export const buildCunningStrikeEffects = (input: CunningStrikeEffectsInput): Event[] => {
   const { state, content, rng, at, rogue, targetId, effects } = input;
   const dc = cunningStrikeSaveDC(rogue);
@@ -97,8 +118,8 @@ export const buildCunningStrikeEffects = (input: CunningStrikeEffectsInput): Eve
         targetId: targetId as ULID,
         conditionId: spec.save.conditionId,
         appliedConditionId: newAppliedConditionId(),
-        ...(spec.save.conditionId === 'poisoned' && currentRound !== undefined
-          ? { expiresOnRound: currentRound + POISON_DURATION_ROUNDS, expiryTrigger: 'turnEnd' as const }
+        ...(spec.expiryRounds !== undefined && currentRound !== undefined
+          ? { expiresOnRound: currentRound + spec.expiryRounds, expiryTrigger: 'turnEnd' as const }
           : {}),
       };
       events.push(applied);

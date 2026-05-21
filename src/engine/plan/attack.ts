@@ -21,7 +21,7 @@ import { newEventId, newAppliedConditionId } from '../../ids.js';
 import { computeAttackBonus } from '../../derive/attack.js';
 import { computeAC } from '../../derive/ac.js';
 import { buildEffectStack, collectEffectsFromCharacter } from '../../derive/effect-stack.js';
-import { cunningStrikeForgoDice, type CunningStrikeOption } from './cunning-strike.js';
+import { cunningStrikeForgoDice, cunningStrikeMinLevel, type CunningStrikeOption } from './cunning-strike.js';
 import { getCreatureType } from '../../derive/creature-type.js';
 import { abilityModifier, effectiveAbilityScore } from '../../derive/ability.js';
 import { computeActionEconomyBudget } from '../../derive/action-economy.js';
@@ -364,6 +364,11 @@ const assertCunningStrikeUsable = (
   const rogueLevel = attacker.classes.find((c) => c.classId === 'rogue')?.level ?? 0;
   if (rogueLevel < CUNNING_STRIKE_LEVEL) {
     throw new Error(`${attacker.name} does not have Cunning Strike (requires Rogue level ${CUNNING_STRIKE_LEVEL})`);
+  }
+  // Devious Strikes options (Obscure / Knock Out) require Rogue level 14.
+  const minLevel = cunningStrikeMinLevel(effects);
+  if (rogueLevel < minLevel) {
+    throw new Error(`${attacker.name} does not have Devious Strikes (requires Rogue level ${minLevel})`);
   }
   const maxEffects = rogueLevel >= IMPROVED_CUNNING_STRIKE_LEVEL ? 2 : 1;
   if (effects.length > maxEffects) {

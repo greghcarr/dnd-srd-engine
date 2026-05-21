@@ -4,6 +4,19 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 385): Rogue Devious Strikes (L14) - Obscure + Knock Out**
+
+Extended the slice-384 Cunning Strike dice-trade with two of the three Devious Strikes (Rogue L14) options. Both are option-table + level-gate additions on the existing seam (no new engine plumbing):
+
+- **Obscure** (Cost 3d6): DEX save vs the rogue's DC or Blinded until the end of its next turn.
+- **Knock Out** (Cost 6d6): CON save vs the rogue's DC or Unconscious for 1 minute.
+
+`cunning-strike.ts` gains the two `SPECS` entries (with a `devious` flag and per-effect `expiryRounds`, generalizing the previously poison-specific expiry stamping), and a `cunningStrikeMinLevel` helper. The attack planner now rejects a Devious option below Rogue L14 (`does not have Devious Strikes`); the existing dice-sufficiency check naturally caps two-effect combinations (e.g. Knock Out's 6d6 + anything > 7d6 at L14 throws). The L14 `devious-strikes` feature is wired (`Custom { handlerId: 'cunning-strike' }`).
+
+**Daze (Cost 2d6) is deferred.** "On its next turn it can do only one of move / action / Bonus Action" needs a partial-action-economy primitive the engine doesn't model; a `dazed` marker would be mechanically inert (the exact anti-pattern slice 381 fixed), so it's tracked rather than faked. Documented deviations on Knock Out (as with Poison): the end-of-turn repeat save and "until it takes any damage" early end aren't modeled (base Unconscious carries neither, and the condition-applied event can't add them).
+
+Uncle Bob audit (content sweep): **Names** `cunningStrikeMinLevel` / `devious` / `expiryRounds` are intention-revealing. **DRY** the expiry stamping generalized from the poison-specific branch to a per-spec `expiryRounds`; Obscure / Knock Out reuse the existing save + condition path. **SRP** the option table owns the vocabulary; the planner owns the level gate. **Magic numbers** the 3d6 / 6d6 costs, the L14 gate, and the 1-minute / end-of-next-turn durations cite SRD. **Mechanical outcomes asserted** five cases: Obscure DEX-save + Blinded, Knock Out CON-save + Unconscious, Knock Out forgoes 6d6 (non-crit Sneak Attack <= 1d6 at L14), the L14 gate throws below level, and two Obscures pair under Improved Cunning Strike. No engine change. No em/en dashes. `tsc --noEmit` clean; full suite green.
+
 **Engine+content (slice 384): Rogue Cunning Strike + Improved Cunning Strike**
 
 Wired the Rogue's Cunning Strike (L5) and Improved Cunning Strike (L11), the highest-payoff item left on the subclass/class-feature menu (it unblocks the dice-trade family). RAW: when the rogue deals Sneak Attack damage, they may forgo Sneak Attack dice ("remove the die before rolling") to add an effect, each effect costing a number of d6.
