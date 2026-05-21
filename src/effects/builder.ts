@@ -197,6 +197,7 @@ export class EffectAccumulator {
   private healingBoostFlat: number = 0;
   private healingBoostPerSpellLevel: number = 0;
   private evasionFlag: boolean = false;
+  private potentCantripFlag: boolean = false;
   private uncannyDodgeFlag: boolean = false;
   private innateSorcerySpendAlternativeFlag: boolean = false;
   private selfRestorationFlag: boolean = false;
@@ -806,6 +807,14 @@ export class EffectAccumulator {
   hasEvasion(): boolean {
     return this.evasionFlag;
   }
+  markPotentCantrip(): void {
+    this.potentCantripFlag = true;
+  }
+  // Evoker L3 Potent Cantrip: the caster's damaging cantrips deal half
+  // damage on a missed attack or a successful save. Read by cast-spell.
+  hasPotentCantrip(): boolean {
+    return this.potentCantripFlag;
+  }
   // Slice 200: marker that gates `planUncannyDodge`. Set by Rogue L5+
   // via the `GrantUncannyDodge` effect on the Uncanny Dodge feature.
   markUncannyDodge(): void {
@@ -1043,6 +1052,9 @@ export const applyEffectToBuilder = (
       return;
     case 'GrantEvasion':
       acc.markEvasion();
+      return;
+    case 'GrantPotentCantrip':
+      acc.markPotentCantrip();
       return;
     case 'GrantUncannyDodge':
       acc.markUncannyDodge();

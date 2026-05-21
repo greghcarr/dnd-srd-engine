@@ -391,12 +391,18 @@ const planAttackMechanic = (
     };
     events.push(attackEvent);
 
-    if (!hit) continue;
+    // Evoker L3 Potent Cantrip: a damaging cantrip that misses the attack
+    // still deals half damage (no crit, no additional effect). A plain
+    // miss skips the target entirely.
+    const potentHalfOnMiss =
+      !hit && spell.level === CANTRIP_LEVEL && casterEffects.hasPotentCantrip();
+    if (!hit && !potentHalfOnMiss) continue;
 
     const { rolls: baseRolls, modifier } = rollDamage(mechanic.damageDice, bonusDice, rng, isCrit);
     const scalingRolls = rollCantripScaling(mechanic.cantripScalingDice, cantripSteps, rng, isCrit);
     const rolls = [...baseRolls, ...scalingRolls];
-    const damageTotal = rolls.reduce((s, v) => s + v, 0) + modifier + damageModifierBonus;
+    const fullDamage = rolls.reduce((s, v) => s + v, 0) + modifier + damageModifierBonus;
+    const damageTotal = potentHalfOnMiss ? halveDamage(Math.max(0, fullDamage)) : fullDamage;
     const damageRolled: DamageRolledEvent = {
       id: newEventId() as ULID,
       at,
@@ -479,6 +485,11 @@ const planSaveMechanic = (
   const bonusDice = (mechanic.extraDicePerSlotLevel ?? 0) * Math.max(0, intent.slotLevel - spell.level);
   const cantripSteps = spell.level === CANTRIP_LEVEL ? cantripExtraDice(computeTotalLevel(character)) : 0;
   const conditionOnFail = resolveSaveConditionOnFail(mechanic, intent, spell.id);
+  // Evoker L3 Potent Cantrip: a damaging cantrip whose target succeeds on
+  // the save still deals half damage (see the outcome computation below).
+  const casterHasPotentCantrip =
+    spell.level === CANTRIP_LEVEL &&
+    buildEffectStack({ character, content, itemInstances: state.itemInstances, pendingChoices: state.pendingChoices }).hasPotentCantrip();
   const events: Event[] = [];
   const conditionsApplied: AppliedConditionRef[] = [];
 
@@ -595,16 +606,20 @@ const planSaveMechanic = (
         itemInstances: state.itemInstances,
         pendingChoices: state.pendingChoices,
       });
+      // Evoker L3 Potent Cantrip: a damaging cantrip whose target succeeds
+      // on the save still deals half damage. Treat the cantrip as
+      // halves-on-success even when the mechanic doesn't declare it.
+      const halvesOnSuccess = mechanic.halfOnSuccess === true || casterHasPotentCantrip;
       const evasionApplies =
         targetEffects.hasEvasion() &&
         mechanic.ability === 'DEX' &&
-        mechanic.halfOnSuccess === true;
+        halvesOnSuccess;
       const outcomeAmount = (raw: number): number =>
         evasionApplies
           ? success
             ? 0
             : halveDamage(raw)
-          : success && mechanic.halfOnSuccess === true
+          : success && halvesOnSuccess
             ? halveDamage(raw)
             : success
               ? 0

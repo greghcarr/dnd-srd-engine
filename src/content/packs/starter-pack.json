@@ -1390,6 +1390,11 @@
                 ]
               }
             ]
+          },
+          {
+            "id": "potent-cantrip",
+            "name": "Potent Cantrip",
+            "effects": [{ "kind": "GrantPotentCantrip" }]
           }
         ],
         "6": [

@@ -4,6 +4,19 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine+content (slice 383): Evoker L3 Potent Cantrip**
+
+Wired the Evoker's L3 Potent Cantrip (it wasn't even a stub row in the pack). RAW: "When you cast a cantrip at a creature and you miss with the attack roll or the target succeeds on a saving throw against the cantrip, the target takes half the cantrip's damage (if any) but suffers no additional effect."
+
+New `GrantPotentCantrip` effect kind (a passive marker, mirroring `GrantEvasion`): the builder folds it to a `hasPotentCantrip()` flag on the effect stack, and cast-spell reads it from the **caster's** stack in two places:
+
+- **Attack cantrips**: the miss path previously did `if (!hit) continue` (no damage). Now, if the caster has Potent Cantrip and the spell is a cantrip, a miss still rolls the damage and applies half (no crit, no rider). A plain caster's miss still deals nothing.
+- **Save cantrips**: the save-success outcome treats the cantrip as halves-on-success even when the mechanic doesn't declare `halfOnSuccess`, so a successful save takes half instead of zero (Sacred Flame, Toll the Dead, etc.). The Evasion interaction folds through the same `halvesOnSuccess`.
+
+Wired the Evoker L3 `potent-cantrip` feature with `GrantPotentCantrip`. `EFFECT_KINDS` goes 52 -> 53 (52 primitives + `Custom`); the guarded count docs (authoring-content-packs.md, concepts.md) and the prose citations (api-overview.md, status.md, CLAUDE.md) were updated in the same slice.
+
+Uncle Bob audit (engine slice): **Names** `GrantPotentCantrip` / `hasPotentCantrip` / `markPotentCantrip` / `casterHasPotentCantrip` / `potentHalfOnMiss` / `halvesOnSuccess` read as what they do and follow the `GrantEvasion` / `hasEvasion` precedent. **DRY** the half-damage logic reuses the existing `halveDamage` helper; the save arm folds Potent Cantrip into the existing `halvesOnSuccess` branch rather than duplicating the outcome ladder. **SRP** the marker only flags the caster; cast-spell owns the half-damage decision in each resolution path. **Magic numbers** none (half via `halveDamage`; the L3 gate is the feature placement). **at-threading** unchanged (the existing `at` flows to the miss-damage events). **Mechanical outcomes asserted** two new cases: an Evoker deals exactly `floor(rolled/2)` on a missed Fire Bolt while a plain wizard deals none; an Evoker deals half on a successful Sacred Flame save while a plain wizard deals none. **Tests** each pins an arm against a non-Evoker control. No em/en dashes. `tsc --noEmit` clean; full suite green.
+
 **Docs (slice 382): archive CHANGELOG slices 376-380 (single-Read ceiling)**
 
 The live CHANGELOG had reached exactly 60,000 bytes after slice 381, right at the doc-size single-Read ceiling. Per the doc-size discipline playbook, moved the per-slice detail for the post-alpha.12 cohort's first five slices (376-380) to [docs/changelog/archive-slices-376-380.md](docs/changelog/archive-slices-376-380.md) (14 KB, fits a single Read), leaving slice 381 inline plus the pointer below. Root-relative links in the moved entries were rewritten for the archive's `docs/changelog/` location, and the archive-index block gained the new file. No code or content change; docs only. doc-size audit green; live CHANGELOG back to ~46 KB.

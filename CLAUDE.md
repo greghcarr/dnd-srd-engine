@@ -228,7 +228,7 @@ The seam doesn't need to be perfect today, just clean enough that Slice 47 is a 
 
 - **Event-sourced.** State changes are events. `apply(state, event) -> state` is pure.
 - **Plan/commit split.** `engine.plan(state, intent)` is the only place RNG is consumed; resolution events carry baked rolls. `apply()` never touches RNG. Replays read baked rolls.
-- **Effect primitives.** Features are described via a fixed vocabulary of 51 primitives (52 `EFFECT_KINDS` entries counting the `Custom` escape hatch). Wild Shape, Polymorph, Wish and similar drop to code handlers (the `CustomEffect` escape hatch). Canonical list: `EFFECT_KINDS` in [src/schemas/effects.ts](src/schemas/effects.ts).
+- **Effect primitives.** Features are described via a fixed vocabulary of 52 primitives (53 `EFFECT_KINDS` entries counting the `Custom` escape hatch). Wild Shape, Polymorph, Wish and similar drop to code handlers (the `CustomEffect` escape hatch). Canonical list: `EFFECT_KINDS` in [src/schemas/effects.ts](src/schemas/effects.ts).
 - **Branded IDs + ULIDs.** Per-kind branded string types (`CharacterId`, `SpellId`, `ItemDefinitionId` versus `ItemInstanceId`, etc.) backed by ULIDs.
 - **Normalized state.** Entities live in `Record<Id, Entity>` maps under `CampaignState`, not nested arrays.
 - **Immer internally, immutable externally.** `apply()` uses Immer for clean reducers; output is frozen.

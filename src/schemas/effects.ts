@@ -323,6 +323,11 @@ export type Effect =
   // success, they instead take no damage on success and half damage on
   // failure. Read by `planCastSpell` from the target's effect stack.
   | { kind: 'GrantEvasion' }
+  // Evoker L3 Potent Cantrip: the caster's damaging cantrips deal half
+  // damage even when the attack roll misses or the target succeeds on the
+  // save (and no additional effect). Read by `planCastSpell` from the
+  // caster's effect stack.
+  | { kind: 'GrantPotentCantrip' }
   // Cross-character effect: while this is active on a character, attacks
   // against that character are made with advantage. Used by Faerie Fire,
   // Hex (kind of), Hunter's Mark variants. The attack planner consults
@@ -667,6 +672,9 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       kind: z.literal('GrantEvasion'),
     }),
     z.object({
+      kind: z.literal('GrantPotentCantrip'),
+    }),
+    z.object({
       kind: z.literal('GrantAdvantageToAttackers'),
       condition: PredicateSchema.optional(),
     }),
@@ -774,6 +782,7 @@ export const EFFECT_KINDS = [
   'GrantHalfProficiencyBonusFloor',
   'BoostHealing',
   'GrantEvasion',
+  'GrantPotentCantrip',
   'GrantAdvantageToAttackers',
   'ImposeDisadvantageOnAttackers',
   'CancelAdvantageOnAttackers',
