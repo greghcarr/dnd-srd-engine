@@ -380,12 +380,13 @@ const planAttackMechanic = (
       targetAC: targetAC.total,
       hit,
       critical: isCrit,
-      // Every currently-wired PHB 2024 spell attack is a ranged spell
-      // attack (Eldritch Blast, Fire Bolt, Inflict Wounds, Chromatic
-      // Orb, etc.). When the first melee spell attack ships, add a
-      // `meleeSpellAttack?: boolean` field on SpellAttackMechanicSchema
-      // and branch here.
-      attackKind: 'ranged',
+      // Melee vs Ranged Spell Attack, from the mechanic (defaults to
+      // 'ranged'). Slice 371: the five RAW melee spell attacks (Shocking
+      // Grasp, Spiritual Weapon, Chill Touch, Flame Blade, Vampiric Touch)
+      // carry `attackKind: 'melee'`; this stamps the `event.attackKind`
+      // fact correctly so melee-gated riders fire and the ranged-in-melee
+      // disadvantage doesn't wrongly apply.
+      attackKind: mechanic.attackKind,
       causedByEventId: declaredEventId as ULID,
     };
     events.push(attackEvent);

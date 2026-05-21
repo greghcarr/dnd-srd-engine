@@ -17,18 +17,33 @@ const CANTRIP_SCALING_THRESHOLDS = [5, 11, 17] as const;
 // the picked value. Exactly one of the two must be set; the invariant
 // is enforced in the planner (Zod's discriminated union doesn't accept
 // `.refine()` on its members, so we validate at plan time instead).
-const SpellAttackMechanicSchema = z.object({
-  kind: z.literal('attack'),
-  damageDice: DiceExpressionSchema,
-  damageType: DamageTypeSchema.optional(),
-  casterChoosesDamageType: z
-    .object({
-      allowed: z.array(DamageTypeSchema).min(1),
-    })
-    .optional(),
-  extraDicePerSlotLevel: z.number().int().min(0).optional(),
-  cantripScalingDice: DiceExpressionSchema.optional(),
-});
+const SpellAttackMechanicSchema = z
+  .object({
+    kind: z.literal('attack'),
+    damageDice: DiceExpressionSchema,
+    damageType: DamageTypeSchema.optional(),
+    casterChoosesDamageType: z
+      .object({
+        allowed: z.array(DamageTypeSchema).min(1),
+      })
+      .optional(),
+    extraDicePerSlotLevel: z.number().int().min(0).optional(),
+    cantripScalingDice: DiceExpressionSchema.optional(),
+    // Whether the spell attack is a Melee or Ranged Spell Attack. Stamped
+    // on the AttackRolled event so the `event.attackKind` predicate fact
+    // is correct (melee-gated riders, the ranged-in-melee disadvantage,
+    // etc.). Defaults to 'ranged' (most damaging cantrips). Slice 371: the
+    // five RAW melee spell attacks (Shocking Grasp, Spiritual Weapon,
+    // Chill Touch, Flame Blade, Vampiric Touch) had this authored but it
+    // was silently stripped (the field didn't exist), so they were
+    // mistagged ranged.
+    attackKind: z.enum(['melee', 'ranged']).default('ranged'),
+  })
+  // Slice 371: `.strict()` so a future authored-but-unsupported field
+  // fails to parse loudly instead of being silently dropped by Zod (the
+  // same phantom-field trap that left the save spells dealing no damage
+  // in slice 370).
+  .strict();
 
 // Save-based spell mechanic. `conditionOnFail` is the standard
 // "single condition on failed save" shape (Hold Person, Tasha's
