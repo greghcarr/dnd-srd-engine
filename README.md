@@ -109,7 +109,7 @@ Pick the doc that matches what you want:
 
 ## Status
 
-**Alpha.** Architecturally complete and content-substantial. **2070 tests across 311 files**; the engine compiles and builds (ESM + CJS + `.d.ts`); the load-bearing invariants (event-sourcing, plan/commit, RNG capture, replay equivalence, branded IDs, effect primitives) are locked and proven. The 48-probe RAW-compliance audit at [tests/audit/raw-compliance.test.ts](tests/audit/raw-compliance.test.ts) passes in full. **SRD 5.2.1 pack-presence is complete across every category** (spells, monsters, magic items, species, feats, backgrounds, conditions); what's still growing is mechanical wiring depth, not catalog coverage.
+**Alpha.** Architecturally complete and content-substantial. **2170 tests across 331 files**; the engine compiles and builds (ESM + CJS + `.d.ts`); the load-bearing invariants (event-sourcing, plan/commit, RNG capture, replay equivalence, branded IDs, effect primitives) are locked and proven. The 48-probe RAW-compliance audit at [tests/audit/raw-compliance.test.ts](tests/audit/raw-compliance.test.ts) passes in full. **SRD 5.2.1 pack-presence is complete across every category** (spells, monsters, magic items, species, feats, backgrounds, conditions); what's still growing is mechanical wiring depth, not catalog coverage.
 
 At a glance:
 

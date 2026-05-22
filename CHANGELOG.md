@@ -4,6 +4,10 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Docs (slice 395): reconcile the front-door test/file count**
+
+A deep doc-currency pass. The CI-guarded counts (doc-counts, gaps-spells-counts, doc-size, pack-integrity) were all green, and the per-category narrative in [docs/srd-5.2.1-audit-classes.md](docs/srd-5.2.1-audit-classes.md) is current through the slice 383 Evoker Potent Cantrip wire. The one stale figure was the unguarded headline test/file count: README.md and docs/status.md (two spots) cited "2070 tests across 311 files" from before the alpha.12 release, while the suite now runs 2170 passing across 331 files. Updated all three. No code or content change; the test/file total is intentionally not auto-guarded (it moves every slice), so it gets a manual eye on doc passes like this one. doc-counts + doc-size + gaps-spells-counts green.
+
 **Engine (slice 394): Rogue Withdraw is a half-Speed no-provoke budget, not a full-turn Disengage**
 
 Converted the last documented Cunning Strike deviation. Withdraw emitted a plain `Disengaged`, which suppressed Opportunity Attacks for the rogue's WHOLE turn of movement; RAW grants only "move up to half your Speed without provoking." Added a per-turn `noProvokeMovementUpToFeet` high-water-mark to `turnUsage` (reset at TurnStarted alongside the other per-turn flags). The `Disengaged` event gained an optional `limitedToFeet`: when set, the reducer stamps the mark (`feetMovedThisTurn + limitedToFeet`, taking the max so a second Withdraw can't shrink an existing window) instead of the full-turn `disengaged` flag. The move planner now suppresses OA provocation when either `disengaged` is set OR the cumulative travel (`feetMovedThisTurn + distance`) stays within the mark, so movement past half Speed provokes from the foot that leaves reach. The Withdraw arm of `buildCunningStrikeEffects` emits `Disengaged { limitedToFeet: floor(getEffectiveSpeed/2) }`.
