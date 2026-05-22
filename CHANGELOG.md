@@ -4,6 +4,12 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Infra (slice 432): doc-links CI audit + "doc accuracy is CI-guarded or not stated" norm**
+
+The prevention half of the docs review: stop needing periodic deep reviews by making staleness fail CI. New [tests/audit/doc-links.test.ts](tests/audit/doc-links.test.ts) scans every internal markdown link in the repo, resolves it from the linking file's own directory (the way GitHub resolves relative links), and fails on any that 404, so the link-rot class that slice 431 cleaned up by hand can never silently return. It ignores external links, in-page anchors, and links inside code spans (so documented example code with parens isn't mistaken for a link).
+
+Added a "Doc accuracy: CI-guarded or not stated" norm to CLAUDE.md alongside the existing count-guard rule: a precise, drift-prone claim in a doc must be either CI-guarded against its source (the count audits, the link audit, the coverage-ledger anchors are the model) or not stated as a precise figure (volatile numbers like exact test totals belong in qualitative prose, with the guarded counts carrying the precision). It also flags the next high-value guard to build: typechecking the `ts` code examples in the front-door docs against the real public API. No code/content change; doc-links + doc-size green.
+
 **Docs (slice 431): fix 73 broken internal doc links (GitHub 404s)**
 
 Found during a docs review: many links in `docs/*.md` and several CHANGELOG archives used repo-root-relative hrefs (e.g. a link in `docs/status.md` to `tests/audit/raw-compliance.test.ts`). GitHub resolves relative links from the file's own location, so these resolved to `docs/tests/audit/...` and 404'd. Rewrote 72 of them to correct file-relative paths (`../tests/...`, sibling `starter-pack-gaps.md`, `../../tests/...` from archives, etc.) via a link-resolution pass, plus one hand-fix (`../CLAUDE.md` to `../../CLAUDE.md` in a rollup archive) and un-linked one dead reference (the `phb-2024-extras.json` pack, since moved to the gitignored `content-packs/`). A repo-wide re-scan now reports zero broken internal links except two false positives that are inside backticks (code, not rendered links). Affected: status.md, roadmap.md, parallel-authoring.md, released-versions.md, and two slice archives. No code/content change.
