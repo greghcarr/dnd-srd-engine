@@ -6,6 +6,8 @@ import { buildEffectStack } from './effect-stack.js';
 import { resolveEnchantment } from './enchantment.js';
 import { computeTotalLevel } from '../schemas/runtime/character.js';
 import type { Weapon } from '../schemas/content/item.js';
+import type { EffectAccumulator } from '../effects/builder.js';
+import type { DiceExpression, DamageType } from '../schemas/primitives.js';
 
 export interface AttackBreakdownEntry {
   readonly source: string;
@@ -57,7 +59,9 @@ const isWeaponProficient = (
   return false;
 };
 
-export const computeAttackBonus = (input: ComputeAttackInput): AttackResult => {
+// Resolve the weapon instance + its definition, throwing on an unknown
+// id or a non-weapon. Shared by the to-hit and damage derivations.
+const resolveWeapon = (input: ComputeAttackInput): { instance: ItemInstance; weapon: Weapon } => {
   const instance = input.itemInstances[input.weaponInstanceId];
   if (!instance) {
     throw new Error(`Unknown weapon instance: ${input.weaponInstanceId}`);
@@ -68,16 +72,29 @@ export const computeAttackBonus = (input: ComputeAttackInput): AttackResult => {
       `Item instance ${input.weaponInstanceId} is not a weapon (definition ${instance.definitionId})`,
     );
   }
-  const weapon = def;
+  return { instance, weapon: def };
+};
 
-  const ability = chooseAttackAbility(input.character, weapon);
-  const effects = buildEffectStack(input);
-  const baseScore = input.character.abilityScores[ability];
+// The ability used for both the attack roll and the damage modifier
+// (RAW: the same ability modifier applies to both), with the effective
+// score (floor / increase effects) folded in.
+const attackAbility = (
+  character: Character,
+  weapon: Weapon,
+  effects: EffectAccumulator,
+): { ability: 'STR' | 'DEX'; mod: number } => {
+  const ability = chooseAttackAbility(character, weapon);
+  const baseScore = character.abilityScores[ability];
   const floor = effects.effectiveAbilityScoreFloor(ability)?.value;
   const increase = effects.effectiveAbilityScoreIncrease(ability);
-  const breakdown: AttackBreakdownEntry[] = [
-    { source: `${ability}-mod`, value: abilityModifier(effectiveAbilityScore(baseScore, floor, increase)) },
-  ];
+  return { ability, mod: abilityModifier(effectiveAbilityScore(baseScore, floor, increase)) };
+};
+
+export const computeAttackBonus = (input: ComputeAttackInput): AttackResult => {
+  const { instance, weapon } = resolveWeapon(input);
+  const effects = buildEffectStack(input);
+  const { ability, mod } = attackAbility(input.character, weapon, effects);
+  const breakdown: AttackBreakdownEntry[] = [{ source: `${ability}-mod`, value: mod }];
 
   if (isWeaponProficient(input.character, weapon, input.content)) {
     breakdown.push({
@@ -122,4 +139,39 @@ export const computeAttackBonus = (input: ComputeAttackInput): AttackResult => {
 
   const total = breakdown.reduce((acc, e) => acc + e.value, 0);
   return { total, breakdown };
+};
+
+export interface WeaponDamage {
+  readonly dice: DiceExpression;
+  /** Flat modifier: attack-ability mod + any flat magic / buff damage bonuses. */
+  readonly modifier: number;
+  readonly type: DamageType;
+}
+
+export interface WeaponDamageResult {
+  readonly damage: WeaponDamage;
+  /** Present for versatile weapons: the larger die when wielded two-handed. */
+  readonly versatile?: WeaponDamage;
+}
+
+// The static damage line a sheet displays: weapon die + the attack-ability
+// modifier + flat magic / buff damage bonuses, of the weapon's damage type.
+// Conditional, roll-time riders (Sneak Attack, Great Weapon Fighting's
+// die floor, Martial Arts scaling, off-hand no-modifier) are NOT folded in
+// here; those resolve in the attack planner per attack context.
+export const computeWeaponDamage = (input: ComputeAttackInput): WeaponDamageResult => {
+  const { instance, weapon } = resolveWeapon(input);
+  const effects = buildEffectStack(input);
+  const { mod } = attackAbility(input.character, weapon, effects);
+
+  let modifier = mod;
+  if (instance.temporaryBuff !== undefined) modifier += instance.temporaryBuff.damageBonus;
+  if (weapon.damageBonus !== undefined) modifier += weapon.damageBonus;
+  const enchantment = resolveEnchantment(instance, input.content);
+  if (enchantment?.damageBonus !== undefined) modifier += enchantment.damageBonus;
+
+  const damage: WeaponDamage = { dice: weapon.damageDice, modifier, type: weapon.damageType };
+  return weapon.versatileDice !== undefined
+    ? { damage, versatile: { dice: weapon.versatileDice, modifier, type: weapon.damageType } }
+    : { damage };
 };

@@ -315,6 +315,7 @@ export type {
   SkillView,
   PassiveScores,
   InitiativeView,
+  AttackView,
 } from './query/index.js';
 
 export {
@@ -337,6 +338,7 @@ export {
   computeAC,
   computeSavingThrow,
   computeAttackBonus,
+  computeWeaponDamage,
   computeSpellSaveDC,
   computeSpellAttackBonus,
   computeSpellSlots,
@@ -357,6 +359,8 @@ export {
 export type {
   ACResult,
   AttackResult,
+  WeaponDamage,
+  WeaponDamageResult,
   SaveResult,
   SpellDCResult,
   SpellSlotsResult,

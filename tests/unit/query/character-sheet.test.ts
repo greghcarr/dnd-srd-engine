@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { buildCharacterSheet } from '../../../src/query/character-sheet.js';
 import { computeDerivedCharacter } from '../../../src/derive/character-view.js';
 import { SKILLS, SKILL_ABILITY, type ProficiencyLevel } from '../../../src/schemas/primitives.js';
-import { buildFighter, TEST_CONTENT } from '../../fixtures/index.js';
+import { buildFighter, makeItemInstance, TEST_CONTENT } from '../../fixtures/index.js';
 
 const sheetFor = (level: number) =>
   buildCharacterSheet({
@@ -84,5 +84,79 @@ describe('slice 412: buildCharacterSheet', () => {
     const highMod = high.skills.find((s) => s.skill === skill)!.modifier;
     expect(high.proficiencyBonus).toBeGreaterThan(low.proficiencyBonus);
     expect(highMod - lowMod).toBe(high.proficiencyBonus - low.proficiencyBonus);
+  });
+});
+
+describe('slice 414: buildCharacterSheet attacks', () => {
+  // L5 fighter (PB +3, martial-proficient), STR 18 (+4), DEX 14 (+2).
+  const armedSheet = () => {
+    const longsword = makeItemInstance('longsword');
+    const rapier = makeItemInstance('rapier');
+    const longbow = makeItemInstance('longbow');
+    const character = buildFighter({
+      level: 5,
+      STR: 18,
+      DEX: 14,
+      inventory: [longsword.id, rapier.id, longbow.id],
+    });
+    const sheet = buildCharacterSheet({
+      character,
+      itemInstances: { [longsword.id]: longsword, [rapier.id]: rapier, [longbow.id]: longbow },
+      content: TEST_CONTENT,
+    });
+    return { sheet, ids: { longsword: longsword.id, rapier: rapier.id, longbow: longbow.id } };
+  };
+
+  it('lists one attack per inventory weapon, in inventory order', () => {
+    const { sheet } = armedSheet();
+    expect(sheet.attacks.map((a) => a.name)).toEqual(['Longsword', 'Rapier', 'Longbow']);
+  });
+
+  it('a melee weapon uses STR for to-hit and damage', () => {
+    const { sheet } = armedSheet();
+    const longsword = sheet.attacks[0]!;
+    expect(longsword.attackKind).toBe('melee');
+    expect(longsword.attackBonus).toBe(4 + 3); // STR +4, proficiency +3
+    expect(longsword.damage).toEqual({ dice: '1d8', modifier: 4, type: 'slashing' });
+  });
+
+  it('a versatile weapon carries the two-handed damage line', () => {
+    const { sheet } = armedSheet();
+    expect(sheet.attacks[0]!.versatileDamage).toEqual({ dice: '1d10', modifier: 4, type: 'slashing' });
+  });
+
+  it('a finesse weapon picks the higher of STR / DEX (STR here)', () => {
+    const { sheet } = armedSheet();
+    const rapier = sheet.attacks[1]!;
+    expect(rapier.attackBonus).toBe(4 + 3); // STR +4 beats DEX +2
+    expect(rapier.damage.modifier).toBe(4);
+    expect(rapier.versatileDamage).toBeUndefined();
+  });
+
+  it('finesse flips to DEX when DEX is higher', () => {
+    const rapier = makeItemInstance('rapier');
+    const character = buildFighter({ level: 5, STR: 10, DEX: 18, inventory: [rapier.id] });
+    const sheet = buildCharacterSheet({
+      character,
+      itemInstances: { [rapier.id]: rapier },
+      content: TEST_CONTENT,
+    });
+    expect(sheet.attacks[0]!.attackBonus).toBe(4 + 3); // DEX +4
+    expect(sheet.attacks[0]!.damage.modifier).toBe(4);
+  });
+
+  it('a ranged weapon uses DEX', () => {
+    const { sheet } = armedSheet();
+    const longbow = sheet.attacks[2]!;
+    expect(longbow.attackKind).toBe('ranged');
+    expect(longbow.attackBonus).toBe(2 + 3); // DEX +2, proficiency +3
+    expect(longbow.damage.modifier).toBe(2);
+  });
+
+  it('skips dangling instance ids (id valid but absent from itemInstances)', () => {
+    const dangling = makeItemInstance('longsword');
+    const character = buildFighter({ level: 5, inventory: [dangling.id] });
+    const sheet = buildCharacterSheet({ character, itemInstances: {}, content: TEST_CONTENT });
+    expect(sheet.attacks).toEqual([]);
   });
 });

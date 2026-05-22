@@ -18,4 +18,5 @@ export {
   type SkillView,
   type PassiveScores,
   type InitiativeView,
+  type AttackView,
 } from './character-sheet.js';

@@ -15,9 +15,12 @@ export {
 } from './ac.js';
 export {
   computeAttackBonus,
+  computeWeaponDamage,
   type AttackResult,
   type AttackBreakdownEntry,
   type ComputeAttackInput,
+  type WeaponDamage,
+  type WeaponDamageResult,
 } from './attack.js';
 export {
   computeSavingThrow,
