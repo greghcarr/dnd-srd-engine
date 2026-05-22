@@ -70,7 +70,7 @@ const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
   'createEncounter', 'rollInitiative', 'startEncounter', 'beginFirstTurn', 'advanceTurn', 'endEncounter',
   // Reactions / triggered planners (called after observing a trigger event;
   // several return a derived outcome the consumer branches on):
-  'dodge', 'shield', 'absorbElements', 'sanctuaryWardSave', 'protection', 'consumeGuidance',
+  'dodge', 'shield', 'sanctuaryWardSave', 'protection', 'consumeGuidance',
   'consumeResistance', 'cuttingWords', 'uncannyDodge', 'superiorDefense', 'paladinsSmite', 'breathWeapon',
   // Per-moment ticks / duration sweeps (called at turn boundaries / on movement):
   'expireSpellDurations', 'tickAura', 'tickMovementDamage', 'tickRecurring', 'tickRecurringSave', 'triggerTrap',

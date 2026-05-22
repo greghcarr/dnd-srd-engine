@@ -1,5 +1,6 @@
 import type { CampaignState } from '../schemas/runtime/campaign.js';
 import type { Character } from '../schemas/runtime/character.js';
+import type { Event } from '../schemas/events/index.js';
 import type { ResolvedContent } from '../content/pack.js';
 import type { RNG } from '../rng/index.js';
 import type { DiceRollResult } from '../rng/dice.js';
@@ -41,4 +42,11 @@ export interface HandlerContext {
   assertActorCanAct(character: Character, actionLabel: string): void;
   // Remaining standard spell slots of the given level for the character.
   spellSlotsRemaining(character: Character, slotLevel: number): number;
+  // Throws if the character has already used their reaction this round
+  // (RAW: one reaction per round). No-op out of an active encounter.
+  assertReactionAvailable(character: Character, actionLabel: string): void;
+  // The ActionEconomyConsumed event for the character when inside an active
+  // encounter, or undefined when out of combat (where economy is unmetered).
+  // For action handlers that spend an action/reaction.
+  consumeActionEconomy(character: Character, kind: 'action' | 'reaction'): Event | undefined;
 }

@@ -14,6 +14,7 @@ import type { TriggerFiredEvent } from '../../../src/schemas/events/triggers.js'
 import type { ULID } from '../../../src/engine/ids-utils.js';
 import type { DamageType } from '../../../src/schemas/primitives.js';
 import { eventId, isoTimestamp, makeItemInstance, loadPhbExtrasTestPack } from '../../fixtures/index.js';
+import { absorbElementsHandler } from '../../fixtures/handlers/absorb-elements.js';
 
 // Tests Absorb Elements as a dedicated reaction planner. The triggering
 // DamageApplied event has already committed; planAbsorbElements emits a
@@ -22,6 +23,12 @@ import { eventId, isoTimestamp, makeItemInstance, loadPhbExtrasTestPack } from '
 // rides the caster's next melee hit (consumeOnTrigger).
 
 const PACK = loadStarterPack();
+
+// Since slice 408 Absorb Elements is a plugin handler invoked via
+// engine.plan.custom (returns { events }), so the absorbed half is read
+// from the AbsorbElementsCast event rather than a bespoke outcome field.
+const halvedOf = (events: ReadonlyArray<{ type: string }>): number | undefined =>
+  (events.find((e) => e.type === 'AbsorbElementsCast') as AbsorbElementsCastEvent | undefined)?.halvedAmount;
 
 const buildWizard = (): Character =>
   CharacterSchema.parse({
@@ -61,7 +68,7 @@ const buildTarget = (): Character =>
   });
 
 const buildCampaign = () => {
-  const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(0) });
+  const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(0), handlers: { action: { 'absorb-elements': absorbElementsHandler } } });
   const wizard = buildWizard();
   let campaign: Campaign = engine.createCampaign({ name: 'absorb-elements' });
   campaign = commit(campaign, [
@@ -93,7 +100,7 @@ const applyIncomingDamage = (
   return { campaign: next, triggeringId };
 };
 
-describe('engine.plan.absorbElements', () => {
+describe('absorb-elements plugin handler (via engine.plan.custom)', () => {
   it.each<DamageType>(['acid', 'cold', 'fire', 'lightning', 'thunder'])(
     "absorbs %s damage: halves the original, applies the matching charged condition",
     (damageType) => {
@@ -101,14 +108,14 @@ describe('engine.plan.absorbElements', () => {
       const { campaign: c1, triggeringId } = applyIncomingDamage(engine, c0, wizard.id, damageType, 20);
 
       const hpBefore = c1.state.characters[wizard.id]!.hp.current;
-      const outcome = engine.plan.absorbElements(c1.state, {
+      const outcome = engine.plan.custom(c1.state, { handlerId: 'absorb-elements', params: {
         casterId: wizard.id,
         triggeringDamageEventId: triggeringId,
         damageType,
         damageAmount: 20,
-      });
+      } });
 
-      expect(outcome.halvedAmount).toBe(10);
+      expect(halvedOf(outcome.events)).toBe(10);
 
       const healed = outcome.events.find((e) => e.type === 'Healed') as HealedEvent | undefined;
       expect(healed).toBeDefined();
@@ -131,7 +138,7 @@ describe('engine.plan.absorbElements', () => {
 
   it('the on-next-hit rider adds +1d6 of the absorbed type and then the condition consumes', () => {
     for (let seed = 1; seed < 100; seed += 1) {
-      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(seed) });
+      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(seed), handlers: { action: { 'absorb-elements': absorbElementsHandler } } });
       const longsword = makeItemInstance('longsword');
       const wizard = buildWizard();
       const target = buildTarget();
@@ -143,12 +150,12 @@ describe('engine.plan.absorbElements', () => {
       ]);
 
       const { campaign: c1, triggeringId } = applyIncomingDamage(engine, campaign, wizard.id, 'fire', 12);
-      const absorbOutcome = engine.plan.absorbElements(c1.state, {
+      const absorbOutcome = engine.plan.custom(c1.state, { handlerId: 'absorb-elements', params: {
         casterId: wizard.id,
         triggeringDamageEventId: triggeringId,
         damageType: 'fire',
         damageAmount: 12,
-      });
+      } });
       const c2 = commit(c1, absorbOutcome.events);
 
       // The wizard now has the absorb-elements-charged-fire-active
@@ -200,7 +207,7 @@ describe('engine.plan.absorbElements', () => {
     // non-crit hit can exceed 6 (impossible with the base 1d6).
     let maxNonCritFire = 0;
     for (let seed = 1; seed < 120; seed += 1) {
-      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(seed) });
+      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(seed), handlers: { action: { 'absorb-elements': absorbElementsHandler } } });
       const longsword = makeItemInstance('longsword');
       const wizard = buildWizard();
       const target = buildTarget();
@@ -211,9 +218,9 @@ describe('engine.plan.absorbElements', () => {
         { id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: target } satisfies CharacterCreatedEvent,
       ]);
       const { campaign: c1, triggeringId } = applyIncomingDamage(engine, campaign, wizard.id, 'fire', 12);
-      const c2 = commit(c1, engine.plan.absorbElements(c1.state, {
+      const c2 = commit(c1, engine.plan.custom(c1.state, { handlerId: 'absorb-elements', params: {
         casterId: wizard.id, triggeringDamageEventId: triggeringId, damageType: 'fire', damageAmount: 12, slotLevel: 3,
-      }).events);
+      } }).events);
       const charged = c2.state.characters[wizard.id]!.appliedConditions.find((c) => c.conditionId === 'absorb-elements-charged-fire-active')!;
       expect(charged.riderDamageDice).toBe('3d6');
       const attack = engine.plan.attack(c2.state, { attackerId: wizard.id, targetId: target.id, weaponInstanceId: longsword.id }).events;
@@ -237,37 +244,37 @@ describe('engine.plan.absorbElements', () => {
       10,
     );
     expect(() =>
-      engine.plan.absorbElements(c1.state, {
+      engine.plan.custom(c1.state, { handlerId: 'absorb-elements', params: {
         casterId: wizard.id,
         triggeringDamageEventId: triggeringId,
         damageType: 'necrotic' as DamageType,
         damageAmount: 10,
-      }),
+      } }),
     ).toThrow(/not in allowed list/);
   });
 
   it('floors odd damage when halving (15 → 7)', () => {
     const { engine, campaign: c0, wizard } = buildCampaign();
     const { campaign: c1, triggeringId } = applyIncomingDamage(engine, c0, wizard.id, 'cold', 15);
-    const outcome = engine.plan.absorbElements(c1.state, {
+    const outcome = engine.plan.custom(c1.state, { handlerId: 'absorb-elements', params: {
       casterId: wizard.id,
       triggeringDamageEventId: triggeringId,
       damageType: 'cold',
       damageAmount: 15,
-    });
-    expect(outcome.halvedAmount).toBe(7);
+    } });
+    expect(halvedOf(outcome.events)).toBe(7);
   });
 
   it('with 0 incoming damage emits no Healed event but still applies the charged condition', () => {
     const { engine, campaign: c0, wizard } = buildCampaign();
     const { campaign: c1, triggeringId } = applyIncomingDamage(engine, c0, wizard.id, 'lightning', 0);
-    const outcome = engine.plan.absorbElements(c1.state, {
+    const outcome = engine.plan.custom(c1.state, { handlerId: 'absorb-elements', params: {
       casterId: wizard.id,
       triggeringDamageEventId: triggeringId,
       damageType: 'lightning',
       damageAmount: 0,
-    });
-    expect(outcome.halvedAmount).toBe(0);
+    } });
+    expect(halvedOf(outcome.events)).toBe(0);
     expect(outcome.events.some((e) => e.type === 'Healed')).toBe(false);
     expect(
       outcome.events.some(
@@ -277,7 +284,7 @@ describe('engine.plan.absorbElements', () => {
   });
 
   it('throws when the reactor has already used their reaction this round (in encounter)', () => {
-    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(0) });
+    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(0), handlers: { action: { 'absorb-elements': absorbElementsHandler } } });
     const wizard = buildWizard();
     const attacker = buildAttacker();
     let campaign: Campaign = engine.createCampaign({ name: 'absorb-reaction-gate' });
@@ -294,22 +301,22 @@ describe('engine.plan.absorbElements', () => {
     const { campaign: c1, triggeringId: t1 } = applyIncomingDamage(engine, campaign, wizard.id, 'fire', 10);
     campaign = commit(
       c1,
-      engine.plan.absorbElements(c1.state, {
+      engine.plan.custom(c1.state, { handlerId: 'absorb-elements', params: {
         casterId: wizard.id,
         triggeringDamageEventId: t1,
         damageType: 'fire',
         damageAmount: 10,
-      }).events,
+      } }).events,
     );
 
     const { campaign: c2, triggeringId: t2 } = applyIncomingDamage(engine, campaign, wizard.id, 'cold', 8);
     expect(() =>
-      engine.plan.absorbElements(c2.state, {
+      engine.plan.custom(c2.state, { handlerId: 'absorb-elements', params: {
         casterId: wizard.id,
         triggeringDamageEventId: t2,
         damageType: 'cold',
         damageAmount: 8,
-      }),
+      } }),
     ).toThrow(/reaction already used/);
   });
 });

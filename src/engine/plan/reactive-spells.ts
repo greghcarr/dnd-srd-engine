@@ -19,7 +19,6 @@ import type {
   SpellDispelledEvent,
   ItemIdentifiedEvent,
   ShieldCastEvent,
-  AbsorbElementsCastEvent,
   SanctuaryProtectedEvent,
   ProtectionUsedEvent,
   GuidanceUsedEvent,
@@ -44,7 +43,7 @@ import type {
 const DC_ABOVE_AUTO_FAIL = 10;
 const COUNTERSPELL_SLOT_LEVEL = 3;
 
-const economyConsumedIfEncountered = (
+export const economyConsumedIfEncountered = (
   state: CampaignState,
   combatantId: string,
   at: string,
@@ -70,7 +69,7 @@ const economyConsumedIfEncountered = (
  * the last round boundary. Out-of-encounter (no active encounter) is a
  * no-op — reactions only exist inside initiative.
  */
-const assertReactionAvailable = (state: CampaignState, combatantId: string, label: string): void => {
+export const assertReactionAvailable = (state: CampaignState, combatantId: string, label: string): void => {
   if (state.activeEncounterId === undefined) return;
   const encounter = state.encounters[state.activeEncounterId];
   if (!encounter) return;
@@ -451,142 +450,6 @@ export const planShield = (
     preventedHit,
   } satisfies ShieldCastEvent);
   return { events, preventedHit };
-};
-
-const ABSORB_ELEMENTS_SPELL_ID = 'absorb-elements';
-const ABSORB_ELEMENTS_MIN_SLOT_LEVEL = 1;
-const ABSORB_ELEMENTS_TYPES: readonly DamageType[] = [
-  'acid',
-  'cold',
-  'fire',
-  'lightning',
-  'thunder',
-];
-
-export interface AbsorbElementsIntent {
-  readonly type: 'AbsorbElements';
-  readonly casterId: string;
-  // The DamageApplied event id whose damage prompted the reaction.
-  // Recorded on the AbsorbElementsCast event for the transcript.
-  readonly triggeringDamageEventId: string;
-  // The damage type to absorb. Must be one of acid, cold, fire,
-  // lightning, thunder; the planner throws otherwise.
-  readonly damageType: DamageType;
-  // The original damage amount of that type from the triggering event.
-  // The planner halves it (rounded down) and emits a compensating
-  // `Healed` event so the caster's HP refund flows through the existing
-  // healing path.
-  readonly damageAmount: number;
-  readonly slotLevel?: number;
-  readonly at?: string;
-}
-
-export interface AbsorbElementsOutcome {
-  readonly events: ReadonlyArray<Event>;
-  // The damage absorbed back via the `Healed` event. Returned in the
-  // outcome for transcript / consumer convenience; also surfaced on
-  // the AbsorbElementsCast notification.
-  readonly halvedAmount: number;
-}
-
-const absorbChargedConditionId = (damageType: DamageType): string =>
-  `absorb-elements-charged-${damageType}-active`;
-
-/**
- * RAW 2024 PHB Absorb Elements: reaction triggered when you take acid,
- * cold, fire, lightning, or thunder damage. The damage you take is
- * halved; the first time you hit with a melee attack on your next turn,
- * the target takes an extra 1d6 damage of the triggering type.
- *
- * Event-sourcing approach: the triggering DamageApplied event has
- * already committed when this planner runs. Rather than mutate that
- * event, we emit a compensating `Healed` event for the absorbed half,
- * so the caster's HP nets out at half the original damage. The
- * `absorb-elements-charged-<type>-active` condition carries the
- * on-next-hit rider (OnEvent + AddDamage + consumeOnTrigger: true).
- *
- * Slot-level scaling (slice 390): the next-hit rider is `${slotLevel}d6`
- * (RAW: 1d6 + 1d6 per slot level above 1st), baked as a per-instance
- * `riderDamageDice` override on the charged condition that the trigger
- * dispatcher reads instead of the condition's fixed 1d6.
- */
-export const planAbsorbElements = (
-  state: CampaignState,
-  content: ResolvedContent,
-  intent: AbsorbElementsIntent,
-): AbsorbElementsOutcome => {
-  const caster = state.characters[intent.casterId];
-  invariant(caster !== undefined, `Caster ${intent.casterId} not found`);
-
-  if (!ABSORB_ELEMENTS_TYPES.includes(intent.damageType)) {
-    throw new Error(
-      `Absorb Elements damage type '${intent.damageType}' not in allowed list [${ABSORB_ELEMENTS_TYPES.join(', ')}]`,
-    );
-  }
-  if (intent.damageAmount < 0) {
-    throw new Error('Absorb Elements damageAmount must be non-negative');
-  }
-
-  const slotLevel = intent.slotLevel ?? ABSORB_ELEMENTS_MIN_SLOT_LEVEL;
-  invariant(slotLevel >= ABSORB_ELEMENTS_MIN_SLOT_LEVEL, 'Absorb Elements is a 1st-level spell');
-
-  const spell = content.spells.get(ABSORB_ELEMENTS_SPELL_ID);
-  invariant(spell !== undefined, 'absorb-elements spell not in content');
-
-  assertReactionAvailable(state, intent.casterId, 'cast Absorb Elements');
-  const at = intent.at ?? nowIso();
-
-  const halvedAmount = Math.floor(intent.damageAmount / 2);
-  const events: Event[] = [];
-
-  const reaction = economyConsumedIfEncountered(state, intent.casterId, at, 'reaction');
-  if (reaction !== undefined) events.push(reaction);
-
-  events.push({
-    id: newEventId() as ULID,
-    at,
-    type: 'SpellSlotConsumed',
-    characterId: intent.casterId,
-    slotLevel,
-  } satisfies SpellSlotConsumedEvent);
-
-  if (halvedAmount > 0) {
-    events.push({
-      id: newEventId() as ULID,
-      at,
-      type: 'Healed',
-      targetId: intent.casterId as ULID,
-      amount: halvedAmount,
-      source: ABSORB_ELEMENTS_SPELL_ID,
-    } satisfies HealedEvent);
-  }
-
-  const conditionId = absorbChargedConditionId(intent.damageType);
-  events.push({
-    id: newEventId() as ULID,
-    at,
-    type: 'ConditionApplied',
-    targetId: intent.casterId,
-    conditionId,
-    appliedConditionId: newAppliedConditionId(),
-    // RAW: the next-hit bonus is 1d6 + 1d6 per slot level above 1st, so at
-    // a slot of level N it is Nd6. Baked here as a per-instance override of
-    // the condition's `1d6` rider; only emitted when upcast keeps the diff
-    // small for the common 1st-level cast.
-    ...(slotLevel > ABSORB_ELEMENTS_MIN_SLOT_LEVEL ? { riderDamageDice: `${slotLevel}d6` } : {}),
-  } satisfies ConditionAppliedEvent);
-
-  events.push({
-    id: newEventId() as ULID,
-    at,
-    type: 'AbsorbElementsCast',
-    casterId: intent.casterId as ULID,
-    triggeringDamageEventId: intent.triggeringDamageEventId as ULID,
-    damageType: intent.damageType,
-    halvedAmount,
-  } satisfies AbsorbElementsCastEvent);
-
-  return { events, halvedAmount };
 };
 
 const UNCANNY_DODGE_SOURCE = 'uncanny-dodge';

@@ -97,7 +97,6 @@ import {
   planBreathWeapon,
   planIdentify,
   planShield,
-  planAbsorbElements,
   planSanctuaryWardSave,
   planProtection,
   planConsumeGuidance,
@@ -139,8 +138,6 @@ import {
   type IdentifyIntent,
   type ShieldIntent,
   type ShieldOutcome,
-  type AbsorbElementsIntent,
-  type AbsorbElementsOutcome,
   type SanctuaryWardSaveIntent,
   type SanctuaryWardSaveOutcome,
   type ProtectionIntent,
@@ -235,6 +232,7 @@ import { nowIso } from '../internal/clock.js';
 import { rollDie, rollExpression } from '../rng/dice.js';
 import { HANDLER_API_VERSION } from '../handlers/index.js';
 import { assertActorCanAct } from './plan/_actor-state.js';
+import { assertReactionAvailable, economyConsumedIfEncountered } from './plan/reactive-spells.js';
 import { computeAvailableSpellSlots } from '../derive/spell-slots.js';
 import type { ULID } from './ids-utils.js';
 import { SCHEMA_VERSION } from '../version.js';
@@ -370,7 +368,6 @@ export interface Engine {
     breathWeapon(state: CampaignState, intent: Omit<BreathWeaponIntent, 'type'>): PlanResult;
     identify(state: CampaignState, intent: Omit<IdentifyIntent, 'type'>): PlanResult;
     shield(state: CampaignState, intent: Omit<ShieldIntent, 'type'>): ShieldOutcome;
-    absorbElements(state: CampaignState, intent: Omit<AbsorbElementsIntent, 'type'>): AbsorbElementsOutcome;
     sanctuaryWardSave(
       state: CampaignState,
       intent: Omit<SanctuaryWardSaveIntent, 'type'>,
@@ -468,6 +465,10 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
         assertActorCanAct: (character, actionLabel) => assertActorCanAct(character, actionLabel),
         spellSlotsRemaining: (character, slotLevel) =>
           computeAvailableSpellSlots(character, content.classes).standardByLevel[slotLevel - 1] ?? 0,
+        assertReactionAvailable: (character, actionLabel) =>
+          assertReactionAvailable(state, character.id, actionLabel),
+        consumeActionEconomy: (character, kind) =>
+          economyConsumedIfEncountered(state, character.id, at, kind),
       };
       return { events: handler.plan(ctx, intent.params) };
     },
@@ -744,9 +745,6 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     shield(state, intent) {
       return planShield(state, content, { type: 'Shield', ...intent });
-    },
-    absorbElements(state, intent) {
-      return planAbsorbElements(state, content, { type: 'AbsorbElements', ...intent });
     },
     sanctuaryWardSave(state, intent) {
       return planSanctuaryWardSave(state, content, rng, {
