@@ -159,7 +159,7 @@ When the user imports a JSON event log:
 
 This is the demo's headline correctness claim. **Add a CI test that runs this verification against every scenario shipped in `web/scenarios/`**, so the demo can't ship with a broken replay claim.
 
-The engine already exposes `serializeCampaign(c): string` and `loadCampaign(s): Campaign` (Layer 9 contract test locks this round-trip), so the demo doesn't need a custom JSON shape — it can round-trip through the engine's own serializer.
+The engine already exposes `serializeCampaign(c): string` and `loadCampaign(s): Campaign` (the contract test locks this round-trip), so the demo doesn't need a custom JSON shape — it can round-trip through the engine's own serializer.
 
 ---
 
@@ -196,7 +196,7 @@ Each risk gets a specific mitigation. If a risk's mitigation can't be done in v1
 
 | Risk | Mitigation |
 | --- | --- |
-| Engine API churns and breaks the demo | Demo imports only from the public package entry. The Layer 9 contract test (`tests/contract/`) catches accidental breakage at engine PR time. When the demo needs a helper that doesn't exist, add it to engine exports (don't sidestep). |
+| Engine API churns and breaks the demo | Demo imports only from the public package entry. The contract test (`tests/contract/`) catches accidental breakage at engine PR time. When the demo needs a helper that doesn't exist, add it to engine exports (don't sidestep). |
 | Demo lags the engine | The dev alias points at local `src/`, so engine work shows up immediately in `dev:web`. Production demo bundles against `dist/`, which is built fresh on every deploy. If the demo behavior diverges from a fresh local `npm run build`, the cause is almost always a stale `package-lock.json` in CI. |
 | Replay verification breaks publicly | CI test runs verification against every shipped scenario before deploy. Failing test blocks deploy. |
 | `base:` path breaks local dev or production | Use the `NODE_ENV` ternary above. Test both `npm run dev:web` and a local `vite preview` of the production build before pushing. |

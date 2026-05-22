@@ -1,4 +1,4 @@
-// Layer 7 (property tests, per CLAUDE.md): random spell-cast sequence
+// Property test: random spell-cast sequence
 // interactions.
 //
 // Targeted tests cover each spell in isolation; this generator fuzzes

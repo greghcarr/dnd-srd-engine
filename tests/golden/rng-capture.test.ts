@@ -10,7 +10,7 @@ import { planLongRest, planShortRest } from '../../src/engine/plan/rest.js';
 import { defaultRNG, seededRNG, throwOnCallRNG } from '../../src/rng/index.js';
 import type { Event } from '../../src/schemas/events/index.js';
 
-describe('Layer 6: RNG capture proof', () => {
+describe('RNG capture proof', () => {
   it('apply() never calls the RNG (replay with ThrowOnCallRNG still works)', () => {
     const character = buildFighter({ hpCurrent: 5, hpMax: 12 });
     const events: Event[] = [

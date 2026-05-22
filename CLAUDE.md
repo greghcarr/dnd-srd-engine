@@ -291,7 +291,7 @@ Single floor of **80% lines + statements** on `src/engine/`, `src/derive/`, `src
 
 ### Explicitly NOT required (cut as ceremony)
 
-- ~~Public API contract snapshot tests. Breaks on every legitimate new export; signal-to-noise is too low.~~ **Reversed (slice 435): now a required layer (Layer 7 above).** The "breaks on every export" concern didn't bear out: the contract tests only move when the public surface actually changes (untouched across the 15 slices 420-434), which is the signal, not noise. For a foundation library consumers pin against, the reviewed per-change diff is worth keeping.
+- ~~Public API contract snapshot tests. Breaks on every legitimate new export; signal-to-noise is too low.~~ **Reversed (slice 435): now a required layer (listed above).** The "breaks on every export" concern didn't bear out: the contract tests only move when the public surface actually changes (untouched across the 15 slices 420-434), which is the signal, not noise. For a foundation library consumers pin against, the reviewed per-change diff is worth keeping.
 - Schema round-trip tests. Zod already guarantees parse stability for valid input.
 - Effect-primitive coverage matrix as a separate file. Real features are exercised through golden scenarios and reducer tests.
 - Property tests at fixed-iteration CI gates. Useful as one-off fuzz runs locally, not as a permanent gate.

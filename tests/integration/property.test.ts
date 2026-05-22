@@ -17,7 +17,7 @@ import type { DamageAppliedEvent, HealedEvent } from '../../src/schemas/events/c
 
 const ITERATIONS = 1000;
 
-describe('Layer 7: property tests', () => {
+describe('property tests', () => {
   it('abilityModifier is monotonic non-decreasing in score', () => {
     fc.assert(
       fc.property(

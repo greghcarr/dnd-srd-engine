@@ -90,7 +90,7 @@ const buildScenarios = (): ReadonlyArray<{ name: string; events: Event[] }> => {
   return scenarios;
 };
 
-describe('Layer 5: replay equivalence invariant', () => {
+describe('replay equivalence invariant', () => {
   for (const scenario of buildScenarios()) {
     it(`${scenario.name}: replay(events) === applyAll(events)`, () => {
       const direct = applyAll(emptyCampaignState(), scenario.events);

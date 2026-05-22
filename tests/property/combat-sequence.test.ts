@@ -1,4 +1,4 @@
-// Layer 7 property test: random combat sequences.
+// Property test: random combat sequences.
 //
 // Sets up an active encounter between 2-4 fighters at random
 // positions, then drives them through up to ~25 random legal actions
