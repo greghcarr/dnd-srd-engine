@@ -41,7 +41,7 @@ Severity column throughout: 🔴 immediately visible to a player at low levels, 
 
 ### Engine gaps
 
-**🔴 / 🟡 status: 0 open.** The RAW-compliance audit at [tests/audit/raw-compliance.test.ts](tests/audit/raw-compliance.test.ts) probes 48 first-page-of-the-PHB rules across action economy, conditions, positioning, concentration, combat math, equipment, and death/dying — **all 48 pass, 0 skipped, 0 failing**. The audit's commit history is the canonical record of which rules were closed when; the [trustworthiness roadmap](docs/trustworthiness-roadmap.md) frames the four-tier path from "alpha" to "trustworthy for unsupervised tabletop play."
+**🔴 / 🟡 status: 0 open.** The RAW-compliance audit at [tests/audit/raw-compliance.test.ts](tests/audit/raw-compliance.test.ts) probes 48 first-page-of-the-PHB rules across action economy, conditions, positioning, concentration, combat math, equipment, and death/dying — **all 48 pass, 0 skipped, 0 failing**. The audit's commit history is the canonical record of which rules were closed when; the [trustworthiness roadmap](trustworthiness-roadmap.md) frames the four-tier path from "alpha" to "trustworthy for unsupervised tabletop play," and the [SRD rule-coverage ledger](srd-coverage-ledger.md) tracks per-rule verification status (🟢 ground-truth / 🟡 probe-tested / 🔴 unverified), making the circular-vs-audited surface explicit.
 
 The audit is a floor, not a ceiling — it probes 48 specific rules. RAW areas the audit doesn't yet probe (exhaustion progression effects, multiclass spell-slot math, death-save nat-1/nat-20 edge cases, Frightened-on-attack-roll disadvantage, etc.) could surface new gaps. Adding a probe is ~10-15 lines; the file is structured for incremental growth.
 

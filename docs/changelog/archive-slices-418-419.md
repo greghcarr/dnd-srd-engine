@@ -1,0 +1,27 @@
+# CHANGELOG archive: slices 418-419 (read layer parts 7-8)
+
+Per-slice detail for slices 418-419, moved out of the live [CHANGELOG.md](../../CHANGELOG.md) in slice 420 to keep it under the 60 KB single-Read ceiling. Cohort: the character-sheet unarmed strike entry that completed the sheet (418) and the encounter / combat-state view model (419). See also [archive-slices-416-417.md](archive-slices-416-417.md) and [docs/api-overview.md](../api-overview.md).
+
+---
+
+**Engine (slice 419): encounter / combat-state view model (read layer, part 8)**
+
+The other major read-layer surface alongside the character sheet: the combat tracker. New `buildEncounterView(state, content, encounterId)` returns an `EncounterView` with the encounter's `status` / `round` / `activeCombatantId` and `combatants` in initiative order. Each `CombatantView` carries `name` / `initiative` / `isActive` (whose turn it is, only while active) / `hp` (current / max / temp) / `ac` (via the existing `computeAC`) / `exhaustion` / `conditions` (`{ id, name }`, name resolved from the pack) / `defeated` (HP <= 0) / `turn` (action / bonus / reaction used + feet moved this turn). Returns undefined for an unknown encounter id; combatants whose `Character` is missing from state are skipped. Pure assembly over the encounter + character state; invents no rules (combatants, PCs and monsters alike, are `Character` entities keyed by `combatantId`; the array is already initiative-ordered with `activeIndex` indexing it).
+
+With this the read layer covers the three core D&D-Beyond screens an app renders: the content browser (slice 411), the character sheet (slices 413-418), and now the combat tracker.
+
+New public exports: `buildEncounterView` + `EncounterView` / `CombatantView` / `CombatantConditionView` / `CombatantTurnView`.
+
+Uncle Bob audit (engine slice): **Names** `buildEncounterView` / `CombatantView` / `EncounterView` say what they are. **DRY** reuses `computeAC`; reads action-economy + initiative straight off the stored combatant. **SRP** the view only assembles + resolves combatant -> character + condition names; AC / turn rules stay in their owners. **Magic numbers** none (HP-0 defeated check is the engine's own downed convention). **at-threading** n/a (pure reads). **Mechanical outcomes asserted** unknown id -> undefined; a planning encounter has no active combatant; an active one marks exactly one combatant active in round 1; combatants descend by initiative; a 0-HP combatant is defeated; an applied condition surfaces with its display name. **Tests** 6 cases driving a real engine encounter (create -> roll initiative -> start -> first turn). No content change. No em/en dashes. `tsc --noEmit` clean; full suite green; contract export snapshot updated.
+
+**Engine (slice 418): character-sheet unarmed strike entry (read layer, part 7, sheet complete)**
+
+Adds the always-available unarmed strike to the attacks list, the last character-sheet gap. New `computeUnarmedStrike(input)` derivation resolves the engine's `unarmed-strike` weapon definition (the same one the attack planner wields, 1d4 bludgeoning in the SRD pack) and returns the to-hit + static damage line: ability mod (STR per the unarmed weapon's non-finesse / non-ranged profile) + the proficiency bonus, applied unconditionally because every creature is proficient with unarmed strikes (RAW) regardless of weapon-proficiency lists. `buildCharacterSheet` appends one unarmed entry (flagged `unarmed: true`, no `weaponInstanceId`) after the inventory weapons; `AttackView.weaponInstanceId` is now optional. Returns / appends nothing when the pack defines no unarmed strike.
+
+Static-line caveat (consistent with every other attack entry, slice 414): the Monk Martial Arts die + DEX option is a class-feature scaling the attack planner applies per attack context (via `applyMartialArtsDieScaling`), so like Sneak Attack and Great Weapon Fighting it is deliberately NOT folded into the sheet's static line. The unarmed entry shows the base unarmed strike, uniform with how every weapon line excludes contextual scaling.
+
+With this the `buildCharacterSheet` view model covers the full D&D-Beyond character-sheet surface: identity / abilities / AC / HP / saves / slots / languages, skills + passives + initiative, speeds, attacks (+ unarmed), spellcasting, and inventory + encumbrance.
+
+New public exports: `computeUnarmedStrike` + `ComputeUnarmedStrikeInput` / `UnarmedStrikeResult`.
+
+Uncle Bob audit (engine slice): **Names** `computeUnarmedStrike` / `UnarmedStrikeResult` / `UNARMED_STRIKE_DEF_ID` say what they are. **DRY** reuses the shared `resolveWeapon`-adjacent `attackAbility` helper + the effect stack; the unarmed-strike id is a single named constant; the result carries the presentation fields so the view doesn't re-fetch the def or repeat the id. **SRP** the derivation owns the unarmed rule (always-proficient, ability choice, die from the def); the view only appends the entry. **Magic numbers** none (1d4 + bludgeoning come from the definition; the always-proficient PB is RAW). **at-threading** n/a (pure reads). **Mechanical outcomes asserted** a fighter's unarmed = STR mod + PB to-hit and 1d4 + STR-mod bludgeoning; it sorts after inventory weapons; it is absent when the pack has no unarmed-strike definition. **Tests** 3 unarmed cases (SRD + test-pack-without-unarmed). No content change. No em/en dashes. `tsc --noEmit` clean; full suite green; contract export snapshot updated.

@@ -2,7 +2,9 @@
 
 What it takes for `dnd-srd-engine` to be safely usable for an unsupervised tabletop session against 5.5e (2024) rules. This is a planning doc, not a marketing one — pessimistic about current state, optimistic only about where the work is going.
 
-Last calibrated: 2026-05-17, post-slice-196.
+Last calibrated: 2026-05-22, post-slice-419.
+
+The per-rule verification status this doc summarizes lives in the [SRD rule-coverage ledger](srd-coverage-ledger.md). This roadmap is the narrative; the ledger is the spreadsheet.
 
 ---
 
@@ -14,15 +16,29 @@ Non-goals: homebrew system support, optional variant rules (sanity / mass combat
 
 ---
 
+## How we verify (and the circularity trap)
+
+The load-bearing caveat behind every "✓" in this doc: **a green test suite proves the code matches the author's reading of the SRD, not the SRD itself.** The same author (Claude, across hundreds of slices) read the rules, wrote the engine, and wrote the tests, so a misread rule gets the same wrong expectation baked into both code and test, and the test passes anyway. Three failure modes hide there, none of which surfaces as a failure: a **misread** rule, a **missing** rule (absence is silent), and an **implemented-but-unpinned** rule.
+
+Only two things defeat this:
+
+- **Ground-truth tests** — expected values derived from the SRD *text*, not the author's memory. The non-circular checks we already have: [srd-drift](../tests/audit/srd-drift.test.ts) (parses the SRD markdown and compares) and [boundaries](../tests/boundaries/) (transcribes printed SRD tables exhaustively). Everything else (the 48 raw-compliance probes, the reducer / derivation unit tests, golden transcripts) is regression-safety over an *unaudited reading* — valuable, but circular.
+- **An independent reader** — someone who did not write the code: a human spot-check, a fresh agent reading SRD-then-code, or `/ultrareview` on the rule-critical modules.
+
+The [coverage ledger](srd-coverage-ledger.md) tags every rule 🟢 ground-truth / 🟡 probe-tested / 🔴 unverified so the circular surface is visible and shrinkable. **Raising trust = moving 🟡 → 🟢 (transcribe SRD examples) and clearing 🔴 (probe the blind spots).**
+
+---
+
 ## Current state honest summary
 
-> **Snapshot scope: as of slice ~196 (2026-05-17).** The content counts in this section are a point-in-time calibration and are intentionally not updated every slice. For live current-state numbers (the pack now ships 351 spells / 194 wired, 253 monsters, 515 items / 258 magic, 121 conditions, etc.) see [status.md](status.md) and [starter-pack-gaps.md](starter-pack-gaps.md). The qualitative assessment below still holds; only the magnitudes have grown.
+> **Snapshot scope: as of slice ~419 (2026-05-22).** The content counts here are a point-in-time calibration, intentionally not updated every slice. For live numbers see [status.md](status.md) and [starter-pack-gaps.md](starter-pack-gaps.md); for per-rule verification status see the [coverage ledger](srd-coverage-ledger.md). The qualitative assessment below holds regardless of magnitude drift.
 
-- **48-probe RAW-compliance audit passes in full** ([tests/audit/raw-compliance.test.ts](../tests/audit/raw-compliance.test.ts)). 0 🔴 / 0 🟡 open. Two ⚪ items remain (sanity, mass-combat variant rules; their flags toggle but the rule interpretation isn't wired).
-- **15-check SRD drift audit harness ships** ([tests/audit/srd-drift.test.ts](../tests/audit/srd-drift.test.ts), slice 195). Compares every pack spell, monster, and magic item against the SRD 5.2.1 markdown clone on the script-detectable fields (schools, levels, components, classes, casting time / range / duration, concentration / ritual flags, halfOnSuccess, attackKind, damage dice; monster AC/HP/CR/abilities; magic-item rarity + attunement). Zero drift today. Slices 177-196 used the same comparison logic ad-hoc to ship ~310 drift fixes before formalizing it as a checked-in test.
-- **The audit's scope is 48 specific rules out of hundreds.** It's a floor, not a ceiling. Adversarial probing keeps finding edge cases that didn't make the initial list (Frightened source-tracking, Charmed attack-blocking, exhaustion progression beyond level 1, multiclass spell-slot edge cases, etc.). Each new category surfaces work the audit didn't anticipate.
-- **Engine vocabulary is still expanding.** Each remaining engine slice adds a small primitive (~50–200 LoC) that closes one named category from [docs/starter-pack-gaps.md](starter-pack-gaps.md). The architectural skeleton is locked; the long tail of "X mechanic for Y spell-cohort" is still being walked.
-- **Content slice is substantial but uneven.** 336 spells (324 SRD 5.2.1 + 12 wired-non-SRD; ~141 mechanically wired), 181 monsters across all 14 creature types (CR 0-24, both dragon ladders fully closed), 330 items including 122 magic items (full SRD 5.2.1 adventuring-gear / tools / consumables surface closed), 12 classes with full L1-L20 tables, 19 backgrounds (4 SRD + 15 PHB 2024 extras), 33 feats (16 SRD + 17 PHB 2024 extras), 97 conditions (15 RAW + 82 rider variants), 12 subclasses (L3 only). The big remaining gaps: the L7+ subclass features (41 SRD-listed), ~189 missing monster statblocks, the long tail of DMG magic items beyond the SRD subset.
+- **48-probe RAW-compliance audit passes in full** ([tests/audit/raw-compliance.test.ts](../tests/audit/raw-compliance.test.ts)). 0 🔴 / 0 🟡 open. Two ⚪ items remain (sanity, mass-combat variant rules; their flags toggle but the rule interpretation isn't wired). These are 🟡 probe-tested in ledger terms: a regression net over an author-asserted reading, not a ground-truth audit.
+- **SRD drift audit is the gold-standard non-circular check** ([tests/audit/srd-drift.test.ts](../tests/audit/srd-drift.test.ts), slice 195; extended slice 377). Parses the SRD 5.2.1 markdown clone and compares every pack spell, monster, magic item, and **class progression table** (per-class proficiency bonus + feature presence/placement per level) on every script-detectable field. Expected values come from the SRD text, so a misread can't pass. Zero drift today. The boundary tables ([tests/boundaries/](../tests/boundaries/)) are the other non-circular surface: printed SRD tables transcribed exhaustively (7 table groups).
+- **The audit's scope is 48 specific rules out of hundreds.** It's a floor, not a ceiling. Adversarial probing keeps finding edge cases that didn't make the initial list. Each new category surfaces work the audit didn't anticipate; the coverage ledger's 🔴 / ◐ rows are the named blind spots, but the scariest gaps are the rules not yet listed at all.
+- **A read/query layer now exposes the engine's outputs as black-box view models** (slices 411–419: `querySpells` / `queryMonsters` / `queryItems`, `buildCharacterSheet`, `buildEncounterView`). This is the natural surface for ground-truth assertions: "given this character spec, the sheet must show AC = X" is a non-circular SRD-math check, and the view models give it a stable shape. The derivation rows in the ledger (AC / saves / skills / spell DC / speeds) are the prime 🟡 → 🟢 upgrade candidates because of it.
+- **Engine vocabulary is still expanding.** Each remaining engine slice adds a small primitive (~50–200 LoC) that closes one named category from [docs/starter-pack-gaps.md](starter-pack-gaps.md). The architectural skeleton is locked.
+- **Content slice is substantial but uneven, and now SRD-clean.** The starter pack is SRD-only as of slices 400–403 (non-SRD PHB content moved to a gitignored extras pack). It ships 339 SRD spells (~182 wired), 253 monsters (SRD catalog complete), 258 magic items + 69 consumables, 12 classes at L1–L20, 4 SRD backgrounds, 18 SRD-derived feats, 9 species, 124 conditions (15 RAW + rider variants), 12 subclasses (L3 baseline + a growing set of post-L3 features). The big remaining gaps: most subclasses (12 of ~50) and L7+ subclass features, ~115 missing MM statblocks, the long tail of DMG magic items, and the ~157 narrative/schema-only spells. See [status.md](status.md) for the live breakdown.
 
 ---
 
@@ -87,8 +103,8 @@ The two remaining ⚪ items (sanity and mass-combat variant rules) are deferred 
 - Per-Metamagic-option spell modification in `planCastSpell` (Twinned, Distant, Quickened, Empowered, ...). Still open. `engine.plan.metamagic` spends the SP cost; the actual spell-shape modification is consumer-driven.
 - Familiar as a first-class entity. Still open.
 - `OfferChoice` at character-creation L1 (only fires on level advancement). Still open.
-- The 3 unwired Fighting Styles (Great Weapon Fighting, Protection, Two-Weapon Fighting). Still open.
-- Auto-expiry for trigger-applied conditions (slice-98 ApplyCondition durations are declarative metadata; the consumer removes the condition). Still open.
+- ~~The 3 unwired Fighting Styles (Great Weapon Fighting, Protection, Two-Weapon Fighting).~~ **Closed (slices 117–121): the 2024 PHB Fighting Style track is complete.**
+- ~~Auto-expiry for trigger-applied conditions.~~ **Closed (slices 98 / 102 / 109): durations stamp `expiresOnRound` / `autoExpiry` and `planAdvanceTurn` sweeps them inside an encounter.**
 
 ---
 
@@ -96,18 +112,20 @@ The two remaining ⚪ items (sanity and mass-combat variant rules) are deferred 
 
 **Goal:** ship `dnd-srd-engine-srd-2024` (Slice 31 from the original Phase D plan, never done) as a separate package that supersedes the starter pack.
 
-**Status:** **PARTIALLY ACHIEVED VIA THE STARTER PACK.** The split between "starter pack ships in the engine package" and "separate SRD package" remains the same as alpha.5, but the starter pack itself has filled out significantly:
+**Status:** **SUBSTANTIALLY ACHIEVED IN-PLACE; the separate package is still unbuilt.** Slices 400–403 split the starter pack so it ships **SRD-only** content (non-SRD PHB material moved to a gitignored extras pack), which means the in-engine pack now *is* the SRD subset Tier 4 aimed at — just not yet extracted as a standalone `dnd-srd-engine-srd-2024` package. The pack has also filled out enormously:
 
-| Category | alpha.4 | Now |
+| Category | alpha.4 | Now (slice 419) |
 |---|---|---|
 | Classes (L1–L20 features) | L1–L5 only | All 12 classes at L1–L20 |
-| Subclasses | 0 | 12 (L3 only) |
-| Spells (in pack) | ~33 | 399 (every PHB 2024) |
-| Spells (mechanically wired) | ~26 | ~152 |
-| Backgrounds | 8 | 16 / 16 PHB 2024 ✓ |
-| Conditions | 15 | 25 (15 RAW + 10 rider) |
+| Subclasses | 0 | 12 (L3 baseline + growing post-L3 set) |
+| Spells (in pack) | ~33 | 339 (SRD 5.2.1, non-SRD moved to extras) |
+| Spells (mechanically wired) | ~26 | ~182 |
+| Species | partial | 9 / 9 SRD ✓ |
+| Backgrounds | 8 | 4 SRD (15 PHB-2024 in extras pack) |
+| Conditions | 15 | 124 (15 RAW + rider variants) |
+| Monsters | ~6 | 253 (SRD catalog complete) |
 
-**Still missing**: most subclasses (12 of ~50), L7 / L10 / L14 subclass features, the DMG magic-item catalog (~9 of hundreds), the bulk of the MM bestiary (~6 of ~370 statblocks), 3 species (Aasimar / Goliath / Orc), many general feats.
+**Still missing**: the standalone SRD package extraction itself; most subclasses (12 of ~50) and L7+ subclass features; ~115 MM statblocks beyond the SRD set; the DMG magic-item long tail; the ~157 narrative/schema-only spells.
 
 **This is mostly content authoring, not engine work.** The schemas and primitive vocabulary support every shipped category; the remaining work is JSON.
 
@@ -130,7 +148,7 @@ By that standard, **the engine is at the minimum-viable-trust threshold for L1�
 
 ## Risks and caveats
 
-- **Audit blind spots.** The audit catches what its 48 `it()`s probe. Categories nobody thinks to write a probe for stay broken silently. The audit is a floor, not a ceiling.
+- **Audit blind spots.** The audit catches what its 48 `it()`s probe. Categories nobody thinks to write a probe for stay broken silently. The audit is a floor, not a ceiling — and even the probes it does have are 🟡 (author-asserted), so they catch regressions, not original misreadings. The [coverage ledger](srd-coverage-ledger.md) is where this surface is tracked.
 - **Per-fix scope creep.** Slice cadence keeps this manageable: each slice ships one primitive + one canonical content user, then commits. Bundling unrelated cleanup is the canonical anti-pattern.
 - **Demo / engine seam.** Some engine slices change the planner contract (the slice-9b OA opportunities surface, the slice-91 reaction-window pattern). Web demo + any existing consumer needs matching changes. Coordinate the seam break with an explicit CHANGELOG note.
 - **2024 rule churn.** The 2024 rules are still bedding in (third-party errata, ruling clarifications). What looks like a RAW violation today may be a clarification target tomorrow. Pin sources where possible (PHB page / errata version).
