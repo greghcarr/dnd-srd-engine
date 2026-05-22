@@ -3,6 +3,7 @@ import { createEngine } from '../../../src/engine/index.js';
 import { seededRNG } from '../../../src/rng/seeded.js';
 import { commit, type Campaign } from '../../../src/engine/commit.js';
 import { loadStarterPack } from '../../../src/content/packs/starter.js';
+import { loadPhbExtrasPack } from '../../../src/content/packs/extras.js';
 import { CharacterSchema, type Character } from '../../../src/schemas/runtime/character.js';
 import {
   ItemInstanceSchema,
@@ -64,7 +65,7 @@ const buildTarget = (name = 'Target'): Character =>
 describe('fireApplyCondition stamps expiresOnRound when inside an active encounter', () => {
   it('Spirit Shroud hit inside an encounter sets expiresOnRound = currentRound + 1', () => {
     for (let seed = 1; seed < 60; seed += 1) {
-      const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(seed) });
+      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasPack()], rng: seededRNG(seed) });
       const sword = longsword();
       const warrior = buildWarrior(sword.id);
       const target = buildTarget();
@@ -125,7 +126,7 @@ describe('fireApplyCondition stamps expiresOnRound when inside an active encount
 
   it('Spirit Shroud hit outside an active encounter leaves expiresOnRound undefined', () => {
     for (let seed = 1; seed < 60; seed += 1) {
-      const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(seed) });
+      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasPack()], rng: seededRNG(seed) });
       const sword = longsword();
       const warrior = buildWarrior(sword.id);
       const target = buildTarget();
@@ -169,7 +170,7 @@ describe('planAdvanceTurn auto-expires conditions at the start of the source cha
   // whose source is A and whose expiresOnRound equals the encounter's
   // starting round + 1.
   const seedScene = () => {
-    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(7) });
+    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasPack()], rng: seededRNG(7) });
     const a = buildWarrior(undefined, 'A');
     const b = buildWarrior(undefined, 'B');
     let campaign: Campaign = engine.createCampaign({ name: 'auto-expire' });

@@ -520,8 +520,606 @@
       "effects": []
     }
   ],
-  "spells": [],
+  "spells": [
+    {
+      "id": "blade-ward",
+      "name": "Blade Ward",
+      "level": 0,
+      "school": "abjuration",
+      "castingTime": "Action",
+      "range": "Self",
+      "components": {
+        "verbal": true,
+        "somatic": true
+      },
+      "duration": "1 round",
+      "concentration": false,
+      "ritual": false,
+      "classes": [
+        "bard",
+        "sorcerer",
+        "warlock",
+        "wizard"
+      ],
+      "mechanicalEffects": [
+        {
+          "kind": "buff",
+          "conditionId": "blade-warded-active"
+        }
+      ]
+    },
+    {
+      "id": "cause-fear",
+      "name": "Cause Fear",
+      "level": 1,
+      "school": "necromancy",
+      "castingTime": "Action",
+      "range": "60 feet",
+      "components": {
+        "verbal": true
+      },
+      "duration": "Concentration, up to 1 minute",
+      "concentration": true,
+      "ritual": false,
+      "classes": [
+        "bard",
+        "sorcerer",
+        "warlock",
+        "wizard"
+      ],
+      "mechanicalEffects": [
+        {
+          "kind": "save",
+          "ability": "WIS",
+          "conditionOnFail": "frightened"
+        }
+      ]
+    },
+    {
+      "id": "absorb-elements",
+      "name": "Absorb Elements",
+      "level": 1,
+      "school": "abjuration",
+      "castingTime": "Reaction",
+      "range": "Self",
+      "components": {
+        "somatic": true
+      },
+      "duration": "1 round",
+      "concentration": false,
+      "ritual": false,
+      "classes": [
+        "druid",
+        "ranger",
+        "sorcerer",
+        "wizard"
+      ],
+      "mechanicalEffects": []
+    },
+    {
+      "id": "armor-of-agathys",
+      "name": "Armor of Agathys",
+      "level": 1,
+      "school": "abjuration",
+      "castingTime": "Action",
+      "range": "Self",
+      "components": {
+        "verbal": true,
+        "somatic": true,
+        "material": "a cup of water"
+      },
+      "duration": "1 hour",
+      "concentration": false,
+      "ritual": false,
+      "classes": [
+        "warlock"
+      ],
+      "mechanicalEffects": [
+        {
+          "kind": "temp-hp",
+          "flatAmount": 5,
+          "extraPerSlotLevel": 5
+        },
+        {
+          "kind": "buff",
+          "conditionId": "armor-of-agathys-active"
+        }
+      ]
+    },
+    {
+      "id": "cloud-of-daggers",
+      "name": "Cloud of Daggers",
+      "level": 2,
+      "school": "conjuration",
+      "castingTime": "Action",
+      "range": "60 feet",
+      "components": {
+        "verbal": true,
+        "somatic": true,
+        "material": "a sliver of glass"
+      },
+      "duration": "Concentration, up to 1 minute",
+      "concentration": true,
+      "ritual": false,
+      "classes": [
+        "bard",
+        "sorcerer",
+        "warlock",
+        "wizard"
+      ],
+      "targeting": {
+        "shape": "cube",
+        "size": 5
+      },
+      "mechanicalEffects": [
+        {
+          "kind": "aura-damage",
+          "rangeFeet": 5,
+          "damageDice": "4d4",
+          "damageType": "slashing",
+          "extraDicePerSlotLevel": 2
+        }
+      ]
+    },
+    {
+      "id": "cordon-of-arrows",
+      "name": "Cordon of Arrows",
+      "level": 2,
+      "school": "transmutation",
+      "castingTime": "Action",
+      "range": "5 feet",
+      "components": {
+        "verbal": true,
+        "somatic": true,
+        "material": "four arrows or bolts"
+      },
+      "duration": "8 hours",
+      "concentration": false,
+      "ritual": false,
+      "classes": [
+        "ranger"
+      ],
+      "mechanicalEffects": [
+        {
+          "kind": "trap",
+          "saveAbility": "DEX",
+          "fixedDC": 13,
+          "damageDice": "1d6",
+          "damageType": "piercing",
+          "halfOnSuccess": false,
+          "charges": 4,
+          "label": "Arrow"
+        }
+      ]
+    },
+    {
+      "id": "summon-beast",
+      "name": "Summon Beast",
+      "level": 2,
+      "school": "conjuration",
+      "castingTime": "Action",
+      "range": "90 feet",
+      "components": {
+        "verbal": true,
+        "somatic": true,
+        "material": "a feather, tuft of fur, and fish tail inside a gilded acorn worth 200+ GP"
+      },
+      "duration": "Concentration, up to 1 hour",
+      "concentration": true,
+      "ritual": false,
+      "classes": [
+        "druid",
+        "ranger"
+      ],
+      "mechanicalEffects": [
+        {
+          "kind": "summon",
+          "name": "Bestial Spirit",
+          "ac": 11,
+          "hpBase": 30,
+          "hpPerSlotAbove": 5,
+          "baseSlotLevel": 2,
+          "speedFeet": 30
+        }
+      ]
+    },
+    {
+      "id": "crusaders-mantle",
+      "name": "Crusader's Mantle",
+      "level": 3,
+      "school": "evocation",
+      "castingTime": "Action",
+      "range": "Self",
+      "components": {
+        "verbal": true
+      },
+      "duration": "Concentration, up to 1 minute",
+      "concentration": true,
+      "ritual": false,
+      "classes": [
+        "paladin"
+      ],
+      "targeting": {
+        "shape": "sphere",
+        "size": 30
+      },
+      "mechanicalEffects": [
+        {
+          "kind": "buff",
+          "conditionId": "crusaders-mantle-active"
+        }
+      ]
+    },
+    {
+      "id": "elemental-weapon",
+      "name": "Elemental Weapon",
+      "level": 3,
+      "school": "transmutation",
+      "castingTime": "Action",
+      "range": "Touch",
+      "components": {
+        "verbal": true,
+        "somatic": true
+      },
+      "duration": "Concentration, up to 1 hour",
+      "concentration": true,
+      "ritual": false,
+      "classes": [
+        "paladin",
+        "druid"
+      ],
+      "mechanicalEffects": []
+    },
+    {
+      "id": "hunger-of-hadar",
+      "name": "Hunger of Hadar",
+      "level": 3,
+      "school": "conjuration",
+      "castingTime": "Action",
+      "range": "150 feet",
+      "components": {
+        "verbal": true,
+        "somatic": true,
+        "material": "a pickled octopus tentacle"
+      },
+      "duration": "Concentration, up to 1 minute",
+      "concentration": true,
+      "ritual": false,
+      "classes": [
+        "warlock"
+      ],
+      "targeting": {
+        "shape": "sphere",
+        "size": 20
+      },
+      "mechanicalEffects": [
+        {
+          "kind": "aura-damage",
+          "trigger": "on-enter",
+          "rangeFeet": 20,
+          "damageDice": "2d6",
+          "damageType": "cold"
+        },
+        {
+          "kind": "aura-damage",
+          "trigger": "on-turn-end",
+          "rangeFeet": 20,
+          "saveAbility": "DEX",
+          "damageDice": "2d6",
+          "damageType": "acid",
+          "halfOnSuccess": true
+        }
+      ]
+    },
+    {
+      "id": "spirit-shroud",
+      "name": "Spirit Shroud",
+      "level": 3,
+      "school": "necromancy",
+      "castingTime": "Bonus Action",
+      "range": "Self",
+      "components": {
+        "verbal": true,
+        "somatic": true
+      },
+      "duration": "Concentration, up to 1 minute",
+      "concentration": true,
+      "ritual": false,
+      "classes": [
+        "cleric",
+        "paladin",
+        "warlock",
+        "wizard"
+      ],
+      "targeting": {
+        "shape": "sphere",
+        "size": 10
+      },
+      "mechanicalEffects": [
+        {
+          "kind": "buff",
+          "casterChoosesVariant": {
+            "variants": [
+              {
+                "key": "cold",
+                "conditionId": "spirit-shroud-cold-active"
+              },
+              {
+                "key": "necrotic",
+                "conditionId": "spirit-shroud-necrotic-active"
+              },
+              {
+                "key": "radiant",
+                "conditionId": "spirit-shroud-radiant-active"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "thunder-step",
+      "name": "Thunder Step",
+      "level": 3,
+      "school": "conjuration",
+      "castingTime": "Action",
+      "range": "90 feet",
+      "components": {
+        "verbal": true
+      },
+      "duration": "Instantaneous",
+      "concentration": false,
+      "ritual": false,
+      "classes": [
+        "sorcerer",
+        "warlock",
+        "wizard"
+      ],
+      "mechanicalEffects": []
+    }
+  ],
   "items": [],
   "monsters": [],
-  "conditions": []
+  "conditions": [
+    {
+      "id": "spirit-shroud-cold-active",
+      "name": "Spirit Shroud: Cold",
+      "description": "Caster's weapon attacks deal +1d8 cold damage on hit, and the target can't regain HP until the start of the caster's next turn. RAW gates the damage on the target being within 10 ft of the caster — not modeled, the rider fires on every hit (broader than RAW). Slot-level scaling (+1d8 per slot above 3rd, up to +7d8 at slot 9) isn't baked into the condition definition. The heal-block applies via an ApplyCondition TriggerAction (`durationRounds: 1`) that stamps `healing-blocked-active` on the hit target; inside an active encounter the engine auto-expires the condition at the start of the caster's next turn via `planAdvanceTurn` (slice 102). Outside an encounter the consumer manages the expiry.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        {
+          "kind": "OnEvent",
+          "id": "spirit-shroud-cold-rider",
+          "trigger": {
+            "eventType": "AttackRolled",
+            "filter": {
+              "kind": "all",
+              "terms": [
+                {
+                  "kind": "eq",
+                  "path": "event.attackerIsSelf",
+                  "value": true
+                },
+                {
+                  "kind": "eq",
+                  "path": "event.hit",
+                  "value": true
+                }
+              ]
+            }
+          },
+          "actions": [
+            {
+              "kind": "AddDamage",
+              "dice": "1d8",
+              "damageType": "cold"
+            },
+            {
+              "kind": "ApplyCondition",
+              "conditionId": "healing-blocked-active",
+              "durationRounds": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "spirit-shroud-necrotic-active",
+      "name": "Spirit Shroud: Necrotic",
+      "description": "Caster's weapon attacks deal +1d8 necrotic damage on hit, and the target can't regain HP until the start of the caster's next turn. Same shape as the cold variant (see cold variant description for the RAW range gate and slot scaling caveats).",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        {
+          "kind": "OnEvent",
+          "id": "spirit-shroud-necrotic-rider",
+          "trigger": {
+            "eventType": "AttackRolled",
+            "filter": {
+              "kind": "all",
+              "terms": [
+                {
+                  "kind": "eq",
+                  "path": "event.attackerIsSelf",
+                  "value": true
+                },
+                {
+                  "kind": "eq",
+                  "path": "event.hit",
+                  "value": true
+                }
+              ]
+            }
+          },
+          "actions": [
+            {
+              "kind": "AddDamage",
+              "dice": "1d8",
+              "damageType": "necrotic"
+            },
+            {
+              "kind": "ApplyCondition",
+              "conditionId": "healing-blocked-active",
+              "durationRounds": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "spirit-shroud-radiant-active",
+      "name": "Spirit Shroud: Radiant",
+      "description": "Caster's weapon attacks deal +1d8 radiant damage on hit, and the target can't regain HP until the start of the caster's next turn. Same shape as the cold variant (see cold variant description).",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        {
+          "kind": "OnEvent",
+          "id": "spirit-shroud-radiant-rider",
+          "trigger": {
+            "eventType": "AttackRolled",
+            "filter": {
+              "kind": "all",
+              "terms": [
+                {
+                  "kind": "eq",
+                  "path": "event.attackerIsSelf",
+                  "value": true
+                },
+                {
+                  "kind": "eq",
+                  "path": "event.hit",
+                  "value": true
+                }
+              ]
+            }
+          },
+          "actions": [
+            {
+              "kind": "AddDamage",
+              "dice": "1d8",
+              "damageType": "radiant"
+            },
+            {
+              "kind": "ApplyCondition",
+              "conditionId": "healing-blocked-active",
+              "durationRounds": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "armor-of-agathys-active",
+      "name": "Armor of Agathys",
+      "description": "Up to 1 hour (Armor of Agathys spell): while the bearer has Temporary Hit Points, any creature that hits them with a melee attack takes 5 cold damage. The temp HP itself is granted by the spell's `temp-hp` mechanic at cast time (5 base + 5 per slot level above 1); the rider here only fires while the bearer's temp HP is > 0, gated by the slice-122 `bearer.tempHp` fact + `gt` predicate. Approximation: the engine doesn't track temp-HP provenance, so the gate fires for any temp HP the bearer holds (broader than RAW which scopes it to the AoA-granted temp HP specifically). Slice 123 added the `event.attackKind` fact, so the rider now correctly gates on melee-only attacks; thrown weapons (dagger, handaxe) still classify as melee here since the engine doesn't track thrown-vs-melee-strike intent.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        {
+          "kind": "OnEvent",
+          "id": "armor-of-agathys-retaliation",
+          "trigger": {
+            "eventType": "AttackRolled",
+            "filter": {
+              "kind": "all",
+              "terms": [
+                {
+                  "kind": "eq",
+                  "path": "event.targetIsSelf",
+                  "value": true
+                },
+                {
+                  "kind": "eq",
+                  "path": "event.hit",
+                  "value": true
+                },
+                {
+                  "kind": "gt",
+                  "path": "bearer.tempHp",
+                  "value": 0
+                },
+                {
+                  "kind": "eq",
+                  "path": "event.attackKind",
+                  "value": "melee"
+                }
+              ]
+            }
+          },
+          "actions": [
+            {
+              "kind": "AddDamageToAttacker",
+              "dice": "0d6+5",
+              "damageType": "cold"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "blade-warded-active",
+      "name": "Blade Warded",
+      "description": "Until end of next turn (Blade Ward cantrip): resistance to Bludgeoning, Piercing, and Slashing damage. The `autoExpiry` field (slice 109) tells the cast-spell planner to stamp `expiresOnRound = currentRound + 1` and `expiryTrigger = 'turnEnd'` on the emitted ConditionApplied when cast inside an active encounter; `planAdvanceTurn` lifts the condition at the end of the bearer's turn in the target round. Outside an encounter the expiry stays consumer-managed.",
+      "stackable": false,
+      "endsOn": [],
+      "autoExpiry": {
+        "afterRounds": 1,
+        "trigger": "turnEnd"
+      },
+      "effects": [
+        {
+          "kind": "GrantResistance",
+          "damageType": "bludgeoning"
+        },
+        {
+          "kind": "GrantResistance",
+          "damageType": "piercing"
+        },
+        {
+          "kind": "GrantResistance",
+          "damageType": "slashing"
+        }
+      ]
+    },
+    {
+      "id": "crusaders-mantle-active",
+      "name": "Crusader's Mantle Active",
+      "description": "+1d4 radiant damage on every weapon hit while the spell lasts.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        {
+          "kind": "OnEvent",
+          "id": "crusaders-mantle-rider",
+          "trigger": {
+            "eventType": "AttackRolled",
+            "filter": {
+              "kind": "all",
+              "terms": [
+                {
+                  "kind": "eq",
+                  "path": "event.attackerIsSelf",
+                  "value": true
+                },
+                {
+                  "kind": "eq",
+                  "path": "event.hit",
+                  "value": true
+                }
+              ]
+            }
+          },
+          "actions": [
+            {
+              "kind": "AddDamage",
+              "dice": "1d4",
+              "damageType": "radiant"
+            }
+          ]
+        }
+      ]
+    }
+  ]
 }

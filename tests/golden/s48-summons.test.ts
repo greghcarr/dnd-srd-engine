@@ -14,6 +14,7 @@ import { applyAll } from '../../src/engine/apply.js';
 import { replay } from '../../src/engine/replay.js';
 import { commit } from '../../src/engine/commit.js';
 import { loadStarterPack } from '../../src/content/packs/starter.js';
+import { loadPhbExtrasPack } from '../../src/content/packs/extras.js';
 import { resolveContent } from '../../src/content/pack.js';
 import { CharacterSchema, type Character } from '../../src/schemas/runtime/character.js';
 import { newCharacterId } from '../../src/ids.js';
@@ -39,8 +40,8 @@ const buildWizard = (): Character =>
 describe('golden: summons + concentration cleanup', () => {
   it('summon, lose concentration, the bound companion disappears; familiar persists', async () => {
     const STARTER_PACK = loadStarterPack();
-    const STARTER_CONTENT = resolveContent([STARTER_PACK]);
-    const engine = createEngine({ contentPacks: [STARTER_PACK], rng: seededRNG(7) });
+    const STARTER_CONTENT = resolveContent([STARTER_PACK, loadPhbExtrasPack()]);
+    const engine = createEngine({ contentPacks: [STARTER_PACK, loadPhbExtrasPack()], rng: seededRNG(7) });
     const alyx = buildWizard();
     let campaign = engine.createCampaign({ name: 'summon-saga' });
     campaign = commit(campaign, [

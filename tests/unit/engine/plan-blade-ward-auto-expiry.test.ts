@@ -19,6 +19,7 @@ import { createEngine } from '../../../src/engine/index.js';
 import { seededRNG } from '../../../src/rng/seeded.js';
 import { commit, type Campaign } from '../../../src/engine/commit.js';
 import { loadStarterPack } from '../../../src/content/packs/starter.js';
+import { loadPhbExtrasPack } from '../../../src/content/packs/extras.js';
 import { CharacterSchema, type Character } from '../../../src/schemas/runtime/character.js';
 import { newCharacterId } from '../../../src/ids.js';
 import type { CharacterCreatedEvent } from '../../../src/schemas/events/progression.js';
@@ -53,7 +54,7 @@ const buildFoe = (): Character =>
   });
 
 const seedInCombat = (extraSetup?: (engine: ReturnType<typeof createEngine>, campaign: Campaign) => Campaign) => {
-  const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(1) });
+  const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasPack()], rng: seededRNG(1) });
   const wizard = buildWizard();
   const foe = buildFoe();
   let campaign: Campaign = engine.createCampaign({ name: 'blade-ward-expiry' });
@@ -102,7 +103,7 @@ describe('Blade Ward turn-end auto-expiry', () => {
   });
 
   it('cast outside an active encounter leaves expiry undefined (consumer-managed)', () => {
-    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(2) });
+    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasPack()], rng: seededRNG(2) });
     const wizard = buildWizard();
     let campaign: Campaign = engine.createCampaign({ name: 'blade-ward-no-encounter' });
     campaign = commit(campaign, [

@@ -3,6 +3,7 @@ import { createEngine } from '../../../src/engine/index.js';
 import { seededRNG } from '../../../src/rng/seeded.js';
 import { commit } from '../../../src/engine/commit.js';
 import { loadStarterPack } from '../../../src/content/packs/starter.js';
+import { loadPhbExtrasPack } from '../../../src/content/packs/extras.js';
 import { CharacterSchema, type Character } from '../../../src/schemas/runtime/character.js';
 import { newCharacterId } from '../../../src/ids.js';
 import type { Campaign } from '../../../src/engine/commit.js';
@@ -53,7 +54,7 @@ describe("Spirit Shroud caster-chosen damage type (3-variant buff with attacker-
     ['radiant', 'radiant'],
   ])("the '%s' variant adds +1d8 %s to the caster's hits", (variantKey, damageType) => {
     for (let seed = 1; seed < 100; seed += 1) {
-      const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(seed) });
+      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasPack()], rng: seededRNG(seed) });
       const longsword = makeItemInstance('longsword');
       const caster = buildCleric();
       const target = buildTarget();
@@ -100,7 +101,7 @@ describe("Spirit Shroud caster-chosen damage type (3-variant buff with attacker-
   });
 
   it('throws when no casterChoice is supplied', () => {
-    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(0) });
+    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasPack()], rng: seededRNG(0) });
     const caster = buildCleric();
     let campaign: Campaign = engine.createCampaign({ name: 'shroud-missing-choice' });
     campaign = commit(campaign, [

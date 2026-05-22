@@ -171,7 +171,10 @@ describe('feature-coverage matrix: weapon masteries', () => {
 
 describe('feature-coverage matrix: conditions', () => {
   it('wired conditions catalog is stable', () => {
-    const wired = PACK.conditions
+    // Reads both packs (the 6 non-SRD spell conditions moved to
+    // phb-2024-extras in slice 402): the matrix asserts the full shipped
+    // capability, so the catalog stays complete across the split.
+    const wired = [...PACK.conditions, ...loadPhbExtrasPack().conditions]
       .filter((c) => isWired(c.effects.length))
       .map((c) => c.id)
       .sort();
