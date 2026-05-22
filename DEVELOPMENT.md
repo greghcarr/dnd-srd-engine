@@ -79,6 +79,21 @@ npm run ci             # typecheck + coverage + build (full gate)
 
 Bump policy, pre-release tag meanings (alpha / beta / rc), promotion criteria, and the roadmap to 1.0.0 are in [VERSIONING.md](VERSIONING.md). Short version: don't bump on every PR, treat ambiguous changes as breaking, update CHANGELOG with every release.
 
+## Cutting a release
+
+A release promotes a coherent group of `dev` slices to `main` under a tag. The headline content counts (spells, items, monsters, conditions, `EFFECT_KINDS`, the spell wired/narrative/deferred split) are guarded per-commit by [tests/audit/doc-counts.test.ts](tests/audit/doc-counts.test.ts) + [tests/audit/gaps-spells-counts.test.ts](tests/audit/gaps-spells-counts.test.ts), so they are always accurate. The one figure that is intentionally NOT guarded per-slice (it moves every commit) is the headline "N tests across M files" total in README.md + docs/status.md. Pin it at release time so a tag never ships a stale total.
+
+On `dev`, before merging to `main`:
+
+1. `npm run release:doc-counts` — runs the full suite, derives the live test/file count, and rewrites the citations in README.md + docs/status.md in place. Review the diff (it should change only the numbers) and commit it as part of the release.
+2. Bump `version` in [package.json](package.json) and regenerate `package-lock.json` (`npm install --package-lock-only`).
+3. Bump `SCHEMA_VERSION` in [src/version.ts](src/version.ts) only if persisted shapes changed (see Schema migrations below).
+4. Promote the `## Unreleased` CHANGELOG heading to `## <version> - <date>` and add a fresh empty `## Unreleased` above it.
+5. `npm run ci` (typecheck + coverage + build) must be green.
+6. Merge `dev` into `main` and tag (`git tag v<version>`). **Only on explicit instruction** — see [CLAUDE.md](CLAUDE.md#commit-dont-push).
+
+`npm run release:doc-counts:check` is the non-writing variant (exits non-zero if stale); use it in CI if the release ever becomes automated.
+
 ## Schema migrations
 
 Bump `SCHEMA_VERSION` in [src/version.ts](src/version.ts) and add a migration function in [src/migrations/](src/migrations/) in the same PR as the breaking schema change. Migration test accompanies it. `SCHEMA_VERSION` is independent of the package version, see [VERSIONING.md](VERSIONING.md) for the contract.

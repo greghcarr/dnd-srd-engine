@@ -38,6 +38,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "ci": "npm run typecheck && npm run test:coverage && npm run build",
+    "release:doc-counts": "node scripts/sync-doc-counts.mjs",
+    "release:doc-counts:check": "node scripts/sync-doc-counts.mjs --check",
     "dev:web": "vite --config vite.web.config.ts",
     "build:web": "vite build --config vite.web.config.ts",
     "preview:web": "vite preview --config vite.web.config.ts",
