@@ -308,7 +308,7 @@ If a test would only exist to satisfy a coverage threshold, do not write it. Add
 
 ## Code style
 
-Defers to [~/.claude/CLAUDE.md](../../../.claude/CLAUDE.md) (global) for the full house style. Project-specific additions:
+Defers to the global house style in `~/.claude/CLAUDE.md` (not a repo file, so not linked here) for the full conventions. Project-specific additions:
 
 - TypeScript strict mode (enforced in [tsconfig.json](tsconfig.json) with `noUncheckedIndexedAccess`)
 - No inline magic numbers/strings: extract to named module-scope constants. The 5.5e rules contain many of these (death-save thresholds, hit die averages, ability score range). Each gets a name.

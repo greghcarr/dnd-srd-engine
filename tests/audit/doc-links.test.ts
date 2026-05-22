@@ -65,7 +65,18 @@ describe('doc-links audit (slice 432): internal markdown links resolve from thei
       if (/^(https?:|mailto:|#|file:|tel:)/.test(href)) continue;
       const path = href.split('#')[0];
       if (!path) continue; // pure anchor
-      if (!existsSync(resolve(base, path))) {
+      const target = resolve(base, path);
+      // A link that resolves above the repo root can never render on GitHub
+      // (it can't escape the repo) and is non-portable (it would pass only on
+      // a machine that happens to have the out-of-repo file). Flag it
+      // deterministically rather than letting existsSync pass on one machine
+      // and fail on CI (slice 438: the project CLAUDE.md's ../../../.claude
+      // link did exactly that).
+      if (relative(REPO_ROOT, target).startsWith('..')) {
+        broken.push(`${relative(REPO_ROOT, file)} -> ${href} (escapes the repo root)`);
+        continue;
+      }
+      if (!existsSync(target)) {
         broken.push(`${relative(REPO_ROOT, file)} -> ${href}`);
       }
     }
