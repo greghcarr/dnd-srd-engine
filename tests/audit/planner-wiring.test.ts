@@ -75,7 +75,7 @@ const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
   // Per-moment ticks / duration sweeps (called at turn boundaries / on movement):
   'expireSpellDurations', 'tickAura', 'tickMovementDamage', 'tickRecurring', 'tickRecurringSave', 'triggerTrap',
   // Special-cast / placed-entity / multi-arg spell planners:
-  'magicWeapon', 'elementalWeapon', 'removeCurse', 'mistyStep', 'thunderStep', 'dimensionDoor',
+  'magicWeapon', 'removeCurse', 'mistyStep', 'thunderStep', 'dimensionDoor',
   'silentImage', 'majorImage', 'clairvoyance', 'scrying', 'arcaneEye', 'divineIntervention',
   'innateSorcery', 'selfRestoration',
   // Sensor / illusion management:

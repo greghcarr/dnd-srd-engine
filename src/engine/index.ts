@@ -59,7 +59,6 @@ import {
   planConsumeItem,
   planUseItem,
   planMagicWeapon,
-  planElementalWeapon,
   planRecklessAttack,
   planStunningStrike,
   planFlurryOfBlows,
@@ -192,7 +191,6 @@ import {
   type ConsumeItemIntent,
   type UseItemIntent,
   type MagicWeaponIntent,
-  type ElementalWeaponIntent,
   type RecklessAttackIntent,
   type StunningStrikeIntent,
   type FlurryOfBlowsIntent,
@@ -232,10 +230,12 @@ import {
   type TickRecurringIntent,
   type TickRecurringSaveIntent,
 } from './plan/index.js';
-import { newCampaignId, newEventId, newAppliedConditionId } from '../ids.js';
+import { newCampaignId, newEventId, newAppliedConditionId, newEffectInstanceId } from '../ids.js';
 import { nowIso } from '../internal/clock.js';
 import { rollDie, rollExpression } from '../rng/dice.js';
 import { HANDLER_API_VERSION } from '../handlers/index.js';
+import { assertActorCanAct } from './plan/_actor-state.js';
+import { computeAvailableSpellSlots } from '../derive/spell-slots.js';
 import type { ULID } from './ids-utils.js';
 import { SCHEMA_VERSION } from '../version.js';
 import { computeAC } from '../derive/ac.js';
@@ -332,7 +332,6 @@ export interface Engine {
     consumeItem(state: CampaignState, intent: Omit<ConsumeItemIntent, 'type'>): PlanResult;
     useItem(state: CampaignState, intent: Omit<UseItemIntent, 'type'>): PlanResult;
     magicWeapon(state: CampaignState, intent: Omit<MagicWeaponIntent, 'type'>): PlanResult;
-    elementalWeapon(state: CampaignState, intent: Omit<ElementalWeaponIntent, 'type'>): PlanResult;
     recklessAttack(state: CampaignState, intent: Omit<RecklessAttackIntent, 'type'>): PlanResult;
     stunningStrike(state: CampaignState, intent: Omit<StunningStrikeIntent, 'type'>): PlanResult;
     flurryOfBlows(state: CampaignState, intent: Omit<FlurryOfBlowsIntent, 'type'>): PlanResult;
@@ -465,6 +464,10 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
         rollExpression: (expr) => rollExpression(expr, rng),
         newEventId: () => newEventId() as ULID,
         newAppliedConditionId,
+        newEffectInstanceId,
+        assertActorCanAct: (character, actionLabel) => assertActorCanAct(character, actionLabel),
+        spellSlotsRemaining: (character, slotLevel) =>
+          computeAvailableSpellSlots(character, content.classes).standardByLevel[slotLevel - 1] ?? 0,
       };
       return { events: handler.plan(ctx, intent.params) };
     },
@@ -627,9 +630,6 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     magicWeapon(state, intent) {
       return { events: planMagicWeapon(state, content, { type: 'MagicWeapon', ...intent }) };
-    },
-    elementalWeapon(state, intent) {
-      return { events: planElementalWeapon(state, content, { type: 'ElementalWeapon', ...intent }) };
     },
     recklessAttack(state, intent) {
       return { events: planRecklessAttack(state, content, { type: 'RecklessAttack', ...intent }) };

@@ -91,7 +91,6 @@ export { planDivineIntervention, type DivineInterventionIntent } from './divine-
 export { planConsumeItem, type ConsumeItemIntent } from './consume-item.js';
 export { planUseItem, type UseItemIntent } from './use-item.js';
 export { planMagicWeapon, type MagicWeaponIntent } from './magic-weapon.js';
-export { planElementalWeapon, type ElementalWeaponIntent } from './elemental-weapon.js';
 export { planRecklessAttack, type RecklessAttackIntent } from './reckless-attack.js';
 export { planStunningStrike, type StunningStrikeIntent } from './stunning-strike.js';
 export { planFlurryOfBlows, type FlurryOfBlowsIntent } from './flurry-of-blows.js';

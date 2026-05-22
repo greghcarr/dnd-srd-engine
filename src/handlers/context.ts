@@ -1,9 +1,10 @@
 import type { CampaignState } from '../schemas/runtime/campaign.js';
+import type { Character } from '../schemas/runtime/character.js';
 import type { ResolvedContent } from '../content/pack.js';
 import type { RNG } from '../rng/index.js';
 import type { DiceRollResult } from '../rng/dice.js';
 import type { ULID } from '../engine/ids-utils.js';
-import type { AppliedConditionId } from '../ids.js';
+import type { AppliedConditionId, EffectInstanceId } from '../ids.js';
 
 // Bumped when the HandlerContext surface changes incompatibly. Consumer
 // plugin code can read `ctx.apiVersion` to guard against a host engine it
@@ -16,10 +17,14 @@ export const HANDLER_API_VERSION = 1 as const;
 // bake the results into the events they return, and emit only EXISTING
 // event types. See docs/plugin-api-design.md for the determinism contract.
 //
-// Phase 1 (slice 406) ships the minimal surface: read-only state + content,
-// the RNG + dice helpers, the single `at` timestamp, and id minters. Later
-// phases add the curated rules helpers (saves, damage mitigation, the fatal
-// chokepoint, spell DC) once a real handler needs them.
+// Grown on demand: slice 406 shipped the minimal surface (state, content,
+// rng, dice, at, id minters); slice 407 added the rules helpers the first
+// retrofit (elemental-weapon) needs (`assertActorCanAct`,
+// `spellSlotsRemaining`, `newEffectInstanceId`). Later retrofits add the
+// save/damage cluster (computeSavingThrow, mitigateDamage, the fatal
+// chokepoint, spell DC) when thunder-step / absorb-elements need them.
+// Everything here is a versioned contract; keep it as small as the use
+// cases demand.
 export interface HandlerContext {
   readonly apiVersion: typeof HANDLER_API_VERSION;
   readonly state: CampaignState;
@@ -30,4 +35,10 @@ export interface HandlerContext {
   rollExpression(expression: string): DiceRollResult;
   newEventId(): ULID;
   newAppliedConditionId(): AppliedConditionId;
+  newEffectInstanceId(): EffectInstanceId;
+  // Throws with a user-readable message if the character can't take an
+  // action (incapacitated / stunned / etc.). Mirrors the built-in planners.
+  assertActorCanAct(character: Character, actionLabel: string): void;
+  // Remaining standard spell slots of the given level for the character.
+  spellSlotsRemaining(character: Character, slotLevel: number): number;
 }
