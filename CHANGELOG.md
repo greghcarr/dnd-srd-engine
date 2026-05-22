@@ -4,6 +4,10 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Docs (slice 430): trustworthiness-roadmap note on what the assurance measures do (and don't) cover as content grows**
+
+Added an "As content grows: drift covers data, not wiring" subsection to [docs/trustworthiness-roadmap.md](docs/trustworthiness-roadmap.md), so a future agent filling out the remaining SRD content (schema-only spells, the MM bestiary, subclass features) knows the boundary: srd-drift, pack-integrity, and the count guards self-scale to verify each new entry's **metadata / presence** automatically, and the derivation conformance tests already cover the complete fixed categories, but **none of them verify that a wired feature's `mechanicalEffects` actually implement the SRD rule**. Every newly wired feature lands 🟡 (author-asserted) by default, and that unverified surface grows with the catalog. Guidance: reuse-of-a-verified-primitive is safe, but the new wire needs a coverage-ledger row and, where the SRD states a checkable value, a ground-truth assertion rather than an author-chosen one. No code/content change.
+
 **Docs (slice 429): archive the slices 426-427 CHANGELOG cohort**
 
 CHANGELOG.md had reached 59,980 bytes (20 under the 60 KB single-Read ceiling) after slice 428, so any further entry would have broken the doc-size audit. Moved the slices 426-427 per-slice detail to [docs/changelog/archive-slices-426-427.md](docs/changelog/archive-slices-426-427.md) and left the standard pointer, bringing the live CHANGELOG back to ~55 KB. The archive's internal links were re-rooted (../../tests, ../srd-coverage-ledger.md) and it ships em/en-dash-free. No code/content change.

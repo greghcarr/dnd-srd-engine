@@ -27,6 +27,15 @@ Only two things defeat this:
 
 The [coverage ledger](srd-coverage-ledger.md) tags every rule 🟢 ground-truth / 🟡 probe-tested / 🔴 unverified so the circular surface is visible and shrinkable. **Raising trust = moving 🟡 → 🟢 (transcribe SRD examples) and clearing 🔴 (probe the blind spots).**
 
+### As content grows: drift covers data, not wiring
+
+A note for anyone filling out the remaining SRD content (the schema-only spells, the MM bestiary, subclass features). The assurance measures split into two behaviors as the catalog grows:
+
+- **Self-scaling (no test changes needed).** [srd-drift](../tests/audit/srd-drift.test.ts) iterates *every* pack spell / monster / magic item / class table, so each new entry is automatically checked against the SRD markdown for its **metadata** (school, level, components, AC, HP, CR, speed, immunities, class-table placement, damage-dice shape). `pack-integrity` sweeps the whole pack similarly, and the count guards (`doc-counts`, `gaps-spells-counts`) fail until the front-door numbers are reconciled. So content **presence and headline fields verify themselves** as you add them. The derivation conformance tests (slices 421-427) cover complete fixed categories (12 classes, 9 species, the weapon / armor tables, the 4 SRD backgrounds), so they don't need touching either.
+- **NOT covered: the mechanical wiring.** srd-drift checks that a spell *exists with the right metadata*, not that its `mechanicalEffects` actually *do* what the SRD prose says. A spell with the correct level/school but a wrongly-wired save-for-half passes drift completely. Every feature you wire therefore lands as 🟡 (author-asserted, circular) by default: its correctness rests on the unit test written alongside it, which can encode the same misreading as the code. **This unverified surface grows with every wired feature**, and nothing auto-catches a misread rule there.
+
+So when wiring new content: the engine *primitive* it reuses is already verified, but the *new wire* is not. Add a [coverage-ledger](srd-coverage-ledger.md) row, and if the SRD states a checkable value (a fixed DC, a die, a count) prefer a ground-truth assertion over an author-chosen one; otherwise flag it for the independent-reader pass. Keeping the ledger's rows current is manual (only its two anchor counts are CI-guarded), and it is the running record of verified-vs-asserted.
+
 ---
 
 ## Current state honest summary
