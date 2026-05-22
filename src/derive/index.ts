@@ -8,6 +8,13 @@ export {
   PROFICIENCY_BONUS_LEVEL_MAX,
 } from './ability.js';
 export {
+  getEffectiveSpeed,
+  getEffectiveSpeeds,
+  getEffectiveSpeedForMode,
+  type GetEffectiveSpeedInput,
+  type EffectiveSpeeds,
+} from './speed.js';
+export {
   computeAC,
   type ACResult,
   type ACBreakdownEntry,

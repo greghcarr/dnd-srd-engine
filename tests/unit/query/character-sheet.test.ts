@@ -15,7 +15,7 @@ import { buildFighter, makeItemInstance, TEST_CONTENT } from '../../fixtures/ind
 import { resolveContent } from '../../../src/content/pack.js';
 import { loadStarterPack } from '../../../src/content/packs/starter.js';
 import { CharacterSchema } from '../../../src/schemas/runtime/character.js';
-import { newCharacterId } from '../../../src/ids.js';
+import { newCharacterId, newAppliedConditionId } from '../../../src/ids.js';
 
 const sheetFor = (level: number) =>
   buildCharacterSheet({
@@ -217,5 +217,39 @@ describe('slice 415: buildCharacterSheet spellcasting', () => {
     const sheet = wizardSheet(['fireball', 'not-a-real-spell'], []);
     const allIds = sheet.spellcasting!.spellsByLevel.flatMap((g) => g.spells.map((s) => s.spellId));
     expect(allIds).toEqual(['fireball']);
+  });
+});
+
+describe('slice 416: buildCharacterSheet speeds', () => {
+  const SRD = resolveContent([loadStarterPack()]);
+
+  it('a grounded character reports only walk', () => {
+    const sheet = buildCharacterSheet({
+      character: buildFighter({ level: 5 }),
+      itemInstances: {},
+      content: TEST_CONTENT,
+    });
+    expect(sheet.speeds.walk).toBe(30);
+    expect(sheet.speeds.fly).toBeUndefined();
+    expect(sheet.speeds.swim).toBeUndefined();
+    expect(sheet.speeds.climb).toBeUndefined();
+    expect(sheet.speeds.burrow).toBeUndefined();
+  });
+
+  it('includes a non-walk mode when an effect grants it (flying-active sets fly 60)', () => {
+    const character = CharacterSchema.parse({
+      id: newCharacterId(),
+      name: 'Flyer',
+      speciesId: 'human',
+      backgroundId: 'soldier',
+      classes: [{ classId: 'fighter', level: 5, hitDiceRemaining: 5 }],
+      abilityScores: { STR: 14, DEX: 12, CON: 14, INT: 10, WIS: 10, CHA: 10 },
+      hp: { current: 30, max: 30, temp: 0 },
+      speedFeet: 30,
+      appliedConditions: [{ id: newAppliedConditionId(), conditionId: 'flying-active' }],
+    });
+    const sheet = buildCharacterSheet({ character, itemInstances: {}, content: SRD });
+    expect(sheet.speeds.walk).toBe(30);
+    expect(sheet.speeds.fly).toBe(60);
   });
 });

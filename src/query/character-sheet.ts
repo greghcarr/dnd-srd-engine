@@ -5,15 +5,14 @@
 // it into the consumer-facing `CharacterSheet` and composes the
 // computed-stats a sheet conspicuously needs but that aggregate omits:
 // all 18 skills (modifier + proficiency + advantage), the three passive
-// scores, initiative, the attacks list (one entry per inventory weapon,
-// with to-hit + static damage line), and the spellcasting block (per-class
-// save DC + attack bonus, and the castable spells grouped by level). Pure
-// assembly over existing derivations: it invents no rules, so RAW
-// correctness lives in the derivations it calls.
+// scores, initiative, effective movement speeds, the attacks list (one
+// entry per inventory weapon, with to-hit + static damage line), and the
+// spellcasting block (per-class save DC + attack bonus, and the castable
+// spells grouped by level). Pure assembly over existing derivations: it
+// invents no rules, so RAW correctness lives in the derivations it calls.
 //
 // Deferred to follow-up slices (each its own derivation cluster): the
-// unarmed strike entry, effective speeds, and the inventory/equipment
-// summary.
+// unarmed strike entry and the inventory/equipment summary.
 import type {
   AbilityScore,
   Skill,
@@ -31,6 +30,7 @@ import {
 import { computeAbilityCheck, computePassiveScore } from '../derive/ability-check.js';
 import { computeAttackBonus, computeWeaponDamage, type WeaponDamage } from '../derive/attack.js';
 import { computeSpellSaveDC, computeSpellAttackBonus } from '../derive/spell-dc.js';
+import { getEffectiveSpeeds, type EffectiveSpeeds } from '../derive/speed.js';
 import { buildEffectStack } from '../derive/effect-stack.js';
 import type { EffectAccumulator } from '../effects/index.js';
 
@@ -108,6 +108,8 @@ export interface CharacterSheet extends DerivedCharacter {
   readonly skills: ReadonlyArray<SkillView>;
   readonly passiveScores: PassiveScores;
   readonly initiative: InitiativeView;
+  /** Effective movement speeds (walk always; non-walk modes only when > 0). */
+  readonly speeds: EffectiveSpeeds;
   /** One entry per weapon in the character's inventory, in inventory order. */
   readonly attacks: ReadonlyArray<AttackView>;
   /** Present only for characters with a spellcasting class or any castable spell. */
@@ -253,6 +255,7 @@ export const buildCharacterSheet = (input: ComputeDerivedCharacterInput): Charac
     skills: SKILLS.map((skill) => skillView(input, effects, skill)),
     passiveScores,
     initiative,
+    speeds: getEffectiveSpeeds(input),
     attacks: attackViews(input),
     ...(spellcasting !== undefined ? { spellcasting } : {}),
   };
