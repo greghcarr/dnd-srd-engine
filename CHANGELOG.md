@@ -4,29 +4,23 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Docs (slice 433): front-door doc accuracy + staleness refresh (the cleanup half of the review)**
+
+The corrective half of the docs review (slice 432 was the prevention half). Fixed across README, status, roadmap, getting-started, authoring-content-packs, parallel-authoring, slice-template, and VERSIONING:
+
+- **Factual errors / broken examples.** Removed the stale "2170 tests across 331 files" (README + status, twice; not a guardable figure so it's gone, not re-pinned). Fixed the broken `engine.handlers.register(...)` example in the authoring guide (no such method) to the real `createEngine({ handlers })` + `engine.plan.custom` form. Replaced the 10-to-40x-stale "~33 spells / 9 magic items / 6 monsters" intro and the false "any class feature past level 1, you write yourself" claim with an SRD-scope framing. Reconciled the roadmap's "399 PHB spells / ~152 wired" (contradicted the SRD-only pack) by deferring to the guarded counts in status.md. Dropped the stale "339-line transcript" figure. Fixed parallel-authoring.md, which described the whole workflow on `main` (contradicting the `dev`-only rule) to use `dev`. Annotated VERSIONING's `git push --tags` as explicit-instruction-only, per the commit-don't-push rule.
+- **Staleness.** Added a pointer in roadmap.md that its themed history covers only through ~slice 122 (live record is CHANGELOG), with the major later cohorts named. De-specified other un-guardable pinned numbers (parallel-authoring "~2060 tests", slice-template "slices 88-100").
+- **Missing coverage.** Added the consumer read/query view-model layer (slices 411-419) and the SRD conformance/ledger arc (420-427) to README ("Why this engine" + Status), status.md (a coverage row + the test-infrastructure inventory), and getting-started ("What's next"). Both surfaces were previously invisible in every front-door doc.
+
+No code/content/public-surface change. doc-links / doc-counts / doc-size / coverage-ledger audits green.
+
 **Infra (slice 432): doc-links CI audit + "doc accuracy is CI-guarded or not stated" norm**
 
 The prevention half of the docs review: stop needing periodic deep reviews by making staleness fail CI. New [tests/audit/doc-links.test.ts](tests/audit/doc-links.test.ts) scans every internal markdown link in the repo, resolves it from the linking file's own directory (the way GitHub resolves relative links), and fails on any that 404, so the link-rot class that slice 431 cleaned up by hand can never silently return. It ignores external links, in-page anchors, and links inside code spans (so documented example code with parens isn't mistaken for a link).
 
 Added a "Doc accuracy: CI-guarded or not stated" norm to CLAUDE.md alongside the existing count-guard rule: a precise, drift-prone claim in a doc must be either CI-guarded against its source (the count audits, the link audit, the coverage-ledger anchors are the model) or not stated as a precise figure (volatile numbers like exact test totals belong in qualitative prose, with the guarded counts carrying the precision). It also flags the next high-value guard to build: typechecking the `ts` code examples in the front-door docs against the real public API. No code/content change; doc-links + doc-size green.
 
-**Docs (slice 431): fix 73 broken internal doc links (GitHub 404s)**
-
-Found during a docs review: many links in `docs/*.md` and several CHANGELOG archives used repo-root-relative hrefs (e.g. a link in `docs/status.md` to `tests/audit/raw-compliance.test.ts`). GitHub resolves relative links from the file's own location, so these resolved to `docs/tests/audit/...` and 404'd. Rewrote 72 of them to correct file-relative paths (`../tests/...`, sibling `starter-pack-gaps.md`, `../../tests/...` from archives, etc.) via a link-resolution pass, plus one hand-fix (`../CLAUDE.md` to `../../CLAUDE.md` in a rollup archive) and un-linked one dead reference (the `phb-2024-extras.json` pack, since moved to the gitignored `content-packs/`). A repo-wide re-scan now reports zero broken internal links except two false positives that are inside backticks (code, not rendered links). Affected: status.md, roadmap.md, parallel-authoring.md, released-versions.md, and two slice archives. No code/content change.
-
-**Docs (slice 430): trustworthiness-roadmap note on what the assurance measures do (and don't) cover as content grows**
-
-Added an "As content grows: drift covers data, not wiring" subsection to [docs/trustworthiness-roadmap.md](docs/trustworthiness-roadmap.md), so a future agent filling out the remaining SRD content (schema-only spells, the MM bestiary, subclass features) knows the boundary: srd-drift, pack-integrity, and the count guards self-scale to verify each new entry's **metadata / presence** automatically, and the derivation conformance tests already cover the complete fixed categories, but **none of them verify that a wired feature's `mechanicalEffects` actually implement the SRD rule**. Every newly wired feature lands 🟡 (author-asserted) by default, and that unverified surface grows with the catalog. Guidance: reuse-of-a-verified-primitive is safe, but the new wire needs a coverage-ledger row and, where the SRD states a checkable value, a ground-truth assertion rather than an author-chosen one. No code/content change.
-
-**Docs (slice 429): archive the slices 426-427 CHANGELOG cohort**
-
-CHANGELOG.md had reached 59,980 bytes (20 under the 60 KB single-Read ceiling) after slice 428, so any further entry would have broken the doc-size audit. Moved the slices 426-427 per-slice detail to [docs/changelog/archive-slices-426-427.md](docs/changelog/archive-slices-426-427.md) and left the standard pointer, bringing the live CHANGELOG back to ~55 KB. The archive's internal links were re-rooted (../../tests, ../srd-coverage-ledger.md) and it ships em/en-dash-free. No code/content change.
-
-**Docs (slice 428): remove em/en dashes from the coverage ledger + live CHANGELOG**
-
-Honors the house "no em dashes or en dashes" rule in the two front-door docs most recently authored this session: replaced every em dash (U+2014) and en dash (U+2013) in [docs/srd-coverage-ledger.md](docs/srd-coverage-ledger.md) and CHANGELOG.md with a hyphen (the ledger's `-` N/A table cells and numeric ranges like `1-30` read naturally; prose appositives become hyphen-joined). Zero em/en dashes remain in either file; the coverage-ledger anchor guard and doc-size audit stay green.
-
-Scope is deliberately bounded to these two files. The dashes are a long-standing repo-wide convention (roughly 250 files: source comments, test files, the gaps catalogs, the CHANGELOG archives, and CLAUDE.md itself), and many live inside string literals that golden / transcript / error-message tests assert on, so a blind global replace would risk breaking the suite. A full repo sweep, if wanted, is a separate careful effort (likely several commits, each verified), not a single mechanical pass. No code/content/public-surface change.
+**Slices 428-431**: per-slice detail archived to [docs/changelog/archive-slices-428-431.md](docs/changelog/archive-slices-428-431.md) (moved in slice 433 to keep the live CHANGELOG under the 60 KB single-Read ceiling). Cohort: the em-dash sweep of the ledger + CHANGELOG (428), the slices-426-427 archive (429), the trustworthiness-roadmap "as content grows" note (430), and the broken-internal-link fix (431).
 
 **Slices 426-427**: per-slice detail archived to [docs/changelog/archive-slices-426-427.md](docs/changelog/archive-slices-426-427.md) (moved in slice 428 to keep the live CHANGELOG under the 60 KB single-Read ceiling). Cohort: the ground-truth species-speed conformance test that surfaced a creation gap (426) and the fix for that gap (427).
 

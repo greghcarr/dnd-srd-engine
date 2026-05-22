@@ -159,4 +159,4 @@ When a release-worthy commit lands on `main`:
 
 1. Bump `package.json` `version` per the rules above.
 2. Move the `## Unreleased` heading in `CHANGELOG.md` to `## X.Y.Z-stage.N - YYYY-MM-DD` and open a fresh `## Unreleased` block.
-3. Tag the commit: `git tag vX.Y.Z-stage.N && git push --tags`. Consumers pinning to a tag get a stable reference; consumers pinning to `github:greghcarr/dnd-srd-engine` get the moving tip.
+3. Tag the commit: `git tag vX.Y.Z-stage.N` (push the tag only on explicit instruction, per the commit-don't-push rule in CLAUDE.md / DEVELOPMENT.md). Consumers pinning to a tag get a stable reference; consumers pinning to `github:greghcarr/dnd-srd-engine` get the moving tip.

@@ -98,9 +98,11 @@ Heavy on data, light on engine code. Each class slice stress-tests Phases A and 
 
 After the original Phase A–E roadmap completed at alpha.5, work shifted to a "primitive + canonical content user" cadence: each slice adds a small targeted Effect kind, TriggerAction, or planner that unblocks a cohort of currently schema-only content, plus the first one or two RAW spells / features that exercise it. Slices land one per session; the architectural skeleton remains untouched.
 
+> **This section's themed summary covers roughly through slice 122.** The live, authoritative per-slice record is [CHANGELOG.md](../CHANGELOG.md) (and its archives under [docs/changelog/](changelog/)). Major cohorts since: the SRD/non-SRD content-pack split (slices 400-403), the consumer read/query view-model layer (411-419: content browse + character-sheet + combat-tracker view models), and the SRD ground-truth conformance arc (420-427: the [coverage ledger](srd-coverage-ledger.md) + six conformance audits, which also found and fixed two real content bugs). For current status see [status.md](status.md).
+
 Grouped by theme:
 
-- **Spell catalog completion** (10 slices). Every PHB 2024 spell now ships in the pack across L0–L9 (399 total). Coverage went from ~33 to 399 spells; mechanically wired count went from ~26 to ~152.
+- **Spell catalog completion** (10 slices). Took the pack from ~33 spells to the full SRD 5.2.1 catalog across L0-L9. (The pack is now SRD-only: the non-SRD PHB spells moved to a separate `phb-2024-extras` pack in slice 402. For current shipped / wired / narrative / schema-only counts, see [status.md](status.md), which is CI-guarded.)
 - **Class features fill-out** (14 slices). All 12 classes have L1–L20 features populated, plus targeted subclass wirings (Cleric Blessed Strikes, Paladin Aura Improvements, etc.). The class-feature matrix is fully wired through L7.
 - **Engine primitives** (~35 slices). New Effect kinds, TriggerAction variants, and planners. Highlights:
   - Summon system (slice 48): `CompanionSummoned` / `CompanionDismissed` events, summon SpellMechanic with inline statblock, slot-level HP scaling. 11 spells wired.

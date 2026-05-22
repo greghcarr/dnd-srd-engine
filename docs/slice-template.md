@@ -7,7 +7,7 @@ For the project-wide slice workflow (event-first, reducer, planner, tests), see 
 ## Pre-flight (every slice)
 
 1. Read the relevant entry in [docs/starter-pack-gaps.md](starter-pack-gaps.md) (the per-primitive future-slice queue + per-spell wired catalog) to confirm scope and pick the canonical content user.
-2. Find the closest prior analogous slice via `git log --oneline | head -40`; skim its commit and tests for the pattern. Recent slices (88–100) are the most representative.
+2. Find the closest prior analogous slice via `git log --oneline | head -40`; skim its commit and tests for the pattern. The recent slices that head shows are the most representative.
 3. Decide which of the three shapes below applies. If two apply, do them as two slices.
 
 ## Definition of done (every slice)

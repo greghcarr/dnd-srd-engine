@@ -1,6 +1,6 @@
 # Authoring content packs
 
-`dnd-srd-engine` ships only the rules engine and a starter content pack. Any class feature past level 1, any subclass, any spell beyond the ~33 in the starter, any DMG magic item beyond the 9 included, any monster beyond the 6 statblocks — you write it yourself. This guide is the reference for doing that.
+`dnd-srd-engine` ships only the rules engine and an SRD 5.2.1 starter content pack. Anything beyond that SRD scope (the full 2024 PHB / DMG / MM, third-party content, your campaign's homebrew) you write yourself, as your own content pack(s). This guide is the reference for doing that. (For what the starter pack already ships, see [status.md](status.md).)
 
 It assumes you've already read [getting-started.md](getting-started.md) and [concepts.md](concepts.md). If you haven't, those explain what a content pack *is* and how it fits into the engine. This document is about *what to put in one*.
 
@@ -57,7 +57,7 @@ for (const issue of issues) {
 }
 ```
 
-Multiple packs merge with later packs winning on ID conflicts. This is how you layer "starter + setting + table homebrew."
+Multiple packs merge into one global per-category id namespace. A cross-pack id collision throws unless the later pack declares that id in its `overrides` list (then the later entry intentionally wins). This is how you layer "starter + setting + table homebrew" without silent clobbering.
 
 ## Entity reference
 
@@ -563,7 +563,7 @@ Used by Unarmored Defense (Barbarian: base 10, DEX + CON), Monk (DEX + WIS), Dra
 ```json
 { "kind": "Custom", "handlerId": "wild-shape-beast-form-selection", "params": { "cr": 1 } }
 ```
-Custom effects do nothing unless the consumer registers a handler with the same `handlerId` via `engine.handlers.register(...)`.
+Custom effects do nothing unless the consumer supplies a handler with the same `handlerId` to `createEngine` (in `opts.handlers` or a `ContentBundle`), and invokes it via `engine.plan.custom(...)`.
 
 ## Common patterns (cookbook)
 
@@ -690,14 +690,27 @@ The `Custom` effect kind plus the handler registry is the escape hatch for mecha
 - The mechanic involves picking from a large dynamic library (Wild Shape's beast forms).
 - The mechanic is iterative or conditional in ways the existing primitives can't express.
 
-Register the handler in your consumer code:
+Supply the handler to `createEngine` (keyed by `handlerId`), then invoke it via `engine.plan.custom`:
 
 ```ts
-engine.handlers.register('my-custom-handler', (context) => {
-  // context: state (read-only), rng, helpers
-  return /* Event[] */;
+const engine = createEngine({
+  contentPacks: [loadStarterPack(), myPack],
+  handlers: {
+    action: {
+      'my-custom-handler': {
+        // ctx: { state (read-only), content, rng, at, helpers }; params: caller-supplied
+        plan(ctx, params) {
+          return [/* Event[] */];
+        },
+      },
+    },
+  },
 });
+
+engine.plan.custom(state, { handlerId: 'my-custom-handler', params: { /* ... */ } });
 ```
+
+A handler can also travel with its pack as a single `ContentBundle` (`{ pack, handlers }`) fed to `createEngine({ bundles: [...] })`. See [docs/plugin-api-design.md](plugin-api-design.md) for the full `HandlerContext` surface and the determinism contract (handlers run at plan time, consume `ctx.rng`, and bake rolls into the events they return).
 
 If you find yourself writing handlers for things that aren't genuinely procedural (e.g., "a feat that adds +2 to one ability"), the right answer is almost always an existing primitive — file an issue with the use case if a primitive feels missing.
 
