@@ -8,6 +8,10 @@ import { nowIso } from '../../internal/clock.js';
 import { resolveAttack } from './attack.js';
 import type { ULID } from '../ids-utils.js';
 
+// Monk Open Hand Technique (Addle) marks a creature unable to make
+// Opportunity Attacks until its next turn.
+const ADDLED_CONDITION_ID = 'addled';
+
 export interface OpportunityAttackIntent {
   readonly type: 'OpportunityAttack';
   readonly reactorId: string;
@@ -49,6 +53,10 @@ export const planOpportunityAttack = (
 ): ReadonlyArray<Event> => {
   const reactor = state.characters[intent.reactorId];
   if (!reactor) throw new Error(`Unknown reactor ${intent.reactorId}`);
+
+  if (reactor.appliedConditions.some((c) => c.conditionId === ADDLED_CONDITION_ID)) {
+    throw new Error(`${reactor.name} is Addled and cannot make Opportunity Attacks`);
+  }
 
   const eligibility = findReactor(state, intent.reactorId);
   if (eligibility === undefined) {

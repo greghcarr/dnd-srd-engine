@@ -244,8 +244,14 @@ export const planMove = (
   // engine emits one OpportunityAvailable per eligible reactor so the
   // consumer can decide (per reactor) whether to dispatch
   // engine.plan.opportunityAttack. Disengage suppresses these for the
-  // rest of the turn.
-  if (!combatant.turnUsage.disengaged) {
+  // rest of the turn. Rogue Withdraw (Cunning Strike) instead grants a
+  // no-provoke distance budget: movement that keeps cumulative travel
+  // within `noProvokeMovementUpToFeet` doesn't provoke, but movement
+  // past that high-water-mark does.
+  const withinNoProvokeBudget =
+    combatant.turnUsage.feetMovedThisTurn + distance <=
+    combatant.turnUsage.noProvokeMovementUpToFeet;
+  if (!combatant.turnUsage.disengaged && !withinNoProvokeBudget) {
     const fromPos = combatant.position;
     const toPos = intent.to;
     const MELEE_REACH = 5;

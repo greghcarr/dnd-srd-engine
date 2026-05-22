@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  AbilityScoreSchema,
   AbilityScoresSchema,
   CharacterLevelSchema,
   DamageTypeSchema,
@@ -51,6 +52,21 @@ export const AppliedConditionSchema = z.object({
   // `EffectInstance.conditionsApplied` instead) and for riders
   // applied by non-concentration sources (class features, magic items).
   sourceEffectInstanceId: ULIDSchema.optional(),
+  // Per-instance fixed-DC recurring save (slice 388). Stamped from the
+  // ConditionApplied event when a non-spell source (Cunning Strike Poison
+  // / Knock Out) wants the bearer to repeat a save at the end of each of
+  // its turns to shake the condition. `planTickRecurringSave` uses these
+  // instead of the condition definition's `recurringSave` + a spell DC.
+  recurringSaveDC: z.number().int().optional(),
+  recurringSaveAbility: AbilityScoreSchema.optional(),
+  // Per-instance override for this condition's OnEvent AddDamage rider
+  // dice (slice 390). Absorb Elements bakes `${slotLevel}d6` here so the
+  // next-hit bonus scales with the slot it was cast at.
+  riderDamageDice: z.string().optional(),
+  // Per-instance "ends if the bearer takes any damage" (slice 391). Set by
+  // Sleep / Knock Out (which apply base `unconscious`); the damage
+  // chokepoint removes the condition when the bearer takes positive damage.
+  endsOnDamage: z.boolean().optional(),
 });
 export type AppliedCondition = z.infer<typeof AppliedConditionSchema>;
 

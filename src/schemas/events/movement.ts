@@ -24,6 +24,12 @@ export const DisengagedEventSchema = EventEnvelopeSchema.extend({
   type: z.literal('Disengaged'),
   encounterId: ULIDSchema,
   combatantId: ULIDSchema,
+  // Rogue Withdraw (Cunning Strike): instead of full-turn Disengage, the
+  // bearer's movement doesn't provoke only up to this many feet (RAW "move
+  // up to half your Speed without provoking"). When set, the reducer stamps
+  // a no-provoke high-water-mark on turnUsage rather than the full-turn
+  // `disengaged` flag. Omitted for the normal Disengage action.
+  limitedToFeet: z.number().int().min(0).optional(),
 });
 export type DisengagedEvent = z.infer<typeof DisengagedEventSchema>;
 

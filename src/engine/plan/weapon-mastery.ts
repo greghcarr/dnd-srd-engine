@@ -19,6 +19,7 @@ import { planConcentrationBreakOnDrop } from './concentration.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { isMagicWeaponAttack } from '../../derive/magicality.js';
+import { creatureSize, isLargeOrSmaller } from '../../derive/creature-size.js';
 import { applyAll } from '../apply.js';
 
 const UNARMED_DC_BASE = 8;
@@ -45,6 +46,24 @@ const recordMasteryEvent = (
   weaponInstanceId,
   ...(targetId !== undefined ? { targetId } : {}),
 });
+
+// Stamps the round-based expiry for a mastery condition that carries an
+// `autoExpiry` (Sap / Slow expire at the start of the attacker's next
+// turn, Vex at the end). Mirrors the cast-spell stamping; outside an
+// active encounter expiry stays consumer-managed (no fields emitted).
+const masteryExpiryFields = (
+  state: CampaignState,
+  content: ResolvedContent,
+  conditionId: string,
+): { expiresOnRound?: number; expiryTrigger?: 'turnStart' | 'turnEnd' } => {
+  const autoExpiry = content.conditions.get(conditionId)?.autoExpiry;
+  const currentRound = state.activeEncounterId
+    ? state.encounters[state.activeEncounterId]?.round
+    : undefined;
+  return autoExpiry !== undefined && currentRound !== undefined
+    ? { expiresOnRound: currentRound + autoExpiry.afterRounds, expiryTrigger: autoExpiry.trigger }
+    : {};
+};
 
 export interface WeaponMasteryIntent {
   readonly type: 'WeaponMastery';
@@ -85,6 +104,8 @@ export const planWeaponMastery = (
 
   switch (intent.mastery) {
     case 'Sap':
+      // The struck creature attacks with Disadvantage (the bearer's own
+      // SetAdvantage(attack) folds into its attack rolls).
       events.push({
         id: newEventId() as ULID,
         at,
@@ -92,16 +113,24 @@ export const planWeaponMastery = (
         targetId: intent.targetId,
         conditionId: 'sapped',
         appliedConditionId: newAppliedConditionId(),
+        ...masteryExpiryFields(state, content, 'sapped'),
       } satisfies ConditionAppliedEvent);
       break;
     case 'Vex':
+      // Vex grants the ATTACKER Advantage on their next attack against the
+      // struck creature. The condition rides the attacker with
+      // sourceCharacterId set to the target, so SetAdvantageVsSource only
+      // contributes when the attacker next targets that creature (the
+      // mirror of Bestow Curse's cursed-attacks-active).
       events.push({
         id: newEventId() as ULID,
         at,
         type: 'ConditionApplied',
-        targetId: intent.targetId,
-        conditionId: 'vexed-by',
+        targetId: intent.attackerId as ULID,
+        conditionId: 'vexing-active',
+        sourceCharacterId: intent.targetId as ULID,
         appliedConditionId: newAppliedConditionId(),
+        ...masteryExpiryFields(state, content, 'vexing-active'),
       } satisfies ConditionAppliedEvent);
       break;
     case 'Slow':
@@ -112,6 +141,7 @@ export const planWeaponMastery = (
         targetId: intent.targetId,
         conditionId: 'slowed-10ft',
         appliedConditionId: newAppliedConditionId(),
+        ...masteryExpiryFields(state, content, 'slowed-10ft'),
       } satisfies ConditionAppliedEvent);
       break;
     case 'Topple': {
@@ -146,7 +176,8 @@ export const planWeaponMastery = (
       break;
     }
     case 'Push': {
-      const encounter = state.activeEncounterId !== undefined
+      // RAW: Push only moves the target "if it is Large or smaller."
+      const encounter = isLargeOrSmaller(creatureSize(target, content)) && state.activeEncounterId !== undefined
         ? state.encounters[state.activeEncounterId]
         : undefined;
       const targetCombatant = encounter?.combatants.find((c) => c.combatantId === intent.targetId);

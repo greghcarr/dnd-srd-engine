@@ -142,7 +142,7 @@ Damage rolled: 1d8=[8]+4 slashing.
 
 Mastery: Sap against **Goblin Shaman** (Alyx).
 
-**Goblin Shaman** is now sapped.
+**Goblin Shaman** is now Sapped.
 
 **Alyx** spends 1 action-surge.
 
@@ -476,7 +476,7 @@ End of Mira's turn.
 
 Mastery: Sap against **Stoneheart, the Young Red** (Alyx).
 
-**Stoneheart, the Young Red** is now sapped.
+**Stoneheart, the Young Red** is now Sapped.
 
 _(Alyx consumes action)_
 
@@ -498,23 +498,25 @@ End of Alyx's turn.
 
 _(Stoneheart, the Young Red consumes action)_
 
-**Stoneheart, the Young Red** attacks **Alyx**: d20(19) + 10 = 29 vs AC 15 -> hit.
+**Stoneheart, the Young Red** attacks **Alyx** [disadvantage]: d20(19/8) + 10 = 18 vs AC 15 -> hit.
 
-Damage rolled: 2d6=[3,6]+6 slashing.
-
-**Alyx** takes 15 damage from **Stoneheart, the Young Red** (15 slashing). (HP 19 -> 4)
-
-**Stoneheart, the Young Red** attacks **Alyx**: d20(11) + 10 = 21 vs AC 15 -> hit.
+**Stoneheart, the Young Red** is no longer Sapped.
 
 Damage rolled: 2d6=[6,4]+6 slashing.
 
-**Alyx** takes 16 damage from **Stoneheart, the Young Red** (16 slashing). (HP 4 -> -12)
+**Alyx** takes 16 damage from **Stoneheart, the Young Red** (16 slashing). (HP 19 -> 3)
 
-**Stoneheart, the Young Red** attacks **Alyx**: d20(11) + 10 = 21 vs AC 15 -> hit.
+**Stoneheart, the Young Red** attacks **Alyx**: d20(19) + 10 = 29 vs AC 15 -> hit.
 
-Damage rolled: 2d6=[6,5]+6 slashing.
+Damage rolled: 2d6=[4,4]+6 slashing.
 
-**Alyx** takes 17 damage from **Stoneheart, the Young Red** (17 slashing). (HP -12 -> -29)
+**Alyx** takes 14 damage from **Stoneheart, the Young Red** (14 slashing). (HP 3 -> -11)
+
+**Stoneheart, the Young Red** attacks **Alyx**: d20(19) + 10 = 29 vs AC 15 -> hit.
+
+Damage rolled: 2d6=[5,2]+6 slashing.
+
+**Alyx** takes 13 damage from **Stoneheart, the Young Red** (13 slashing). (HP -11 -> -24)
 
 End of Stoneheart, the Young Red's turn.
 
@@ -526,13 +528,13 @@ _(Brother Cassius consumes bonusAction)_
 
 Slot consumed: 1st-level.
 
-**Alyx** healed 6 from healing-word. (HP -29 -> 6)
+**Alyx** healed 6 from healing-word. (HP -24 -> 6)
 
 _(Brother Cassius consumes action)_
 
 _(Brother Cassius consumes attack)_
 
-**Brother Cassius** attacks **Stoneheart, the Young Red**: d20(2) + 6 = 8 vs AC 18 -> miss.
+**Brother Cassius** attacks **Stoneheart, the Young Red**: d20(3) + 6 = 9 vs AC 18 -> miss.
 
 End of Brother Cassius's turn.
 

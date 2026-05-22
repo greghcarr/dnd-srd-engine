@@ -195,6 +195,38 @@ describe('engine.plan.absorbElements', () => {
     throw new Error('no seed produced a hit on the absorb-charged follow-up attack');
   });
 
+  it('upcast scales the next-hit rider: a 3rd-level slot bakes a 3d6 rider (slice 390)', () => {
+    // The charged condition carries the per-instance dice override, and a
+    // non-crit hit can exceed 6 (impossible with the base 1d6).
+    let maxNonCritFire = 0;
+    for (let seed = 1; seed < 120; seed += 1) {
+      const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(seed) });
+      const longsword = makeItemInstance('longsword');
+      const wizard = buildWizard();
+      const target = buildTarget();
+      let campaign: Campaign = engine.createCampaign({ name: `absorb-upcast-${seed}` });
+      campaign = commit(campaign, [
+        { id: eventId(), at: isoTimestamp(), type: 'ItemAcquired', instance: longsword },
+        { id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: wizard } satisfies CharacterCreatedEvent,
+        { id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: target } satisfies CharacterCreatedEvent,
+      ]);
+      const { campaign: c1, triggeringId } = applyIncomingDamage(engine, campaign, wizard.id, 'fire', 12);
+      const c2 = commit(c1, engine.plan.absorbElements(c1.state, {
+        casterId: wizard.id, triggeringDamageEventId: triggeringId, damageType: 'fire', damageAmount: 12, slotLevel: 3,
+      }).events);
+      const charged = c2.state.characters[wizard.id]!.appliedConditions.find((c) => c.conditionId === 'absorb-elements-charged-fire-active')!;
+      expect(charged.riderDamageDice).toBe('3d6');
+      const attack = engine.plan.attack(c2.state, { attackerId: wizard.id, targetId: target.id, weaponInstanceId: longsword.id }).events;
+      const ar = attack.find((e) => e.type === 'AttackRolled') as AttackRolledEvent | undefined;
+      if (ar?.hit !== true || ar.critical === true) continue;
+      const fire = (attack.find((e) => e.type === 'DamageApplied' && (e as DamageAppliedEvent).components.some((c) => c.type === 'fire')) as DamageAppliedEvent | undefined);
+      const fireTotal = fire?.components.filter((c) => c.type === 'fire').reduce((s, c) => s + c.amount, 0) ?? 0;
+      expect(fireTotal).toBeLessThanOrEqual(18); // 3d6
+      maxNonCritFire = Math.max(maxNonCritFire, fireTotal);
+    }
+    expect(maxNonCritFire).toBeGreaterThan(6); // exceeds a single 1d6, proving the scaling
+  });
+
   it('throws when the damage type is outside the allowed elements', () => {
     const { engine, campaign: c0, wizard } = buildCampaign();
     const { campaign: c1, triggeringId } = applyIncomingDamage(

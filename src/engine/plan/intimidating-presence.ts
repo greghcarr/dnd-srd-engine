@@ -34,14 +34,14 @@ export interface IntimidatingPresenceIntent {
 // Bless/Bane bonus dice, Magic Resistance, etc.) and the bare
 // `frightened` condition.
 //
-// Deferred (documented): the RAW "at the end of each of the Frightened
-// creature's turns it repeats the save" arm is not modeled here because
-// the recurring-save planner computes its DC from the source's *spell*
-// save DC, and this is a non-spell feature DC; a feature-DC recurring-
-// save path would be needed. The 1-minute duration and the once-per-
-// Long-Rest use (restorable by spending a Rage) are also consumer-
-// managed / deferred; the Bonus Action economy still limits this to
-// once per turn.
+// The RAW "at the end of each of the Frightened creature's turns it
+// repeats the save" arm IS modeled (slice 389): the Frightened condition
+// is stamped with the per-instance fixed-DC recurring save (slice 388),
+// so `tickRecurringSave` re-rolls the WIS save against this feature DC and
+// lifts the fear on a success. Still deferred / consumer-managed: the
+// 1-minute duration and the once-per-Long-Rest use (restorable by
+// spending a Rage); the Bonus Action economy still limits this to once
+// per turn.
 export const planIntimidatingPresence = (
   state: CampaignState,
   content: ResolvedContent,
@@ -115,6 +115,12 @@ export const planIntimidatingPresence = (
         appliedConditionId: newAppliedConditionId(),
         sourceCharacterId: intent.barbarianId as ULID,
         causedByEventId: result.event.id,
+        // RAW: "At the end of each of its turns, the creature repeats the
+        // save, ending the effect on a success." Baked as a per-instance
+        // fixed-DC recurring WIS save (slice 388 primitive) against the
+        // same feature DC; the consumer ticks it via `tickRecurringSave`.
+        recurringSaveDC: dc,
+        recurringSaveAbility: 'WIS',
       } satisfies ConditionAppliedEvent);
     }
   }

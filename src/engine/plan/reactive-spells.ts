@@ -505,9 +505,10 @@ const absorbChargedConditionId = (damageType: DamageType): string =>
  * `absorb-elements-charged-<type>-active` condition carries the
  * on-next-hit rider (OnEvent + AddDamage + consumeOnTrigger: true).
  *
- * Slot-level scaling not modeled: the rider always adds 1d6. Higher-
- * level slots' +1d6 per slot above 1st would need either
- * parameterized conditions or a slot-aware AddDamage variant.
+ * Slot-level scaling (slice 390): the next-hit rider is `${slotLevel}d6`
+ * (RAW: 1d6 + 1d6 per slot level above 1st), baked as a per-instance
+ * `riderDamageDice` override on the charged condition that the trigger
+ * dispatcher reads instead of the condition's fixed 1d6.
  */
 export const planAbsorbElements = (
   state: CampaignState,
@@ -568,6 +569,11 @@ export const planAbsorbElements = (
     targetId: intent.casterId,
     conditionId,
     appliedConditionId: newAppliedConditionId(),
+    // RAW: the next-hit bonus is 1d6 + 1d6 per slot level above 1st, so at
+    // a slot of level N it is Nd6. Baked here as a per-instance override of
+    // the condition's `1d6` rider; only emitted when upcast keeps the diff
+    // small for the common 1st-level cast.
+    ...(slotLevel > ABSORB_ELEMENTS_MIN_SLOT_LEVEL ? { riderDamageDice: `${slotLevel}d6` } : {}),
   } satisfies ConditionAppliedEvent);
 
   events.push({

@@ -168,6 +168,12 @@ export const applyConditionApplied = (
     ...(event.sourceEffectInstanceId !== undefined
       ? { sourceEffectInstanceId: event.sourceEffectInstanceId }
       : {}),
+    ...(event.recurringSaveDC !== undefined ? { recurringSaveDC: event.recurringSaveDC } : {}),
+    ...(event.recurringSaveAbility !== undefined
+      ? { recurringSaveAbility: event.recurringSaveAbility }
+      : {}),
+    ...(event.riderDamageDice !== undefined ? { riderDamageDice: event.riderDamageDice } : {}),
+    ...(event.endsOnDamage !== undefined ? { endsOnDamage: event.endsOnDamage } : {}),
   });
   if (event.hpMaxBonusDelta !== undefined && event.hpMaxBonusDelta !== 0) {
     character.hp.maxBonus = (character.hp.maxBonus ?? 0) + event.hpMaxBonusDelta;

@@ -4,6 +4,32 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+## 0.1.0-alpha.13 - 2026-05-21
+
+**Release (slice 399): bump to 0.1.0-alpha.13**
+
+Promotes the post-alpha.12 cohort (slices 376-398) to a tagged release. `package.json` bumped from `0.1.0-alpha.12` to `0.1.0-alpha.13`; `package-lock.json` updated to match. `SCHEMA_VERSION` stays 1: the cohort's new persisted fields are all additive and backward-compatible (`turnUsage.noProvokeMovementUpToFeet` defaults to 0; the per-instance `ConditionApplied` / `AppliedCondition` fields from slices 388/390/391 and `Disengaged.limitedToFeet` from slice 394 are optional), so old saves parse unchanged. The suite is green at 331 files / 2170 passing.
+
+Cohort, in three arcs:
+
+- **matchWalkSpeed + class-feature presence (376-380):** the "equal to your Speed" `matchWalkSpeed` sweep (376), the srd-drift extension that parses SRD class progression tables (377), and the three slice-377 feature-presence closures (378 Weapon Mastery on Barbarian/Fighter/Paladin, 379 Monk Heightened Focus row, 380 Monk Open Hand Technique).
+- **Rogue / Evoker features + full-RAW deviation conversions (381-394):** the inert-weapon-masteries fix + emitted-but-undefined audit (381), Evoker Potent Cantrip (383), the Rogue Cunning Strike family (384-385), then the deviation-conversion run that took every documented Cunning Strike / mastery / spell approximation to full RAW: the "Large or smaller" size gate (386), Sap/Vex one-shot (387), the per-instance fixed-DC recurring save (388) + Intimidating Presence repeat save (389), Absorb Elements slot scaling (390), per-instance "ends on damage" for Sleep + Knock Out (391), Flurry/Multiattack state-threading (392), and Rogue Withdraw's half-Speed no-provoke cap (394, the last documented deviation).
+- **Release-time doc accuracy (395-398):** reconciled the stale headline test/file count (395), then built the release-time gates so it can't recur: the auto-fix count script (396, `npm run release:doc-counts`) and the judgment-figure review report (397, `npm run release:doc-review`), documented as the new "Cutting a release" checklist in DEVELOPMENT.md. The review surfaced + fixed three stale "51 primitives" citations and, during this release, the status page's stale subclass narrative (Open Hand Technique + Potent Cantrip are wired, not stubs). Plus three CHANGELOG archive splits (382, 393, 398) keeping the live file under the single-Read ceiling.
+
+Per-slice detail for the whole cohort is in the per-cohort archives under [docs/changelog/](docs/changelog/) (slices 376-398).
+
+**Docs (slice 398): archive CHANGELOG slices 392-397 (single-Read ceiling)**
+
+The live CHANGELOG had climbed to ~54 KB across the deviation-cleanup tail + release-doc-accuracy infra cohort, with ~6 KB of headroom under the 60 KB single-Read ceiling. Per the doc-size discipline playbook, moved the per-slice detail for slices 392-397 to [docs/changelog/archive-slices-392-397.md](docs/changelog/archive-slices-392-397.md), leaving this slice's entry plus the pointer below. Root-relative links rewritten for the archive's `docs/changelog/` location (`../../` for repo-root files, `../` for `docs/`, bare names for sibling archives); the archive-index block gained the new file. No code or content change; docs only. doc-size + doc-counts audits green; live CHANGELOG back under ~48 KB.
+
+**Slices 392-397**: per-slice detail archived to [docs/changelog/archive-slices-392-397.md](docs/changelog/archive-slices-392-397.md) (moved in slice 398 to keep the live CHANGELOG under the 60 KB single-Read ceiling). Cohort: the Flurry/Multiattack state-threading fix (392), a CHANGELOG archive split (393), the Rogue Withdraw half-Speed conversion that closed the last documented deviation (394), and the release-time doc-accuracy work (395 test/file-count reconcile, 396 the auto-fix count gate, 397 the judgment-figure review report).
+
+**Slices 386-391**: per-slice detail archived to [docs/changelog/archive-slices-386-391.md](docs/changelog/archive-slices-386-391.md) (moved in slice 392 to keep the live CHANGELOG under the 60 KB single-Read ceiling). Cohort: the full-RAW conversions of documented deviations - the "Large or smaller" size gate (386), Sap/Vex one-shot (387), the per-instance fixed-DC recurring save (388) + Intimidating Presence repeat save (389), Absorb Elements slot scaling (390), and per-instance "ends on damage" for Sleep + Knock Out (391).
+
+**Slices 381-385**: per-slice detail archived to [docs/changelog/archive-slices-381-385.md](docs/changelog/archive-slices-381-385.md) (moved in slice 387 to keep the live CHANGELOG under the 60 KB single-Read ceiling). Cohort: the inert-weapon-masteries fix + emitted-but-undefined audit (381), a CHANGELOG archive split (382), Evoker Potent Cantrip (383), and the Rogue Cunning Strike family (384 Cunning Strike + Improved, 385 Devious Strikes).
+
+**Slices 376-380**: per-slice detail archived to [docs/changelog/archive-slices-376-380.md](docs/changelog/archive-slices-376-380.md) (moved in slice 382 to keep the live CHANGELOG under the 60 KB single-Read ceiling). Cohort: the matchWalkSpeed "equal to your Speed" sweep (376), the srd-drift class-progression-table extension (377), and the three slice-377 feature-presence closures (378 Weapon Mastery on Barbarian/Fighter/Paladin + the Flex resolution, 379 Monk Heightened Focus, 380 Monk Open Hand Technique).
+
 ## 0.1.0-alpha.12 - 2026-05-21
 
 **Release (slice 375): bump to 0.1.0-alpha.12**
@@ -193,8 +219,12 @@ Headline changes since alpha.5:
 
 ---
 
-*Slice detail for slices 48-351 has been moved out of the live CHANGELOG to per-cohort archives under [docs/changelog/](docs/changelog/) (single-Read fitness; slices 350-351 were archived in slice 353; slices 345-349 in slice 350; slices 329-336 were archived in slice 340; slices 315-322 in slice 326; slices 301-312 in slice 313; slices 269-280 in slice 288; slices 261-268 in slice 277; slices 252-260 in slice 270; the alpha.6 release block of slices 241-250 in slice 252; older slices in slice 248). Each fits in a single Read tool call:*
+*Slice detail for slices 48-397 has been moved out of the live CHANGELOG to per-cohort archives under [docs/changelog/](docs/changelog/) (single-Read fitness; slices 392-397 were archived in slice 398; slices 386-391 were archived in slice 392; slices 381-385 were archived in slice 387; slices 376-380 were archived in slice 382; slices 350-351 were archived in slice 353; slices 345-349 in slice 350; slices 329-336 were archived in slice 340; slices 315-322 in slice 326; slices 301-312 in slice 313; slices 269-280 in slice 288; slices 261-268 in slice 277; slices 252-260 in slice 270; the alpha.6 release block of slices 241-250 in slice 252; older slices in slice 248). Each fits in a single Read tool call:*
 
+- *[archive-slices-392-397.md](docs/changelog/archive-slices-392-397.md) (post-alpha.12 cohort part 4: the Flurry/Multiattack state-threading fix, a CHANGELOG archive split, the Rogue Withdraw half-Speed conversion that closed the last documented deviation, and the release-time doc-accuracy work (test/file-count reconcile, the auto-fix count gate, the judgment-figure review report))*
+- *[archive-slices-386-391.md](docs/changelog/archive-slices-386-391.md) (post-alpha.12 cohort part 3: full-RAW conversions of documented deviations - the size gate, Sap/Vex one-shot, the per-instance fixed-DC recurring save + Intimidating Presence repeat save, Absorb Elements slot scaling, and per-instance "ends on damage" for Sleep + Knock Out)*
+- *[archive-slices-381-385.md](docs/changelog/archive-slices-381-385.md) (post-alpha.12 cohort part 2: the inert-weapon-masteries fix + emitted-but-undefined audit, a CHANGELOG archive split, Evoker Potent Cantrip, and the Rogue Cunning Strike family (Cunning Strike + Improved + Devious Strikes))*
+- *[archive-slices-376-380.md](docs/changelog/archive-slices-376-380.md) (post-alpha.12 cohort part 1: the matchWalkSpeed "equal to your Speed" sweep, the srd-drift class-progression-table extension, and the three slice-377 feature-presence closures (Weapon Mastery on Barbarian/Fighter/Paladin + the Flex resolution, Monk Heightened Focus, Monk Open Hand Technique))*
 - *[archive-slices-366-373.md](docs/changelog/archive-slices-366-373.md) (post-alpha.11 cohort part 6: two bug-class arcs - the empty-effect-condition fixes (Hideous Laughter, Bestow Curse ability + inactive arms, Resistance cantrip) and the phantom-field-strip fixes (zero-damage save spells, melee-attack mistagging, cantrip non-scaling, item descriptions + the phantom-field audit))*
 - *[archive-slices-361-365.md](docs/changelog/archive-slices-361-365.md) (post-alpha.11 cohort part 5: project-wide doc reconciliation + the CI guards - count-drift, content cross-reference + effect-less-condition, planner-wiring, Custom-handlerId backing)*
 - *[archive-slices-354-360.md](docs/changelog/archive-slices-354-360.md) (post-alpha.11 cohort part 4: the subclass-feature wires Land's Aid / Wholeness of Body / Peerless Skill / Empowered Evocation / Aura of Devotion ally-half, plus archive splits 355-356)*

@@ -285,6 +285,52 @@ describe('pack integrity: conditions with effects are reachable', () => {
   });
 });
 
+describe('pack integrity: engine-emitted conditions are defined in the pack', () => {
+  // The mirror of the reachability audit above. A planner that emits
+  // `ConditionApplied` for a conditionId the pack does NOT define produces
+  // a silently-inert condition: the reducer stores the applied marker, but
+  // `collectConditionEffects` (effect-stack.ts) finds no definition and
+  // applies no effects, and no derivation reads it. Slice 381 found three
+  // weapon masteries (Sap / Vex / Slow) broken exactly this way -- the
+  // planner emitted `sapped` / `vexed-by` / `slowed-10ft`, none defined,
+  // so the masteries did nothing. This guard scans engine source for
+  // `conditionId: '<literal>'` emissions and asserts each is a real pack
+  // condition (or an allowlisted base/interpolated id).
+  const EMITTED_LITERAL = /conditionId:\s*'([a-z0-9-]+)'/g;
+
+  // RAW base conditions the engine emits but the pack does not need to
+  // carry as effect-bearing rows (their mechanics live in engine code) --
+  // currently none are undefined; every base condition the engine names is
+  // in the pack. Interpolated ids (absorb-elements-charged-${type}) never
+  // appear as a full literal, so they don't reach this scan.
+  const ALLOWED_UNDEFINED: ReadonlySet<string> = new Set<string>([]);
+
+  it('every conditionId emitted as a literal in engine source is a defined pack condition', () => {
+    const definedIds = new Set(pack.conditions.map((c) => c.id));
+    const emitted = new Set<string>();
+    for (const file of collectTsFiles(SRC_DIR)) {
+      const text = readFileSync(file, 'utf8');
+      for (const m of text.matchAll(EMITTED_LITERAL)) emitted.add(m[1] as string);
+    }
+    const undefinedEmits = [...emitted]
+      .filter((id) => !definedIds.has(id) && !ALLOWED_UNDEFINED.has(id))
+      .sort();
+    expect(
+      undefinedEmits,
+      `engine emits ConditionApplied for these conditionIds, but the pack defines no such condition (they apply a silently-inert marker): ${JSON.stringify(undefinedEmits)}. Define the condition with its effects, or add a documented ALLOWED_UNDEFINED entry.`,
+    ).toEqual([]);
+  });
+
+  it('the ALLOWED_UNDEFINED allowlist stays accurate (no entry is actually defined)', () => {
+    const definedIds = new Set(pack.conditions.map((c) => c.id));
+    const stale = [...ALLOWED_UNDEFINED].filter((id) => definedIds.has(id)).sort();
+    expect(
+      stale,
+      `ALLOWED_UNDEFINED entries that are now defined in the pack (remove them): ${JSON.stringify(stale)}`,
+    ).toEqual([]);
+  });
+});
+
 describe('pack integrity: content cross-references resolve', () => {
   // Catches a renamed / deleted / mistyped id that a content slice still
   // references (e.g. a `GrantSpell` pointing at a spell id that no longer
@@ -363,6 +409,7 @@ describe('pack integrity: wired spells do not apply effect-less conditions', () 
     'hideous-laughter-active', // slice 366: action-blocking (ACTION_BLOCKING_CONDITIONS) + recurringSave; Incapacitated/Prone are engine-coded base conditions
     'cursed-inert-active', // slice 368: recurringSave { onFail: 'dodge' } drives it (save-or-Dodge); the mechanic is the recurring save, not the effects array
     'resisted', // slice 369: consumer-invoked planConsumeResistance rolls the 1d4 reduction (mirrors Absorb Elements); the marker just says Resistance is active
+    'addled', // slice 380: Open Hand Technique (Addle); the opportunity-attack planner reads the id to bar OAs (the "can't make Opportunity Attacks" restriction isn't an effect primitive)
     // (The slice-361 "known-open bugs" group is now empty — all four were fixed in slices 366-369.)
     // Consumer-managed / narrative (no clean engine model):
     'commanded-approach-active',

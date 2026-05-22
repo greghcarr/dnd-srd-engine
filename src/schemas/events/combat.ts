@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ULIDSchema, DamageTypeSchema } from '../primitives.js';
+import { ULIDSchema, DamageTypeSchema, AbilityScoreSchema, DiceExpressionSchema } from '../primitives.js';
 import { EventEnvelopeSchema } from './envelope.js';
 
 export const DAMAGE_MITIGATION_KINDS = ['resisted', 'immune', 'vulnerable'] as const;
@@ -63,6 +63,28 @@ export const ConditionAppliedEventSchema = EventEnvelopeSchema.extend({
   // Slice 110: parent concentration effect for rider-applied conditions.
   // See AppliedCondition.sourceEffectInstanceId for the full semantics.
   sourceEffectInstanceId: ULIDSchema.optional(),
+  // Per-instance fixed-DC recurring save (slice 388). When both are set,
+  // `planTickRecurringSave` re-rolls this ability save against `recurringSaveDC`
+  // at the end of each of the bearer's turns and removes the condition on a
+  // success, WITHOUT requiring the source to be a spellcaster (the existing
+  // recurringSave path computes a spell DC). The DC is baked at apply time
+  // (Cunning Strike Poison / Knock Out: 8 + the rogue's DEX mod + PB).
+  recurringSaveDC: z.number().int().optional(),
+  recurringSaveAbility: AbilityScoreSchema.optional(),
+  // Per-instance override for the dice of this condition's `OnEvent`
+  // `AddDamage` rider (slice 390). When set, the trigger dispatcher rolls
+  // this dice expression instead of the rider's declared `dice`, letting a
+  // slot-scaled rider live on a fixed condition. Canonical user: Absorb
+  // Elements' next-hit bonus (1d6 + 1d6 per slot level above 1st), baked
+  // at cast time as `${slotLevel}d6`.
+  riderDamageDice: DiceExpressionSchema.optional(),
+  // Per-instance "ends if the bearer takes any damage" (slice 391). The
+  // damage chokepoint (`interceptFatalDamage`) removes the condition when
+  // its bearer takes positive damage. Per-instance because the same base
+  // condition can be applied without this clause: Sleep / Knock Out apply
+  // base `unconscious` that ends on damage, but a 0-HP unconscious does
+  // not. Canonical users: Sleep, Rogue Devious Strikes Knock Out.
+  endsOnDamage: z.boolean().optional(),
 });
 export type ConditionAppliedEvent = z.infer<typeof ConditionAppliedEventSchema>;
 

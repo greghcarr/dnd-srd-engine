@@ -1,4 +1,5 @@
 import type { CampaignState } from '../../schemas/runtime/campaign.js';
+import type { Character } from '../../schemas/runtime/character.js';
 import type { ResolvedContent } from '../../content/pack.js';
 import type { Event } from '../../schemas/events/index.js';
 import type {
@@ -19,7 +20,8 @@ import { rollDie, parseDiceExpression } from '../../rng/dice.js';
 import { newEventId, newAppliedConditionId } from '../../ids.js';
 import { computeAttackBonus } from '../../derive/attack.js';
 import { computeAC } from '../../derive/ac.js';
-import { buildEffectStack } from '../../derive/effect-stack.js';
+import { buildEffectStack, collectEffectsFromCharacter } from '../../derive/effect-stack.js';
+import { cunningStrikeForgoDice, cunningStrikeMinLevel, type CunningStrikeOption } from './cunning-strike.js';
 import { getCreatureType } from '../../derive/creature-type.js';
 import { abilityModifier, effectiveAbilityScore } from '../../derive/ability.js';
 import { computeActionEconomyBudget } from '../../derive/action-economy.js';
@@ -233,6 +235,12 @@ export interface AttackIntent {
   // Symmetric `bearerCanSeeFearSource?` field on ComputeAbilityCheckInput
   // gates the ability-check disadvantage arm.
   readonly bearerCanSeeFearSource?: boolean;
+  // Rogue Cunning Strike (L5+): effects to add to this attack's Sneak
+  // Attack, each forgoing 1d6 of Sneak Attack damage and applying its
+  // effect (Poison / Trip / Withdraw) after the damage. Up to one effect
+  // at L5-10, two at L11+ (Improved Cunning Strike). The chosen effects
+  // only resolve if the attack actually deals Sneak Attack damage.
+  readonly cunningStrike?: ReadonlyArray<CunningStrikeOption>;
   // Slice 278: consumer-supplied per-attacker LoS fact for the Dodge
   // condition's ImposeDisadvantageOnAttackers arm. RAW (SRD 5.2.1
   // Dodge): "any attack roll made against you has Disadvantage if
@@ -317,7 +325,87 @@ export interface ResolveAttackInput {
   // Slice 278: consumer-supplied LoS fact for Dodge. See doc comment
   // on AttackIntent.targetCanSeeAttacker above.
   readonly targetCanSeeAttacker?: boolean;
+  // Rogue Cunning Strike (L5+): effects the attacker adds to this attack's
+  // Sneak Attack, each forgoing 1d6 of Sneak Attack damage. See AttackIntent.
+  readonly cunningStrike?: ReadonlyArray<CunningStrikeOption>;
 }
+
+const CUNNING_STRIKE_LEVEL = 5;
+const IMPROVED_CUNNING_STRIKE_LEVEL = 11;
+
+// The attacker's Sneak Attack die count, read from the `cunningStrikeEligible`
+// AddDamage rider so it tracks the pack's per-level wiring rather than a
+// hardcoded formula. Returns 0 if the attacker has no such rider.
+const sneakAttackDiceCount = (attacker: Character, content: ResolvedContent, state: CampaignState): number => {
+  const effects = collectEffectsFromCharacter({
+    character: attacker, content, itemInstances: state.itemInstances, pendingChoices: state.pendingChoices,
+  });
+  for (const e of effects) {
+    if (e.kind !== 'OnEvent') continue;
+    for (const a of e.actions) {
+      if (a.kind === 'AddDamage' && a.cunningStrikeEligible === true) return parseDiceExpression(a.dice).count;
+    }
+  }
+  return 0;
+};
+
+// Validates a Cunning Strike selection at plan time: the rogue has the
+// feature, the effect count is within the level cap (1 at L5-10, 2 at
+// L11+ via Improved Cunning Strike), and enough Sneak Attack dice exist
+// to forgo. Whether Sneak Attack actually applies to this attack is
+// decided by the trigger filter at dispatch; an unqualifying attack
+// simply resolves no effects.
+const assertCunningStrikeUsable = (
+  attacker: Character,
+  content: ResolvedContent,
+  state: CampaignState,
+  effects: ReadonlyArray<CunningStrikeOption>,
+): void => {
+  const rogueLevel = attacker.classes.find((c) => c.classId === 'rogue')?.level ?? 0;
+  if (rogueLevel < CUNNING_STRIKE_LEVEL) {
+    throw new Error(`${attacker.name} does not have Cunning Strike (requires Rogue level ${CUNNING_STRIKE_LEVEL})`);
+  }
+  // Devious Strikes options (Obscure / Knock Out) require Rogue level 14.
+  const minLevel = cunningStrikeMinLevel(effects);
+  if (rogueLevel < minLevel) {
+    throw new Error(`${attacker.name} does not have Devious Strikes (requires Rogue level ${minLevel})`);
+  }
+  const maxEffects = rogueLevel >= IMPROVED_CUNNING_STRIKE_LEVEL ? 2 : 1;
+  if (effects.length > maxEffects) {
+    throw new Error(`${attacker.name} can use at most ${maxEffects} Cunning Strike effect(s) at Rogue level ${rogueLevel}`);
+  }
+  const sneakDice = sneakAttackDiceCount(attacker, content, state);
+  const forgo = cunningStrikeForgoDice(effects);
+  if (forgo > sneakDice) {
+    throw new Error(`Cunning Strike forgoes ${forgo} Sneak Attack dice but only ${sneakDice} are available`);
+  }
+};
+
+// "Next attack roll" one-shot conditions (Sap / Vex). After the bearer
+// makes an attack roll, remove any `consumeOnAttack` condition it carries
+// so the advantage/disadvantage applies to exactly one attack. A
+// source-keyed condition (Vex's `vexing-active`, which stamps
+// `sourceCharacterId` = the vexed target) is consumed only when the bearer
+// attacks that source; an unkeyed one (Sap's `sapped`) is consumed on any
+// attack. Conditions dedupe by id on apply, so id-based removal is precise.
+const buildConsumeOnAttackRemovals = (
+  attacker: Character,
+  targetId: string,
+  content: ResolvedContent,
+  at: string,
+): ConditionRemovedEvent[] =>
+  attacker.appliedConditions
+    .filter((applied) => {
+      if (content.conditions.get(applied.conditionId)?.consumeOnAttack !== true) return false;
+      return applied.sourceCharacterId === undefined || applied.sourceCharacterId === targetId;
+    })
+    .map((applied) => ({
+      id: newEventId() as ULID,
+      at,
+      type: 'ConditionRemoved',
+      targetId: attacker.id as ULID,
+      conditionId: applied.conditionId,
+    }));
 
 export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> => {
   const { state, content, rng, at } = input;
@@ -325,6 +413,9 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   if (!attacker) throw new Error(`Unknown attacker ${input.attackerId}`);
   const target = state.characters[input.targetId];
   if (!target) throw new Error(`Unknown target ${input.targetId}`);
+  if (input.cunningStrike !== undefined && input.cunningStrike.length > 0) {
+    assertCunningStrikeUsable(attacker, content, state, input.cunningStrike);
+  }
   const weaponInstance = state.itemInstances[input.weaponInstanceId];
   if (!weaponInstance) throw new Error(`Unknown weapon ${input.weaponInstanceId}`);
   const weaponDef = content.items.get(weaponInstance.definitionId);
@@ -692,17 +783,20 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     ...(input.isOpportunityAttack === true ? { isOpportunityAttack: true } : {}),
   };
 
-  const stateAfterAttack = applyAll(state, [attackRolled]);
+  // Sap / Vex are spent by this attack roll (RAW "next attack roll").
+  const consumed = buildConsumeOnAttackRemovals(attacker, input.targetId, content, at);
+  const stateAfterAttack = applyAll(state, [attackRolled, ...consumed]);
   const attackTriggers = dispatchTriggers({
     state: stateAfterAttack,
     content,
     rng,
     event: attackRolled,
     at,
+    ...(input.cunningStrike !== undefined ? { cunningStrike: input.cunningStrike } : {}),
   });
 
   if (!hit) {
-    return [attackRolled, ...attackTriggers];
+    return [attackRolled, ...consumed, ...attackTriggers];
   }
 
   const damageAbility = chooseDamageAbility(attacker, weaponDef);
@@ -994,6 +1088,7 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
 
   return [
     attackRolled,
+    ...consumed,
     ...attackTriggers,
     damageRolled,
     damageApplied,
@@ -1128,6 +1223,7 @@ export const planAttack = (
     ...(intent.targetCanSeeAttacker !== undefined
       ? { targetCanSeeAttacker: intent.targetCanSeeAttacker }
       : {}),
+    ...(intent.cunningStrike !== undefined ? { cunningStrike: intent.cunningStrike } : {}),
     at,
   });
   // If we fired a Loading weapon, append a WeaponLoaded event so the
