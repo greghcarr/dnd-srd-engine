@@ -4,6 +4,10 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Docs (slice 431): fix 73 broken internal doc links (GitHub 404s)**
+
+Found during a docs review: many links in `docs/*.md` and several CHANGELOG archives used repo-root-relative hrefs (e.g. a link in `docs/status.md` to `tests/audit/raw-compliance.test.ts`). GitHub resolves relative links from the file's own location, so these resolved to `docs/tests/audit/...` and 404'd. Rewrote 72 of them to correct file-relative paths (`../tests/...`, sibling `starter-pack-gaps.md`, `../../tests/...` from archives, etc.) via a link-resolution pass, plus one hand-fix (`../CLAUDE.md` to `../../CLAUDE.md` in a rollup archive) and un-linked one dead reference (the `phb-2024-extras.json` pack, since moved to the gitignored `content-packs/`). A repo-wide re-scan now reports zero broken internal links except two false positives that are inside backticks (code, not rendered links). Affected: status.md, roadmap.md, parallel-authoring.md, released-versions.md, and two slice archives. No code/content change.
+
 **Docs (slice 430): trustworthiness-roadmap note on what the assurance measures do (and don't) cover as content grows**
 
 Added an "As content grows: drift covers data, not wiring" subsection to [docs/trustworthiness-roadmap.md](docs/trustworthiness-roadmap.md), so a future agent filling out the remaining SRD content (schema-only spells, the MM bestiary, subclass features) knows the boundary: srd-drift, pack-integrity, and the count guards self-scale to verify each new entry's **metadata / presence** automatically, and the derivation conformance tests already cover the complete fixed categories, but **none of them verify that a wired feature's `mechanicalEffects` actually implement the SRD rule**. Every newly wired feature lands 🟡 (author-asserted) by default, and that unverified surface grows with the catalog. Guidance: reuse-of-a-verified-primitive is safe, but the new wire needs a coverage-ledger row and, where the SRD states a checkable value, a ground-truth assertion rather than an author-chosen one. No code/content change.

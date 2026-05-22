@@ -88,8 +88,8 @@ Forbidden:
 - `tests/coverage/__snapshots__/features.test.ts.snap` — slice 126 narrowed the per-id catalog snapshots to wired-only entries, so pure stub additions don't move this snapshot. If it does move, stop and surface the diff rather than refreshing with `-u`.
 
 Slice cadence (mirrors the engine session):
-1. Pick a batch by reading [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md) Monsters section and the existing `monsters[]` entries in [src/content/packs/starter-pack.json](src/content/packs/starter-pack.json).
-2. Add the JSON entries matching [src/schemas/content/monster.ts](src/schemas/content/monster.ts). Reference entries: Goblin, Orc, Wolf, Skeleton, Ogre, Young Red Dragon, Adult Red Dragon.
+1. Pick a batch by reading [docs/starter-pack-gaps.md](starter-pack-gaps.md) Monsters section and the existing `monsters[]` entries in [src/content/packs/starter-pack.json](../src/content/packs/starter-pack.json).
+2. Add the JSON entries matching [src/schemas/content/monster.ts](../src/schemas/content/monster.ts). Reference entries: Goblin, Orc, Wolf, Skeleton, Ogre, Young Red Dragon, Adult Red Dragon.
 3. Update the gaps doc Monsters section and bump the "Coverage at a glance" count.
 4. Add a CHANGELOG entry under `## Unreleased` with the rigid subhead label above.
 5. `npx vitest run` — full suite green. The content-pack validator catches malformed entries.
@@ -133,8 +133,8 @@ Forbidden:
 - `tests/coverage/__snapshots__/features.test.ts.snap` — pure stub additions don't move it. If a wired magic item (effects or charges) moves it, stop and surface the diff rather than refreshing with `-u`.
 
 Slice cadence (mirrors the engine session):
-1. Pick a batch by reading [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md) Items section and the existing `items[]` entries.
-2. Add the JSON entries matching [src/schemas/content/item.ts](src/schemas/content/item.ts) with `itemKind: 'magic'` and a `rarity` field. Reference entries: Bag of Holding, Wand of Magic Missiles, Cloak of Protection.
+1. Pick a batch by reading [docs/starter-pack-gaps.md](starter-pack-gaps.md) Items section and the existing `items[]` entries.
+2. Add the JSON entries matching [src/schemas/content/item.ts](../src/schemas/content/item.ts) with `itemKind: 'magic'` and a `rarity` field. Reference entries: Bag of Holding, Wand of Magic Missiles, Cloak of Protection.
 3. Update the gaps doc Items section and bump the "Coverage at a glance" count.
 4. Add a CHANGELOG entry under `## Unreleased`.
 5. `npx vitest run` — full suite green.

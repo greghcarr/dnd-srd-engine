@@ -19,14 +19,14 @@ Content refactored (6 wires, 36 entries → 6 effective):
 - `aura-of-protection-active` condition: 6 → 1 (save wildcard with the CHA-mod formula preserved)
 - Paladin L6 Aura of Protection feature (the self-effect entries that mirror the aura's ally condition): 6 → 1 same way
 
-RAW deviation discovered during refactor (pattern-check norm): the existing `blessed` / `baned` wires use a flat +2 / -2, but RAW 5.2.1 says 1d4. Documented in [tests/unit/rules-truth.test.ts:262](tests/unit/rules-truth.test.ts) since the original wire; this slice preserves the approximation and tracks the fix as a new deferred row (needs a per-roll bonus-die primitive distinct from AddModifier's static `value` — Guidance / Resistance / Bardic Inspiration are future canonical users of the same shape).
+RAW deviation discovered during refactor (pattern-check norm): the existing `blessed` / `baned` wires use a flat +2 / -2, but RAW 5.2.1 says 1d4. Documented in [tests/unit/rules-truth.test.ts:262](../../tests/unit/rules-truth.test.ts) since the original wire; this slice preserves the approximation and tracks the fix as a new deferred row (needs a per-roll bonus-die primitive distinct from AddModifier's static `value` — Guidance / Resistance / Bardic Inspiration are future canonical users of the same shape).
 
 Audit:
 - Names: `modifierWildcardKeyFor` mirrors `wildcardKeyFor` from slice 266.
 - DRY: shared `sumList` / `filter` helpers inside the reader avoid copy-paste between sum + breakdown.
 - SRP: schema extension, reader merge, content refactor — three concerns, three layers.
 - at-threading: no event emission in this slice (read-only effect path).
-- Mechanical outcomes: 9 new tests in [tests/unit/effects/add-modifier-wildcard.test.ts](tests/unit/effects/add-modifier-wildcard.test.ts) pin (1) wildcard contributes to every per-ability sum, (2) save vs check don't leak, (3) wildcard + specific stack additively, (4) breakdown surfaces both sources, (5) wildcard query doesn't recursively expand, (6) non-save/check targets unaffected.
+- Mechanical outcomes: 9 new tests in [tests/unit/effects/add-modifier-wildcard.test.ts](../../tests/unit/effects/add-modifier-wildcard.test.ts) pin (1) wildcard contributes to every per-ability sum, (2) save vs check don't leak, (3) wildcard + specific stack additively, (4) breakdown surfaces both sources, (5) wildcard query doesn't recursively expand, (6) non-save/check targets unaffected.
 - 2 existing tests updated: `slice-298-wires.test.ts` (length assertion 12 → 2 with comment); `aura-improvements.test.ts` (drops `.ability === 'WIS'` filter — the entry is wildcard now).
 
 tsc clean; 1833 tests across 268 files (was 1824 / 267; +9 net). Coverage snapshot unchanged (no wiredIds flips — the refactored items were already wired). SRD drift audit unchanged.
@@ -57,7 +57,7 @@ Audit:
 - Magic numbers: 19 (Headband INT floor) cited to RAW + slice-229 primitive doc.
 - Mechanical outcomes: 14 tests pin the 4 wires + the dedup invariant (only one Stone entry exists; canonical name matches SRD; 12-entry effect array preserved).
 
-tsc clean; 1824 tests across 267 files (was 1810 / 266; +14 in new [tests/unit/derive/slice-298-wires.test.ts](tests/unit/derive/slice-298-wires.test.ts)). Coverage snapshot updated for the 4 new wiredIds. SRD drift audit now silently SKIPS Stone of Good Luck via the new name (the SRD entry name still doesn't map to an `srdItems.get` hit because the audit's name parser doesn't match parenthetical canonicals — same as Belt of Giant Strength variants); rarity + attunement assertions still pass.
+tsc clean; 1824 tests across 267 files (was 1810 / 266; +14 in new [tests/unit/derive/slice-298-wires.test.ts](../../tests/unit/derive/slice-298-wires.test.ts)). Coverage snapshot updated for the 4 new wiredIds. SRD drift audit now silently SKIPS Stone of Good Luck via the new name (the SRD entry name still doesn't map to an `srdItems.get` hit because the audit's name parser doesn't match parenthetical canonicals — same as Belt of Giant Strength variants); rarity + attunement assertions still pass.
 
 Doc updates: Items count refreshed (511 → 510; 58 → 62 wired); deferred-primitives backlog gains a tracked row for the universal-save-bonus wildcard primitive (AddModifier save/check wildcard).
 
@@ -71,9 +71,9 @@ Content wired:
 
 Pattern-check: searched for sibling unwired items with bearer-side skill advantage covered by existing primitives. Found these two (and Cloak of the Bat's Stealth arm already wired at slice 279; Eyes of the Eagle's sight-Perception arm at slice 263). No remaining bearer-side skill-advantage wires await a missing primitive.
 
-Audit: pure content. tsc clean; 1810 tests across 266 files (was 1804 / 265; +6 in new [tests/unit/derive/elvenkind-stealth.test.ts](tests/unit/derive/elvenkind-stealth.test.ts)). Coverage snapshot updated for the 2 new `boots-of-elvenkind` + `cloak-of-elvenkind` wiredIds. SRD drift audit passes (rarity/attunement unchanged).
+Audit: pure content. tsc clean; 1810 tests across 266 files (was 1804 / 265; +6 in new [tests/unit/derive/elvenkind-stealth.test.ts](../../tests/unit/derive/elvenkind-stealth.test.ts)). Coverage snapshot updated for the 2 new `boots-of-elvenkind` + `cloak-of-elvenkind` wiredIds. SRD drift audit passes (rarity/attunement unchanged).
 
-Doc updates: [docs/gaps-items-batches-1.1-1.10.md](docs/gaps-items-batches-1.1-1.10.md) "Conditional advantage / disadvantage grant" bullet refreshed to note arm-1 closure on both items + remaining arm-2 deferral on the cloak.
+Doc updates: [docs/gaps-items-batches-1.1-1.10.md](../gaps-items-batches-1.1-1.10.md) "Conditional advantage / disadvantage grant" bullet refreshed to note arm-1 closure on both items + remaining arm-2 deferral on the cloak.
 
 **Content: Potion of Resistance variant unroll + 5 missing protection-*-active conditions (slice 296)**
 
@@ -105,7 +105,7 @@ Doc updates: gaps-row closed (strikethrough + slice 295 closure note); Coverage-
 
 **Docs: consumer-coordinated fact-slot tracking section (slice 294)**
 
-Closes the slice-276 follow-up row that slice 280 introduced ("Consumer-half tracking for engine-half-only RAW fixes"). New "Consumer-coordinated fact slots" section in [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md) catalogs the three engine-half-landed slots (`bearerCanSeeFearSource`, `targetCanSeeAttacker`, `lightLevel`) plus their entry-point inputs (AttackIntent / ResolveAttackInput / ComputeAbilityCheckInput), the default-undefined semantic (default-apply vs opt-in), and what observable RAW behavior is gated. Includes a "when to use which semantic" rule for future consumer-coordinated facts.
+Closes the slice-276 follow-up row that slice 280 introduced ("Consumer-half tracking for engine-half-only RAW fixes"). New "Consumer-coordinated fact slots" section in [docs/starter-pack-gaps.md](../starter-pack-gaps.md) catalogs the three engine-half-landed slots (`bearerCanSeeFearSource`, `targetCanSeeAttacker`, `lightLevel`) plus their entry-point inputs (AttackIntent / ResolveAttackInput / ComputeAbilityCheckInput), the default-undefined semantic (default-apply vs opt-in), and what observable RAW behavior is gated. Includes a "when to use which semantic" rule for future consumer-coordinated facts.
 
 Why this is its own slice: future consumers (dndbnb, web demo, VTT integrations) need a single canonical reference for which engine inputs to populate from their scene state. Before this slice, the information was scattered across slice 276 / 278 / 279 commit bodies + per-condition wires + inline doc comments. The new section is the front-door reference, and future slices append to its table as new slots land.
 
@@ -150,7 +150,7 @@ Audit: pure content. tsc clean; 1799 tests across 264 files (was 1793). 6 cases:
 
 Closes the slice-239 Antitoxin deferred row. RAW: "Advantage on saving throws to avoid or end the Poisoned condition for 1 hour." Pre-291 the engine had no way to gate save advantage on the specific condition the save would prevent or end.
 
-Plumbing: new `savePreventsCondition?: string` field on [`ComputeSaveInput`](src/derive/save.ts) surfaces as the `event.savePreventsCondition` predicate fact. Cast-spell save resolution populates it from `mechanic.conditionOnFail` (poison-spell saves, Hold-shape saves, etc.). Recurring-save planner populates it from the bearer condition id when `recurringSave.onSuccess === 'removeCondition'` (so a Hold Person target's end-of-turn save would carry `savePreventsCondition: 'held-paralyzed'` etc.). Generic saves (Stunning Strike CON, multiattack save) leave the fact undefined and per-condition gates evaluate false.
+Plumbing: new `savePreventsCondition?: string` field on [`ComputeSaveInput`](../../src/derive/save.ts) surfaces as the `event.savePreventsCondition` predicate fact. Cast-spell save resolution populates it from `mechanic.conditionOnFail` (poison-spell saves, Hold-shape saves, etc.). Recurring-save planner populates it from the bearer condition id when `recurringSave.onSuccess === 'removeCondition'` (so a Hold Person target's end-of-turn save would carry `savePreventsCondition: 'held-paralyzed'` etc.). Generic saves (Stunning Strike CON, multiattack save) leave the fact undefined and per-condition gates evaluate false.
 
 Content wired: new `antitoxin-active` condition with `SetAdvantage on:{kind:'save'}` (slice-266 wildcard) gated on `eq event.savePreventsCondition 'poisoned'`. Antitoxin consumable's `onConsume` becomes `[{ kind: 'ApplyCondition', conditionId: 'antitoxin-active' }]` (slice-236 ApplyCondition variant). 1-hour duration consumer-managed.
 
@@ -171,7 +171,7 @@ Content re-wired (3 entries; same observable for human/30 base, dynamic across f
 
 Pattern-check: the three users share the same RAW phrasing and the same primitive — clean three-canonical-users-in-one-slice closure. No sibling shapes need the same op (climb-only RAW; no swim/fly variants today). The Athletics-climb-advantage arm of Cloak of Arachnida would gate on slice-274's `athleticsSubAction='climb'` if a future slice wires it.
 
-Audit: schema + resolver + 3 content wires. tsc clean; 1787 tests across 262 files (was 1778). 9 cases in new [tests/unit/engine/match-walk-speed.test.ts](tests/unit/engine/match-walk-speed.test.ts): human walk 30 → climb 30; Barbarian L5 Fast Movement walk 40 → climb 40; hasted Barbarian walk 80 → climb 80 (multiplier folds); Cloak of Arachnida attuned 40, unattuned 0; Slippers climb 30 (human) / 40 (Barbarian L5); walk-mode-ignores-matchWalkSpeed regression. Coverage snapshot unchanged (no wiredIds membership flips).
+Audit: schema + resolver + 3 content wires. tsc clean; 1787 tests across 262 files (was 1778). 9 cases in new [tests/unit/engine/match-walk-speed.test.ts](../../tests/unit/engine/match-walk-speed.test.ts): human walk 30 → climb 30; Barbarian L5 Fast Movement walk 40 → climb 40; hasted Barbarian walk 80 → climb 80 (multiplier folds); Cloak of Arachnida attuned 40, unattuned 0; Slippers climb 30 (human) / 40 (Barbarian L5); walk-mode-ignores-matchWalkSpeed regression. Coverage snapshot unchanged (no wiredIds membership flips).
 
 **Content: Cloak of the Bat fly-speed Toggle wire (slice 289)**
 
@@ -191,13 +191,13 @@ Closes the slice-263 pattern-check finding: ~30 in-pack `ModifySpeed` entries fo
 
 **Lights up mechanically** (no content changes): Gaseous Form fly 10 (slice 287's declarative wire), Cloak of the Bat fly 40 (pending Toggle), Slippers of Spider Climbing climb 30, Ring of Swimming swim 40, Gloves of Swimming and Climbing climb/swim 30, Spider Climb climb 30, native monster fly/climb/swim/burrow.
 
-Plumbing: shared `getEffectiveSpeedForMode(input, mode)` in [_actor-state.ts](src/engine/plan/_actor-state.ts) + four aliases. `getEffectiveSpeed` becomes a thin wrapper; algorithm unchanged. Base lookup: walk → `character.speedFeet`; non-walk → monster statblock or species `speed[mode]`, default 0.
+Plumbing: shared `getEffectiveSpeedForMode(input, mode)` in [_actor-state.ts](../../src/engine/plan/_actor-state.ts) + four aliases. `getEffectiveSpeed` becomes a thin wrapper; algorithm unchanged. Base lookup: walk → `character.speedFeet`; non-walk → monster statblock or species `speed[mode]`, default 0.
 
 Cloak of Arachnida half-closure: non-walk derive lands; remaining blocker is a `ModifySpeed { op: 'matchWalkSpeed' }` op for "climb speed equal to walking speed."
 
 Audit: derive-only. No reducer / planner changes. Existing call sites unchanged (consumers opt in incrementally). tsc clean; 1774 tests across 260 files (was 1766). 8 cases: PC defaults all 0; Gaseous Form fly 10; Spider Climb climb 30; Ring of Swimming swim 40; Gloves (climb + swim 30); Young Red Dragon fly 80 / climb 40; zero-set wins (Gaseous Form + Earthbind); walk derive unchanged (regression check).
 
-Bundled archive: this slice also triggered the slice-285 doc-size audit (CHANGELOG drifted past 60 KB after slice 287's entry plus this one). Per the slice-281 plan + slice-270 / 277 precedent, slices 269-280 (the alpha.7 release-block detail) moved to [docs/changelog/archive-slices-269-280.md](docs/changelog/archive-slices-269-280.md). The slice 281 release-bump entry stays live alongside slices 282-288.
+Bundled archive: this slice also triggered the slice-285 doc-size audit (CHANGELOG drifted past 60 KB after slice 287's entry plus this one). Per the slice-281 plan + slice-270 / 277 precedent, slices 269-280 (the alpha.7 release-block detail) moved to [docs/changelog/archive-slices-269-280.md](archive-slices-269-280.md). The slice 281 release-bump entry stays live alongside slices 282-288.
 
 **Content: Gaseous Form wired through existing primitives (slice 287)**
 
@@ -213,9 +213,9 @@ Closes the slice-241 deferred Pipes of Haunting row. RAW (SRD 5.2.1): "Each crea
 
 **Plumbing**:
 
-- New `{ kind: 'Save', saveAbility, saveDC, conditionOnFail, sourceIsMagical? }` variant on [`UseActionSchema`](src/schemas/content/item.ts). Distinct from CastSpell because no spell is cast and no class spell-DC is involved — the item carries its own fixed DC. `sourceIsMagical` defaults to true (item-played effects are magical for Magic Resistance purposes).
-- New `saveTargetIds?: ReadonlyArray<string>` field on [`UseItemIntent`](src/engine/plan/use-item.ts). Required (non-empty) when the fired action is a Save; engine doesn't model positions, so the 30-foot scope is consumer territory.
-- planUseItem branch rolls one save per target via [`computeSavingThrow`](src/derive/save.ts) (mirrors the cast-spell save resolution: honors advantage / disadvantage from the target's effect stack; rolls 1 or 2 d20s as needed). Emits SaveRolled per target and ConditionApplied per failed target with `sourceCharacterId = item user`.
+- New `{ kind: 'Save', saveAbility, saveDC, conditionOnFail, sourceIsMagical? }` variant on [`UseActionSchema`](../../src/schemas/content/item.ts). Distinct from CastSpell because no spell is cast and no class spell-DC is involved — the item carries its own fixed DC. `sourceIsMagical` defaults to true (item-played effects are magical for Magic Resistance purposes).
+- New `saveTargetIds?: ReadonlyArray<string>` field on [`UseItemIntent`](../../src/engine/plan/use-item.ts). Required (non-empty) when the fired action is a Save; engine doesn't model positions, so the 30-foot scope is consumer territory.
+- planUseItem branch rolls one save per target via [`computeSavingThrow`](../../src/derive/save.ts) (mirrors the cast-spell save resolution: honors advantage / disadvantage from the target's effect stack; rolls 1 or 2 d20s as needed). Emits SaveRolled per target and ConditionApplied per failed target with `sourceCharacterId = item user`.
 
 **Content wired**:
 
@@ -229,11 +229,11 @@ Audit: variant name follows the UseAction convention (`ApplyCondition`, `CastSpe
 
 **Tests+infra: doc-size audit on front-door docs (slice 285)**
 
-Closes the recurring problem that bit slices 270 + 277: front-door docs (CHANGELOG.md, starter-pack-gaps.md) silently drifted over the single-Read ceiling between content slices, surfacing only when a fresh agent's Read tool errored out. New [tests/audit/doc-size.test.ts](tests/audit/doc-size.test.ts) audit asserts every front-door doc fits the documented ~60 KB ceiling. Runs as part of `npm test` so CI catches the drift at commit time, not next-agent-Read.
+Closes the recurring problem that bit slices 270 + 277: front-door docs (CHANGELOG.md, starter-pack-gaps.md) silently drifted over the single-Read ceiling between content slices, surfacing only when a fresh agent's Read tool errored out. New [tests/audit/doc-size.test.ts](../../tests/audit/doc-size.test.ts) audit asserts every front-door doc fits the documented ~60 KB ceiling. Runs as part of `npm test` so CI catches the drift at commit time, not next-agent-Read.
 
 **Implementation**: nine vitest cases. Seven per-file `expect` cases pin the fixed front-door docs (README.md, CHANGELOG.md, CLAUDE.md, docs/starter-pack-gaps.md, docs/status.md, docs/roadmap.md, docs/api-overview.md). One dynamic case enumerates `docs/changelog/*.md` archives and `docs/gaps-*.md` per-category catalogs so new archives are caught without test edits. One floor-count sanity case prevents a vacuously-green audit if the file list ever empties (path renames, dir moves).
 
-Threshold: 60,000 bytes per file. Matches CLAUDE.md's "Doc size discipline" documented hard ceiling ("anything safely under 60,000 bytes will fit"). Empirical verification at slice 285: the 59 KB and 56 KB archives ([archive-rollup-narrative-A.md](docs/changelog/archive-rollup-narrative-A.md) + [gaps-monsters-deferred-mechanics.md](docs/gaps-monsters-deferred-mechanics.md)) both Read cleanly; the 65 KB CHANGELOG at slice 277 pre-archive failed. 60 KB is the practical boundary for typical content density.
+Threshold: 60,000 bytes per file. Matches CLAUDE.md's "Doc size discipline" documented hard ceiling ("anything safely under 60,000 bytes will fit"). Empirical verification at slice 285: the 59 KB and 56 KB archives ([archive-rollup-narrative-A.md](archive-rollup-narrative-A.md) + [gaps-monsters-deferred-mechanics.md](../gaps-monsters-deferred-mechanics.md)) both Read cleanly; the 65 KB CHANGELOG at slice 277 pre-archive failed. 60 KB is the practical boundary for typical content density.
 
 **Failure message**: when a file exceeds the threshold, the assertion prints the file path, current byte count, and a one-line pointer to CLAUDE.md's split playbook. A developer / agent shipping a slice that pushes a doc over the limit sees the failure inline rather than hitting it next session.
 
@@ -245,8 +245,8 @@ Third slice of the consumable-variant chain. Closes two slice-239 deferred rows 
 
 **Plumbing**:
 
-- New `{ kind: 'ApplyItemBuff', attackBonus?, damageBonus?, extraDamageDice?, extraDamageType? }` variant on [`ConsumeActionSchema`](src/schemas/content/item.ts). Field shape mirrors `ItemTemporaryBuff` so the attack planner picks up the buff automatically (slice 76's attack-bonus / damage-bonus path; slice 90's elemental-rider path for extra dice).
-- New `targetWeaponInstanceId?: string` field on [`ConsumeItemIntent`](src/engine/plan/consume-item.ts). Defaults to the actor's `equipped.mainHand`. Throws if the target isn't a weapon or no main hand is set.
+- New `{ kind: 'ApplyItemBuff', attackBonus?, damageBonus?, extraDamageDice?, extraDamageType? }` variant on [`ConsumeActionSchema`](../../src/schemas/content/item.ts). Field shape mirrors `ItemTemporaryBuff` so the attack planner picks up the buff automatically (slice 76's attack-bonus / damage-bonus path; slice 90's elemental-rider path for extra dice).
+- New `targetWeaponInstanceId?: string` field on [`ConsumeItemIntent`](../../src/engine/plan/consume-item.ts). Defaults to the actor's `equipped.mainHand`. Throws if the target isn't a weapon or no main hand is set.
 - planConsumeItem emits `ItemBuffApplied` with a fresh synthetic `sourceEffectInstanceId` (consumable-applied buffs aren't linked to concentration; the id tags the buff for any future "remove this specific oil" semantics).
 
 **Content wired (2 consumables)**:
@@ -266,7 +266,7 @@ Second slice of the consumable-variant chain. Closes the first arm of the slice-
 
 Two variants instead of one combined "cleanse" because the shapes are mechanically distinct: RemoveConditions walks `character.appliedConditions` and emits ConditionRemoved per matched instance; RemoveExhaustion emits a single ExhaustionChanged from current → 0 on the numeric `exhaustion` field (a separate state slot, not a condition).
 
-**Plumbing**: two new variants on [`ConsumeActionSchema`](src/schemas/content/item.ts) — `{ kind: 'RemoveConditions', conditionIds: string[] }` and `{ kind: 'RemoveExhaustion' }`. [`planConsumeItem`](src/engine/plan/consume-item.ts) gains two branches. RemoveConditions walks the target's appliedConditions and emits ConditionRemoved per match (handles multiply-sourced conditions correctly). RemoveExhaustion no-ops cleanly when exhaustion is already 0 (no event emitted, audit trail stays clean).
+**Plumbing**: two new variants on [`ConsumeActionSchema`](../../src/schemas/content/item.ts) — `{ kind: 'RemoveConditions', conditionIds: string[] }` and `{ kind: 'RemoveExhaustion' }`. [`planConsumeItem`](../../src/engine/plan/consume-item.ts) gains two branches. RemoveConditions walks the target's appliedConditions and emits ConditionRemoved per match (handles multiply-sourced conditions correctly). RemoveExhaustion no-ops cleanly when exhaustion is already 0 (no event emitted, audit trail stays clean).
 
 **Content wired**: Potion of Vitality's `onConsume` becomes `[{ kind: 'RemoveExhaustion' }, { kind: 'RemoveConditions', conditionIds: ['poisoned'] }]`. Description rewrites the RAW spec and notes the deferred HD-spend rider.
 
@@ -278,7 +278,7 @@ Audit: variant names follow the ConsumeAction convention (`Heal`, `ApplyConditio
 
 First slice of the consumable-variant chain. Closes the slice-239 deferred row for Potion of Heroism. RAW: "For 1 hour, the drinker gains 10 Temporary Hit Points and the Blessed condition." Pre-282 the potion shipped `onConsume: []` — the engine had no shape for "flat temp HP grant on consume." This slice adds the fourth variant to the slice-235 `ConsumeAction` discriminated union and wires its canonical user.
 
-**Plumbing**: new `{ kind: 'GrantTempHP', amount }` variant on [`ConsumeActionSchema`](src/schemas/content/item.ts). [`planConsumeItem`](src/engine/plan/consume-item.ts) gains a branch that emits a `TempHPGranted` event with the action's `amount` and a `source: 'item:<def-id>'` tag. The existing slice-75 `applyTempHPGranted` reducer enforces RAW max-not-additive semantics; no reducer changes needed.
+**Plumbing**: new `{ kind: 'GrantTempHP', amount }` variant on [`ConsumeActionSchema`](../../src/schemas/content/item.ts). [`planConsumeItem`](../../src/engine/plan/consume-item.ts) gains a branch that emits a `TempHPGranted` event with the action's `amount` and a `source: 'item:<def-id>'` tag. The existing slice-75 `applyTempHPGranted` reducer enforces RAW max-not-additive semantics; no reducer changes needed.
 
 **Content wired**: Potion of Heroism's `onConsume` becomes `[{ kind: 'GrantTempHP', amount: 10 }, { kind: 'ApplyCondition', conditionId: 'blessed' }]`. The Bless half uses the existing slice-236 ApplyCondition variant pointing at the pre-existing `blessed` condition (Bless spell shares the same condition). The 1-hour duration is consumer-managed per the ConsumeAction doc comment.
 

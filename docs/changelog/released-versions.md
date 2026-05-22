@@ -50,9 +50,9 @@ Class-features matrix: 36 wired / 12 stub → **48 wired / 0 stub** at L1–7. S
 
 ### Added
 
-- **Rules Lab in the web demo.** 19 showcase probes grouped by category; one-click "Run audit" runs them against a fresh engine + scenario and reports pass / fail per row. Source: [web/audit/probes.ts](web/audit/probes.ts), [web/modes/rules-lab.ts](web/modes/rules-lab.ts).
-- **Scenario gallery in the web demo.** Frightened Halfling (source-tracked movement restriction), Misty Step Occupied (occupancy-check rejection), Concentrating Wizard at 1 HP (concentration auto-clear on drop), in addition to the original Goblin Skirmish. URL hash includes `#scenario=<id>&seed=<n>`. Source: [web/scenarios/](web/scenarios/). CI replay test at [tests/integration/web-scenarios.test.ts](../../tests/integration/web-scenarios.test.ts) covers headline actions per scenario.
-- **Map panel in the web demo.** A small grid view between Combat Sandbox and Event Inspector showing each combatant token at their position with initials and color; auto-fits the actor bounds. Source: [web/modes/grid-view.ts](web/modes/grid-view.ts).
+- **Rules Lab in the web demo.** 19 showcase probes grouped by category; one-click "Run audit" runs them against a fresh engine + scenario and reports pass / fail per row. Source: [web/audit/probes.ts](../../web/audit/probes.ts), [web/modes/rules-lab.ts](../../web/modes/rules-lab.ts).
+- **Scenario gallery in the web demo.** Frightened Halfling (source-tracked movement restriction), Misty Step Occupied (occupancy-check rejection), Concentrating Wizard at 1 HP (concentration auto-clear on drop), in addition to the original Goblin Skirmish. URL hash includes `#scenario=<id>&seed=<n>`. Source: [web/scenarios/](../../web/scenarios). CI replay test at [tests/integration/web-scenarios.test.ts](../../tests/integration/web-scenarios.test.ts) covers headline actions per scenario.
+- **Map panel in the web demo.** A small grid view between Combat Sandbox and Event Inspector showing each combatant token at their position with initials and color; auto-fits the actor bounds. Source: [web/modes/grid-view.ts](../../web/modes/grid-view.ts).
 - **Trustworthiness roadmap at [docs/trustworthiness-roadmap.md](../../docs/trustworthiness-roadmap.md)** framing the four-tier path from alpha to "trustworthy for unsupervised tabletop play": Tier 1 close audit, Tier 2 extend audit, Tier 3 content stubs, Tier 4 real SRD pack.
 
 ### Changed
@@ -80,7 +80,7 @@ The fourth pre-alpha. Closes two engine bugs that the new browser demo surfaced 
 
 Test count grew from 691 to 698 (7 new tests: 2 engine regressions for the new guards, 3 web-demo replay-equivalence assertions, 2 melee-range tests). All Layer 5/6/7/8/9 invariants still hold. `SCHEMA_VERSION` unchanged (no event or state shape changes).
 
-The web demo lives under `/web/` and is not shipped in the npm tarball (excluded by the `files` whitelist); it's a separate adoption surface deployed via GitHub Pages from a CI workflow. See [web/README.md](web/README.md) and [docs/web-demo-plan.md](../../docs/web-demo-plan.md).
+The web demo lives under `/web/` and is not shipped in the npm tarball (excluded by the `files` whitelist); it's a separate adoption surface deployed via GitHub Pages from a CI workflow. See [web/README.md](../../web/README.md) and [docs/web-demo-plan.md](../../docs/web-demo-plan.md).
 
 ### Fixed
 
@@ -90,7 +90,7 @@ The web demo lives under `/web/` and is not shipped in the npm tarball (excluded
 ### Added
 
 - Type re-exports for the encounter / inventory / combat event types that were previously only available as schemas: `EncounterCreatedEvent`, `EncounterStartedEvent`, `EncounterEndedEvent`, `InitiativeRolledEvent`, `TurnStartedEvent`, `TurnEndedEvent`, `RoundEndedEvent`, `CombatantMovedEvent`, `ItemAcquiredEvent`, `ItemEquippedEvent`, `ItemUnequippedEvent`, `AttackRolledEvent`, `DamageRolledEvent`, `SaveRolledEvent`, `AbilityCheckRolledEvent`. Source: [src/types/index.ts](../../src/types/index.ts). Schema exports were already in place; this just closes the type-only gap so consumers can `satisfies XEvent` without reaching into deep paths.
-- Web demo at [web/](web/), deployed to GitHub Pages via [.github/workflows/deploy-demo.yml](../../.github/workflows/deploy-demo.yml). Combat Sandbox (turn-aware action toolbar: Attack / Move / Dash / Dodge / End Turn, with downed-combatant fallback to just End Turn), Event Inspector (virtualized list with category color-coding, auto-scrolls to tail when followed), Export/Import event log with on-page replay verification, generic PendingChoice resolver (shipped dead in v1 by design — the v1 planner set doesn't emit `ChoiceRequired`, but the resolver is in place for future modes), and a `#seed=N` URL hash override for deterministic-reproduction sharing. CI integration test at [tests/integration/web-scenarios.test.ts](../../tests/integration/web-scenarios.test.ts) asserts replay equivalence against every shipped demo scenario.
+- Web demo at [web/](../../web), deployed to GitHub Pages via [.github/workflows/deploy-demo.yml](../../.github/workflows/deploy-demo.yml). Combat Sandbox (turn-aware action toolbar: Attack / Move / Dash / Dodge / End Turn, with downed-combatant fallback to just End Turn), Event Inspector (virtualized list with category color-coding, auto-scrolls to tail when followed), Export/Import event log with on-page replay verification, generic PendingChoice resolver (shipped dead in v1 by design — the v1 planner set doesn't emit `ChoiceRequired`, but the resolver is in place for future modes), and a `#seed=N` URL hash override for deterministic-reproduction sharing. CI integration test at [tests/integration/web-scenarios.test.ts](../../tests/integration/web-scenarios.test.ts) asserts replay equivalence against every shipped demo scenario.
 
 ## 0.1.0-alpha.3
 
