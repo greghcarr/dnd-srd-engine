@@ -310,3 +310,39 @@ describe('slice 417: buildCharacterSheet inventory', () => {
     expect(sheet.inventory.items).toEqual([]);
   });
 });
+
+describe('slice 418: buildCharacterSheet unarmed strike', () => {
+  const SRD = resolveContent([loadStarterPack()]);
+
+  it('appends an always-available, always-proficient unarmed strike entry', () => {
+    // L5 fighter (PB +3), STR 16 (+3): attack +6, damage 1d4 + 3 bludgeoning.
+    const sheet = buildCharacterSheet({
+      character: buildFighter({ level: 5, STR: 16 }),
+      itemInstances: {},
+      content: SRD,
+    });
+    expect(sheet.attacks).toHaveLength(1);
+    const unarmed = sheet.attacks[0]!;
+    expect(unarmed).toMatchObject({ unarmed: true, name: 'Unarmed Strike', attackKind: 'melee', attackBonus: 6 });
+    expect(unarmed.damage).toEqual({ dice: '1d4', modifier: 3, type: 'bludgeoning' });
+    expect(unarmed.weaponInstanceId).toBeUndefined();
+  });
+
+  it('comes after inventory weapons', () => {
+    const longsword = makeItemInstance('longsword');
+    const character = buildFighter({ level: 5, STR: 16, inventory: [longsword.id] });
+    const sheet = buildCharacterSheet({ character, itemInstances: { [longsword.id]: longsword }, content: SRD });
+    expect(sheet.attacks.map((a) => a.name)).toEqual(['Longsword', 'Unarmed Strike']);
+    expect(sheet.attacks.at(-1)!.unarmed).toBe(true);
+    expect(sheet.attacks[0]!.unarmed).toBeUndefined();
+  });
+
+  it('absent when the pack defines no unarmed strike', () => {
+    const sheet = buildCharacterSheet({
+      character: buildFighter({ level: 5 }),
+      itemInstances: {},
+      content: TEST_CONTENT,
+    });
+    expect(sheet.attacks.some((a) => a.unarmed)).toBe(false);
+  });
+});

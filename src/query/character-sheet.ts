@@ -9,12 +9,10 @@
 // entry per inventory weapon, with to-hit + static damage line), and the
 // spellcasting block (per-class save DC + attack bonus, and the castable
 // spells grouped by level), and the inventory / equipment summary (carried
-// + equipped + attuned items, with encumbrance). Pure assembly over existing
+// + equipped + attuned items, with encumbrance). The attacks list ends with
+// the always-available unarmed strike. Pure assembly over existing
 // derivations: it invents no rules, so RAW correctness lives in the
 // derivations it calls.
-//
-// Deferred to a follow-up slice: the unarmed strike entry on the attacks
-// list (RAW 1 + STR mod, or the Martial Arts die for monks).
 import type {
   AbilityScore,
   Skill,
@@ -30,7 +28,7 @@ import {
   type ComputeDerivedCharacterInput,
 } from '../derive/character-view.js';
 import { computeAbilityCheck, computePassiveScore } from '../derive/ability-check.js';
-import { computeAttackBonus, computeWeaponDamage, type WeaponDamage } from '../derive/attack.js';
+import { computeAttackBonus, computeWeaponDamage, computeUnarmedStrike, type WeaponDamage } from '../derive/attack.js';
 import { computeSpellSaveDC, computeSpellAttackBonus } from '../derive/spell-dc.js';
 import { getEffectiveSpeeds, type EffectiveSpeeds } from '../derive/speed.js';
 import { computeEncumbrance, type EncumbranceResult } from '../derive/encumbrance.js';
@@ -61,7 +59,10 @@ export interface InitiativeView {
 }
 
 export interface AttackView {
-  readonly weaponInstanceId: string;
+  /** The inventory weapon's instance id; absent for the unarmed strike. */
+  readonly weaponInstanceId?: string;
+  /** True for the always-available unarmed strike entry. */
+  readonly unarmed?: boolean;
   readonly name: string;
   readonly attackKind: 'melee' | 'ranged';
   /** To-hit bonus (computeAttackBonus total). */
@@ -137,7 +138,7 @@ export interface CharacterSheet extends DerivedCharacter {
   readonly initiative: InitiativeView;
   /** Effective movement speeds (walk always; non-walk modes only when > 0). */
   readonly speeds: EffectiveSpeeds;
-  /** One entry per weapon in the character's inventory, in inventory order. */
+  /** One entry per inventory weapon (inventory order), then the unarmed strike. */
   readonly attacks: ReadonlyArray<AttackView>;
   /** Carried + equipped + attuned items, plus encumbrance. */
   readonly inventory: InventoryView;
@@ -180,8 +181,9 @@ const attackView = (input: ComputeDerivedCharacterInput, weaponInstanceId: strin
   };
 };
 
-// One attack entry per weapon in the character's inventory, in inventory
-// order. Non-weapon items and dangling instance ids are skipped.
+// One attack entry per weapon in the character's inventory (inventory
+// order; non-weapon items and dangling instance ids skipped), then the
+// always-available unarmed strike (when the pack defines one).
 const attackViews = (input: ComputeDerivedCharacterInput): AttackView[] => {
   const attacks: AttackView[] = [];
   for (const instanceId of input.character.inventory) {
@@ -189,6 +191,17 @@ const attackViews = (input: ComputeDerivedCharacterInput): AttackView[] => {
     if (instance === undefined) continue;
     const def = input.content.items.get(instance.definitionId);
     if (def?.itemKind === 'weapon') attacks.push(attackView(input, instanceId, def));
+  }
+  const unarmed = computeUnarmedStrike(input);
+  if (unarmed !== undefined) {
+    attacks.push({
+      unarmed: true,
+      name: unarmed.name,
+      attackKind: unarmed.attackKind,
+      attackBonus: unarmed.attackBonus,
+      damage: unarmed.damage,
+      properties: unarmed.properties,
+    });
   }
   return attacks;
 };

@@ -24,11 +24,14 @@ export {
 export {
   computeAttackBonus,
   computeWeaponDamage,
+  computeUnarmedStrike,
   type AttackResult,
   type AttackBreakdownEntry,
   type ComputeAttackInput,
   type WeaponDamage,
   type WeaponDamageResult,
+  type ComputeUnarmedStrikeInput,
+  type UnarmedStrikeResult,
 } from './attack.js';
 export {
   computeSavingThrow,

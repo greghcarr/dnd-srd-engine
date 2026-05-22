@@ -175,3 +175,45 @@ export const computeWeaponDamage = (input: ComputeAttackInput): WeaponDamageResu
     ? { damage, versatile: { dice: weapon.versatileDice, modifier, type: weapon.damageType } }
     : { damage };
 };
+
+// The engine models the always-available unarmed strike as a content
+// weapon definition (1d4 bludgeoning in the SRD pack), the same one the
+// attack planner wields.
+const UNARMED_STRIKE_DEF_ID = 'unarmed-strike';
+
+export type ComputeUnarmedStrikeInput = Omit<ComputeAttackInput, 'weaponInstanceId'>;
+
+export interface UnarmedStrikeResult {
+  readonly name: string;
+  readonly attackKind: 'melee' | 'ranged';
+  readonly properties: ReadonlyArray<Weapon['properties'][number]>;
+  readonly attackBonus: number;
+  readonly damage: WeaponDamage;
+}
+
+/**
+ * The character's unarmed strike to-hit + static damage line. Every
+ * creature is proficient with unarmed strikes (RAW), so the proficiency
+ * bonus always applies regardless of weapon-proficiency lists. Like
+ * `computeWeaponDamage`, the line is static: the Monk Martial Arts die /
+ * DEX option resolves in the attack planner per attack context (mirroring
+ * how Sneak Attack and Great Weapon Fighting are excluded from the
+ * weapon damage line). Returns undefined when the pack has no
+ * unarmed-strike definition.
+ */
+export const computeUnarmedStrike = (input: ComputeUnarmedStrikeInput): UnarmedStrikeResult | undefined => {
+  const weapon = input.content.items.get(UNARMED_STRIKE_DEF_ID);
+  if (weapon === undefined || weapon.itemKind !== 'weapon') return undefined;
+  const effects = buildEffectStack(input);
+  const { mod } = attackAbility(input.character, weapon, effects);
+  const proficiency = proficiencyBonus(computeTotalLevel(input.character));
+  const facts = new Map<string, unknown>([['event.attackKind', weapon.attackKind]]);
+  const attackBonus = mod + proficiency + effects.modifierSum('attack', facts);
+  return {
+    name: weapon.name,
+    attackKind: weapon.attackKind,
+    properties: weapon.properties,
+    attackBonus,
+    damage: { dice: weapon.damageDice, modifier: mod, type: weapon.damageType },
+  };
+};
