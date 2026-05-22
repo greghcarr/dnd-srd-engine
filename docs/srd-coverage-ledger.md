@@ -42,7 +42,7 @@ If you add or remove a probe / boundary table, update the number here in the sam
 Where the engine's confidence actually is, by area:
 
 - **Strongest (mostly 🟢):** the printed-table math (ability mod, proficiency bonus, spell-slot tables, carrying capacity, exhaustion) and content-data fidelity (spell / monster / item / class-table fields). These are non-circular because srd-drift and the boundary tables derive expectations from the SRD.
-- **Regression-safe but unaudited (mostly 🟡):** the derivation math a character sheet shows (AC, saves, attack, spell DC, skills) and the combat-legality rules the 49 probes cover. Implemented and pinned, but the expected values are author-asserted — the prime targets for ground-truth upgrade or independent review.
+- **Regression-safe but unaudited (mostly 🟡):** the derivation math a character sheet shows (saves, attack, spell DC, skills — **worn-armor AC was upgraded to 🟢 in slice 421**, the first of these) and the combat-legality rules the 48 probes cover. Implemented and pinned, but the expected values are author-asserted — the prime targets for ground-truth upgrade or independent review. The slice-421 AC test is the template: parse the SRD value, recompute, assert the engine agrees.
 - **Blind spots (🔴 / ◐):** rules with no dedicated probe, prose-only condition effects, and the long content tail. Enumerated below where known; the scary ones are the rules not yet listed at all.
 
 ---
@@ -80,7 +80,8 @@ Implemented and unit-tested, but expected values are author-asserted. **These ar
 
 | Rule | Impl | Verify | Evidence | Notes |
 |---|---|---|---|---|
-| Armor Class (armor + DEX cap, shield, natural) | ✅ | 🟡 | unit: derive/ac | upgrade: transcribe SRD AC examples |
+| Armor Class — worn armor + shield (base + DEX cap, heavy no-DEX) | ✅ | 🟢 | [srd-ac-conformance](../tests/audit/srd-ac-conformance.test.ts) (slice 421) | base AC + Dex-cap parsed from the SRD `equipment.md` armor table; all 12 armors × a DEX range + shield. **Upgraded 🟡→🟢, the model for this column.** |
+| Armor Class — natural armor (statblock) | ✅ | 🟡 | unit: derive/ac | monster `armorClass`; not yet ground-truth-checked |
 | Saving throws (mod + prof + effects) | ✅ | 🟡 | unit: derive/save | |
 | Ability checks + skills (mod + prof) | ✅ | 🟡 | unit: derive/ability-check | background skill prof fixed slice 412 |
 | Passive scores (10 + check) | ✅ | 🟡 | unit + query/character-sheet | |
