@@ -20,7 +20,24 @@ describe('computeAbilityCheck', () => {
   });
 
   it('skill check with no proficiency: just the ability modifier', () => {
-    const character = buildFighter({ STR: 16 });
+    // Acrobatics (DEX): the soldier background grants Athletics +
+    // Intimidation, not Acrobatics, so this exercises the no-proficiency path.
+    const character = buildFighter({ DEX: 14 });
+    const r = computeAbilityCheck({
+      character,
+      itemInstances: {},
+      content: TEST_CONTENT,
+      ability: 'DEX',
+      skill: 'acrobatics',
+    });
+    expect(r.total).toBe(2);
+  });
+
+  it('background-granted skill proficiency adds the proficiency bonus', () => {
+    // Slice 412 fix: the soldier background grants Athletics; before the
+    // fix this returned just the STR mod (the structured
+    // skillProficiencies array never reached the effect stack).
+    const character = buildFighter({ level: 5, STR: 16 });
     const r = computeAbilityCheck({
       character,
       itemInstances: {},
@@ -28,7 +45,7 @@ describe('computeAbilityCheck', () => {
       ability: 'STR',
       skill: 'athletics',
     });
-    expect(r.total).toBe(3);
+    expect(r.total).toBe(3 + 3); // STR +3, proficiency bonus +3 at level 5
   });
 
   it('exhaustion penalty applies to ability checks', () => {
