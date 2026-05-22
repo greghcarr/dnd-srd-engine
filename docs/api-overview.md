@@ -180,6 +180,12 @@ buildCharacterSheet({ character, itemInstances, content }); // -> CharacterSheet
 
 `buildCharacterSheet` is the character-sheet view model. It extends `computeDerivedCharacter`'s `DerivedCharacter` (level, PB, ability mods, HP, AC, saves, spell slots, languages) with the rest of a sheet's computed stats: `skills` (all 18, each `{ skill, ability, proficiency, modifier, hasAdvantage, hasDisadvantage }`, in canonical order), `passiveScores` (`perception` / `investigation` / `insight`), `initiative` (DEX mod + initiative modifiers, with advantage), `speeds` (effective movement: `walk` always, plus `fly` / `swim` / `climb` / `burrow` when > 0), `attacks` (one `AttackView` per inventory weapon, then the always-available unarmed strike: to-hit `attackBonus`, a static `damage` line `{ dice, modifier, type }`, `versatileDamage` for versatile weapons, `properties`, `range`, `mastery`; the unarmed entry has `unarmed: true` and no `weaponInstanceId`), `spellcasting?` (present only for casters: per-class `{ ability, saveDC, attackBonus }` plus `spellsByLevel`, the castable spells grouped by level with `prepared` / `alwaysPrepared` flags), and `inventory` (`InventoryView`: the carried + equipped + attuned `items`, each with `quantity` / `weight` / `equippedSlot?` / `attuned` / `charges?`, plus an `encumbrance` summary). Pure assembly over the derivations; invents no rules. The standalone derivations are `computeWeaponDamage(input)` (`-> WeaponDamageResult`), `computeUnarmedStrike(input)` (`-> UnarmedStrikeResult`), and `getEffectiveSpeeds(input)` / `getEffectiveSpeed(input)`. The view model now covers the full DDB character-sheet surface. (Static-line caveat shared with all attacks: contextual / class-feature scaling such as Sneak Attack, Great Weapon Fighting, and the Monk Martial Arts die resolves in the attack planner, not the sheet line.)
 
+```ts
+buildEncounterView(state, content, encounterId); // -> EncounterView | undefined
+```
+
+`buildEncounterView` is the combat-tracker view model. It returns the encounter's `status` / `round` / `activeCombatantId` plus `combatants` in initiative order, each a `CombatantView` with `name` / `initiative` / `isActive` / `hp` / `ac` / `exhaustion` / `conditions` (`{ id, name }`) / `defeated` (HP <= 0) / `turn` (action / bonus / reaction used + feet moved). Combatants are `Character` entities (PCs and monsters alike); a missing character is skipped. Returns undefined for an unknown encounter id.
+
 ## RNG
 
 ```ts

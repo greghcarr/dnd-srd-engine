@@ -27,3 +27,10 @@ export {
   type InventoryEntry,
   type EquipSlot,
 } from './character-sheet.js';
+export {
+  buildEncounterView,
+  type EncounterView,
+  type CombatantView,
+  type CombatantConditionView,
+  type CombatantTurnView,
+} from './encounter-view.js';

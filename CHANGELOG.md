@@ -4,6 +4,16 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 419): encounter / combat-state view model (read layer, part 8)**
+
+The other major read-layer surface alongside the character sheet: the combat tracker. New `buildEncounterView(state, content, encounterId)` returns an `EncounterView` with the encounter's `status` / `round` / `activeCombatantId` and `combatants` in initiative order. Each `CombatantView` carries `name` / `initiative` / `isActive` (whose turn it is, only while active) / `hp` (current / max / temp) / `ac` (via the existing `computeAC`) / `exhaustion` / `conditions` (`{ id, name }`, name resolved from the pack) / `defeated` (HP <= 0) / `turn` (action / bonus / reaction used + feet moved this turn). Returns undefined for an unknown encounter id; combatants whose `Character` is missing from state are skipped. Pure assembly over the encounter + character state; invents no rules (combatants, PCs and monsters alike, are `Character` entities keyed by `combatantId`; the array is already initiative-ordered with `activeIndex` indexing it).
+
+With this the read layer covers the three core D&D-Beyond screens an app renders: the content browser (slice 411), the character sheet (slices 413-418), and now the combat tracker.
+
+New public exports: `buildEncounterView` + `EncounterView` / `CombatantView` / `CombatantConditionView` / `CombatantTurnView`.
+
+Uncle Bob audit (engine slice): **Names** `buildEncounterView` / `CombatantView` / `EncounterView` say what they are. **DRY** reuses `computeAC`; reads action-economy + initiative straight off the stored combatant. **SRP** the view only assembles + resolves combatant -> character + condition names; AC / turn rules stay in their owners. **Magic numbers** none (HP-0 defeated check is the engine's own downed convention). **at-threading** n/a (pure reads). **Mechanical outcomes asserted** unknown id -> undefined; a planning encounter has no active combatant; an active one marks exactly one combatant active in round 1; combatants descend by initiative; a 0-HP combatant is defeated; an applied condition surfaces with its display name. **Tests** 6 cases driving a real engine encounter (create -> roll initiative -> start -> first turn). No content change. No em/en dashes. `tsc --noEmit` clean; full suite green; contract export snapshot updated.
+
 **Engine (slice 418): character-sheet unarmed strike entry (read layer, part 7, sheet complete)**
 
 Adds the always-available unarmed strike to the attacks list, the last character-sheet gap. New `computeUnarmedStrike(input)` derivation resolves the engine's `unarmed-strike` weapon definition (the same one the attack planner wields, 1d4 bludgeoning in the SRD pack) and returns the to-hit + static damage line: ability mod (STR per the unarmed weapon's non-finesse / non-ranged profile) + the proficiency bonus, applied unconditionally because every creature is proficient with unarmed strikes (RAW) regardless of weapon-proficiency lists. `buildCharacterSheet` appends one unarmed entry (flagged `unarmed: true`, no `weaponInstanceId`) after the inventory weapons; `AttackView.weaponInstanceId` is now optional. Returns / appends nothing when the pack defines no unarmed strike.
