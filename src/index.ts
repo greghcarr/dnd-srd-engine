@@ -306,6 +306,8 @@ export {
 } from './content/index.js';
 export type { ContentPack, ResolvedContent, ContentValidationIssue, ContentPackIssue } from './content/index.js';
 export { loadStarterPack, STARTER_PACK_RAW } from './content/packs/starter.js';
+export { querySpells, queryMonsters, queryItems } from './query/index.js';
+export type { SpellFilter, MonsterFilter, ItemFilter } from './query/index.js';
 
 export {
   DefaultRNG,

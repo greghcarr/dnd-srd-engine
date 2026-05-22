@@ -30,7 +30,7 @@ const ItemBaseSchema = z.object({
 // WeaponSchema / ArmorSchema (slice 315). A magic weapon or armor ships
 // as itemKind 'weapon' / 'armor' (so the attack / AC consumers
 // recognize it as wielded / worn) plus optional magic fields below.
-const MagicRaritySchema = z.enum([
+export const MagicRaritySchema = z.enum([
   'common',
   'uncommon',
   'rare',
@@ -38,6 +38,7 @@ const MagicRaritySchema = z.enum([
   'legendary',
   'artifact',
 ]);
+export type MagicRarity = z.infer<typeof MagicRaritySchema>;
 
 // Slice 315/316/317: magic-equipment overlay fields, shared between the
 // single-base inline forms (WeaponSchema / ArmorSchema, where the magic

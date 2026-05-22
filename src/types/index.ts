@@ -43,6 +43,7 @@ export type {
   LevelEntry,
   Spell,
   ItemDefinition,
+  MagicRarity,
   Weapon,
   Armor,
   Tool,

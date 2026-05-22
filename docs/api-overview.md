@@ -161,6 +161,18 @@ const refIssues = validateCrossReferences(resolved); // dangling-ref-only pass o
 
 **Multi-pack id policy.** Packs merge into a global per-category id namespace in array order. `resolveContent` throws a `ContentPackLoadError` on any within-pack duplicate id or any cross-pack id collision, so a second pack can't silently clobber an SRD entry. A later pack may *intentionally* replace an earlier id by listing it in its `overrides: string[]` (a deliberate houserule, e.g. a homebrew pack replacing `fireball`); the later entry then wins. `validatePacks(packs)` is the report-all author-time companion (returns every collision + dangling cross-reference instead of throwing on the first); `detectIdCollisions(packs)` is the collision-only half. `mergeContent(packs)` is the bare last-wins merge with no collision check, for tooling that wants to inspect the merged view itself.
 
+## Content queries (browse)
+
+The consumer-facing read layer for browsing the catalog (the spell / monster / item browsers a player-facing app renders). Pure, deterministic filters over a `ResolvedContent`; no state, no events.
+
+```ts
+querySpells(content, { level: 3, school: 'evocation', class: 'wizard' }); // -> Spell[]
+queryMonsters(content, { type: 'Undead', crMin: 1, crMax: 5 });           // -> MonsterStatblock[]
+queryItems(content, { itemKind: 'magic', rarity: 'rare', search: 'sword' }); // -> ItemDefinition[]
+```
+
+Each is per-category and returns that category's precise type. Every filter field is optional and AND-combines; an absent field matches everything. `search` is a case-insensitive name substring. `querySpells` takes `level` (exact) or `levelMin`/`levelMax` (inclusive range; exact wins), plus `school` / `class` (lowercase class id) / `concentration` / `ritual`. `queryMonsters` takes `type` / `size` / `cr` (exact) or `crMin`/`crMax` (inclusive; fractional CRs are decimals, 1/4 = 0.25). `queryItems` takes `itemKind` / `rarity` (`MagicRarity`). Results return in stable display order: spells by level then name, monsters by CR then name, items by name.
+
 ## RNG
 
 ```ts
