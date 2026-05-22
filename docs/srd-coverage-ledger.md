@@ -42,8 +42,8 @@ If you add or remove a probe / boundary table, update the number here in the sam
 Where the engine's confidence actually is, by area:
 
 - **Strongest (mostly 🟢):** the printed-table math (ability mod, proficiency bonus, spell-slot tables, carrying capacity, exhaustion) and content-data fidelity (spell / monster / item / class-table fields). These are non-circular because srd-drift and the boundary tables derive expectations from the SRD.
-- **Ground-truth-upgraded so far (🟢):** worn-armor + shield AC (slice 421), weapon data + plain-melee damage (422), and spell save DC / attack (423) — each parses the SRD and recomputes rather than trusting the author. Slice 422 proved the value by flushing out two missing firearms.
-- **Still regression-safe but unaudited (🟡):** the remaining sheet math — saving throws, skills, passive scores, the finesse/ranged attack ability choice, effective speeds — and the combat-legality rules the 48 probes cover. Implemented and pinned, but the expected values are author-asserted; these are the next ground-truth-upgrade or independent-review targets. The slice-421/422/423 conformance tests are the template: parse the SRD value, recompute, assert the engine agrees.
+- **Ground-truth-upgraded so far (🟢):** worn-armor + shield AC (slice 421), weapon data + plain-melee damage (422), spell save DC / attack (423), and per-class saving-throw proficiencies (424) — each parses the SRD and recomputes rather than trusting the author. Slice 422 proved the value by flushing out two missing firearms.
+- **Still regression-safe but unaudited (🟡):** the remaining sheet math — skills, passive scores, the finesse/ranged attack ability choice, effective speeds, effect-granted save proficiencies — and the combat-legality rules the 48 probes cover. Implemented and pinned, but the expected values are author-asserted; these are the next ground-truth-upgrade or independent-review targets. The slice-421/422/423 conformance tests are the template: parse the SRD value, recompute, assert the engine agrees.
 - **Blind spots (🔴 / ◐):** rules with no dedicated probe, prose-only condition effects, and the long content tail. Enumerated below where known; the scary ones are the rules not yet listed at all.
 
 ---
@@ -84,7 +84,7 @@ Implemented and unit-tested, but expected values are author-asserted. **These ar
 |---|---|---|---|---|
 | Armor Class — worn armor + shield (base + DEX cap, heavy no-DEX) | ✅ | 🟢 | [srd-ac-conformance](../tests/audit/srd-ac-conformance.test.ts) (slice 421) | base AC + Dex-cap parsed from the SRD `equipment.md` armor table; all 12 armors × a DEX range + shield. **Upgraded 🟡→🟢, the model for this column.** |
 | Armor Class — natural armor (statblock) | ✅ | 🟡 | unit: derive/ac | monster `armorClass`; not yet ground-truth-checked |
-| Saving throws (mod + prof + effects) | ✅ | 🟡 | unit: derive/save | |
+| Saving throws — per-class proficiency (mod + prof) | ✅ | 🟢 | [srd-saving-throw-conformance](../tests/audit/srd-saving-throw-conformance.test.ts) (slice 424) | each of the 12 classes' two save proficiencies parsed from classes.md; uniform ability mods pin that the engine is proficient in exactly the SRD-named pair. Effect-granted save prof (Slippery Mind etc.) still 🟡 |
 | Ability checks + skills (mod + prof) | ✅ | 🟡 | unit: derive/ability-check | background skill prof fixed slice 412 |
 | Passive scores (10 + check) | ✅ | 🟡 | unit + query/character-sheet | |
 | Attack bonus (ability + prof + magic) | ✅ | 🟡 | unit: derive/attack | finesse / ranged ability choice |
