@@ -79,11 +79,14 @@ describe('starter content pack', () => {
     expect(resolved.spells.get('identify')?.ritual).toBe(true);
   });
 
-  it('ships at least nine epic boons in the epic-boon feat category', () => {
+  it('ships the SRD-derived epic boons in the epic-boon feat category', () => {
+    // Since slice 401 the starter pack is SRD-only; the 3 PHB-2024 boons
+    // (Energy Resistance / Fortitude / Skill) moved to phb-2024-extras,
+    // leaving the 7 SRD-derived boons here.
     const pack = loadStarterPack();
     const resolved = resolveContent([pack]);
     const boons = [...resolved.feats.values()].filter((f) => f.category === 'epic-boon');
-    expect(boons.length).toBeGreaterThanOrEqual(9);
+    expect(boons.length).toBeGreaterThanOrEqual(7);
     expect(resolved.feats.get('boon-of-truesight')?.category).toBe('epic-boon');
   });
 
@@ -104,7 +107,9 @@ describe('starter content pack', () => {
     const pack = loadStarterPack();
     const resolved = resolveContent([pack]);
     expect(resolved.species.size).toBeGreaterThanOrEqual(7);
-    expect(resolved.backgrounds.size).toBeGreaterThanOrEqual(8);
+    // SRD-only since slice 401 (the 15 PHB-2024 backgrounds moved to
+    // phb-2024-extras): Acolyte, Criminal, Sage, Soldier.
+    expect(resolved.backgrounds.size).toBeGreaterThanOrEqual(4);
     expect(resolved.feats.size).toBeGreaterThanOrEqual(15);
     expect(resolved.items.size).toBeGreaterThanOrEqual(25);
     expect(resolved.species.get('dwarf')).toBeDefined();

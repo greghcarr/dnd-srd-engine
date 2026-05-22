@@ -33,6 +33,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { loadStarterPack } from '../../src/content/packs/starter.js';
+import { loadPhbExtrasPack } from '../../src/content/packs/extras.js';
 import { resolveContent } from '../../src/content/pack.js';
 import { WEAPON_MASTERIES } from '../../src/schemas/primitives.js';
 
@@ -203,8 +204,14 @@ describe('feature-coverage matrix: conditions', () => {
 });
 
 describe('feature-coverage matrix: feats', () => {
+  // The PHB feat set spans both shipped packs since slice 401: the
+  // SRD-derived feats stay in the starter pack, the PHB-2024-only feats
+  // moved to the phb-2024-extras pack. The capability matrix asserts the
+  // FULL shipped surface, so it reads both.
+  const ALL_FEATS = [...PACK.feats, ...loadPhbExtrasPack().feats];
+
   it('wired feats catalog is stable', () => {
-    const wired = PACK.feats
+    const wired = ALL_FEATS
       .filter((f) => isWired((f.effects ?? []).length))
       .map((f) => `${f.category}:${f.id}`)
       .sort();
@@ -212,7 +219,7 @@ describe('feature-coverage matrix: feats', () => {
   });
 
   it('all six 2024 Fighting Styles ship as feats', () => {
-    const styles = PACK.feats.filter((f) => f.category === 'fighting-style').map((f) => f.id).sort();
+    const styles = ALL_FEATS.filter((f) => f.category === 'fighting-style').map((f) => f.id).sort();
     expect(styles).toEqual([
       'fighting-style-archery',
       'fighting-style-defense',
@@ -224,7 +231,7 @@ describe('feature-coverage matrix: feats', () => {
   });
 
   it('all nine epic boons ship', () => {
-    const boons = PACK.feats.filter((f) => f.category === 'epic-boon').map((f) => f.id).sort();
+    const boons = ALL_FEATS.filter((f) => f.category === 'epic-boon').map((f) => f.id).sort();
     expect(boons.length).toBeGreaterThanOrEqual(9);
   });
 });

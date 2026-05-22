@@ -4,6 +4,14 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 401): extract PHB-2024 backgrounds + feats into a separate `phb-2024-extras` pack**
+
+First real use of the slice-400 multi-pack architecture. The starter pack shipped 15 PHB-2024 backgrounds and 17 PHB-2024 feats outside the SRD 5.2.1 license envelope (kept since slice 152 "for character-creation breadth"). Moved them into a new opt-in [phb-2024-extras.json](src/content/packs/phb-2024-extras.json) pack with `loadPhbExtrasPack()` / `PHB_EXTRAS_PACK_RAW`, so `loadStarterPack()` is now **purely SRD-derived** (4 backgrounds: Acolyte/Criminal/Sage/Soldier; 18 SRD feats). This tightens the IP story (the distributed starter pack is now 100% CC-BY SRD) and means the srd-drift audit covers the whole starter pack with no non-SRD entries to skip. Consumers wanting the full character-creation breadth load both packs: `createEngine({ contentPacks: [loadStarterPack(), loadPhbExtrasPack()] })`.
+
+The starter-pack.json edit is a surgical removal (46 deletions, 1 insertion: the trailing-comma fixup on the new last background) preserving every kept entry's exact formatting. Entanglement was lighter than the spell side: the moved backgrounds/feats are referenced only in the pack JSON, except the Dueling + Protection fighting-style feats, which two planner tests exercise; those tests now load both packs. The feature-coverage matrix reads both packs (it asserts the full shipped capability, so the wired-feat snapshot stays complete). The starter-pack content test keeps its SRD-only scope with thresholds lowered to the SRD counts.
+
+This reverses the slice-152 "keep extras in, let strict consumers prune" policy (documented in [content-attribution.md](docs/content-attribution.md), now updated): the default is SRD-only and breadth is opt-in. Spells are the next, more entangled half (the 12 wired non-SRD spells have dedicated planners + tests). doc-counts reconciled (getting-started.md: 18 feats, 4 backgrounds); status.md + starter-pack-gaps.md + content-attribution.md updated. No engine change. No em/en dashes. `tsc --noEmit` clean; full suite green (332 files / 2177 passing).
+
 **Engine (slice 400): multi-pack id-collision policy + a pack validator (content-authoring foundation)**
 
 Groundwork before any volume content authoring beyond SRD. SRD pack-presence is already 100% complete, so new content (homebrew, non-SRD, campaign catalogs) belongs in a *separate* pack the engine loads alongside the SRD pack (`createEngine` already takes `ReadonlyArray<ContentPack>`; `resolveContent` merges them). The gap was the merge itself: `resolveContent` did `map.set(e.id, e)` last-wins, so a second pack could **silently clobber** an SRD entry on an accidental id reuse, with no error.

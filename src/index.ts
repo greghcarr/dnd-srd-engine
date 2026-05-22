@@ -306,6 +306,7 @@ export {
 } from './content/index.js';
 export type { ContentPack, ResolvedContent, ContentValidationIssue, ContentPackIssue } from './content/index.js';
 export { loadStarterPack, STARTER_PACK_RAW } from './content/packs/starter.js';
+export { loadPhbExtrasPack, PHB_EXTRAS_PACK_RAW } from './content/packs/extras.js';
 
 export {
   DefaultRNG,

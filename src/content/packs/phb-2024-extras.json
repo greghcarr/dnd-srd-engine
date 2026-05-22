@@ -1,0 +1,527 @@
+{
+  "id": "phb-2024-extras",
+  "name": "dnd-srd-engine PHB 2024 extras",
+  "version": "0.1.0",
+  "license": "Non-SRD (homebrew shapes); see docs/content-attribution.md",
+  "attribution": "These entries reference 2024 Player's Handbook mechanic names that fall outside the SRD 5.2.1 CC-BY-4.0 envelope. Kept as a separate, opt-in pack so the starter pack stays purely SRD-derived. The mechanical encodings are this package's own implementation. See docs/content-attribution.md.",
+  "derivedFrom": "2024 PHB (non-SRD; consumer responsibility for downstream use)",
+  "overrides": [],
+  "species": [],
+  "backgrounds": [
+    {
+      "id": "folk-hero",
+      "name": "Folk Hero",
+      "abilityScoreIncreases": {
+        "options": [
+          "STR",
+          "CON",
+          "WIS"
+        ],
+        "pattern": "+2/+1"
+      },
+      "skillProficiencies": [
+        "animal-handling",
+        "survival"
+      ],
+      "toolProficiencies": [
+        "smiths-tools"
+      ],
+      "languages": [],
+      "originFeatId": "tough",
+      "traits": []
+    },
+    {
+      "id": "noble",
+      "name": "Noble",
+      "abilityScoreIncreases": {
+        "options": [
+          "STR",
+          "INT",
+          "CHA"
+        ],
+        "pattern": "+2/+1"
+      },
+      "skillProficiencies": [
+        "history",
+        "persuasion"
+      ],
+      "toolProficiencies": [
+        "gaming"
+      ],
+      "languages": [],
+      "originFeatId": "skilled",
+      "traits": []
+    },
+    {
+      "id": "guild-artisan",
+      "name": "Guild Artisan",
+      "abilityScoreIncreases": {
+        "options": [
+          "STR",
+          "DEX",
+          "WIS"
+        ],
+        "pattern": "+2/+1"
+      },
+      "skillProficiencies": [
+        "insight",
+        "persuasion"
+      ],
+      "toolProficiencies": [
+        "smiths-tools"
+      ],
+      "languages": [],
+      "originFeatId": "crafter",
+      "traits": []
+    },
+    {
+      "id": "outlander",
+      "name": "Outlander",
+      "abilityScoreIncreases": {
+        "options": [
+          "STR",
+          "DEX",
+          "WIS"
+        ],
+        "pattern": "+2/+1"
+      },
+      "skillProficiencies": [
+        "athletics",
+        "survival"
+      ],
+      "toolProficiencies": [
+        "musical"
+      ],
+      "languages": [],
+      "originFeatId": "tough",
+      "traits": []
+    },
+    {
+      "id": "artisan",
+      "name": "Artisan",
+      "abilityScoreIncreases": {
+        "options": [
+          "STR",
+          "DEX",
+          "INT"
+        ],
+        "pattern": "+2/+1"
+      },
+      "skillProficiencies": [
+        "investigation",
+        "persuasion"
+      ],
+      "toolProficiencies": [
+        "jewelers-tools"
+      ],
+      "languages": [],
+      "originFeatId": "crafter",
+      "traits": []
+    },
+    {
+      "id": "charlatan",
+      "name": "Charlatan",
+      "abilityScoreIncreases": {
+        "options": [
+          "DEX",
+          "CON",
+          "CHA"
+        ],
+        "pattern": "+2/+1"
+      },
+      "skillProficiencies": [
+        "deception",
+        "sleight-of-hand"
+      ],
+      "toolProficiencies": [
+        "forgery-kit"
+      ],
+      "languages": [],
+      "originFeatId": "skilled",
+      "traits": []
+    },
+    {
+      "id": "entertainer",
+      "name": "Entertainer",
+      "abilityScoreIncreases": {
+        "options": [
+          "STR",
+          "DEX",
+          "CHA"
+        ],
+        "pattern": "+2/+1"
+      },
+      "skillProficiencies": [
+        "acrobatics",
+        "performance"
+      ],
+      "toolProficiencies": [
+        "musical"
+      ],
+      "languages": [],
+      "originFeatId": "musician",
+      "traits": []
+    },
+    {
+      "id": "farmer",
+      "name": "Farmer",
+      "abilityScoreIncreases": {
+        "options": [
+          "STR",
+          "CON",
+          "WIS"
+        ],
+        "pattern": "+2/+1"
+      },
+      "skillProficiencies": [
+        "animal-handling",
+        "nature"
+      ],
+      "toolProficiencies": [
+        "carpenters-tools"
+      ],
+      "languages": [],
+      "originFeatId": "tough",
+      "traits": []
+    },
+    {
+      "id": "guard",
+      "name": "Guard",
+      "abilityScoreIncreases": {
+        "options": [
+          "STR",
+          "INT",
+          "WIS"
+        ],
+        "pattern": "+2/+1"
+      },
+      "skillProficiencies": [
+        "athletics",
+        "perception"
+      ],
+      "toolProficiencies": [
+        "gaming"
+      ],
+      "languages": [],
+      "originFeatId": "alert",
+      "traits": []
+    },
+    {
+      "id": "guide",
+      "name": "Guide",
+      "abilityScoreIncreases": {
+        "options": [
+          "DEX",
+          "CON",
+          "WIS"
+        ],
+        "pattern": "+2/+1"
+      },
+      "skillProficiencies": [
+        "stealth",
+        "survival"
+      ],
+      "toolProficiencies": [
+        "cartographers-tools"
+      ],
+      "languages": [],
+      "originFeatId": "magic-initiate-druid",
+      "traits": []
+    },
+    {
+      "id": "hermit",
+      "name": "Hermit",
+      "abilityScoreIncreases": {
+        "options": [
+          "CON",
+          "WIS",
+          "CHA"
+        ],
+        "pattern": "+2/+1"
+      },
+      "skillProficiencies": [
+        "medicine",
+        "religion"
+      ],
+      "toolProficiencies": [
+        "herbalism-kit"
+      ],
+      "languages": [],
+      "originFeatId": "healer",
+      "traits": []
+    },
+    {
+      "id": "merchant",
+      "name": "Merchant",
+      "abilityScoreIncreases": {
+        "options": [
+          "CON",
+          "INT",
+          "CHA"
+        ],
+        "pattern": "+2/+1"
+      },
+      "skillProficiencies": [
+        "animal-handling",
+        "persuasion"
+      ],
+      "toolProficiencies": [
+        "navigators-tools"
+      ],
+      "languages": [],
+      "originFeatId": "lucky",
+      "traits": []
+    },
+    {
+      "id": "sailor",
+      "name": "Sailor",
+      "abilityScoreIncreases": {
+        "options": [
+          "STR",
+          "DEX",
+          "WIS"
+        ],
+        "pattern": "+2/+1"
+      },
+      "skillProficiencies": [
+        "acrobatics",
+        "perception"
+      ],
+      "toolProficiencies": [
+        "navigators-tools"
+      ],
+      "languages": [],
+      "originFeatId": "tavern-brawler",
+      "traits": []
+    },
+    {
+      "id": "scribe",
+      "name": "Scribe",
+      "abilityScoreIncreases": {
+        "options": [
+          "DEX",
+          "INT",
+          "WIS"
+        ],
+        "pattern": "+2/+1"
+      },
+      "skillProficiencies": [
+        "investigation",
+        "perception"
+      ],
+      "toolProficiencies": [
+        "calligraphers-supplies"
+      ],
+      "languages": [],
+      "originFeatId": "skilled",
+      "traits": []
+    },
+    {
+      "id": "wayfarer",
+      "name": "Wayfarer",
+      "abilityScoreIncreases": {
+        "options": [
+          "DEX",
+          "WIS",
+          "CHA"
+        ],
+        "pattern": "+2/+1"
+      },
+      "skillProficiencies": [
+        "insight",
+        "stealth"
+      ],
+      "toolProficiencies": [
+        "thieves-tools"
+      ],
+      "languages": [],
+      "originFeatId": "lucky",
+      "traits": []
+    }
+  ],
+  "classes": [],
+  "subclasses": [],
+  "feats": [
+    {
+      "id": "unarmored-defense-barbarian",
+      "name": "Unarmored Defense (Barbarian)",
+      "category": "general",
+      "repeatable": false,
+      "prerequisites": [],
+      "effects": [
+        {
+          "kind": "OverrideACFormula",
+          "base": 10,
+          "abilityModifiers": [
+            "DEX",
+            "CON"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tough",
+      "name": "Tough",
+      "category": "origin",
+      "repeatable": false,
+      "prerequisites": [],
+      "effects": []
+    },
+    {
+      "id": "crafter",
+      "name": "Crafter",
+      "category": "origin",
+      "repeatable": false,
+      "prerequisites": [],
+      "effects": []
+    },
+    {
+      "id": "lucky",
+      "name": "Lucky",
+      "category": "origin",
+      "repeatable": false,
+      "prerequisites": [],
+      "effects": [
+        {
+          "kind": "GrantResource",
+          "resourceId": "luck",
+          "max": 3,
+          "recharge": "longRest"
+        }
+      ]
+    },
+    {
+      "id": "healer",
+      "name": "Healer",
+      "category": "origin",
+      "repeatable": false,
+      "prerequisites": [],
+      "effects": []
+    },
+    {
+      "id": "musician",
+      "name": "Musician",
+      "category": "origin",
+      "repeatable": false,
+      "prerequisites": [],
+      "effects": []
+    },
+    {
+      "id": "tavern-brawler",
+      "name": "Tavern Brawler",
+      "category": "origin",
+      "repeatable": false,
+      "prerequisites": [],
+      "effects": []
+    },
+    {
+      "id": "great-weapon-master",
+      "name": "Great Weapon Master",
+      "category": "general",
+      "repeatable": false,
+      "prerequisites": [],
+      "effects": []
+    },
+    {
+      "id": "sharpshooter",
+      "name": "Sharpshooter",
+      "category": "general",
+      "repeatable": false,
+      "prerequisites": [],
+      "effects": []
+    },
+    {
+      "id": "polearm-master",
+      "name": "Polearm Master",
+      "category": "general",
+      "repeatable": false,
+      "prerequisites": [],
+      "effects": []
+    },
+    {
+      "id": "war-caster",
+      "name": "War Caster",
+      "category": "general",
+      "repeatable": false,
+      "prerequisites": [],
+      "effects": []
+    },
+    {
+      "id": "resilient-con",
+      "name": "Resilient (Constitution)",
+      "category": "general",
+      "repeatable": false,
+      "prerequisites": [],
+      "effects": []
+    },
+    {
+      "id": "fighting-style-dueling",
+      "name": "Fighting Style: Dueling",
+      "category": "fighting-style",
+      "repeatable": false,
+      "prerequisites": [],
+      "effects": [
+        {
+          "kind": "AddModifier",
+          "target": "damage",
+          "value": 2,
+          "condition": {
+            "kind": "all",
+            "terms": [
+              {
+                "kind": "eq",
+                "path": "event.attackKind",
+                "value": "melee"
+              },
+              {
+                "kind": "eq",
+                "path": "bearer.offHandHasWeapon",
+                "value": false
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "fighting-style-protection",
+      "name": "Fighting Style: Protection",
+      "category": "fighting-style",
+      "repeatable": false,
+      "prerequisites": [],
+      "effects": [
+        {
+          "kind": "GrantProtectionFightingStyle"
+        }
+      ]
+    },
+    {
+      "id": "boon-of-energy-resistance",
+      "name": "Boon of Energy Resistance",
+      "category": "epic-boon",
+      "repeatable": false,
+      "prerequisites": [],
+      "effects": []
+    },
+    {
+      "id": "boon-of-fortitude",
+      "name": "Boon of Fortitude",
+      "category": "epic-boon",
+      "repeatable": false,
+      "prerequisites": [],
+      "effects": []
+    },
+    {
+      "id": "boon-of-skill",
+      "name": "Boon of Skill",
+      "category": "epic-boon",
+      "repeatable": false,
+      "prerequisites": [],
+      "effects": []
+    }
+  ],
+  "spells": [],
+  "items": [],
+  "monsters": [],
+  "conditions": []
+}
