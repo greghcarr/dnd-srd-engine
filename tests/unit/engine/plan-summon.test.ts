@@ -16,10 +16,9 @@ import { createEngine } from '../../../src/engine/index.js';
 import { seededRNG } from '../../../src/rng/seeded.js';
 import { commit } from '../../../src/engine/commit.js';
 import { loadStarterPack } from '../../../src/content/packs/starter.js';
-import { loadPhbExtrasPack } from '../../../src/content/packs/extras.js';
 import { CharacterSchema, type Character } from '../../../src/schemas/runtime/character.js';
 import { newCharacterId } from '../../../src/ids.js';
-import { eventId, isoTimestamp } from '../../fixtures/index.js';
+import { eventId, isoTimestamp, loadPhbExtrasTestPack } from '../../fixtures/index.js';
 import type { CharacterCreatedEvent } from '../../../src/schemas/events/progression.js';
 import type {
   CompanionSummonedEvent,
@@ -43,7 +42,7 @@ const buildCaster = (spellId: string, level = 5): Character =>
 describe('planCastSpell: summon mechanic', () => {
   it('emits CompanionSummoned with base HP at base slot', () => {
     const PACK = loadStarterPack();
-    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasPack()], rng: seededRNG(1) });
+    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(1) });
     const caster = buildCaster('find-familiar');
     let campaign = engine.createCampaign({ name: 'find-familiar-base' });
     campaign = commit(campaign, [
@@ -68,7 +67,7 @@ describe('planCastSpell: summon mechanic', () => {
 
   it('scales HP by hpPerSlotAbove when cast at a higher slot', () => {
     const PACK = loadStarterPack();
-    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasPack()], rng: seededRNG(1) });
+    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(1) });
     const caster = buildCaster('summon-beast', 5);
     let campaign = engine.createCampaign({ name: 'summon-beast-up' });
     campaign = commit(campaign, [
@@ -91,7 +90,7 @@ describe('planCastSpell: summon mechanic', () => {
 
   it('ties concentration summons to the same effectInstanceId as ConcentrationStarted', () => {
     const PACK = loadStarterPack();
-    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasPack()], rng: seededRNG(1) });
+    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(1) });
     const caster = buildCaster('summon-beast');
     let campaign = engine.createCampaign({ name: 'summon-beast-conc' });
     campaign = commit(campaign, [
@@ -119,7 +118,7 @@ describe('planCastSpell: summon mechanic', () => {
 describe('planDismissCompanion', () => {
   it('emits CompanionDismissed and the reducer removes the companion', () => {
     const PACK = loadStarterPack();
-    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasPack()], rng: seededRNG(1) });
+    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(1) });
     const caster = buildCaster('find-familiar');
     let campaign = engine.createCampaign({ name: 'dismiss' });
     campaign = commit(campaign, [
@@ -149,7 +148,7 @@ describe('planDismissCompanion', () => {
 
   it('throws when the companion is not a summoned creature', () => {
     const PACK = loadStarterPack();
-    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasPack()], rng: seededRNG(1) });
+    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(1) });
     const caster = buildCaster('find-familiar');
     let campaign = engine.createCampaign({ name: 'dismiss-pc' });
     campaign = commit(campaign, [

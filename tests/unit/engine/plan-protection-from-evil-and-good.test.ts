@@ -3,7 +3,6 @@ import { createEngine } from '../../../src/engine/index.js';
 import { seededRNG } from '../../../src/rng/seeded.js';
 import { commit, type Campaign } from '../../../src/engine/commit.js';
 import { loadStarterPack } from '../../../src/content/packs/starter.js';
-import { loadPhbExtrasPack } from '../../../src/content/packs/extras.js';
 import { CharacterSchema, type Character } from '../../../src/schemas/runtime/character.js';
 import {
   ItemInstanceSchema,
@@ -13,7 +12,7 @@ import { newCharacterId, newItemInstanceId, newAppliedConditionId } from '../../
 import type { CharacterCreatedEvent } from '../../../src/schemas/events/progression.js';
 import type { ConditionAppliedEvent } from '../../../src/schemas/events/combat.js';
 import type { AttackRolledEvent } from '../../../src/schemas/events/attack.js';
-import { eventId, isoTimestamp } from '../../fixtures/index.js';
+import { eventId, isoTimestamp, loadPhbExtrasTestPack } from '../../fixtures/index.js';
 import { buildEffectStack } from '../../../src/derive/effect-stack.js';
 import { resolveContent } from '../../../src/content/pack.js';
 import { isImmuneToCondition } from '../../../src/derive/condition-immunity.js';
@@ -42,7 +41,7 @@ import { isImmuneToCondition } from '../../../src/derive/condition-immunity.js';
 //    aura tick) thread it through.
 
 const PACK = loadStarterPack();
-const STARTER_CONTENT = resolveContent([PACK, loadPhbExtrasPack()]);
+const STARTER_CONTENT = resolveContent([PACK, loadPhbExtrasTestPack()]);
 
 // Use the starter pack for monsters (Skeleton has the Undead type the
 // PfEoG predicate matches). The TEST_PACK in tests/fixtures doesn't
@@ -169,7 +168,7 @@ describe('Protection from Evil and Good: predicate-gated ImposeDisadvantageOnAtt
 describe('Attack planner: PfEoG-buffed target', () => {
   it('Skeleton attack against a PfEoG-buffed Cleric resolves with disadvantage', () => {
     for (let seed = 1; seed < 30; seed += 1) {
-      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasPack()], rng: seededRNG(seed) });
+      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(seed) });
       const sword = longsword();
       const cleric = buildCleric();
       const skeleton = buildSkeleton(sword.id);
@@ -203,7 +202,7 @@ describe('Attack planner: PfEoG-buffed target', () => {
 
   it('Bandit attack against a PfEoG-buffed Cleric resolves without disadvantage', () => {
     for (let seed = 1; seed < 30; seed += 1) {
-      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasPack()], rng: seededRNG(seed) });
+      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(seed) });
       const sword = longsword();
       const cleric = buildCleric();
       const bandit = buildHumanoidAttacker(sword.id);
@@ -334,7 +333,7 @@ describe('Protection from Evil and Good: source-predicate condition immunity', (
   });
 
   it('isImmuneToCondition resolves source-gated immunity via sourceCharacterId', () => {
-    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasPack()], rng: seededRNG(1) });
+    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(1) });
     const cleric = buildPfEoGCleric();
     const undead = buildSkeletonCaster();
     const humanoid = buildHumanoidCaster();
@@ -381,7 +380,7 @@ describe('Protection from Evil and Good: source-predicate condition immunity', (
     // with source-gated immunity, the planner sees the source is Undead
     // and skips the apply.
     for (let seed = 1; seed < 40; seed += 1) {
-      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasPack()], rng: seededRNG(seed) });
+      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(seed) });
       const cleric = buildPfEoGCleric();
       const undead = buildSkeletonCaster();
       let campaign: Campaign = engine.createCampaign({ name: `pfeg-cause-fear-${seed}` });
@@ -411,7 +410,7 @@ describe('Protection from Evil and Good: source-predicate condition immunity', (
 
   it('cast-spell still emits ConditionApplied(frightened) when a Humanoid source casts Cause Fear at a PfEoG cleric (failed save)', () => {
     for (let seed = 1; seed < 40; seed += 1) {
-      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasPack()], rng: seededRNG(seed) });
+      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(seed) });
       const cleric = buildPfEoGCleric();
       const humanoid = buildHumanoidCaster();
       let campaign: Campaign = engine.createCampaign({ name: `pfeg-humanoid-${seed}` });

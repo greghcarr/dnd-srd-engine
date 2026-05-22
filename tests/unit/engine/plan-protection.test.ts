@@ -16,17 +16,14 @@ import { createEngine } from '../../../src/engine/index.js';
 import { seededRNG } from '../../../src/rng/seeded.js';
 import { commit, type Campaign } from '../../../src/engine/commit.js';
 import { loadStarterPack } from '../../../src/content/packs/starter.js';
-// Protection is a PHB-2024 fighting style (non-SRD); it lives in the
-// extras pack since slice 401, so this test loads both packs.
-import { loadPhbExtrasPack } from '../../../src/content/packs/extras.js';
 import { CharacterSchema, type Character } from '../../../src/schemas/runtime/character.js';
 import { newCharacterId, newEventId } from '../../../src/ids.js';
 import type { CharacterCreatedEvent } from '../../../src/schemas/events/progression.js';
 import type { ProtectionUsedEvent } from '../../../src/schemas/events/reactive-spells.js';
-import { eventId, isoTimestamp, makeItemInstance } from '../../fixtures/index.js';
+import { eventId, isoTimestamp, makeItemInstance, loadPhbExtrasTestPack } from '../../fixtures/index.js';
 
 const PACK = loadStarterPack();
-const EXTRAS = loadPhbExtrasPack();
+const EXTRAS = loadPhbExtrasTestPack();
 
 const buildProtector = (opts: {
   hasFightingStyle: boolean;

@@ -18,13 +18,12 @@ import { createEngine } from '../../../src/engine/index.js';
 import { seededRNG } from '../../../src/rng/seeded.js';
 import { commit, type Campaign } from '../../../src/engine/commit.js';
 import { loadStarterPack } from '../../../src/content/packs/starter.js';
-import { loadPhbExtrasPack } from '../../../src/content/packs/extras.js';
 import { CharacterSchema, type Character } from '../../../src/schemas/runtime/character.js';
 import { newCharacterId } from '../../../src/ids.js';
 import type { CharacterCreatedEvent } from '../../../src/schemas/events/progression.js';
 import type { ConditionAppliedEvent } from '../../../src/schemas/events/combat.js';
 import type { AttackRolledEvent } from '../../../src/schemas/events/attack.js';
-import { eventId, isoTimestamp, makeItemInstance } from '../../fixtures/index.js';
+import { eventId, isoTimestamp, makeItemInstance, loadPhbExtrasTestPack } from '../../fixtures/index.js';
 
 const PACK = loadStarterPack();
 
@@ -67,7 +66,7 @@ interface SeededHit {
 // Mirrors the seed-walk pattern in plan-heal-blocked.test.ts.
 const seedHealBlockedScene = (): SeededHit => {
   for (let seed = 1; seed < 80; seed += 1) {
-    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasPack()], rng: seededRNG(seed) });
+    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(seed) });
     const longsword = makeItemInstance('longsword');
     const caster = buildCleric();
     const target = buildTarget();
@@ -157,7 +156,7 @@ describe('concentration cleanup sweeps rider-applied conditions', () => {
     // concentration-tracked AppliedCondition. The dispatcher should
     // emit the rider's ConditionApplied with no sourceEffectInstanceId.
     for (let seed = 1; seed < 80; seed += 1) {
-      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasPack()], rng: seededRNG(seed) });
+      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(seed) });
       const longsword = makeItemInstance('longsword');
       const fighter = CharacterSchema.parse({
         id: newCharacterId(),

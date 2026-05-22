@@ -68,7 +68,7 @@ Seven species: Human, Elf, Dwarf, Halfling, Tiefling, Dragonborn, Gnome. PHB 202
 
 **Starter pack (SRD 5.2.1 only):** Acolyte, Criminal, Sage, Soldier.
 
-The 15 PHB-2024 backgrounds (Artisan, Charlatan, Entertainer, Farmer, Folk Hero, Guard, Guide, Guild Artisan, Hermit, Merchant, Noble, Outlander, Sailor, Scribe, Wayfarer) moved to the **`phb-2024-extras`** pack in slice 401, so the starter pack stays purely SRD-derived. Load `loadPhbExtrasPack()` alongside the starter pack for the full character-creation breadth.
+The 15 PHB-2024 backgrounds (Artisan, Charlatan, Entertainer, Farmer, Folk Hero, Guard, Guide, Guild Artisan, Hermit, Merchant, Noble, Outlander, Sailor, Scribe, Wayfarer) were extracted from the starter pack (slice 401) and then removed from tracked source (slice 403). The engine ships SRD-only; non-SRD content is user-supplied in the gitignored `content-packs/` folder (see [content-packs/README.md](../content-packs/README.md)).
 
 ## Feats
 

@@ -10,10 +10,9 @@ import { createEngine } from '../../../src/engine/index.js';
 import { seededRNG } from '../../../src/rng/seeded.js';
 import { commit } from '../../../src/engine/commit.js';
 import { loadStarterPack } from '../../../src/content/packs/starter.js';
-import { loadPhbExtrasPack } from '../../../src/content/packs/extras.js';
 import { CharacterSchema, type Character } from '../../../src/schemas/runtime/character.js';
 import { newCharacterId } from '../../../src/ids.js';
-import { eventId, isoTimestamp } from '../../fixtures/index.js';
+import { eventId, isoTimestamp, loadPhbExtrasTestPack } from '../../fixtures/index.js';
 import type { CharacterCreatedEvent } from '../../../src/schemas/events/progression.js';
 
 const buildCaster = (spellId: string): Character =>
@@ -47,7 +46,7 @@ describe('aura-damage mechanic: condition + damage extensions', () => {
   it('Stinking Cloud applies poisoned on a failed CON save (no damage)', () => {
     let proven = false;
     for (let seed = 1; seed < 60 && !proven; seed += 1) {
-      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasPack()], rng: seededRNG(seed) });
+      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(seed) });
       const caster = buildCaster('stinking-cloud');
       const target = buildTarget();
       let campaign = engine.createCampaign({ name: 'sc' });
@@ -83,7 +82,7 @@ describe('aura-damage mechanic: condition + damage extensions', () => {
   });
 
   it('Cloud of Daggers deals slashing damage with no save (no SaveRolled event)', () => {
-    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasPack()], rng: seededRNG(1) });
+    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(1) });
     const caster = buildCaster('cloud-of-daggers');
     const target = buildTarget();
     let campaign = engine.createCampaign({ name: 'cod' });
@@ -111,7 +110,7 @@ describe('aura-damage mechanic: condition + damage extensions', () => {
   });
 
   it('Hunger of Hadar fires only the trigger-matched mechanic per call', () => {
-    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasPack()], rng: seededRNG(1) });
+    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(1) });
     const caster = buildCaster('hunger-of-hadar');
     const target = buildTarget();
     let campaign = engine.createCampaign({ name: 'hoh' });
@@ -156,7 +155,7 @@ describe('aura-damage mechanic: condition + damage extensions', () => {
   it('Wall of Fire deals fire damage on tick (with optional half on success)', () => {
     let proven = false;
     for (let seed = 1; seed < 60 && !proven; seed += 1) {
-      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasPack()], rng: seededRNG(seed) });
+      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(seed) });
       const caster = buildCaster('wall-of-fire');
       const target = buildTarget();
       let campaign = engine.createCampaign({ name: 'wof' });

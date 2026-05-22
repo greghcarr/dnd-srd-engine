@@ -3,7 +3,6 @@ import { createEngine } from '../../../src/engine/index.js';
 import { seededRNG } from '../../../src/rng/seeded.js';
 import { commit } from '../../../src/engine/commit.js';
 import { loadStarterPack } from '../../../src/content/packs/starter.js';
-import { loadPhbExtrasPack } from '../../../src/content/packs/extras.js';
 import { CharacterSchema, type Character } from '../../../src/schemas/runtime/character.js';
 import { newCharacterId, newEventId } from '../../../src/ids.js';
 import type { Campaign } from '../../../src/engine/commit.js';
@@ -14,7 +13,7 @@ import type { AttackRolledEvent } from '../../../src/schemas/events/attack.js';
 import type { TriggerFiredEvent } from '../../../src/schemas/events/triggers.js';
 import type { ULID } from '../../../src/engine/ids-utils.js';
 import type { DamageType } from '../../../src/schemas/primitives.js';
-import { eventId, isoTimestamp, makeItemInstance } from '../../fixtures/index.js';
+import { eventId, isoTimestamp, makeItemInstance, loadPhbExtrasTestPack } from '../../fixtures/index.js';
 
 // Tests Absorb Elements as a dedicated reaction planner. The triggering
 // DamageApplied event has already committed; planAbsorbElements emits a
@@ -62,7 +61,7 @@ const buildTarget = (): Character =>
   });
 
 const buildCampaign = () => {
-  const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasPack()], rng: seededRNG(0) });
+  const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(0) });
   const wizard = buildWizard();
   let campaign: Campaign = engine.createCampaign({ name: 'absorb-elements' });
   campaign = commit(campaign, [
@@ -132,7 +131,7 @@ describe('engine.plan.absorbElements', () => {
 
   it('the on-next-hit rider adds +1d6 of the absorbed type and then the condition consumes', () => {
     for (let seed = 1; seed < 100; seed += 1) {
-      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasPack()], rng: seededRNG(seed) });
+      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(seed) });
       const longsword = makeItemInstance('longsword');
       const wizard = buildWizard();
       const target = buildTarget();
@@ -201,7 +200,7 @@ describe('engine.plan.absorbElements', () => {
     // non-crit hit can exceed 6 (impossible with the base 1d6).
     let maxNonCritFire = 0;
     for (let seed = 1; seed < 120; seed += 1) {
-      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasPack()], rng: seededRNG(seed) });
+      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(seed) });
       const longsword = makeItemInstance('longsword');
       const wizard = buildWizard();
       const target = buildTarget();
@@ -278,7 +277,7 @@ describe('engine.plan.absorbElements', () => {
   });
 
   it('throws when the reactor has already used their reaction this round (in encounter)', () => {
-    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasPack()], rng: seededRNG(0) });
+    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(0) });
     const wizard = buildWizard();
     const attacker = buildAttacker();
     let campaign: Campaign = engine.createCampaign({ name: 'absorb-reaction-gate' });

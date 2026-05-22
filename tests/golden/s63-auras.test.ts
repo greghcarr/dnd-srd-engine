@@ -20,13 +20,12 @@ import { createEngine } from '../../src/engine/index.js';
 import { seededRNG } from '../../src/rng/seeded.js';
 import { commit } from '../../src/engine/commit.js';
 import { loadStarterPack } from '../../src/content/packs/starter.js';
-import { loadPhbExtrasPack } from '../../src/content/packs/extras.js';
 import { resolveContent } from '../../src/content/pack.js';
 import { buildEffectStack } from '../../src/derive/effect-stack.js';
 import { collectEffectsFromCharacter } from '../../src/derive/effect-stack.js';
 import { CharacterSchema, type Character } from '../../src/schemas/runtime/character.js';
 import { newCharacterId } from '../../src/ids.js';
-import { eventId, isoTimestamp, makeItemInstance } from '../fixtures/index.js';
+import { eventId, isoTimestamp, makeItemInstance, loadPhbExtrasTestPack } from '../fixtures/index.js';
 import type { CharacterCreatedEvent } from '../../src/schemas/events/progression.js';
 import type { AttackRolledEvent } from '../../src/schemas/events/attack.js';
 
@@ -74,7 +73,7 @@ describe('golden: aura primitive', () => {
     let proven = false;
     while (attempt < 100 && !proven) {
       attempt += 1;
-      const engine = createEngine({ contentPacks: [STARTER_PACK, loadPhbExtrasPack()], rng: seededRNG(attempt) });
+      const engine = createEngine({ contentPacks: [STARTER_PACK, loadPhbExtrasTestPack()], rng: seededRNG(attempt) });
       const paladinSword = makeItemInstance('longsword');
       const allySword = makeItemInstance('longsword');
       const paladin = buildPaladin(9);
@@ -148,8 +147,8 @@ describe('golden: aura primitive', () => {
 
   it('Aura of Courage: L10 paladin has GrantAura metadata and own Frightened immunity', () => {
     const STARTER_PACK = loadStarterPack();
-    const STARTER_CONTENT = resolveContent([STARTER_PACK, loadPhbExtrasPack()]);
-    const engine = createEngine({ contentPacks: [STARTER_PACK, loadPhbExtrasPack()], rng: seededRNG(1) });
+    const STARTER_CONTENT = resolveContent([STARTER_PACK, loadPhbExtrasTestPack()]);
+    const engine = createEngine({ contentPacks: [STARTER_PACK, loadPhbExtrasTestPack()], rng: seededRNG(1) });
     const paladin = buildPaladin(10);
     let campaign = engine.createCampaign({ name: 'aura-of-courage' });
     campaign = commit(campaign, [
@@ -191,7 +190,7 @@ describe('golden: aura primitive', () => {
 
   it("Aura of Courage's ally condition carries Frightened immunity when applied", () => {
     const STARTER_PACK = loadStarterPack();
-    const STARTER_CONTENT = resolveContent([STARTER_PACK, loadPhbExtrasPack()]);
+    const STARTER_CONTENT = resolveContent([STARTER_PACK, loadPhbExtrasTestPack()]);
     const auraCondition = STARTER_CONTENT.conditions.get('aura-of-courage-active');
     expect(auraCondition).toBeDefined();
     const grantsFrightenedImmunity = auraCondition!.effects.some(

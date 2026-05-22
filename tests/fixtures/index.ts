@@ -18,6 +18,20 @@ export const TEST_PACK: ContentPack = loadContentPack(
 
 export const TEST_CONTENT = resolveContent([TEST_PACK]);
 
+// The non-SRD mechanical shapes (XGE/TCE spells + their conditions + the
+// Dueling/Protection fighting styles) the engine genuinely needs to test
+// its planners (absorb-elements, thunder-step, elemental-weapon) and the
+// fighting-style mechanics. Kept here as a test fixture, NOT shipped as a
+// content product: the engine ships SRD-only (slices 401-403), and a
+// consumer's real non-SRD / homebrew packs live in the gitignored
+// content-packs/ folder (see content-packs/README.md). Mechanics-only; no
+// WotC descriptive text. Load alongside the starter pack:
+// `createEngine({ contentPacks: [loadStarterPack(), loadPhbExtrasTestPack()] })`.
+export const loadPhbExtrasTestPack = (): ContentPack =>
+  loadContentPack(
+    JSON.parse(readFileSync(resolve(HERE, 'content/phb-extras-test-pack.json'), 'utf8')),
+  );
+
 export interface BuildFighterOptions {
   readonly level?: number;
   readonly hpMax?: number;

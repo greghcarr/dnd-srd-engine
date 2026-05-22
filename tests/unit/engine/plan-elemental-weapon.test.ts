@@ -3,7 +3,6 @@ import { createEngine } from '../../../src/engine/index.js';
 import { seededRNG } from '../../../src/rng/seeded.js';
 import { commit } from '../../../src/engine/commit.js';
 import { loadStarterPack } from '../../../src/content/packs/starter.js';
-import { loadPhbExtrasPack } from '../../../src/content/packs/extras.js';
 import { CharacterSchema, type Character } from '../../../src/schemas/runtime/character.js';
 import { newCharacterId } from '../../../src/ids.js';
 import type { Campaign } from '../../../src/engine/commit.js';
@@ -11,7 +10,7 @@ import type { CharacterCreatedEvent } from '../../../src/schemas/events/progress
 import type { ItemBuffAppliedEvent } from '../../../src/schemas/events/inventory.js';
 import type { AttackRolledEvent, DamageRolledEvent } from '../../../src/schemas/events/attack.js';
 import type { DamageAppliedEvent } from '../../../src/schemas/events/combat.js';
-import { eventId, isoTimestamp, makeItemInstance } from '../../fixtures/index.js';
+import { eventId, isoTimestamp, makeItemInstance, loadPhbExtrasTestPack } from '../../fixtures/index.js';
 
 // Tests Elemental Weapon's item-buff path. The dedicated planner
 // (engine.plan.elementalWeapon) stamps an ItemBuffApplied carrying
@@ -55,7 +54,7 @@ const buildTarget = (): Character =>
 // Elemental Weapon's RAW tiers are slot 3 (+1/1d4), slot 5 (+2/2d4),
 // slot 7 (+3/3d4) — testing requires slots 3, 5, 7, 9.
 const buildCampaign = (casterLevel: number) => {
-  const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasPack()], rng: seededRNG(0) });
+  const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(0) });
   const longsword = makeItemInstance('longsword');
   const caster = buildCaster(casterLevel);
   const target = buildTarget();
@@ -108,7 +107,7 @@ describe('engine.plan.elementalWeapon', () => {
 
   it('after casting, the caster attack rolls extra damage of the chosen type on hit', () => {
     for (let seed = 1; seed < 100; seed += 1) {
-      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasPack()], rng: seededRNG(seed) });
+      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(seed) });
       const longsword = makeItemInstance('longsword');
       const caster = buildCaster(19);
       const target = buildTarget();

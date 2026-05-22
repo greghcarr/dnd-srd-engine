@@ -24,3 +24,10 @@ coverage/
 references/*
 !references/srd-markdown
 !references/srd-markdown/
+
+# Local content packs. The engine ships SRD-only (slices 401-403); any
+# non-SRD / PHB-2024 / homebrew / campaign content a consumer wants lives
+# here as untracked, locally-supplied packs. Only the README (authoring
+# instructions) is tracked. See content-packs/README.md.
+content-packs/*
+!content-packs/README.md
