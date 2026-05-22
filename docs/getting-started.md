@@ -16,6 +16,7 @@ Peer dependencies (`zod`, `immer`, `ulid`) install transitively.
 
 ## 2. Create an engine with the starter pack
 
+<!-- typecheck -->
 ```ts
 import { createEngine, loadStarterPack, seededRNG } from 'dnd-srd-engine';
 
@@ -29,6 +30,7 @@ The starter pack ships in the package and includes all 12 PHB classes with full 
 
 ## 3. Build a character
 
+<!-- typecheck:continue -->
 ```ts
 import { CharacterSchema, newCharacterId, newItemInstanceId, newEventId } from 'dnd-srd-engine';
 import { commit } from 'dnd-srd-engine';
@@ -63,6 +65,7 @@ The engine state is now populated. `commit` is pure: it returns a new `Campaign`
 
 ## 4. Derive their sheet
 
+<!-- typecheck:continue -->
 ```ts
 const sheet = engine.derive.character(campaign.state, alyx.id);
 const ac = engine.derive.ac(campaign.state, alyx.id);
@@ -77,6 +80,7 @@ Every derivation returns a typed result with a breakdown (each contributing modi
 
 Add a goblin, create an encounter, and attack:
 
+<!-- typecheck:continue -->
 ```ts
 const goblin = CharacterSchema.parse({
   id: newCharacterId(),
@@ -117,6 +121,7 @@ All randomness was consumed inside `engine.plan.attack`. The events it returned 
 
 ## 6. Save and load
 
+<!-- typecheck:continue -->
 ```ts
 import { replay, EventSchema } from 'dnd-srd-engine';
 

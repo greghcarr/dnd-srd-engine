@@ -30,6 +30,7 @@ The `--recurse-submodules` flag pulls in the SRD 5.2.1 markdown at `references/s
 
 Then import from `src/` (or a local path alias) the same shapes the planned public API surfaced:
 
+<!-- typecheck -->
 ```ts
 import {
   createEngine, loadStarterPack, createPC, commit,
