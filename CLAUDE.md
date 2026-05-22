@@ -136,6 +136,8 @@ Index-type docs in this repo (README.md, CHANGELOG.md, docs/status.md, docs/road
 
 **When a file gets too big**, split with the playbook below. Don't bypass with offset/limit — the goal is that any agent or contributor can read the front-door doc in one call.
 
+**CHANGELOG: keep only the active cycle (the rule that stops the split treadmill).** The live CHANGELOG.md holds only the current `## Unreleased` work plus the single most-recent tagged release, then a compact "Older releases" pointer. **On every release, evict the previously-latest release narrative (and its cohort pointers) to a `docs/changelog/released-versions-<range>.md` file** — never leave completed release entries inline. This is structural, not reactive: before slice 437 the live file had accreted eight frozen release narratives (alpha.6-13, ~84% of its bytes) plus a 33-entry archive index, so reactively archiving per-slice *detail* and leaving a pointer barely moved the floor (each "split" reclaimed detail but added a pointer and left the release narratives, so the file kept hovering at 57-59 KB). With active-cycle-only, the live file is bounded by one release cycle (~10 KB) regardless of project age. Released narratives split by version range as they grow (`released-versions.md` = alpha.0-5; [released-versions-alpha-6-13.md](docs/changelog/released-versions-alpha-6-13.md) = alpha.6-13; the next range file when alpha.14+ is evicted), each under the ceiling; the global per-cohort archive index lives in [docs/changelog/README.md](docs/changelog/README.md), not inline. Per-slice detail still archives to `archive-slices-NNN-MMM.md` cohort files during a cycle (the playbook below); that part is unchanged.
+
 **Splitting playbook:**
 
 1. **Pick a clean boundary.** For CHANGELOG, that's slice numbers; for README, that's H2 sections; for archives, that's natural cohorts (slice ranges, content batches, or topical groupings).
@@ -149,7 +151,7 @@ Index-type docs in this repo (README.md, CHANGELOG.md, docs/status.md, docs/road
 5. **Verify each new sub-doc also fits** the ceiling. Some splits need to be split again. Don't leave a 100 KB archive thinking "it's an archive, agents won't read it whole" — they will.
 6. **Add an entry to this slice's CHANGELOG** noting the split, so a future reader can trace why files moved.
 
-**Where pointers live:** the live CHANGELOG.md has an in-file pointer block listing every archive; the live README.md has prose summaries pointing to docs/status.md and docs/roadmap.md. When you split a new doc, decide where its pointer belongs (usually the parent that previously contained the content) and add it there.
+**Where pointers live:** the live CHANGELOG.md carries a compact "Older releases" pointer to the released-versions archives plus the [docs/changelog/README.md](docs/changelog/README.md) index (not an inline list of every archive — that index moved to README.md in slice 437); the live README.md has prose summaries pointing to docs/status.md and docs/roadmap.md. When you split a new doc, decide where its pointer belongs (usually the parent that previously contained the content) and add it there.
 
 ### Pre-commit checks
 
@@ -306,7 +308,7 @@ If a test would only exist to satisfy a coverage threshold, do not write it. Add
 
 ## Code style
 
-Defers to [~/.claude/CLAUDE.md](../../../.claude/CLAUDE.md) (global) for the full house style. Project-specific additions:
+Defers to the global house style in `~/.claude/CLAUDE.md` (not a repo file, so not linked here) for the full conventions. Project-specific additions:
 
 - TypeScript strict mode (enforced in [tsconfig.json](tsconfig.json) with `noUncheckedIndexedAccess`)
 - No inline magic numbers/strings: extract to named module-scope constants. The 5.5e rules contain many of these (death-save thresholds, hit die averages, ability score range). Each gets a name.
