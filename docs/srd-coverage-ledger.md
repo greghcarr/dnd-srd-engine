@@ -42,8 +42,8 @@ If you add or remove a probe / boundary table, update the number here in the sam
 Where the engine's confidence actually is, by area:
 
 - **Strongest (mostly 🟢):** the printed-table math (ability mod, proficiency bonus, spell-slot tables, carrying capacity, exhaustion) and content-data fidelity (spell / monster / item / class-table fields). These are non-circular because srd-drift and the boundary tables derive expectations from the SRD.
-- **Ground-truth-upgraded so far (🟢):** worn-armor + shield AC (slice 421), weapon data + plain-melee damage (422), spell save DC / attack (423), per-class saving-throw proficiencies (424), and background-granted skill proficiencies (425) — each parses the SRD and recomputes rather than trusting the author. Slice 422 proved the value by flushing out two missing firearms.
-- **Still regression-safe but unaudited (🟡):** the remaining sheet math — class-choice skills, passive scores, the finesse/ranged attack ability choice, effective speeds, effect-granted save proficiencies, tool proficiencies — and the combat-legality rules the 48 probes cover. Implemented and pinned, but the expected values are author-asserted; these are the next ground-truth-upgrade or independent-review targets. The slice-421/422/423 conformance tests are the template: parse the SRD value, recompute, assert the engine agrees.
+- **Ground-truth-upgraded so far (🟢):** worn-armor + shield AC (slice 421), weapon data + plain-melee damage (422), spell save DC / attack (423), per-class saving-throw proficiencies (424), background-granted skill proficiencies (425), and species base walk speed (426) — each parses the SRD and recomputes rather than trusting the author. The arc paid for itself twice: slice 422 flushed out two missing firearms, and slice 426 surfaced that `createPC` doesn't apply a species' walk speed (Goliath reports 30, not 35).
+- **Still regression-safe but unaudited (🟡):** the remaining sheet math — class-choice skills, passive scores, the finesse/ranged attack ability choice, the ModifySpeed math, effect-granted save proficiencies, tool proficiencies — and the combat-legality rules the 48 probes cover. Implemented and pinned, but the expected values are author-asserted; these are the next ground-truth-upgrade or independent-review targets. The slice-421/422/423 conformance tests are the template: parse the SRD value, recompute, assert the engine agrees.
 - **Blind spots (🔴 / ◐):** rules with no dedicated probe, prose-only condition effects, and the long content tail. Enumerated below where known; the scary ones are the rules not yet listed at all.
 
 ---
@@ -75,6 +75,7 @@ Pack content compared field-by-field against the SRD markdown. Non-circular for 
 | Class progression tables (PB + feature presence/placement per level) | ✅ | 🟢 | srd-drift: classes (slice 377) | table columns only; per-feature body-prose numbers (e.g. Roving +10 ft) stay manual → 🟡 |
 | Per-feature numeric values in body prose | ◐ | 🔴 | — | not table-parseable; needs transcribed-example or review |
 | Weapon damage dice / type / versatile / properties / mastery | ✅ | 🟢 | [srd-weapon-conformance](../tests/audit/srd-weapon-conformance.test.ts) (slice 422) | parsed from the `equipment.md` weapon table (not covered by srd-drift); surfaced + closed 2 missing firearms (Musket, Pistol) + a misnamed Light Crossbow |
+| Species base walk speed | ✅ | 🟢 | [srd-species-speed-conformance](../tests/audit/srd-species-speed-conformance.test.ts) (slice 426) | parsed from `character-origins.md` (srd-drift covers monster speeds, not species); catches the one non-30 value (Goliath 35) |
 
 ## 3. Derivations (the character-sheet math)
 
@@ -90,7 +91,8 @@ Implemented and unit-tested, but expected values are author-asserted. **These ar
 | Attack bonus (ability + prof + magic) | ✅ | 🟡 | unit: derive/attack | finesse / ranged ability choice |
 | Weapon damage line | ✅ | 🟢 | [srd-weapon-conformance](../tests/audit/srd-weapon-conformance.test.ts) (slice 422) | plain-melee: SRD die + STR mod + proficiency verified against the parsed table; finesse/ranged ability choice still 🟡 (slice-414 unit tests) |
 | Spell save DC / attack bonus (8 + PB + ability) | ✅ | 🟢 | [srd-spell-dc-conformance](../tests/audit/srd-spell-dc-conformance.test.ts) (slice 423) | DC base + each of the 8 casters' spellcasting ability parsed from the SRD; distinct INT/WIS/CHA mods pin that the engine uses the SRD-named ability per class |
-| Effective movement speeds | ✅ | 🟡 | unit: derive/speed (slice 416) | walk + fly/swim/climb/burrow |
+| Effective movement speeds (the ModifySpeed math) | ✅ | 🟡 | unit: derive/speed (slice 416) | walk + fly/swim/climb/burrow; species base walk speed is 🟢 (slice 426, above) |
+| Species walk speed reaches a created character | ◐ | 🔴 | — | **gap surfaced slice 426:** `createPC` defaults `character.speedFeet` to 30 rather than deriving it from the species, so a Goliath built via createPC reports walk 30, not 35. The data is correct (🟢 above) but no content-aware builder applies it; the consumer must set `speedFeet`. Needs a content-aware creation path. |
 | Initiative (DEX + modifiers) | ✅ | 🟡 | query/character-sheet | |
 
 ## 4. Action economy & turn legality
