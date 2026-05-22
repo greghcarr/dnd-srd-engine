@@ -30,6 +30,7 @@ import {
   getEffectiveBurrowSpeed,
   getEffectiveClimbSpeed,
   getEffectiveFlySpeed,
+  getEffectiveSpeed,
   getEffectiveSwimSpeed,
 } from '../../../src/engine/plan/_actor-state.js';
 import { CharacterSchema, type Character } from '../../../src/schemas/runtime/character.js';
@@ -196,8 +197,9 @@ describe('slice 288: non-walk speed derives', () => {
       // walk-side behavior.
       const human = seed(buildHuman(), ['gaseous-form-active']);
       // Gaseous Form has no ModifySpeed walk entry, so walk stays at
-      // the species default (30).
-      expect(human.speedFeet).toBe(30);
+      // the human species default (30). (Slice 427: walk derives from the
+      // species when speedFeet is unset, so assert the effective speed.)
+      expect(getEffectiveSpeed({ character: human, content: FIXTURE_CONTENT, itemInstances: {} })).toBe(30);
     });
   });
 });

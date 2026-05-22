@@ -5,13 +5,14 @@
 // is 35, the rest 30). This parses each species' Speed from
 // character-origins.md ("**Speed:** 35 feet") and asserts the pack's
 // species walk speed matches, then confirms the walk-speed derivation
-// returns that base unmodified for a vanilla character.
+// returns that base for a character built without an explicit speed
+// override (the createPC case).
 //
-// KNOWN GAP (tracked, not asserted here): a character's effective walk
-// speed comes from `character.speedFeet`, which the content-free `createPC`
-// convenience defaults to 30 rather than deriving from the species — so a
-// Goliath built via createPC reports 30, not 35. Wiring species -> speedFeet
-// at creation needs a content-aware builder; tracked in the coverage ledger.
+// Slice 426 originally surfaced that a Goliath built via createPC reported
+// 30, not 35 (the species walk speed never reached the derivation). The
+// slice-427 fix made `character.speedFeet` an optional override that falls
+// back to the species' / statblock's walk speed; this test now asserts the
+// fixed behavior directly (createPC Goliath returns 35).
 //
 // Skips (does not fail) when the SRD clone is absent, mirroring srd-drift.
 import { describe, expect, it } from 'vitest';
@@ -21,6 +22,7 @@ import { fileURLToPath } from 'node:url';
 import { getEffectiveSpeed } from '../../src/derive/speed.js';
 import { resolveContent } from '../../src/content/pack.js';
 import { loadStarterPack } from '../../src/content/packs/starter.js';
+import { createPC } from '../../src/engine/conveniences.js';
 import { CharacterSchema } from '../../src/schemas/runtime/character.js';
 import { newCharacterId } from '../../src/ids.js';
 
@@ -46,7 +48,9 @@ const parseSpeciesSpeeds = (
   return out;
 };
 
-const buildSpeciesCharacter = (speciesId: string, speedFeet: number) =>
+// No explicit speedFeet, so the walk speed must derive from the species
+// (the slice-427 fix) rather than a stored override.
+const buildSpeciesCharacter = (speciesId: string) =>
   CharacterSchema.parse({
     id: newCharacterId(),
     name: speciesId,
@@ -55,7 +59,6 @@ const buildSpeciesCharacter = (speciesId: string, speedFeet: number) =>
     classes: [{ classId: 'fighter', level: 1, hitDiceRemaining: 1 }],
     abilityScores: { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 },
     hp: { current: 10, max: 10, temp: 0 },
-    speedFeet,
   });
 
 describe.runIf(SRD_AVAILABLE)('SRD species speed conformance (ground-truth, parsed from character-origins.md)', () => {
@@ -76,12 +79,22 @@ describe.runIf(SRD_AVAILABLE)('SRD species speed conformance (ground-truth, pars
       const species = content.species.get(speciesId)!;
       // Data fidelity: pack species walk speed equals the SRD.
       expect(species.speed.walk, `${speciesId} pack speed`).toBe(walk);
-      // Derivation: a vanilla character at this base reports it unmodified.
-      const character = buildSpeciesCharacter(speciesId, walk);
+      // Derivation: a character with no explicit speed override derives its
+      // walk speed from the species (slice-427 fix).
+      const character = buildSpeciesCharacter(speciesId);
       expect(
         getEffectiveSpeed({ character, content, itemInstances: {} }),
         `${speciesId} effective walk`,
       ).toBe(walk);
     });
   }
+
+  it('createPC applies the species walk speed (the slice-426 gap, now fixed)', () => {
+    // The headline regression: a Goliath (SRD 35) built via the content-free
+    // createPC convenience used to report 30. It now derives from the species.
+    const goliath = content.species.get('goliath');
+    if (goliath === undefined) return; // pack without Goliath: nothing to assert
+    const pc = createPC({ name: 'G', speciesId: 'goliath', backgroundId: 'soldier', classId: 'fighter', hpMax: 10 });
+    expect(getEffectiveSpeed({ character: pc, content, itemInstances: {} })).toBe(goliath.speed.walk);
+  });
 });

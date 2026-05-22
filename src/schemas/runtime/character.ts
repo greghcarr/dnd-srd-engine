@@ -128,7 +128,11 @@ export const CharacterSchema = z.object({
   hp: HPSchema,
   deathSaves: DeathSavesSchema.default({ successes: 0, failures: 0, stable: false }),
   exhaustion: ExhaustionLevelSchema.default(0),
-  speedFeet: z.number().int().min(0).default(30),
+  // Optional explicit walk-speed override. When set (transformations,
+  // summons, a consumer pinning a custom value), it wins. When absent,
+  // the walk speed derives from the species' / statblock's walk speed
+  // (slice 426 fix: a Goliath now reports 35, not the old default 30).
+  speedFeet: z.number().int().min(0).optional(),
   // Optional natural-armor AC. When set, computeAC uses this in place of
   // the armor + DEX computation. Intended for creatures whose AC comes
   // from a statblock (hide, scales, plate-skin) rather than worn armor.
@@ -211,7 +215,7 @@ export const CharacterSchema = z.object({
         maxBonus: z.number().int().default(0),
       }),
       abilityScores: AbilityScoresSchema,
-      speedFeet: z.number().int().min(0),
+      speedFeet: z.number().int().min(0).optional(),
       speciesId: z.string(),
       kind: z.enum(['polymorph', 'wild-shape', 'true-polymorph']),
       formName: z.string(),

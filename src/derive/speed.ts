@@ -17,32 +17,38 @@ export interface GetEffectiveSpeedInput {
   readonly pendingChoices?: Readonly<Record<string, PendingChoice>>;
 }
 
+// RAW walk-speed floor when neither an explicit override nor a
+// species / statblock walk speed is available.
+const DEFAULT_WALK_SPEED = 30;
+
 // Resolves the per-mode base speed before effect-stack modifiers. Walk
-// reads `character.speedFeet` (slice 1 origin). Non-walk modes
-// (`fly` / `swim` / `climb` / `burrow`) read from the character's species
-// `speed` map (PCs / NPCs) or monster statblock `speed` map (creatures via
-// statblockId), defaulting to 0 when the mode isn't natively present. Most
-// PCs have non-walk base = 0; non-walk speed comes from effect-stack
-// `ModifySpeed { mode, op: 'set' }` entries (Cloak of the Bat fly 40,
-// Gaseous Form fly 10, Spider Climb climb=walk, etc.). A monster with a
-// base fly speed (Dragon, Pegasus) reports it here as the natural floor.
+// prefers an explicit `character.speedFeet` override (set by
+// transformations, summons, or a consumer pinning a value); when absent,
+// it derives from the species' / statblock's walk speed, exactly like the
+// non-walk modes do (slice 426 fix: previously walk read `speedFeet`,
+// which defaulted to 30 and shadowed a species value such as Goliath's
+// 35). Non-walk modes (`fly` / `swim` / `climb` / `burrow`) read the
+// species / statblock `speed` map, defaulting to 0 when the mode isn't
+// natively present; non-walk speed otherwise comes from effect-stack
+// `ModifySpeed { mode, op: 'set' }` entries (Cloak of the Bat fly 40, etc.).
 const baseSpeedForMode = (
   character: Character,
   content: ResolvedContent,
   mode: MovementMode,
 ): number => {
-  if (mode === 'walk') return character.speedFeet;
+  if (mode === 'walk' && character.speedFeet !== undefined) return character.speedFeet;
+  const fallback = mode === 'walk' ? DEFAULT_WALK_SPEED : 0;
   if (character.statblockId !== undefined) {
     const monster = content.monsters.get(character.statblockId);
     if (monster !== undefined) {
-      return monster.speed[mode] ?? 0;
+      return monster.speed[mode] ?? fallback;
     }
   }
   const species = content.species.get(character.speciesId);
   if (species !== undefined) {
-    return species.speed[mode] ?? 0;
+    return species.speed[mode] ?? fallback;
   }
-  return 0;
+  return fallback;
 };
 
 // Shared per-mode resolver behind `getEffectiveSpeed` (walk) and the four
