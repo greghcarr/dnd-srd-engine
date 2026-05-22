@@ -39,7 +39,10 @@ type JsonValue =
   | ReadonlyArray<JsonValue>
   | { readonly [key: string]: JsonValue };
 
-const cloneDeep = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
+// structuredClone (native, Node 18+) is materially faster than the
+// JSON round-trip for the whole-pack deep clone this test does on every
+// fast-check iteration, with identical semantics for the plain-JSON pack.
+const cloneDeep = <T>(v: T): T => structuredClone(v);
 
 // Walk the JSON tree and collect every leaf path. Leaves are
 // primitives or empty containers; we deliberately don't recurse into

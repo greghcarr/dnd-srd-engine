@@ -6,10 +6,22 @@ on:
   pull_request:
     branches: [main, dev]
 
+# Re-pushing a ref cancels its in-flight CI. Keyed on workflow + ref so push
+# and PR runs for different refs stay independent; does not touch the
+# deploy-*.yml workflows (different workflow name, intentionally non-cancelling).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  # Cross-Node behavior compatibility on every push / PR. No coverage:
+  # coverage % is a code-path metric, Node-invariant for this pure-TS,
+  # no-native-deps library (no process.version branches in src/), so it
+  # runs once in `quality`. All three Nodes still execute every test.
   test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         # Node 18 reached EOL on 2025-04-30; drop it. Add Node 24 (current)
         # alongside the maintained 20 LTS and 22 LTS lines.
@@ -28,9 +40,32 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci
+      - name: Test
+        run: npm test # vitest run, no coverage
+
+  # Typecheck + coverage (80% thresholds) + build, ONCE on the primary LTS.
+  # Runs only at the integration gate: pull requests (including dev -> main)
+  # and pushes to main. Routine dev pushes get the fast `test` matrix above;
+  # main is never shipped without the full coverage + build gate, since
+  # dev -> main is PR-only (see DEVELOPMENT.md "Branches"). The CI coverage
+  # run drops the html reporter (text + json-summary suffice; thresholds read
+  # json-summary); local `npm run test:coverage` still emits the html report.
+  quality:
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+      - name: Use Node 22
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
       - name: Typecheck
         run: npm run typecheck
       - name: Test with coverage
-        run: npm run test:coverage
+        run: npx vitest run --coverage --coverage.reporter=text --coverage.reporter=json-summary
       - name: Build
         run: npm run build

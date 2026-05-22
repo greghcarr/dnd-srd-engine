@@ -16,6 +16,8 @@ Two long-lived branches:
 5. **Integration into `main` goes through a pull request, never a local merge.** Push `dev`, open the PR with `gh pr create --base main --head dev`, let CI run on it, and merge the PR once green (the merge updates `main`). The PR is the CI gate and the review record; it exists precisely because a local `dev` -> `main` merge once shipped a broken doc link straight to a red `main` before CI could catch it (slice 438). Tag the release on `main` after the merge (see "Cutting a release").
 6. Never push, open a PR into `main`, or merge a PR without explicit instruction. The PR process changes *how* `dev` integrates into `main`, not the rule that a human authorizes it. See [CLAUDE.md](CLAUDE.md#commit-dont-push) for the full git-safety rules.
 
+**What CI runs where** (slice 442): a push to `dev` runs only the fast cross-Node test matrix (`vitest run` on Node 20 / 22 / 24, no coverage) for quick per-slice feedback. The full gate (typecheck + coverage with its 80% thresholds + build, once on Node 22) runs at the integration boundary: pull requests and pushes to `main`. So `main` is never shipped without the coverage + build gate, but routine `dev` pushes don't pay for it. Local pre-commit (`tsc --noEmit` + `vitest run`) still runs every slice, so type / test breakage is caught before the push regardless. Deep property fuzzing (`FAST_CHECK_NUM_RUNS=1000`) runs in the scheduled [nightly-fuzz workflow](.github/workflows/nightly-fuzz.yml), keeping per-push fuzz at the smoke level.
+
 ### Branch-from rules
 
 - Slices generally branch off `dev` (or commit directly to it for small slices). For a larger refactor that may want extra review before merging into `dev`, create a feature branch off `dev` and merge back when ready.
