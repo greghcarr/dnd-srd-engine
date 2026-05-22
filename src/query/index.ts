@@ -19,4 +19,8 @@ export {
   type PassiveScores,
   type InitiativeView,
   type AttackView,
+  type SpellcastingView,
+  type SpellcastingClassView,
+  type SpellListEntry,
+  type SpellLevelGroup,
 } from './character-sheet.js';

@@ -12,6 +12,10 @@ import { buildCharacterSheet } from '../../../src/query/character-sheet.js';
 import { computeDerivedCharacter } from '../../../src/derive/character-view.js';
 import { SKILLS, SKILL_ABILITY, type ProficiencyLevel } from '../../../src/schemas/primitives.js';
 import { buildFighter, makeItemInstance, TEST_CONTENT } from '../../fixtures/index.js';
+import { resolveContent } from '../../../src/content/pack.js';
+import { loadStarterPack } from '../../../src/content/packs/starter.js';
+import { CharacterSchema } from '../../../src/schemas/runtime/character.js';
+import { newCharacterId } from '../../../src/ids.js';
 
 const sheetFor = (level: number) =>
   buildCharacterSheet({
@@ -158,5 +162,60 @@ describe('slice 414: buildCharacterSheet attacks', () => {
     const character = buildFighter({ level: 5, inventory: [dangling.id] });
     const sheet = buildCharacterSheet({ character, itemInstances: {}, content: TEST_CONTENT });
     expect(sheet.attacks).toEqual([]);
+  });
+});
+
+describe('slice 415: buildCharacterSheet spellcasting', () => {
+  const SRD = resolveContent([loadStarterPack()]);
+
+  const buildWizard = (knownSpells: string[], preparedSpells: string[]) =>
+    CharacterSchema.parse({
+      id: newCharacterId(),
+      name: 'Wiz',
+      speciesId: 'human',
+      backgroundId: 'sage',
+      classes: [{ classId: 'wizard', level: 5, hitDiceRemaining: 5 }],
+      abilityScores: { STR: 10, DEX: 14, CON: 12, INT: 16, WIS: 10, CHA: 10 },
+      hp: { current: 22, max: 22, temp: 0 },
+      knownSpells,
+      preparedSpells,
+    });
+
+  const wizardSheet = (known: string[], prepared: string[]) =>
+    buildCharacterSheet({ character: buildWizard(known, prepared), itemInstances: {}, content: SRD });
+
+  it('a non-caster has no spellcasting block', () => {
+    const sheet = buildCharacterSheet({
+      character: buildFighter({ level: 5 }),
+      itemInstances: {},
+      content: TEST_CONTENT,
+    });
+    expect(sheet.spellcasting).toBeUndefined();
+  });
+
+  it('a caster carries per-class save DC and attack bonus', () => {
+    const sheet = wizardSheet(['fire-bolt'], []);
+    expect(sheet.spellcasting).toBeDefined();
+    expect(sheet.spellcasting!.classes).toHaveLength(1);
+    const wizard = sheet.spellcasting!.classes[0]!;
+    expect(wizard.classId).toBe('wizard');
+    expect(wizard.ability).toBe('INT');
+    expect(wizard.saveDC).toBe(8 + 3 + 3); // base 8 + PB 3 (L5) + INT mod 3
+    expect(wizard.attackBonus).toBe(3 + 3); // PB 3 + INT mod 3
+  });
+
+  it('groups castable spells by level (ascending), name-sorted, with prepared flags', () => {
+    const sheet = wizardSheet(['fire-bolt', 'magic-missile', 'fireball'], ['magic-missile', 'fireball']);
+    const groups = sheet.spellcasting!.spellsByLevel;
+    expect(groups.map((g) => g.level)).toEqual([0, 1, 3]);
+    expect(groups[0]!.spells.map((s) => s.spellId)).toEqual(['fire-bolt']);
+    expect(groups[1]!.spells[0]!).toMatchObject({ spellId: 'magic-missile', level: 1, prepared: true, alwaysPrepared: false });
+    expect(groups[0]!.spells[0]!.prepared).toBe(false); // fire-bolt known but not prepared
+  });
+
+  it('skips spell ids with no matching definition', () => {
+    const sheet = wizardSheet(['fireball', 'not-a-real-spell'], []);
+    const allIds = sheet.spellcasting!.spellsByLevel.flatMap((g) => g.spells.map((s) => s.spellId));
+    expect(allIds).toEqual(['fireball']);
   });
 });

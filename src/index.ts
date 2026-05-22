@@ -316,6 +316,10 @@ export type {
   PassiveScores,
   InitiativeView,
   AttackView,
+  SpellcastingView,
+  SpellcastingClassView,
+  SpellListEntry,
+  SpellLevelGroup,
 } from './query/index.js';
 
 export {
