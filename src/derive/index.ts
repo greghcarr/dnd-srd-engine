@@ -14,6 +14,7 @@ export {
   type GetEffectiveSpeedInput,
   type EffectiveSpeeds,
 } from './speed.js';
+export type { EncumbranceResult, EncumbranceLevel } from './encumbrance.js';
 export {
   computeAC,
   type ACResult,

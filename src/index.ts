@@ -320,6 +320,9 @@ export type {
   SpellcastingClassView,
   SpellListEntry,
   SpellLevelGroup,
+  InventoryView,
+  InventoryEntry,
+  EquipSlot,
 } from './query/index.js';
 
 export {
@@ -369,6 +372,8 @@ export type {
   WeaponDamageResult,
   GetEffectiveSpeedInput,
   EffectiveSpeeds,
+  EncumbranceResult,
+  EncumbranceLevel,
   SaveResult,
   SpellDCResult,
   SpellSlotsResult,

@@ -253,3 +253,60 @@ describe('slice 416: buildCharacterSheet speeds', () => {
     expect(sheet.speeds.fly).toBe(60);
   });
 });
+
+describe('slice 417: buildCharacterSheet inventory', () => {
+  it('an empty inventory still reports carrying capacity (STR x 15)', () => {
+    const sheet = buildCharacterSheet({
+      character: buildFighter({ STR: 16 }),
+      itemInstances: {},
+      content: TEST_CONTENT,
+    });
+    expect(sheet.inventory.items).toEqual([]);
+    expect(sheet.inventory.encumbrance.maxCarryingCapacity).toBe(16 * 15);
+    expect(sheet.inventory.encumbrance.level).toBe('unencumbered');
+  });
+
+  it('lists a carried item with quantity and no equipped slot', () => {
+    const dagger = makeItemInstance('dagger', { quantity: 3 });
+    const character = buildFighter({ inventory: [dagger.id] });
+    const sheet = buildCharacterSheet({ character, itemInstances: { [dagger.id]: dagger }, content: TEST_CONTENT });
+    expect(sheet.inventory.items).toHaveLength(1);
+    expect(sheet.inventory.items[0]!).toMatchObject({
+      definitionId: 'dagger',
+      itemKind: 'weapon',
+      quantity: 3,
+      attuned: false,
+    });
+    expect(sheet.inventory.items[0]!.equippedSlot).toBeUndefined();
+  });
+
+  it('flags an equipped item with its slot (even when not in the inventory array)', () => {
+    const armor = makeItemInstance('leather-armor');
+    const character = buildFighter({ armorInstanceId: armor.id });
+    const sheet = buildCharacterSheet({ character, itemInstances: { [armor.id]: armor }, content: TEST_CONTENT });
+    const entry = sheet.inventory.items.find((i) => i.instanceId === armor.id)!;
+    expect(entry.equippedSlot).toBe('armor');
+    expect(entry.itemKind).toBe('armor');
+  });
+
+  it('flags an attuned item and surfaces charges + custom name', () => {
+    const wand = makeItemInstance('dagger', {
+      customName: 'Heirloom Blade',
+      chargesRemaining: 2,
+      maxCharges: 7,
+    });
+    const character = buildFighter({ inventory: [wand.id], attunedInstanceIds: [wand.id] });
+    const sheet = buildCharacterSheet({ character, itemInstances: { [wand.id]: wand }, content: TEST_CONTENT });
+    const entry = sheet.inventory.items[0]!;
+    expect(entry.name).toBe('Heirloom Blade');
+    expect(entry.attuned).toBe(true);
+    expect(entry.charges).toEqual({ remaining: 2, max: 7 });
+  });
+
+  it('skips dangling instance ids', () => {
+    const ghost = makeItemInstance('dagger');
+    const character = buildFighter({ inventory: [ghost.id] });
+    const sheet = buildCharacterSheet({ character, itemInstances: {}, content: TEST_CONTENT });
+    expect(sheet.inventory.items).toEqual([]);
+  });
+});

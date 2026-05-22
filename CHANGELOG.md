@@ -4,6 +4,14 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 417): character-sheet inventory / equipment summary (read layer, part 6)**
+
+Adds the inventory block, the last major character-sheet cluster. `buildCharacterSheet` now carries `inventory: InventoryView` (always present): an `items` list and an `encumbrance` summary. Each `InventoryEntry` has `instanceId` / `definitionId` / `name` (the instance's `customName` else the definition name) / `itemKind` / `quantity` / `weight` (per-unit lbs) / `attuned`, plus an optional `equippedSlot` (`mainHand` / `offHand` / `armor` / `shield`) and `charges` (`{ remaining, max }`) for items that track them. The item set is the union of `character.inventory` + the four equipment slots + the attuned list (inventory order first, then equipped / attuned instances not separately listed, since a worn magic item projects effects without being in the inventory array); dangling instance ids and ids with no matching definition are skipped. `encumbrance` reuses the existing `computeEncumbrance` (carried weight, max carrying capacity = STR x 15, level).
+
+New public exports: `InventoryView` / `InventoryEntry` / `EquipSlot`, plus the `EncumbranceResult` / `EncumbranceLevel` types (embedded in the view; the `computeEncumbrance` function stays engine-internal). With this the character-sheet view model covers the full DDB sheet surface except the unarmed strike entry (the one remaining follow-up).
+
+Uncle Bob audit (engine slice): **Names** `inventoryView` / `InventoryEntry` / `EquipSlot` / `EQUIP_SLOTS` say what they are. **DRY** reuses `computeEncumbrance`; one `EQUIP_SLOTS` list drives both the union and the slot lookup. **SRP** `inventoryView` only assembles entries + embeds encumbrance; weight / capacity rules stay in `computeEncumbrance`. **Magic numbers** none (capacity ratio lives in the encumbrance derivation). **at-threading** n/a (pure reads). **Mechanical outcomes asserted** empty inventory still reports STR x 15 capacity; a carried item carries quantity + no slot; an equipped-only item is listed with its slot; an attuned item flags `attuned` + surfaces charges + custom name; dangling ids skipped. **Tests** 5 inventory cases over the fighter fixture. No content change. No em/en dashes. `tsc --noEmit` clean; full suite green; contract export snapshot updated.
+
 **Engine (slice 416): character-sheet effective speeds + speed derivation moved to the derive layer (read layer, part 5)**
 
 Adds the movement line to the character-sheet view model and fixes a layering inversion. `buildCharacterSheet` now carries `speeds: EffectiveSpeeds` (`walk` always; `fly` / `swim` / `climb` / `burrow` only when their effective value is > 0, so a grounded character reports just `{ walk }`). New `getEffectiveSpeeds(input)` returns all modes at once.

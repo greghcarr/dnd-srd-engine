@@ -8,11 +8,13 @@
 // scores, initiative, effective movement speeds, the attacks list (one
 // entry per inventory weapon, with to-hit + static damage line), and the
 // spellcasting block (per-class save DC + attack bonus, and the castable
-// spells grouped by level). Pure assembly over existing derivations: it
-// invents no rules, so RAW correctness lives in the derivations it calls.
+// spells grouped by level), and the inventory / equipment summary (carried
+// + equipped + attuned items, with encumbrance). Pure assembly over existing
+// derivations: it invents no rules, so RAW correctness lives in the
+// derivations it calls.
 //
-// Deferred to follow-up slices (each its own derivation cluster): the
-// unarmed strike entry and the inventory/equipment summary.
+// Deferred to a follow-up slice: the unarmed strike entry on the attacks
+// list (RAW 1 + STR mod, or the Martial Arts die for monks).
 import type {
   AbilityScore,
   Skill,
@@ -21,7 +23,7 @@ import type {
   WeaponMastery,
 } from '../schemas/primitives.js';
 import { SKILLS, SKILL_ABILITY } from '../schemas/primitives.js';
-import type { Weapon } from '../schemas/content/item.js';
+import type { Weapon, ItemDefinition } from '../schemas/content/item.js';
 import {
   computeDerivedCharacter,
   type DerivedCharacter,
@@ -31,6 +33,7 @@ import { computeAbilityCheck, computePassiveScore } from '../derive/ability-chec
 import { computeAttackBonus, computeWeaponDamage, type WeaponDamage } from '../derive/attack.js';
 import { computeSpellSaveDC, computeSpellAttackBonus } from '../derive/spell-dc.js';
 import { getEffectiveSpeeds, type EffectiveSpeeds } from '../derive/speed.js';
+import { computeEncumbrance, type EncumbranceResult } from '../derive/encumbrance.js';
 import { buildEffectStack } from '../derive/effect-stack.js';
 import type { EffectAccumulator } from '../effects/index.js';
 
@@ -103,6 +106,30 @@ export interface SpellcastingView {
   readonly spellsByLevel: ReadonlyArray<SpellLevelGroup>;
 }
 
+export type EquipSlot = 'mainHand' | 'offHand' | 'armor' | 'shield';
+
+export interface InventoryEntry {
+  readonly instanceId: string;
+  readonly definitionId: string;
+  /** The instance's custom name, else the definition name. */
+  readonly name: string;
+  readonly itemKind: ItemDefinition['itemKind'];
+  readonly quantity: number;
+  /** Per-unit weight in pounds (0 when the definition has none). */
+  readonly weight: number;
+  /** Set when the instance occupies an equipment slot. */
+  readonly equippedSlot?: EquipSlot;
+  readonly attuned: boolean;
+  /** Set for items that track charges. */
+  readonly charges?: { readonly remaining: number; readonly max: number };
+}
+
+export interface InventoryView {
+  /** Carried + equipped + attuned items, inventory order first. */
+  readonly items: ReadonlyArray<InventoryEntry>;
+  readonly encumbrance: EncumbranceResult;
+}
+
 export interface CharacterSheet extends DerivedCharacter {
   /** All 18 skills, in canonical `SKILLS` order. */
   readonly skills: ReadonlyArray<SkillView>;
@@ -112,6 +139,8 @@ export interface CharacterSheet extends DerivedCharacter {
   readonly speeds: EffectiveSpeeds;
   /** One entry per weapon in the character's inventory, in inventory order. */
   readonly attacks: ReadonlyArray<AttackView>;
+  /** Carried + equipped + attuned items, plus encumbrance. */
+  readonly inventory: InventoryView;
   /** Present only for characters with a spellcasting class or any castable spell. */
   readonly spellcasting?: SpellcastingView;
 }
@@ -231,6 +260,47 @@ const spellcastingView = (input: ComputeDerivedCharacterInput): SpellcastingView
   return { classes, spellsByLevel };
 };
 
+const EQUIP_SLOTS: ReadonlyArray<EquipSlot> = ['mainHand', 'offHand', 'armor', 'shield'];
+
+// Carried + equipped + attuned items (inventory order first, then any
+// equipped / attuned instance not separately listed in inventory, since a
+// worn magic item can project effects without being in the inventory
+// array), plus the encumbrance summary. Dangling instance ids and ids
+// with no matching definition are skipped.
+const inventoryView = (input: ComputeDerivedCharacterInput): InventoryView => {
+  const { character, itemInstances, content } = input;
+  const ids: string[] = [...character.inventory];
+  const addId = (id: string | undefined): void => {
+    if (id !== undefined && !ids.includes(id)) ids.push(id);
+  };
+  for (const slot of EQUIP_SLOTS) addId(character.equipped[slot]);
+  for (const id of character.equipped.attuned) addId(id);
+
+  const attunedSet = new Set(character.equipped.attuned);
+  const items: InventoryEntry[] = [];
+  for (const instanceId of ids) {
+    const instance = itemInstances[instanceId];
+    if (instance === undefined) continue;
+    const def = content.items.get(instance.definitionId);
+    if (def === undefined) continue;
+    const equippedSlot = EQUIP_SLOTS.find((slot) => character.equipped[slot] === instanceId);
+    items.push({
+      instanceId,
+      definitionId: instance.definitionId,
+      name: instance.customName ?? def.name,
+      itemKind: def.itemKind,
+      quantity: instance.quantity,
+      weight: def.weight ?? 0,
+      attuned: attunedSet.has(instanceId),
+      ...(equippedSlot !== undefined ? { equippedSlot } : {}),
+      ...(instance.chargesRemaining !== undefined
+        ? { charges: { remaining: instance.chargesRemaining, max: instance.maxCharges ?? instance.chargesRemaining } }
+        : {}),
+    });
+  }
+  return { items, encumbrance: computeEncumbrance({ character, itemInstances, content }) };
+};
+
 export const buildCharacterSheet = (input: ComputeDerivedCharacterInput): CharacterSheet => {
   const derived = computeDerivedCharacter(input);
   const effects = buildEffectStack(input);
@@ -257,6 +327,7 @@ export const buildCharacterSheet = (input: ComputeDerivedCharacterInput): Charac
     initiative,
     speeds: getEffectiveSpeeds(input),
     attacks: attackViews(input),
+    inventory: inventoryView(input),
     ...(spellcasting !== undefined ? { spellcasting } : {}),
   };
 };

@@ -23,4 +23,7 @@ export {
   type SpellcastingClassView,
   type SpellListEntry,
   type SpellLevelGroup,
+  type InventoryView,
+  type InventoryEntry,
+  type EquipSlot,
 } from './character-sheet.js';
