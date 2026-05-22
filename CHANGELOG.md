@@ -4,6 +4,10 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Docs (slice 410): reconcile the class-audit status (it was stale)**
+
+Investigating the "classes not yet individually audited" caveat found it was simply out of date. Classes ARE audited: slice 153 verified all 12 class + 12 subclass names match SRD 5.2.1, and slice 377's srd-drift class-feature-table parser asserts per-class Proficiency Bonus + the presence/level-placement of every feature name against `references/srd-markdown/classes.md` on every CI run. The five PHB-2014-flavored features the slice-153 audit flagged are all resolved (renamed to SRD names or dropped; verified none remain in the pack). So `content-attribution.md`'s "Not yet individually audited / per-feature SRD verification has not been done" line was wrong. Moved Classes into its own "drift-audited" section stating what IS verified (names + placement, CI-guarded) and the one residual manual check (per-feature numeric values in body prose, e.g. Roving's "+10 feet", which the table parser can't read). The "Not yet individually audited" section is now empty and removed. No code/content change; doc accuracy only.
+
 **Engine (slice 409): ContentBundle - a pack + its handlers as one unit (single-file user content)**
 
 Lets a consumer author a content pack and the behavior it supplies in a single module, and feed it to the engine as one input. New `ContentBundle { pack: ContentPack; handlers?: HandlerRegistry }`; `createEngine` gains an optional `bundles?` (and `contentPacks` is now optional, since a consumer can supply everything via bundles). A bundle's `pack` joins the content packs, its `handlers` merge into the registry via the new `mergeHandlerRegistries`, which throws on a **handler-id collision across bundles** (mirroring the slice-400 pack id-collision policy, so two bundles can't silently clobber each other's behavior). `opts.handlers` still works and merges alongside bundle handlers.
