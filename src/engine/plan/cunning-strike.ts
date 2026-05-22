@@ -8,6 +8,7 @@ import { abilityModifier, proficiencyBonus } from '../../derive/ability.js';
 import { computeTotalLevel } from '../../schemas/runtime/character.js';
 import { rollSaveAgainstDC } from './_save-roll.js';
 import { creatureSize, isLargeOrSmaller } from '../../derive/creature-size.js';
+import { getEffectiveSpeed } from './_actor-state.js';
 import type { ConditionAppliedEvent } from '../../schemas/events/combat.js';
 import type { DisengagedEvent } from '../../schemas/events/movement.js';
 import type { AbilityScore } from '../../schemas/primitives.js';
@@ -86,7 +87,7 @@ export interface CunningStrikeEffectsInput {
 // after the Sneak Attack damage:
 //   - Poison:   CON save vs the rogue's DC or Poisoned (1 minute).
 //   - Trip:     DEX save vs the rogue's DC or Prone.
-//   - Withdraw: the rogue Disengages (movement won't provoke).
+//   - Withdraw: the rogue's movement won't provoke up to half their Speed.
 //   - Obscure (Devious Strikes, L14): DEX save or Blinded until the end
 //     of its next turn.
 //   - Knock Out (Devious Strikes, L14): CON save or Unconscious (1 minute).
@@ -95,9 +96,10 @@ export interface CunningStrikeEffectsInput {
 // fields on the applied condition; the consumer ticks it through
 // `tickRecurringSave`) ARE modeled, as is Knock Out's "until it takes any
 // damage" early end (slice 391, the per-instance `endsOnDamage` flag swept
-// by the damage chokepoint). RAW deviation still documented in
-// starter-pack-gaps.md: Withdraw's half-Speed cap (the engine has no
-// movement-distance surface here).
+// by the damage chokepoint). Withdraw's half-Speed no-provoke cap is
+// modeled too (slice 394, the `limitedToFeet` arm of the Disengaged event
+// stamps a `noProvokeMovementUpToFeet` high-water-mark the move planner
+// reads), rather than the old full-turn Disengage over-grant.
 export const buildCunningStrikeEffects = (input: CunningStrikeEffectsInput): Event[] => {
   const { state, content, rng, at, rogue, targetId, effects } = input;
   const dc = cunningStrikeSaveDC(rogue);
@@ -108,12 +110,25 @@ export const buildCunningStrikeEffects = (input: CunningStrikeEffectsInput): Eve
     const spec = SPECS[option];
     if (spec.withdraw === true) {
       if (encounter !== undefined) {
+        // RAW Withdraw: "move up to half your Speed without provoking
+        // Opportunity Attacks" — a no-provoke distance budget, not a
+        // full-turn Disengage. `limitedToFeet` makes the reducer stamp a
+        // half-Speed no-provoke high-water-mark on turnUsage.
+        const halfSpeed = Math.floor(
+          getEffectiveSpeed({
+            character: rogue,
+            content,
+            itemInstances: state.itemInstances,
+            pendingChoices: state.pendingChoices,
+          }) / 2,
+        );
         events.push({
           id: newEventId() as ULID,
           at,
           type: 'Disengaged',
           encounterId: encounter.id,
           combatantId: rogue.id as ULID,
+          limitedToFeet: halfSpeed,
         } satisfies DisengagedEvent);
       }
       continue;

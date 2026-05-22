@@ -32,6 +32,13 @@ export const TurnUsageSchema = z.object({
   // Monk Stunning Strike "once per turn" gate. Set when the Monk
   // attempts a Stunning Strike, cleared at TurnStarted.
   stunningStrikeUsedThisTurn: z.boolean().default(false),
+  // Rogue Withdraw (Cunning Strike): the high-water-mark of
+  // `feetMovedThisTurn` up to which movement does NOT provoke Opportunity
+  // Attacks (RAW "move up to half your Speed without provoking"). Distinct
+  // from `disengaged`, which suppresses provocation for the whole turn's
+  // movement; this caps the no-provoke distance. 0 = no allowance. Cleared
+  // at TurnStarted.
+  noProvokeMovementUpToFeet: z.number().min(0).default(0),
 });
 export type TurnUsage = z.infer<typeof TurnUsageSchema>;
 
@@ -46,6 +53,7 @@ export const EMPTY_TURN_USAGE: TurnUsage = {
   loadedWeaponsFiredThisTurn: [],
   recklessAttackActive: false,
   stunningStrikeUsedThisTurn: false,
+  noProvokeMovementUpToFeet: 0,
 };
 
 export const CombatantSchema = z.object({
