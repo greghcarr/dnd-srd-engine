@@ -1,4 +1,4 @@
-// Layer 7 (property tests, per CLAUDE.md): derivation invariants.
+// Property test: derivation invariants.
 //
 // For each property we generate ~1000 random characters and assert
 // a property that should hold for *any* character the schema permits.

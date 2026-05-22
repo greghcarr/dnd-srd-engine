@@ -1,4 +1,4 @@
-// Layer 7 (property tests, per CLAUDE.md): plan determinism.
+// Property test: plan determinism.
 //
 // Asserts the architectural promise that planners are deterministic
 // in their RNG: same seed + same state + same intent must produce the

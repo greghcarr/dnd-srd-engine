@@ -1,4 +1,4 @@
-// Layer 7 (property tests, per CLAUDE.md): reducer + replay
+// Property test: reducer + replay
 // invariants. Random sequences of simple events are translated into a
 // real event chain (CharacterCreated + the generated DamageApplied /
 // Healed / TempHPGranted / ExhaustionChanged combinations) and the

@@ -1,4 +1,4 @@
-// Layer 7 (property tests, per CLAUDE.md): content-pack validator
+// Property test: content-pack validator
 // fuzzing.
 //
 // ContentPackLoadError is the front door for any content pack a

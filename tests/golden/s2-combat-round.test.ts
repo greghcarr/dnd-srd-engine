@@ -15,7 +15,7 @@ import { commit } from '../../src/engine/commit.js';
 import type { CharacterCreatedEvent } from '../../src/schemas/events/progression.js';
 import { formatTranscript } from '../transcript.js';
 
-describe('golden: combat round (Layer 3)', () => {
+describe('golden: combat round', () => {
   it('two fighters trade blows in a one-round encounter, replays identically', async () => {
     const engine = createEngine({ contentPacks: [TEST_PACK], rng: seededRNG(7) });
     const longA = makeItemInstance('longsword');

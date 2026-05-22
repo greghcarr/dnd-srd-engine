@@ -1,6 +1,5 @@
-// Layer 8 (feature-coverage matrix, per the testing standard in
-// CLAUDE.md). Enumerates the 5.5e features in the starter content
-// pack and asserts which ones ship "wired" (effects-bearing).
+// Feature-coverage matrix. Enumerates the 5.5e features in the starter
+// content pack and asserts which ones ship "wired" (effects-bearing).
 //
 // Slice 126 narrowed each per-id catalog snapshot to wired entries
 // only. Pure stub additions (a feature / condition / feat / magic

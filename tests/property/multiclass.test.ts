@@ -1,4 +1,4 @@
-// Layer 7 (property tests, per CLAUDE.md): multi-class invariants.
+// Property test: multi-class invariants.
 //
 // Multiclass spell-slot math is one of the most error-prone corners of
 // 5e. The existing characterArb generator covers single-class only; the
