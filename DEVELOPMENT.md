@@ -5,21 +5,22 @@
 Two long-lived branches:
 
 - `main`: stable, releasable, tagged. Slice work **never** lands directly here. Treat it as the "what a fresh clone should see" reference.
-- `dev`: daily slice work. All slice commits land here first. Periodically merged into `main` when a coherent group of slices is ready to ship.
+- `dev`: daily slice work. All slice commits land here first. Integrated into `main` through a pull request (never a local merge) when a coherent group of slices is ready to ship.
 
 ### Working flow
 
 1. Start a session by checking out (or creating) `dev`: `git checkout dev` (or `git checkout -b dev` if it doesn't exist yet locally).
 2. Do slice work on `dev`. One slice per commit; commit early and often.
 3. Pre-commit checks: `npx tsc --noEmit && npx vitest run`. Both must be green.
-4. After a slice commits cleanly, surface it to whoever is steering the session (typically the user). They decide when `dev` rolls into `main`.
-5. Never push or merge to `main` without explicit instruction. See [CLAUDE.md](CLAUDE.md#commit-dont-push) for the full git-safety rules.
+4. After a slice commits cleanly, surface it to whoever is steering the session (typically the user). They decide when `dev` is ready to ship to `main`.
+5. **Integration into `main` goes through a pull request, never a local merge.** Push `dev`, open the PR with `gh pr create --base main --head dev`, let CI run on it, and merge the PR once green (the merge updates `main`). The PR is the CI gate and the review record; it exists precisely because a local `dev` -> `main` merge once shipped a broken doc link straight to a red `main` before CI could catch it (slice 438). Tag the release on `main` after the merge (see "Cutting a release").
+6. Never push, open a PR into `main`, or merge a PR without explicit instruction. The PR process changes *how* `dev` integrates into `main`, not the rule that a human authorizes it. See [CLAUDE.md](CLAUDE.md#commit-dont-push) for the full git-safety rules.
 
 ### Branch-from rules
 
 - Slices generally branch off `dev` (or commit directly to it for small slices). For a larger refactor that may want extra review before merging into `dev`, create a feature branch off `dev` and merge back when ready.
 - For parallel engine + content authoring, see [docs/parallel-authoring.md](docs/parallel-authoring.md). Worktrees still target `dev` (or per-worktree feature branches that merge to `dev`).
-- Never create branches that target `main` directly.
+- Slice and feature branches never target `main`. The only branch that integrates into `main` is `dev`, and it does so through a pull request (see Working flow).
 
 ## First-time setup
 
@@ -91,7 +92,7 @@ On `dev`, before merging to `main`:
 4. Bump `SCHEMA_VERSION` in [src/version.ts](src/version.ts) only if persisted shapes changed (see Schema migrations below).
 5. Promote the `## Unreleased` CHANGELOG heading to `## <version> - <date>` and add a fresh empty `## Unreleased` above it. **Then evict the previously-latest release narrative** (the one now second from the top) and its cohort pointers to a `docs/changelog/released-versions-<range>.md` archive, re-rooting its links, leaving only the new release + Unreleased + the "Older releases" pointer inline. The live CHANGELOG holds only the active cycle; never let completed release entries accumulate inline (this is the rule that stops the split treadmill, see CLAUDE.md "Doc size discipline"). When a `released-versions-<range>.md` approaches the 60 KB ceiling, start a new range file rather than growing it.
 6. `npm run ci` (typecheck + coverage + build) must be green.
-7. Merge `dev` into `main` and tag (`git tag v<version>`). **Only on explicit instruction**, see [CLAUDE.md](CLAUDE.md#commit-dont-push).
+7. Ship via a pull request, not a local merge: push `dev`, open the PR (`gh pr create --base main --head dev`), and merge it once its CI is green. Then tag the release on the merged `main` (`git tag v<version>` and push the tag). **All of this only on explicit instruction**, see [CLAUDE.md](CLAUDE.md#commit-dont-push).
 
 `npm run release:doc-counts:check` is the non-writing variant (exits non-zero if stale); use it in CI if the release ever becomes automated.
 
