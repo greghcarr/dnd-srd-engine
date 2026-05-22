@@ -4,6 +4,20 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+## 0.1.0-alpha.13 - 2026-05-21
+
+**Release (slice 399): bump to 0.1.0-alpha.13**
+
+Promotes the post-alpha.12 cohort (slices 376-398) to a tagged release. `package.json` bumped from `0.1.0-alpha.12` to `0.1.0-alpha.13`; `package-lock.json` updated to match. `SCHEMA_VERSION` stays 1: the cohort's new persisted fields are all additive and backward-compatible (`turnUsage.noProvokeMovementUpToFeet` defaults to 0; the per-instance `ConditionApplied` / `AppliedCondition` fields from slices 388/390/391 and `Disengaged.limitedToFeet` from slice 394 are optional), so old saves parse unchanged. The suite is green at 331 files / 2170 passing.
+
+Cohort, in three arcs:
+
+- **matchWalkSpeed + class-feature presence (376-380):** the "equal to your Speed" `matchWalkSpeed` sweep (376), the srd-drift extension that parses SRD class progression tables (377), and the three slice-377 feature-presence closures (378 Weapon Mastery on Barbarian/Fighter/Paladin, 379 Monk Heightened Focus row, 380 Monk Open Hand Technique).
+- **Rogue / Evoker features + full-RAW deviation conversions (381-394):** the inert-weapon-masteries fix + emitted-but-undefined audit (381), Evoker Potent Cantrip (383), the Rogue Cunning Strike family (384-385), then the deviation-conversion run that took every documented Cunning Strike / mastery / spell approximation to full RAW: the "Large or smaller" size gate (386), Sap/Vex one-shot (387), the per-instance fixed-DC recurring save (388) + Intimidating Presence repeat save (389), Absorb Elements slot scaling (390), per-instance "ends on damage" for Sleep + Knock Out (391), Flurry/Multiattack state-threading (392), and Rogue Withdraw's half-Speed no-provoke cap (394, the last documented deviation).
+- **Release-time doc accuracy (395-398):** reconciled the stale headline test/file count (395), then built the release-time gates so it can't recur: the auto-fix count script (396, `npm run release:doc-counts`) and the judgment-figure review report (397, `npm run release:doc-review`), documented as the new "Cutting a release" checklist in DEVELOPMENT.md. The review surfaced + fixed three stale "51 primitives" citations and, during this release, the status page's stale subclass narrative (Open Hand Technique + Potent Cantrip are wired, not stubs). Plus three CHANGELOG archive splits (382, 393, 398) keeping the live file under the single-Read ceiling.
+
+Per-slice detail for the whole cohort is in the per-cohort archives under [docs/changelog/](docs/changelog/) (slices 376-398).
+
 **Docs (slice 398): archive CHANGELOG slices 392-397 (single-Read ceiling)**
 
 The live CHANGELOG had climbed to ~54 KB across the deviation-cleanup tail + release-doc-accuracy infra cohort, with ~6 KB of headroom under the 60 KB single-Read ceiling. Per the doc-size discipline playbook, moved the per-slice detail for slices 392-397 to [docs/changelog/archive-slices-392-397.md](docs/changelog/archive-slices-392-397.md), leaving this slice's entry plus the pointer below. Root-relative links rewritten for the archive's `docs/changelog/` location (`../../` for repo-root files, `../` for `docs/`, bare names for sibling archives); the archive-index block gained the new file. No code or content change; docs only. doc-size + doc-counts audits green; live CHANGELOG back under ~48 KB.
