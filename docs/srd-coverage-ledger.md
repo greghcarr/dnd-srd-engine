@@ -73,6 +73,7 @@ Pack content compared field-by-field against the SRD markdown. Non-circular for 
 | Magic-item rarity / attunement | ✅ | 🟢 | srd-drift: magic items | |
 | Class progression tables (PB + feature presence/placement per level) | ✅ | 🟢 | srd-drift: classes (slice 377) | table columns only; per-feature body-prose numbers (e.g. Roving +10 ft) stay manual → 🟡 |
 | Per-feature numeric values in body prose | ◐ | 🔴 | — | not table-parseable; needs transcribed-example or review |
+| Weapon damage dice / type / versatile / properties / mastery | ✅ | 🟢 | [srd-weapon-conformance](../tests/audit/srd-weapon-conformance.test.ts) (slice 422) | parsed from the `equipment.md` weapon table (not covered by srd-drift); surfaced + closed 2 missing firearms (Musket, Pistol) + a misnamed Light Crossbow |
 
 ## 3. Derivations (the character-sheet math)
 
@@ -86,7 +87,7 @@ Implemented and unit-tested, but expected values are author-asserted. **These ar
 | Ability checks + skills (mod + prof) | ✅ | 🟡 | unit: derive/ability-check | background skill prof fixed slice 412 |
 | Passive scores (10 + check) | ✅ | 🟡 | unit + query/character-sheet | |
 | Attack bonus (ability + prof + magic) | ✅ | 🟡 | unit: derive/attack | finesse / ranged ability choice |
-| Weapon damage line | ✅ | 🟡 | unit: derive/attack (slice 414) | static line; planner applies riders |
+| Weapon damage line | ✅ | 🟢 | [srd-weapon-conformance](../tests/audit/srd-weapon-conformance.test.ts) (slice 422) | plain-melee: SRD die + STR mod + proficiency verified against the parsed table; finesse/ranged ability choice still 🟡 (slice-414 unit tests) |
 | Spell save DC / attack bonus (8 + PB + ability) | ✅ | 🟡 | unit: derive/spell-dc | |
 | Effective movement speeds | ✅ | 🟡 | unit: derive/speed (slice 416) | walk + fly/swim/climb/burrow |
 | Initiative (DEX + modifiers) | ✅ | 🟡 | query/character-sheet | |
