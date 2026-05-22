@@ -4,6 +4,18 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 400): multi-pack id-collision policy + a pack validator (content-authoring foundation)**
+
+Groundwork before any volume content authoring beyond SRD. SRD pack-presence is already 100% complete, so new content (homebrew, non-SRD, campaign catalogs) belongs in a *separate* pack the engine loads alongside the SRD pack (`createEngine` already takes `ReadonlyArray<ContentPack>`; `resolveContent` merges them). The gap was the merge itself: `resolveContent` did `map.set(e.id, e)` last-wins, so a second pack could **silently clobber** an SRD entry on an accidental id reuse, with no error.
+
+Now `resolveContent` throws a `ContentPackLoadError` on any within-pack duplicate id or any cross-pack collision, naming the id, category, and prior pack. A later pack may *intentionally* replace an earlier id only by declaring it in a new optional `overrides: string[]` field (a deliberate houserule); the later entry then wins. Chose code-enforced collision detection + explicit overrides over an id-prefix namespacing convention, because namespacing would break legitimate cross-pack references (a homebrew subclass's `parentClassId: 'fighter'`) and can't be enforced, only hoped for.
+
+The pack validator is `validatePacks(packs)`: the report-all author-time companion that returns *every* id collision plus *every* dangling cross-reference (across the merged set), without throwing, so a pack author sees all problems at once. It builds on the existing `validateCrossReferences`, which this slice generalized from two hand-written checks (originFeatId, parentClassId) to a deep-walk over all 10 id-reference fields (spellId, conditionId, conditionOnFail/OnSuccess, allyConditionId, applyConditionId, bearerConditionId, enchantmentDefinitionId, plus the original two), each resolving against its target category with the existing Levenshtein "did you mean" suggestion. New public exports: `validatePacks`, `detectIdCollisions`, `mergeContent`, `ContentPackIssue`.
+
+**Found a real latent bug:** the new collision check immediately caught the `TEST_PACK` fixture shipping the `shield` armor item *twice* (identical entries), exactly the silent-clobber the policy prevents. Removed the duplicate (a no-op for resolved content, since last-wins already collapsed it to one).
+
+Uncle Bob audit (engine slice): **Names** `detectIdCollisions` / `mergeContent` / `validatePacks` / `overrides` / `walkStringFields` / `REF_TARGETS` say what they are. **DRY** the collision scan, the pure merge, and the cross-ref walk are each one helper; `resolveContent` = collisions-then-merge, `validatePacks` = collisions + cross-refs, so neither path duplicates the other; the generic ref-walk replaced two hand-written loops. **SRP** `detectIdCollisions` only finds collisions, `mergeContent` only merges, `validateCrossReferences` only resolves refs; `resolveContent` composes the first two and fails fast, `validatePacks` composes for report-all. **Magic numbers** none (the Levenshtein threshold predates this slice). **Mechanical outcomes asserted** within-pack dup throws, undeclared cross-pack collision throws, declared override wins, same id across different categories doesn't collide, `validatePacks` reports collision + dangling ref together without throwing, and the shipped starter pack validates clean. **Tests** each pins a branch of the policy; the contract-snapshot updated for the four new exports (diff is only those symbols). No content change beyond the fixture dedup. No em/en dashes. `tsc --noEmit` clean; full suite green.
+
 ## 0.1.0-alpha.13 - 2026-05-21
 
 **Release (slice 399): bump to 0.1.0-alpha.13**

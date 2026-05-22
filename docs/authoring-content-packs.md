@@ -654,7 +654,7 @@ The cadence machinery prevents the same trigger from firing twice on the same tu
 
 ## Composition
 
-Multiple packs merge by category, with later packs winning on ID conflicts. So:
+Multiple packs merge by category into a global per-category id namespace, in array order:
 
 ```ts
 const engine = createEngine({
@@ -666,7 +666,21 @@ const engine = createEngine({
 });
 ```
 
-If your homebrew pack defines a feat with the same `id` as one in the starter, the homebrew version replaces it. If you want to *extend* a starter entity instead of replacing it, you'll need to copy the starter version into your pack and add to it; there's no field-level merge.
+**Id collisions are an error, not a silent overwrite.** `resolveContent` (called by `createEngine`) throws a `ContentPackLoadError` if two packs define the same id in the same category, so a homebrew pack can't accidentally clobber an SRD entry you didn't mean to touch. To *intentionally* replace an entry, the later pack must declare the id in its `overrides`:
+
+```jsonc
+{
+  "id": "my-homebrew",
+  "name": "Table Homebrew",
+  "version": "1.0.0",
+  "overrides": ["fireball"],          // we KNOW we're replacing the SRD fireball
+  "spells": [{ "id": "fireball", /* our houserule version */ }]
+}
+```
+
+With `fireball` declared in `overrides`, the homebrew version wins (later packs override). Without it, the load throws and names the colliding id + the pack it came from. Within-pack duplicates are always an error (no `overrides` escape). There's no field-level merge: an override replaces the whole entry, so copy the starter version into your pack and edit it if you mean to extend rather than replace.
+
+This is why **non-SRD content belongs in its own pack, never appended to `starter-pack.json`**: the starter pack is drift-audited against SRD 5.2.1 and is the licensable baseline. A separate pack keeps your additions IP-clean and lets the collision policy protect the SRD ids.
 
 ## When to write code instead of content
 
@@ -692,10 +706,10 @@ If you find yourself writing handlers for things that aren't genuinely procedura
 Before publishing a content pack:
 
 1. `loadContentPack(myJson)` — catches shape errors with path-pointed Zod issues.
-2. `resolveContent([loadStarterPack(), pack])` — merges and catches some collision issues.
-3. `validateCrossReferences(content)` — catches dangling IDs with Levenshtein-suggested fixes ("Did you mean 'savage-attacker'?").
+2. `validatePacks([loadStarterPack(), pack])` — the report-all author-time check: returns *every* id collision (within-pack duplicates and undeclared cross-pack clobbers) plus *every* dangling cross-reference, each with a Levenshtein-suggested fix ("Did you mean 'savage-attacker'?"), without throwing on the first. This is the one to run while authoring.
+3. `resolveContent([loadStarterPack(), pack])` — the engine's load path; throws a `ContentPackLoadError` on the first disallowed collision. Passing `validatePacks` first means this won't surprise you at `createEngine` time.
 
-Run all three in CI. The validator's output is structured, so you can fail fast on any issue with a non-zero exit code.
+Run these in CI. `validatePacks` returns a structured `ContentValidationIssue[]`, so you can fail fast on a non-empty result with a non-zero exit code. (`validateCrossReferences(resolveContent(...))` remains available if you want the dangling-ref pass alone over already-merged content.)
 
 ## Reference: full starter pack
 

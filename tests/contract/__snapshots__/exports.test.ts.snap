@@ -270,6 +270,7 @@ exports[`public API contract: src/index.ts > runtime exports match the locked sn
   "createPC",
   "defaultCampaignSettings",
   "defaultRNG",
+  "detectIdCollisions",
   "emptyCampaignState",
   "emptyCurrency",
   "evaluateFormula",
@@ -283,6 +284,7 @@ exports[`public API contract: src/index.ts > runtime exports match the locked sn
   "loadCampaign",
   "loadContentPack",
   "loadStarterPack",
+  "mergeContent",
   "migrate",
   "movementCostAt",
   "movementCostFor",
@@ -343,6 +345,7 @@ exports[`public API contract: src/index.ts > runtime exports match the locked sn
   "totalInCopper",
   "undo",
   "validateCrossReferences",
+  "validatePacks",
 ]
 `;
 
@@ -442,6 +445,7 @@ exports[`public API contract: src/index.ts > source-level exports (runtime + typ
   "ConsumeResistanceOutcome",
   "ContentPack",
   "ContentPackId",
+  "ContentPackIssue",
   "ContentPackLoadError",
   "ContentPackSchema",
   "ContentValidationIssue",
@@ -813,6 +817,7 @@ exports[`public API contract: src/index.ts > source-level exports (runtime + typ
   "createPC",
   "defaultCampaignSettings",
   "defaultRNG",
+  "detectIdCollisions",
   "emptyCampaignState",
   "emptyCurrency",
   "evaluateFormula",
@@ -826,6 +831,7 @@ exports[`public API contract: src/index.ts > source-level exports (runtime + typ
   "loadCampaign",
   "loadContentPack",
   "loadStarterPack",
+  "mergeContent",
   "migrate",
   "movementCostAt",
   "movementCostFor",
@@ -886,5 +892,6 @@ exports[`public API contract: src/index.ts > source-level exports (runtime + typ
   "totalInCopper",
   "undo",
   "validateCrossReferences",
+  "validatePacks",
 ]
 `;

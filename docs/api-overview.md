@@ -151,12 +151,15 @@ The fixed vocabulary the engine reads to compute character state. 53 kinds (52 p
 ## Content packs
 
 ```ts
-const pack = loadContentPack(json);
-const resolved = resolveContent([pack1, pack2]);
-const issues = validateCrossReferences(resolved);
+const pack = loadContentPack(json);            // parse + validate one pack against the schema
+const issues = validatePacks([srdPack, myPack]); // author-time: report all collisions + dangling refs
+const resolved = resolveContent([srdPack, myPack]); // merge for the engine; THROWS on a bad collision
+const refIssues = validateCrossReferences(resolved); // dangling-ref-only pass over merged content
 ```
 
 `loadStarterPack()` returns the bundled starter pack. `STARTER_PACK_RAW` exposes the underlying object if you need to inspect or extend it. `import('dnd-srd-engine/starter-pack')` is a real subpath so browser consumers can code-split the starter content off the main bundle.
+
+**Multi-pack id policy.** Packs merge into a global per-category id namespace in array order. `resolveContent` throws a `ContentPackLoadError` on any within-pack duplicate id or any cross-pack id collision, so a second pack can't silently clobber an SRD entry. A later pack may *intentionally* replace an earlier id by listing it in its `overrides: string[]` (a deliberate houserule, e.g. a homebrew pack replacing `fireball`); the later entry then wins. `validatePacks(packs)` is the report-all author-time companion (returns every collision + dangling cross-reference instead of throwing on the first); `detectIdCollisions(packs)` is the collision-only half. `mergeContent(packs)` is the bare last-wins merge with no collision check, for tooling that wants to inspect the merged view itself.
 
 ## RNG
 
