@@ -6,7 +6,8 @@ import { resolveContent } from '../content/pack.js';
 import { validateCrossReferences } from '../content/validate.js';
 import type { RNG } from '../rng/index.js';
 import { defaultRNG } from '../rng/default.js';
-import type { HandlerRegistry, HandlerContext } from '../handlers/index.js';
+import type { HandlerRegistry, HandlerContext, ContentBundle } from '../handlers/index.js';
+import { mergeHandlerRegistries } from '../handlers/index.js';
 import { apply, applyAll } from './apply.js';
 import { replay } from './replay.js';
 import { commit, type Campaign } from './commit.js';
@@ -247,7 +248,13 @@ import type { AbilityScore } from '../schemas/primitives.js';
 
 export interface CreateEngineOptions {
   readonly rng?: RNG;
-  readonly contentPacks: ReadonlyArray<ContentPack>;
+  // Plain content packs (data only). Optional when `bundles` is supplied.
+  readonly contentPacks?: ReadonlyArray<ContentPack>;
+  // Content packs paired with the behavior they supply, as single units.
+  // A bundle's pack joins `contentPacks`; its handlers merge into the
+  // registry (handlerId collisions across bundles throw).
+  readonly bundles?: ReadonlyArray<ContentBundle>;
+  // Standalone handler registry (merged with every bundle's handlers).
   readonly handlers?: HandlerRegistry;
 }
 
@@ -434,7 +441,12 @@ const requireCharacter = (state: CampaignState, id: string) => {
 };
 
 export const createEngine = (opts: CreateEngineOptions): Engine => {
-  const content = resolveContent(opts.contentPacks);
+  // A bundle's pack joins the plain content packs; its handlers merge into
+  // the registry. Handler-id collisions across bundles throw (mirrors the
+  // pack id-collision policy); pack id-collisions throw inside resolveContent.
+  const bundles = opts.bundles ?? [];
+  const content = resolveContent([...(opts.contentPacks ?? []), ...bundles.map((b) => b.pack)]);
+  const handlers = mergeHandlerRegistries([opts.handlers, ...bundles.map((b) => b.handlers)]);
   const validationIssues = validateCrossReferences(content);
   if (validationIssues.length > 0) {
     const formatted = validationIssues.map((i) => `${i.path}: ${i.message}`).join('\n');
@@ -444,7 +456,7 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
 
   const planNs: Engine['plan'] = {
     custom(state, intent) {
-      const handler = opts.handlers?.action?.[intent.handlerId];
+      const handler = handlers.action?.[intent.handlerId];
       if (handler === undefined) {
         throw new Error(
           `No custom action handler registered for '${intent.handlerId}' (register one under createEngine({ handlers: { action: { ... } } }))`,

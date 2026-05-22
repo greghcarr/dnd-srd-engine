@@ -40,7 +40,7 @@ describe('public API contract: type signatures', () => {
   it('createEngine: (opts) -> Engine', () => {
     expectTypeOf(createEngine).toBeFunction();
     expectTypeOf(createEngine).parameter(0).toMatchTypeOf<{
-      contentPacks: ReadonlyArray<ContentPack>;
+      contentPacks?: ReadonlyArray<ContentPack>;
       rng?: RNG;
     }>();
     expectTypeOf(createEngine).returns.toEqualTypeOf<Engine>();

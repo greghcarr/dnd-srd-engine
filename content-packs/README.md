@@ -46,6 +46,42 @@ if (issues.length > 0) throw new Error(JSON.stringify(issues, null, 2));
 const engine = createEngine({ contentPacks: [loadStarterPack(), myPack] });
 ```
 
+## Bundling behavior with the pack (single module)
+
+Most content is data-only and ships as JSON (above). But a pack with **bespoke mechanics** the existing effect-vocabulary can't express needs *code* (an `ActionHandler`), which JSON can't carry. Keep the data and its behavior together as one **`ContentBundle`** in a single module:
+
+```ts
+// my-campaign.ts  (one module: data + behavior)
+import { loadContentPack, type ContentBundle, type ActionHandler } from 'dnd-srd-engine';
+import packJson from './my-campaign.json' assert { type: 'json' }; // portable JSON data
+// (or inline the data as an object literal here for a literally-single file)
+
+const arcaneZap: ActionHandler = {
+  plan(ctx, params) {
+    const { targetId } = params as { targetId: string };
+    return [{ id: ctx.newEventId(), at: ctx.at, type: 'DamageApplied',
+      targetId: targetId as never, components: [{ amount: ctx.rollExpression('2d6').total, type: 'fire' }] }];
+  },
+};
+
+export const myCampaign: ContentBundle = {
+  pack: loadContentPack(packJson),
+  handlers: { action: { 'arcane-zap': arcaneZap } },
+};
+```
+
+Then the consumer feeds bundles to the engine as single units:
+
+```ts
+import { createEngine, loadStarterPack } from 'dnd-srd-engine';
+import { myCampaign } from './my-campaign.js';
+
+const engine = createEngine({ bundles: [{ pack: loadStarterPack() }, myCampaign] });
+engine.plan.custom(state, { handlerId: 'arcane-zap', params: { targetId } });
+```
+
+A bundle's `pack` joins the content; its `handlers` register the behavior. Handler-id collisions across bundles **throw** (mirroring the pack id policy below), so two bundles can't silently clobber each other. Keep the data as a portable JSON import (recommended: still loadable/diffable elsewhere) or inline it in the module for a literally-single file when portability doesn't matter. Handlers run at plan time, consume `ctx.rng`, and bake their rolls into the events they return; see [docs/plugin-api-design.md](../docs/plugin-api-design.md) for the full `HandlerContext` surface and the determinism contract.
+
 ## Id-collision policy
 
 Ids share a global namespace per category and packs merge in array order. `resolveContent` (called by `createEngine`) **throws** on any within-pack duplicate id or any cross-pack collision, so a local pack can't silently clobber an SRD entry. To intentionally replace an SRD entry (a houserule), declare its id in your pack's `overrides`:
