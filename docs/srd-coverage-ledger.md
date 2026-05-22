@@ -42,7 +42,8 @@ If you add or remove a probe / boundary table, update the number here in the sam
 Where the engine's confidence actually is, by area:
 
 - **Strongest (mostly 🟢):** the printed-table math (ability mod, proficiency bonus, spell-slot tables, carrying capacity, exhaustion) and content-data fidelity (spell / monster / item / class-table fields). These are non-circular because srd-drift and the boundary tables derive expectations from the SRD.
-- **Regression-safe but unaudited (mostly 🟡):** the derivation math a character sheet shows (saves, attack, spell DC, skills — **worn-armor AC was upgraded to 🟢 in slice 421**, the first of these) and the combat-legality rules the 48 probes cover. Implemented and pinned, but the expected values are author-asserted — the prime targets for ground-truth upgrade or independent review. The slice-421 AC test is the template: parse the SRD value, recompute, assert the engine agrees.
+- **Ground-truth-upgraded so far (🟢):** worn-armor + shield AC (slice 421), weapon data + plain-melee damage (422), and spell save DC / attack (423) — each parses the SRD and recomputes rather than trusting the author. Slice 422 proved the value by flushing out two missing firearms.
+- **Still regression-safe but unaudited (🟡):** the remaining sheet math — saving throws, skills, passive scores, the finesse/ranged attack ability choice, effective speeds — and the combat-legality rules the 48 probes cover. Implemented and pinned, but the expected values are author-asserted; these are the next ground-truth-upgrade or independent-review targets. The slice-421/422/423 conformance tests are the template: parse the SRD value, recompute, assert the engine agrees.
 - **Blind spots (🔴 / ◐):** rules with no dedicated probe, prose-only condition effects, and the long content tail. Enumerated below where known; the scary ones are the rules not yet listed at all.
 
 ---
@@ -88,7 +89,7 @@ Implemented and unit-tested, but expected values are author-asserted. **These ar
 | Passive scores (10 + check) | ✅ | 🟡 | unit + query/character-sheet | |
 | Attack bonus (ability + prof + magic) | ✅ | 🟡 | unit: derive/attack | finesse / ranged ability choice |
 | Weapon damage line | ✅ | 🟢 | [srd-weapon-conformance](../tests/audit/srd-weapon-conformance.test.ts) (slice 422) | plain-melee: SRD die + STR mod + proficiency verified against the parsed table; finesse/ranged ability choice still 🟡 (slice-414 unit tests) |
-| Spell save DC / attack bonus (8 + PB + ability) | ✅ | 🟡 | unit: derive/spell-dc | |
+| Spell save DC / attack bonus (8 + PB + ability) | ✅ | 🟢 | [srd-spell-dc-conformance](../tests/audit/srd-spell-dc-conformance.test.ts) (slice 423) | DC base + each of the 8 casters' spellcasting ability parsed from the SRD; distinct INT/WIS/CHA mods pin that the engine uses the SRD-named ability per class |
 | Effective movement speeds | ✅ | 🟡 | unit: derive/speed (slice 416) | walk + fly/swim/climb/burrow |
 | Initiative (DEX + modifiers) | ✅ | 🟡 | query/character-sheet | |
 
