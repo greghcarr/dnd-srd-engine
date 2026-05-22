@@ -14,9 +14,10 @@ import { newCharacterId } from '../../../src/ids.js';
 import type { CharacterCreatedEvent } from '../../../src/schemas/events/progression.js';
 import type { AttackRolledEvent } from '../../../src/schemas/events/attack.js';
 import type { DamageAppliedEvent } from '../../../src/schemas/events/combat.js';
-import { eventId, isoTimestamp, makeItemInstance } from '../../fixtures/index.js';
+import { eventId, isoTimestamp, makeItemInstance, loadPhbExtrasTestPack } from '../../fixtures/index.js';
 
 const PACK = loadStarterPack();
+const EXTRAS = loadPhbExtrasTestPack();
 
 const buildFighter = (mainHandId: string, offHandId?: string): Character =>
   CharacterSchema.parse({
@@ -84,7 +85,7 @@ describe('Dueling Fighting Style gates +2 damage on melee + off-hand-not-weapon'
     const sword = makeItemInstance('longsword');
     const fighter = buildFighter(sword.id);
     const victim = buildVictim();
-    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(1) });
+    const engine = createEngine({ contentPacks: [PACK, EXTRAS], rng: seededRNG(1) });
     let campaign: Campaign = engine.createCampaign({ name: 'dueling-melee-empty' });
     campaign = commit(campaign, [
       { id: eventId(), at: isoTimestamp(), type: 'ItemAcquired', instance: sword },
@@ -93,7 +94,7 @@ describe('Dueling Fighting Style gates +2 damage on melee + off-hand-not-weapon'
     ]);
     const dueling = firstHit(
       campaign.state,
-      () => createEngine({ contentPacks: [PACK], rng: seededRNG(1) }),
+      () => createEngine({ contentPacks: [PACK, EXTRAS], rng: seededRNG(1) }),
       fighter.id,
       victim.id,
       sword.id,
@@ -109,7 +110,7 @@ describe('Dueling Fighting Style gates +2 damage on melee + off-hand-not-weapon'
     ]);
     const baseline = firstHit(
       baselineCampaign.state,
-      () => createEngine({ contentPacks: [PACK], rng: seededRNG(1) }),
+      () => createEngine({ contentPacks: [PACK, EXTRAS], rng: seededRNG(1) }),
       baselineFighter.id,
       victim.id,
       sword.id,
@@ -125,7 +126,7 @@ describe('Dueling Fighting Style gates +2 damage on melee + off-hand-not-weapon'
     const dagger = makeItemInstance('dagger');
     const fighter = buildFighter(sword.id, dagger.id);
     const victim = buildVictim();
-    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(2) });
+    const engine = createEngine({ contentPacks: [PACK, EXTRAS], rng: seededRNG(2) });
     let campaign: Campaign = engine.createCampaign({ name: 'dueling-melee-twoweapon' });
     campaign = commit(campaign, [
       { id: eventId(), at: isoTimestamp(), type: 'ItemAcquired', instance: sword },
@@ -135,7 +136,7 @@ describe('Dueling Fighting Style gates +2 damage on melee + off-hand-not-weapon'
     ]);
     const dueling = firstHit(
       campaign.state,
-      () => createEngine({ contentPacks: [PACK], rng: seededRNG(2) }),
+      () => createEngine({ contentPacks: [PACK, EXTRAS], rng: seededRNG(2) }),
       fighter.id,
       victim.id,
       sword.id,
@@ -151,7 +152,7 @@ describe('Dueling Fighting Style gates +2 damage on melee + off-hand-not-weapon'
     ]);
     const baseline = firstHit(
       baselineCampaign.state,
-      () => createEngine({ contentPacks: [PACK], rng: seededRNG(2) }),
+      () => createEngine({ contentPacks: [PACK, EXTRAS], rng: seededRNG(2) }),
       baselineFighter.id,
       victim.id,
       sword.id,
@@ -169,7 +170,7 @@ describe('Dueling Fighting Style gates +2 damage on melee + off-hand-not-weapon'
       abilityScores: { STR: 12, DEX: 18, CON: 14, INT: 10, WIS: 10, CHA: 10 },
     });
     const victim = buildVictim();
-    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(3) });
+    const engine = createEngine({ contentPacks: [PACK, EXTRAS], rng: seededRNG(3) });
     let campaign: Campaign = engine.createCampaign({ name: 'dueling-ranged' });
     campaign = commit(campaign, [
       { id: eventId(), at: isoTimestamp(), type: 'ItemAcquired', instance: longbow },
@@ -178,7 +179,7 @@ describe('Dueling Fighting Style gates +2 damage on melee + off-hand-not-weapon'
     ]);
     const dueling = firstHit(
       campaign.state,
-      () => createEngine({ contentPacks: [PACK], rng: seededRNG(3) }),
+      () => createEngine({ contentPacks: [PACK, EXTRAS], rng: seededRNG(3) }),
       archer.id,
       victim.id,
       longbow.id,
@@ -193,7 +194,7 @@ describe('Dueling Fighting Style gates +2 damage on melee + off-hand-not-weapon'
     ]);
     const baseline = firstHit(
       baselineCampaign.state,
-      () => createEngine({ contentPacks: [PACK], rng: seededRNG(3) }),
+      () => createEngine({ contentPacks: [PACK, EXTRAS], rng: seededRNG(3) }),
       baselineArcher.id,
       victim.id,
       longbow.id,

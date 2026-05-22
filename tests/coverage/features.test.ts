@@ -33,6 +33,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { loadStarterPack } from '../../src/content/packs/starter.js';
+import { loadPhbExtrasTestPack } from '../fixtures/index.js';
 import { resolveContent } from '../../src/content/pack.js';
 import { WEAPON_MASTERIES } from '../../src/schemas/primitives.js';
 
@@ -170,7 +171,10 @@ describe('feature-coverage matrix: weapon masteries', () => {
 
 describe('feature-coverage matrix: conditions', () => {
   it('wired conditions catalog is stable', () => {
-    const wired = PACK.conditions
+    // Reads the starter pack + the non-SRD test fixture (the 6 spell
+    // conditions the engine tests live there since slice 403, not in the
+    // shipped pack): the matrix asserts the full tested capability.
+    const wired = [...PACK.conditions, ...loadPhbExtrasTestPack().conditions]
       .filter((c) => isWired(c.effects.length))
       .map((c) => c.id)
       .sort();
@@ -203,8 +207,15 @@ describe('feature-coverage matrix: conditions', () => {
 });
 
 describe('feature-coverage matrix: feats', () => {
+  // Since slice 403 the engine ships SRD-only: the 18 SRD-derived feats
+  // are in the starter pack, and the 2 PHB-2024 fighting styles the engine
+  // tests (Dueling, Protection) live in the non-SRD test fixture. The
+  // other PHB-2024 feats are user-supplied (content-packs/) and not
+  // asserted here. Reads starter + fixture for the tested surface.
+  const ALL_FEATS = [...PACK.feats, ...loadPhbExtrasTestPack().feats];
+
   it('wired feats catalog is stable', () => {
-    const wired = PACK.feats
+    const wired = ALL_FEATS
       .filter((f) => isWired((f.effects ?? []).length))
       .map((f) => `${f.category}:${f.id}`)
       .sort();
@@ -212,7 +223,7 @@ describe('feature-coverage matrix: feats', () => {
   });
 
   it('all six 2024 Fighting Styles ship as feats', () => {
-    const styles = PACK.feats.filter((f) => f.category === 'fighting-style').map((f) => f.id).sort();
+    const styles = ALL_FEATS.filter((f) => f.category === 'fighting-style').map((f) => f.id).sort();
     expect(styles).toEqual([
       'fighting-style-archery',
       'fighting-style-defense',
@@ -223,9 +234,13 @@ describe('feature-coverage matrix: feats', () => {
     ]);
   });
 
-  it('all nine epic boons ship', () => {
-    const boons = PACK.feats.filter((f) => f.category === 'epic-boon').map((f) => f.id).sort();
-    expect(boons.length).toBeGreaterThanOrEqual(9);
+  it('the SRD epic boons ship', () => {
+    // Since slice 403 the engine ships SRD-only: 7 SRD-derived epic boons
+    // in the starter pack. The 3 PHB-2024 boons (Energy Resistance /
+    // Fortitude / Skill) are user-supplied (content-packs/), not part of
+    // the distributed product, so they aren't asserted here.
+    const boons = ALL_FEATS.filter((f) => f.category === 'epic-boon').map((f) => f.id).sort();
+    expect(boons.length).toBeGreaterThanOrEqual(7);
   });
 });
 

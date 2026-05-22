@@ -20,9 +20,10 @@ import { CharacterSchema, type Character } from '../../../src/schemas/runtime/ch
 import { newCharacterId, newEventId } from '../../../src/ids.js';
 import type { CharacterCreatedEvent } from '../../../src/schemas/events/progression.js';
 import type { ProtectionUsedEvent } from '../../../src/schemas/events/reactive-spells.js';
-import { eventId, isoTimestamp, makeItemInstance } from '../../fixtures/index.js';
+import { eventId, isoTimestamp, makeItemInstance, loadPhbExtrasTestPack } from '../../fixtures/index.js';
 
 const PACK = loadStarterPack();
+const EXTRAS = loadPhbExtrasTestPack();
 
 const buildProtector = (opts: {
   hasFightingStyle: boolean;
@@ -65,7 +66,7 @@ const seedScene = (opts: {
   protectorId: string;
   attackerId: string;
 } => {
-  const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(7) });
+  const engine = createEngine({ contentPacks: [PACK, EXTRAS], rng: seededRNG(7) });
   const shield = opts.withShield ? makeItemInstance('shield') : undefined;
   const protector = buildProtector({
     hasFightingStyle: opts.hasFightingStyle,

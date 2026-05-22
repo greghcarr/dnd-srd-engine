@@ -18,7 +18,7 @@ A prior version of this doc tracked the **full PHB 2024 spell list** as its deno
 
 ## Totals
 
-**351 in pack**: **194 wired** (154 cast-time, 13 zone-tick, 27 dedicated planner), **70 narrative**, **87 deferred** (genuine mechanical gap, grouped by needed primitive per level below).
+**339 in pack**: **182 wired** (147 cast-time, 11 zone-tick, 24 dedicated planner), **70 narrative**, **87 deferred** (genuine mechanical gap, grouped by needed primitive per level below).
 
 ## Biggest deferred clusters (the priority queue)
 
@@ -39,9 +39,9 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 ---
 
-## Level 0 (28 in pack): 14 wired, 11 narrative, 3 deferred
+## Level 0 (27 in pack): 13 wired, 11 narrative, 3 deferred
 
-**Wired, cast-time (14):** acid-splash, blade-ward, chill-touch, eldritch-blast, fire-bolt, guidance, poison-spray, produce-flame, ray-of-frost, resistance, sacred-flame, shocking-grasp, starry-wisp, vicious-mockery.
+**Wired, cast-time (13):** acid-splash, chill-touch, eldritch-blast, fire-bolt, guidance, poison-spray, produce-flame, ray-of-frost, resistance, sacred-flame, shocking-grasp, starry-wisp, vicious-mockery.
 
 **Deferred (3):**
 - **open-die scaling:** sorcerous-burst.
@@ -49,13 +49,13 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 **Narrative (11):** dancing-lights, druidcraft, elementalism, light, mage-hand, mending, message, minor-illusion, prestidigitation, spare-the-dying, thaumaturgy.
 
-## Level 1 (60 in pack): 41 wired, 13 narrative, 6 deferred
+## Level 1 (57 in pack): 38 wired, 13 narrative, 6 deferred
 
-**Wired, cast-time (34):** armor-of-agathys, bane, bless, burning-hands, cause-fear, charm-person, chromatic-orb, color-spray, command, cure-wounds, dissonant-whispers, divine-favor, faerie-fire, false-life, feather-fall, find-familiar, guiding-bolt, healing-word, hellish-rebuke, heroism, hex, hideous-laughter, inflict-wounds, longstrider, mage-armor, magic-missile, protection-from-evil-and-good, ray-of-sickness, sanctuary, searing-smite, shield-of-faith, sleep, thunderwave, unseen-servant.
+**Wired, cast-time (32):** bane, bless, burning-hands, charm-person, chromatic-orb, color-spray, command, cure-wounds, dissonant-whispers, divine-favor, faerie-fire, false-life, feather-fall, find-familiar, guiding-bolt, healing-word, hellish-rebuke, heroism, hex, hideous-laughter, inflict-wounds, longstrider, mage-armor, magic-missile, protection-from-evil-and-good, ray-of-sickness, sanctuary, searing-smite, shield-of-faith, sleep, thunderwave, unseen-servant.
 
 **Wired, zone-tick (2):** entangle, grease (STR / DEX save to restrained / prone on enter; `aura-damage` condition-only variant, fires via `tickAura`).
 
-**Wired, planner (5):** absorb-elements, hunters-mark, identify, shield, silent-image.
+**Wired, planner (4):** hunters-mark, identify, shield, silent-image.
 
 **Deferred (6):**
 - **on-hit trigger system (smite via `castSpell`):** divine-smite, ensnaring-strike.
@@ -66,11 +66,11 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 **Narrative (13):** alarm, comprehend-languages, create-or-destroy-water, detect-evil-and-good, detect-magic, detect-poison-and-disease, disguise-self, expeditious-retreat, fog-cloud, illusory-script, jump, purify-food-and-drink, speak-with-animals.
 
-## Level 2 (60 in pack): 37 wired, 15 narrative, 8 deferred
+## Level 2 (57 in pack): 34 wired, 15 narrative, 8 deferred
 
-**Wired, cast-time (32):** acid-arrow, aid, barkskin, blindness-deafness, blur, calm-emotions, cordon-of-arrows, darkvision, enhance-ability, enlarge-reduce, enthrall (WIS save -> `enthralled-active`: -10 to Perception checks; slice 343), find-steed, flame-blade, gust-of-wind, heat-metal, hold-person, invisibility, lesser-restoration, mind-spike, mirror-image, moonbeam, pass-without-trace, prayer-of-healing, protection-from-poison, scorching-ray, shatter, spider-climb, spiritual-weapon, suggestion, summon-beast, warding-bond, web. (Mirror Image carries a `buff` condition on cast plus the slice-124 `planAttack` deflection pool.)
+**Wired, cast-time (30):** acid-arrow, aid, barkskin, blindness-deafness, blur, calm-emotions, darkvision, enhance-ability, enlarge-reduce, enthrall (WIS save -> `enthralled-active`: -10 to Perception checks; slice 343), find-steed, flame-blade, gust-of-wind, heat-metal, hold-person, invisibility, lesser-restoration, mind-spike, mirror-image, moonbeam, pass-without-trace, prayer-of-healing, protection-from-poison, scorching-ray, shatter, spider-climb, spiritual-weapon, suggestion, warding-bond, web. (Mirror Image carries a `buff` condition on cast plus the slice-124 `planAttack` deflection pool.)
 
-**Wired, zone-tick (3):** cloud-of-daggers (4d4 no-save `aura-damage`), flaming-sphere (DEX save 2d6 `aura-damage`), spike-growth (2d4-per-5ft `movement-damage`).
+**Wired, zone-tick (2):** flaming-sphere (DEX save 2d6 `aura-damage`), spike-growth (2d4-per-5ft `movement-damage`).
 
 **Wired, planner (2):** magic-weapon, misty-step.
 
@@ -83,13 +83,13 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 **Narrative (15):** alter-self, animal-messenger, arcane-lock, arcanists-magic-aura, augury, continual-flame, detect-thoughts, find-traps, gentle-repose, knock, locate-animals-or-plants, locate-object, magic-mouth, rope-trick, see-invisibility.
 
-## Level 3 (47 in pack): 32 wired, 10 narrative, 5 deferred
+## Level 3 (42 in pack): 27 wired, 10 narrative, 5 deferred
 
-**Wired, cast-time (21):** animate-dead, bestow-curse, call-lightning, conjure-animals, crusaders-mantle, fear, fireball, fly, gaseous-form, glyph-of-warding, haste, hypnotic-pattern, lightning-bolt, magic-circle, mass-healing-word, phantom-steed, protection-from-energy, sleet-storm, spirit-shroud, vampiric-touch, water-breathing.
+**Wired, cast-time (19):** animate-dead, bestow-curse, call-lightning, conjure-animals, fear, fireball, fly, gaseous-form, glyph-of-warding, haste, hypnotic-pattern, lightning-bolt, magic-circle, mass-healing-word, phantom-steed, protection-from-energy, sleet-storm, vampiric-touch, water-breathing.
 
-**Wired, zone-tick (3):** hunger-of-hadar (multi-component `aura-damage`), spirit-guardians, stinking-cloud (condition-only `aura-damage`).
+**Wired, zone-tick (2):** spirit-guardians, stinking-cloud (condition-only `aura-damage`).
 
-**Wired, planner (8):** clairvoyance, counterspell, dispel-magic, elemental-weapon, major-image, remove-curse, revivify, thunder-step.
+**Wired, planner (6):** clairvoyance, counterspell, dispel-magic, major-image, remove-curse, revivify.
 
 **Deferred (5):**
 - **non-damage area zone:** tiny-hut, wind-wall.

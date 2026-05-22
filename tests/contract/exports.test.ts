@@ -1,5 +1,5 @@
-// Layer 9 (public-API contract test, per the testing standard in
-// CLAUDE.md). Locks the exported symbol surface of `src/index.ts` so
+// Public-API contract test (a Required test layer, per the testing
+// standard in CLAUDE.md). Locks the exported symbol surface of `src/index.ts` so
 // any accidental addition, removal, or rename is caught at the type
 // level and surfaces as a snapshot mismatch.
 //

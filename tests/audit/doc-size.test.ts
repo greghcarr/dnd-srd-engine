@@ -51,6 +51,8 @@ const fixedFiles = [
   'docs/status.md',
   'docs/roadmap.md',
   'docs/api-overview.md',
+  'docs/trustworthiness-roadmap.md',
+  'docs/srd-coverage-ledger.md',
 ];
 
 const gatherGlobMd = (relDir: string, prefix?: string): string[] => {

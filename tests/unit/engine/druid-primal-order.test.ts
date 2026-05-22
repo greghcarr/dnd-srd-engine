@@ -125,7 +125,9 @@ describe('Druid L1 Primal Order (slice 215)', () => {
     expect(acc.grantedSpells().some((g) => g.spellId === 'druidcraft')).toBe(true);
     expect(acc.proficiencyLevel('weapon', 'martial')).not.toBe('proficient');
 
-    // INT 10 = 0 mod, WIS 16 = +3 bonus. Arcana / Nature total: 3.
+    // INT 10 = 0 mod, WIS 16 = +3 bonus. The sage background grants
+    // Arcana proficiency (+2 PB at L1), so Arcana = 0 + 3 + 2 = 5;
+    // Nature is not a sage skill, so Nature = 0 + 3 = 3.
     const arcana = computeAbilityCheck({
       character: stored,
       itemInstances: campaign.state.itemInstances,
@@ -134,7 +136,7 @@ describe('Druid L1 Primal Order (slice 215)', () => {
       skill: 'arcana',
       pendingChoices: campaign.state.pendingChoices,
     });
-    expect(arcana.total).toBe(3);
+    expect(arcana.total).toBe(5);
     const nature = computeAbilityCheck({
       character: stored,
       itemInstances: campaign.state.itemInstances,

@@ -2,6 +2,7 @@ import type { Character } from '../schemas/runtime/character.js';
 import type { ItemInstance } from '../schemas/runtime/item-instance.js';
 import type { PendingChoice } from '../schemas/runtime/pending-choice.js';
 import type { Effect } from '../schemas/effects.js';
+import type { Background } from '../schemas/content/background.js';
 import type { ResolvedContent } from '../content/pack.js';
 import { EffectAccumulator, applyEffectToBuilder } from '../effects/builder.js';
 import { resolveEnchantment } from './enchantment.js';
@@ -216,13 +217,30 @@ export const buildFormulaContext = (character: Character): FormulaContext => {
   };
 };
 
+// Backgrounds carry their granted skill + tool proficiencies as
+// structured arrays (RAW: a 2024 background grants two fixed skills and
+// one tool proficiency), not as GrantProficiency effects in `traits`.
+// Synthesize the effects so those proficiencies reach the effect stack
+// (and thus ability checks, saving throws, and the character sheet) the
+// same way feature- and feat-granted proficiencies do. Without this the
+// soldier's Athletics / Intimidation proficiency was silently dropped
+// from every ability check.
+const backgroundProficiencyEffects = (background: Background): Effect[] => [
+  ...background.skillProficiencies.map(
+    (id): Effect => ({ kind: 'GrantProficiency', target: 'skill', id, level: 'proficient' }),
+  ),
+  ...background.toolProficiencies.map(
+    (id): Effect => ({ kind: 'GrantProficiency', target: 'tool', id, level: 'proficient' }),
+  ),
+];
+
 export const collectEffectsFromCharacter = (input: BuildEffectStackInput): Effect[] => {
   const { character, content, itemInstances, pendingChoices } = input;
   const effects: Effect[] = [];
   const species = content.species.get(character.speciesId);
   if (species) effects.push(...species.traits);
   const background = content.backgrounds.get(character.backgroundId);
-  if (background) effects.push(...background.traits);
+  if (background) effects.push(...background.traits, ...backgroundProficiencyEffects(background));
   effects.push(...collectClassEffects(character, content));
   effects.push(...collectFeatEffects(character, content));
   effects.push(...collectItemEffects(character, itemInstances, content));
@@ -251,7 +269,7 @@ export const buildEffectStack = (input: BuildEffectStackInput): EffectAccumulato
 
   const background = content.backgrounds.get(character.backgroundId);
   if (background) {
-    for (const effect of background.traits) {
+    for (const effect of [...background.traits, ...backgroundProficiencyEffects(background)]) {
       applyEffectToBuilder(effect, acc, {
         source: `background:${background.id}`,
         formulaContext: targetFormulaContext,

@@ -1,5 +1,5 @@
-// Layer 9 (public-API contract test, per the testing standard in
-// CLAUDE.md). Companion to `exports.test.ts`: where that file locks
+// Public-API contract test (a Required test layer, per the testing
+// standard in CLAUDE.md). Companion to `exports.test.ts`: where that file locks
 // *names*, this file locks key *signatures* via Vitest's built-in
 // `expectTypeOf`. A signature change that keeps the name (e.g.
 // renaming `planAttack`'s `attackerId` to `casterId`, or making the
@@ -40,7 +40,7 @@ describe('public API contract: type signatures', () => {
   it('createEngine: (opts) -> Engine', () => {
     expectTypeOf(createEngine).toBeFunction();
     expectTypeOf(createEngine).parameter(0).toMatchTypeOf<{
-      contentPacks: ReadonlyArray<ContentPack>;
+      contentPacks?: ReadonlyArray<ContentPack>;
       rng?: RNG;
     }>();
     expectTypeOf(createEngine).returns.toEqualTypeOf<Engine>();

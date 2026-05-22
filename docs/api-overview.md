@@ -77,8 +77,9 @@ Stand-alone derivations also exported from the public barrel:
 - Effect-stack composition: `buildEffectStack` (returns an `EffectAccumulator` with `advantageFor`, `advantageVsSource`, `hasResistance`, `hasImmunity`, `flatDamageReductionFor`, `critThreshold`, `hasHealingBlocked`, `hasConditionImmunity`, ...).
 - Spatial / movement: `terrainAt`, `movementCostFor`, `movementCostAt`, `chebyshevDistanceFeet`, `isInRangeFeet`, `hasLineOfSight`, `hasLineOfEffect`.
 - Ability checks: `computeAbilityCheck`, `computePassiveScore`.
+- Movement speed: `getEffectiveSpeeds(input)` (all modes; `walk` always, non-walk modes when > 0) and `getEffectiveSpeed(input)` (walk only). Each folds the effect stack's `ModifySpeed` entries per RAW (add / set / multiply / matchWalkSpeed, zero-speed wins).
 
-Several helpers are intentionally engine-internal (used by planners, not on the public barrel): `mitigateDamage`, `isImmuneToCondition`, `isHealingBlocked`, `getCreatureType`, `getEffectiveSpeed`, `computeCarryingCapacity`, `computeEncumbrance`, `interceptFatalDamage` (slice 111: planner-side fatal-damage clamp + bearing-condition consume), `isMagicWeaponAttack` (slice 112: weapon-magicality detector reading `temporaryBuff` and `itemKind`). Consumers compose these effects through the planner / event surface instead. `mitigateDamage` accepts a `characters?: Record<string, Character>` field (slice 105) for source-relative formula evaluation and a `sourceIsMagical?: boolean` (slice 112) for the resistance qualifier; every primary damage emitter populates both. `computeSavingThrow` accepts the same `sourceIsMagical?: boolean` (slice 131) for the Magic Resistance advantage fold; cast-spell, trap, recurring-save, and reactive-spells planners pass `true` (slice 133). The trigger dispatcher (slice 113) infers magicality per rider via `isRiderMagical` (spell-sourced via `sourceEffectInstanceId.spellId` → magical; AttackRolled rider with weaponInstanceId inherits from weapon; otherwise non-magical).
+Several helpers are intentionally engine-internal (used by planners, not on the public barrel): `mitigateDamage`, `isImmuneToCondition`, `isHealingBlocked`, `getCreatureType`, `computeCarryingCapacity`, `computeEncumbrance`, `interceptFatalDamage` (slice 111: planner-side fatal-damage clamp + bearing-condition consume), `isMagicWeaponAttack` (slice 112: weapon-magicality detector reading `temporaryBuff` and `itemKind`). Consumers compose these effects through the planner / event surface instead. `mitigateDamage` accepts a `characters?: Record<string, Character>` field (slice 105) for source-relative formula evaluation and a `sourceIsMagical?: boolean` (slice 112) for the resistance qualifier; every primary damage emitter populates both. `computeSavingThrow` accepts the same `sourceIsMagical?: boolean` (slice 131) for the Magic Resistance advantage fold; cast-spell, trap, recurring-save, and reactive-spells planners pass `true` (slice 133). The trigger dispatcher (slice 113) infers magicality per rider via `isRiderMagical` (spell-sourced via `sourceEffectInstanceId.spellId` → magical; AttackRolled rider with weaponInstanceId inherits from weapon; otherwise non-magical).
 
 `EffectAccumulator.modifierSum(target, facts?)` and `modifierBreakdown(target, facts?)` (slice 115) accept caller-supplied facts so `AddModifier` entries with a `condition?: Predicate` are evaluated at sum time. `computeAttackBonus` populates `event.attackKind` from the weapon definition (slice 115); `computeAC` populates `bearer.wearingArmor` (slice 116). Predicate-less contributions continue to apply unconditionally.
 
@@ -151,12 +152,39 @@ The fixed vocabulary the engine reads to compute character state. 53 kinds (52 p
 ## Content packs
 
 ```ts
-const pack = loadContentPack(json);
-const resolved = resolveContent([pack1, pack2]);
-const issues = validateCrossReferences(resolved);
+const pack = loadContentPack(json);            // parse + validate one pack against the schema
+const issues = validatePacks([srdPack, myPack]); // author-time: report all collisions + dangling refs
+const resolved = resolveContent([srdPack, myPack]); // merge for the engine; THROWS on a bad collision
+const refIssues = validateCrossReferences(resolved); // dangling-ref-only pass over merged content
 ```
 
 `loadStarterPack()` returns the bundled starter pack. `STARTER_PACK_RAW` exposes the underlying object if you need to inspect or extend it. `import('dnd-srd-engine/starter-pack')` is a real subpath so browser consumers can code-split the starter content off the main bundle.
+
+**Multi-pack id policy.** Packs merge into a global per-category id namespace in array order. `resolveContent` throws a `ContentPackLoadError` on any within-pack duplicate id or any cross-pack id collision, so a second pack can't silently clobber an SRD entry. A later pack may *intentionally* replace an earlier id by listing it in its `overrides: string[]` (a deliberate houserule, e.g. a homebrew pack replacing `fireball`); the later entry then wins. `validatePacks(packs)` is the report-all author-time companion (returns every collision + dangling cross-reference instead of throwing on the first); `detectIdCollisions(packs)` is the collision-only half. `mergeContent(packs)` is the bare last-wins merge with no collision check, for tooling that wants to inspect the merged view itself.
+
+## Content queries (browse)
+
+The consumer-facing read layer for browsing the catalog (the spell / monster / item browsers a player-facing app renders). Pure, deterministic filters over a `ResolvedContent`; no state, no events.
+
+```ts
+querySpells(content, { level: 3, school: 'evocation', class: 'wizard' }); // -> Spell[]
+queryMonsters(content, { type: 'Undead', crMin: 1, crMax: 5 });           // -> MonsterStatblock[]
+queryItems(content, { itemKind: 'magic', rarity: 'rare', search: 'sword' }); // -> ItemDefinition[]
+```
+
+Each is per-category and returns that category's precise type. Every filter field is optional and AND-combines; an absent field matches everything. `search` is a case-insensitive name substring. `querySpells` takes `level` (exact) or `levelMin`/`levelMax` (inclusive range; exact wins), plus `school` / `class` (lowercase class id) / `concentration` / `ritual`. `queryMonsters` takes `type` / `size` / `cr` (exact) or `crMin`/`crMax` (inclusive; fractional CRs are decimals, 1/4 = 0.25). `queryItems` takes `itemKind` / `rarity` (`MagicRarity`). Results return in stable display order: spells by level then name, monsters by CR then name, items by name.
+
+```ts
+buildCharacterSheet({ character, itemInstances, content }); // -> CharacterSheet
+```
+
+`buildCharacterSheet` is the character-sheet view model. It extends `computeDerivedCharacter`'s `DerivedCharacter` (level, PB, ability mods, HP, AC, saves, spell slots, languages) with the rest of a sheet's computed stats: `skills` (all 18, each `{ skill, ability, proficiency, modifier, hasAdvantage, hasDisadvantage }`, in canonical order), `passiveScores` (`perception` / `investigation` / `insight`), `initiative` (DEX mod + initiative modifiers, with advantage), `speeds` (effective movement: `walk` always, plus `fly` / `swim` / `climb` / `burrow` when > 0), `attacks` (one `AttackView` per inventory weapon, then the always-available unarmed strike: to-hit `attackBonus`, a static `damage` line `{ dice, modifier, type }`, `versatileDamage` for versatile weapons, `properties`, `range`, `mastery`; the unarmed entry has `unarmed: true` and no `weaponInstanceId`), `spellcasting?` (present only for casters: per-class `{ ability, saveDC, attackBonus }` plus `spellsByLevel`, the castable spells grouped by level with `prepared` / `alwaysPrepared` flags), and `inventory` (`InventoryView`: the carried + equipped + attuned `items`, each with `quantity` / `weight` / `equippedSlot?` / `attuned` / `charges?`, plus an `encumbrance` summary). Pure assembly over the derivations; invents no rules. The standalone derivations are `computeWeaponDamage(input)` (`-> WeaponDamageResult`), `computeUnarmedStrike(input)` (`-> UnarmedStrikeResult`), and `getEffectiveSpeeds(input)` / `getEffectiveSpeed(input)`. The view model now covers the full DDB character-sheet surface. (Static-line caveat shared with all attacks: contextual / class-feature scaling such as Sneak Attack, Great Weapon Fighting, and the Monk Martial Arts die resolves in the attack planner, not the sheet line.)
+
+```ts
+buildEncounterView(state, content, encounterId); // -> EncounterView | undefined
+```
+
+`buildEncounterView` is the combat-tracker view model. It returns the encounter's `status` / `round` / `activeCombatantId` plus `combatants` in initiative order, each a `CombatantView` with `name` / `initiative` / `isActive` / `hp` / `ac` / `exhaustion` / `conditions` (`{ id, name }`) / `defeated` (HP <= 0) / `turn` (action / bonus / reaction used + feet moved). Combatants are `Character` entities (PCs and monsters alike); a missing character is skipped. Returns undefined for an unknown encounter id.
 
 ## RNG
 

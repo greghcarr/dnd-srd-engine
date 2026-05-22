@@ -8,6 +8,14 @@ export {
   PROFICIENCY_BONUS_LEVEL_MAX,
 } from './ability.js';
 export {
+  getEffectiveSpeed,
+  getEffectiveSpeeds,
+  getEffectiveSpeedForMode,
+  type GetEffectiveSpeedInput,
+  type EffectiveSpeeds,
+} from './speed.js';
+export type { EncumbranceResult, EncumbranceLevel } from './encumbrance.js';
+export {
   computeAC,
   type ACResult,
   type ACBreakdownEntry,
@@ -15,9 +23,15 @@ export {
 } from './ac.js';
 export {
   computeAttackBonus,
+  computeWeaponDamage,
+  computeUnarmedStrike,
   type AttackResult,
   type AttackBreakdownEntry,
   type ComputeAttackInput,
+  type WeaponDamage,
+  type WeaponDamageResult,
+  type ComputeUnarmedStrikeInput,
+  type UnarmedStrikeResult,
 } from './attack.js';
 export {
   computeSavingThrow,

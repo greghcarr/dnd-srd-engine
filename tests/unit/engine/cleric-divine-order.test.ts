@@ -140,8 +140,9 @@ describe('Cleric L1 Divine Order (slice 214)', () => {
     expect(acc.grantedSpells().some((g) => g.spellId === 'guidance')).toBe(true);
     expect(acc.proficiencyLevel('weapon', 'martial')).not.toBe('proficient');
 
-    // INT (Arcana) check: INT 10 = 0 mod, +3 from WIS-mod bonus
-    // (WIS 16 = +3). Expected total: 0 + 3 = 3.
+    // INT 10 = 0 mod, +3 from WIS-mod bonus (WIS 16 = +3). The acolyte
+    // background grants Religion proficiency (+2 PB at L1) but not
+    // Arcana, so Arcana = 0 + 3 = 3 and Religion = 0 + 3 + 2 = 5.
     const arcana = computeAbilityCheck({
       character: stored,
       itemInstances: campaign.state.itemInstances,
@@ -159,6 +160,6 @@ describe('Cleric L1 Divine Order (slice 214)', () => {
       skill: 'religion',
       pendingChoices: campaign.state.pendingChoices,
     });
-    expect(religion.total).toBe(3);
+    expect(religion.total).toBe(5);
   });
 });

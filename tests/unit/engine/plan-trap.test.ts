@@ -14,7 +14,7 @@ import type {
 } from '../../../src/schemas/events/traps.js';
 import type { SaveRolledEvent } from '../../../src/schemas/events/checks.js';
 import type { DamageAppliedEvent } from '../../../src/schemas/events/combat.js';
-import { eventId, isoTimestamp } from '../../fixtures/index.js';
+import { eventId, isoTimestamp, loadPhbExtrasTestPack } from '../../fixtures/index.js';
 
 const PACK = loadStarterPack();
 
@@ -66,7 +66,7 @@ const findEvent = <T extends { type: string }>(
 
 describe('engine.plan.castSpell + triggerTrap (Glyph of Warding, Explosive Runes)', () => {
   it('emits a TrapArmed with caster-DC and caster-chosen damage type', () => {
-    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(1) });
+    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(1) });
     const wizard = buildWizard();
     let campaign: Campaign = engine.createCampaign({ name: 'glyph' });
     campaign = commit(campaign, [
@@ -94,7 +94,7 @@ describe('engine.plan.castSpell + triggerTrap (Glyph of Warding, Explosive Runes
   });
 
   it('rejects an unallowed damage type', () => {
-    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(1) });
+    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(1) });
     const wizard = buildWizard();
     let campaign: Campaign = engine.createCampaign({ name: 'glyph-bad' });
     campaign = commit(campaign, [
@@ -112,7 +112,7 @@ describe('engine.plan.castSpell + triggerTrap (Glyph of Warding, Explosive Runes
   });
 
   it('triggers: rolls save, deals damage, emits TrapTriggered + TrapExpired on the single charge', () => {
-    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(7) });
+    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(7) });
     const wizard = buildWizard();
     const victim = buildVictim();
     let campaign: Campaign = engine.createCampaign({ name: 'glyph-trigger' });
@@ -158,7 +158,7 @@ describe('engine.plan.castSpell + triggerTrap (Glyph of Warding, Explosive Runes
 
 describe('engine.plan.castSpell + triggerTrap (Cordon of Arrows)', () => {
   it('arms with 4 charges at fixed DC 13 piercing', () => {
-    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(2) });
+    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(2) });
     const ranger = buildRanger();
     let campaign: Campaign = engine.createCampaign({ name: 'cordon' });
     campaign = commit(campaign, [
@@ -179,7 +179,7 @@ describe('engine.plan.castSpell + triggerTrap (Cordon of Arrows)', () => {
   });
 
   it('decrements charges per trigger and expires on the fourth fire', () => {
-    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(3) });
+    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(3) });
     const ranger = buildRanger();
     const victim = buildVictim();
     let campaign: Campaign = engine.createCampaign({ name: 'cordon-fire' });
@@ -215,7 +215,7 @@ describe('engine.plan.castSpell + triggerTrap (Cordon of Arrows)', () => {
   });
 
   it('throws when triggering a trap with no charges', () => {
-    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(4) });
+    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(4) });
     const ranger = buildRanger();
     const victim = buildVictim();
     let campaign: Campaign = engine.createCampaign({ name: 'cordon-empty' });

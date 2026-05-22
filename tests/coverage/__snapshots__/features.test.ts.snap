@@ -245,8 +245,6 @@ exports[`feature-coverage matrix: feats > wired feats catalog is stable 1`] = `
   "fighting-style:fighting-style-great-weapon",
   "fighting-style:fighting-style-protection",
   "fighting-style:fighting-style-two-weapon",
-  "general:unarmored-defense-barbarian",
-  "origin:lucky",
 ]
 `;
 
@@ -468,6 +466,7 @@ exports[`feature-coverage matrix: weapon masteries > mastery → weapon mapping 
     "crossbow-light",
     "javelin",
     "longbow",
+    "musket",
     "sling",
     "whip",
   ],
@@ -484,6 +483,7 @@ exports[`feature-coverage matrix: weapon masteries > mastery → weapon mapping 
     "crossbow-hand",
     "dart",
     "handaxe",
+    "pistol",
     "rapier",
     "shortbow",
     "shortsword",

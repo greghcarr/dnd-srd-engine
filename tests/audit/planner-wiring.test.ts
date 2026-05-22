@@ -63,16 +63,19 @@ const dispatchTargets = new Set(
 // documentation. Add a new entry here ONLY for a planner that genuinely
 // shouldn't be a performIntent player-action.
 const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
+  // Consumer-extensible plugin seam (dispatches to a registered action
+  // handler by id; not a fixed intent type). See docs/plugin-api-design.md.
+  'custom',
   // Encounter lifecycle (sequenced by the consumer, not a single intent):
   'createEncounter', 'rollInitiative', 'startEncounter', 'beginFirstTurn', 'advanceTurn', 'endEncounter',
   // Reactions / triggered planners (called after observing a trigger event;
   // several return a derived outcome the consumer branches on):
-  'dodge', 'shield', 'absorbElements', 'sanctuaryWardSave', 'protection', 'consumeGuidance',
+  'dodge', 'shield', 'sanctuaryWardSave', 'protection', 'consumeGuidance',
   'consumeResistance', 'cuttingWords', 'uncannyDodge', 'superiorDefense', 'paladinsSmite', 'breathWeapon',
   // Per-moment ticks / duration sweeps (called at turn boundaries / on movement):
   'expireSpellDurations', 'tickAura', 'tickMovementDamage', 'tickRecurring', 'tickRecurringSave', 'triggerTrap',
   // Special-cast / placed-entity / multi-arg spell planners:
-  'magicWeapon', 'elementalWeapon', 'removeCurse', 'mistyStep', 'thunderStep', 'dimensionDoor',
+  'magicWeapon', 'removeCurse', 'mistyStep', 'thunderStep', 'dimensionDoor',
   'silentImage', 'majorImage', 'clairvoyance', 'scrying', 'arcaneEye', 'divineIntervention',
   'innateSorcery', 'selfRestoration',
   // Sensor / illusion management:

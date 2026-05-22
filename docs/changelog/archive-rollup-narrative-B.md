@@ -105,7 +105,7 @@ Audit re-run: 0 speed diffs remaining (was 20). Drift drops from 34 to 24; match
 
 *Test perf: reduce property-test NUM_RUNS default from 1000 to 50* (slice 160). Property tests under `tests/property/` were running 1000 fast-check iterations per property by default (content-pack-validator was 200). At 1000, the combat-sequence file alone took ~108 seconds; the full suite took ~115 seconds wall.
 
-Per [CLAUDE.md](../CLAUDE.md) testing guidance, property tests at fixed-iteration CI gates "aren't required" and should be cut as ceremony; the safety value comes from the invariant assertions themselves, which 50 iterations exercise just as faithfully (each iteration sequences 25+ random actions through the engine, so 50 iterations × 25 actions = 1250 distinct action-property checks per property).
+Per [CLAUDE.md](../../CLAUDE.md) testing guidance, property tests at fixed-iteration CI gates "aren't required" and should be cut as ceremony; the safety value comes from the invariant assertions themselves, which 50 iterations exercise just as faithfully (each iteration sequences 25+ random actions through the engine, so 50 iterations × 25 actions = 1250 distinct action-property checks per property).
 
 Updated NUM_RUNS default to 50 in all 7 property test files (combat-sequence, content-pack-validator, derivations, multiclass, plan, reducers, spell-cast-sequence). The `FAST_CHECK_NUM_RUNS` env var still works for deep local fuzz runs (e.g. `FAST_CHECK_NUM_RUNS=1000 npx vitest run tests/property/`).
 

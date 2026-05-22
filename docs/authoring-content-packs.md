@@ -1,6 +1,6 @@
 # Authoring content packs
 
-`dnd-srd-engine` ships only the rules engine and a starter content pack. Any class feature past level 1, any subclass, any spell beyond the ~33 in the starter, any DMG magic item beyond the 9 included, any monster beyond the 6 statblocks — you write it yourself. This guide is the reference for doing that.
+`dnd-srd-engine` ships only the rules engine and an SRD 5.2.1 starter content pack. Anything beyond that SRD scope (the full 2024 PHB / DMG / MM, third-party content, your campaign's homebrew) you write yourself, as your own content pack(s). This guide is the reference for doing that. (For what the starter pack already ships, see [status.md](status.md).)
 
 It assumes you've already read [getting-started.md](getting-started.md) and [concepts.md](concepts.md). If you haven't, those explain what a content pack *is* and how it fits into the engine. This document is about *what to put in one*.
 
@@ -57,7 +57,7 @@ for (const issue of issues) {
 }
 ```
 
-Multiple packs merge with later packs winning on ID conflicts. This is how you layer "starter + setting + table homebrew."
+Multiple packs merge into one global per-category id namespace. A cross-pack id collision throws unless the later pack declares that id in its `overrides` list (then the later entry intentionally wins). This is how you layer "starter + setting + table homebrew" without silent clobbering.
 
 ## Entity reference
 
@@ -563,7 +563,7 @@ Used by Unarmored Defense (Barbarian: base 10, DEX + CON), Monk (DEX + WIS), Dra
 ```json
 { "kind": "Custom", "handlerId": "wild-shape-beast-form-selection", "params": { "cr": 1 } }
 ```
-Custom effects do nothing unless the consumer registers a handler with the same `handlerId` via `engine.handlers.register(...)`.
+Custom effects do nothing unless the consumer supplies a handler with the same `handlerId` to `createEngine` (in `opts.handlers` or a `ContentBundle`), and invokes it via `engine.plan.custom(...)`.
 
 ## Common patterns (cookbook)
 
@@ -654,7 +654,7 @@ The cadence machinery prevents the same trigger from firing twice on the same tu
 
 ## Composition
 
-Multiple packs merge by category, with later packs winning on ID conflicts. So:
+Multiple packs merge by category into a global per-category id namespace, in array order:
 
 ```ts
 const engine = createEngine({
@@ -666,7 +666,21 @@ const engine = createEngine({
 });
 ```
 
-If your homebrew pack defines a feat with the same `id` as one in the starter, the homebrew version replaces it. If you want to *extend* a starter entity instead of replacing it, you'll need to copy the starter version into your pack and add to it; there's no field-level merge.
+**Id collisions are an error, not a silent overwrite.** `resolveContent` (called by `createEngine`) throws a `ContentPackLoadError` if two packs define the same id in the same category, so a homebrew pack can't accidentally clobber an SRD entry you didn't mean to touch. To *intentionally* replace an entry, the later pack must declare the id in its `overrides`:
+
+```jsonc
+{
+  "id": "my-homebrew",
+  "name": "Table Homebrew",
+  "version": "1.0.0",
+  "overrides": ["fireball"],          // we KNOW we're replacing the SRD fireball
+  "spells": [{ "id": "fireball", /* our houserule version */ }]
+}
+```
+
+With `fireball` declared in `overrides`, the homebrew version wins (later packs override). Without it, the load throws and names the colliding id + the pack it came from. Within-pack duplicates are always an error (no `overrides` escape). There's no field-level merge: an override replaces the whole entry, so copy the starter version into your pack and edit it if you mean to extend rather than replace.
+
+This is why **non-SRD content belongs in its own pack, never appended to `starter-pack.json`**: the starter pack is drift-audited against SRD 5.2.1 and is the licensable baseline. A separate pack keeps your additions IP-clean and lets the collision policy protect the SRD ids.
 
 ## When to write code instead of content
 
@@ -676,14 +690,27 @@ The `Custom` effect kind plus the handler registry is the escape hatch for mecha
 - The mechanic involves picking from a large dynamic library (Wild Shape's beast forms).
 - The mechanic is iterative or conditional in ways the existing primitives can't express.
 
-Register the handler in your consumer code:
+Supply the handler to `createEngine` (keyed by `handlerId`), then invoke it via `engine.plan.custom`:
 
 ```ts
-engine.handlers.register('my-custom-handler', (context) => {
-  // context: state (read-only), rng, helpers
-  return /* Event[] */;
+const engine = createEngine({
+  contentPacks: [loadStarterPack(), myPack],
+  handlers: {
+    action: {
+      'my-custom-handler': {
+        // ctx: { state (read-only), content, rng, at, helpers }; params: caller-supplied
+        plan(ctx, params) {
+          return [/* Event[] */];
+        },
+      },
+    },
+  },
 });
+
+engine.plan.custom(state, { handlerId: 'my-custom-handler', params: { /* ... */ } });
 ```
+
+A handler can also travel with its pack as a single `ContentBundle` (`{ pack, handlers }`) fed to `createEngine({ bundles: [...] })`. See [docs/plugin-api-design.md](plugin-api-design.md) for the full `HandlerContext` surface and the determinism contract (handlers run at plan time, consume `ctx.rng`, and bake rolls into the events they return).
 
 If you find yourself writing handlers for things that aren't genuinely procedural (e.g., "a feat that adds +2 to one ability"), the right answer is almost always an existing primitive — file an issue with the use case if a primitive feels missing.
 
@@ -692,10 +719,10 @@ If you find yourself writing handlers for things that aren't genuinely procedura
 Before publishing a content pack:
 
 1. `loadContentPack(myJson)` — catches shape errors with path-pointed Zod issues.
-2. `resolveContent([loadStarterPack(), pack])` — merges and catches some collision issues.
-3. `validateCrossReferences(content)` — catches dangling IDs with Levenshtein-suggested fixes ("Did you mean 'savage-attacker'?").
+2. `validatePacks([loadStarterPack(), pack])` — the report-all author-time check: returns *every* id collision (within-pack duplicates and undeclared cross-pack clobbers) plus *every* dangling cross-reference, each with a Levenshtein-suggested fix ("Did you mean 'savage-attacker'?"), without throwing on the first. This is the one to run while authoring.
+3. `resolveContent([loadStarterPack(), pack])` — the engine's load path; throws a `ContentPackLoadError` on the first disallowed collision. Passing `validatePacks` first means this won't surprise you at `createEngine` time.
 
-Run all three in CI. The validator's output is structured, so you can fail fast on any issue with a non-zero exit code.
+Run these in CI. `validatePacks` returns a structured `ContentValidationIssue[]`, so you can fail fast on a non-empty result with a non-zero exit code. (`validateCrossReferences(resolveContent(...))` remains available if you want the dangling-ref pass alone over already-merged content.)
 
 ## Reference: full starter pack
 

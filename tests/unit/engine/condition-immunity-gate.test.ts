@@ -28,7 +28,7 @@ import { commit } from '../../../src/engine/commit.js';
 import { loadStarterPack } from '../../../src/content/packs/starter.js';
 import { CharacterSchema, type Character } from '../../../src/schemas/runtime/character.js';
 import { newAppliedConditionId, newCharacterId } from '../../../src/ids.js';
-import { eventId, isoTimestamp } from '../../fixtures/index.js';
+import { eventId, isoTimestamp, loadPhbExtrasTestPack } from '../../fixtures/index.js';
 import type { CharacterCreatedEvent } from '../../../src/schemas/events/progression.js';
 import type { ConditionAppliedEvent } from '../../../src/schemas/events/combat.js';
 import type { SaveRolledEvent } from '../../../src/schemas/events/checks.js';
@@ -106,7 +106,7 @@ const castUntilSaveFails = (
 describe('condition-immunity gate (spell condition application)', () => {
   it('Paladin with L10 Aura of Courage avoids Frightened on a failed save', () => {
     const events = castUntilSaveFails((rng) => {
-      const engine = createEngine({ contentPacks: [PACK], rng });
+      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng });
       const caster = buildCaster();
       const paladin = buildPaladin(10);
       let campaign = engine.createCampaign({ name: 'aoc-paladin' });
@@ -135,7 +135,7 @@ describe('condition-immunity gate (spell condition application)', () => {
 
   it('Ally with aura-of-courage-active condition avoids Frightened on a failed save', () => {
     const events = castUntilSaveFails((rng) => {
-      const engine = createEngine({ contentPacks: [PACK], rng });
+      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng });
       const caster = buildCaster();
       const paladin = buildPaladin(10);
       const ally = buildAlly();
@@ -180,7 +180,7 @@ describe('condition-immunity gate (spell condition application)', () => {
 
   it('Ally without immunity gets Frightened on a failed save (control)', () => {
     const events = castUntilSaveFails((rng) => {
-      const engine = createEngine({ contentPacks: [PACK], rng });
+      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng });
       const caster = buildCaster();
       const ally = buildAlly();
       let campaign = engine.createCampaign({ name: 'no-immunity' });

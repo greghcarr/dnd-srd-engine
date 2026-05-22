@@ -298,11 +298,36 @@ export {
   ContentPackSchema,
   loadContentPack,
   resolveContent,
+  mergeContent,
+  detectIdCollisions,
   validateCrossReferences,
+  validatePacks,
   ContentPackLoadError,
 } from './content/index.js';
-export type { ContentPack, ResolvedContent, ContentValidationIssue } from './content/index.js';
+export type { ContentPack, ResolvedContent, ContentValidationIssue, ContentPackIssue } from './content/index.js';
 export { loadStarterPack, STARTER_PACK_RAW } from './content/packs/starter.js';
+export { querySpells, queryMonsters, queryItems, buildCharacterSheet, buildEncounterView } from './query/index.js';
+export type {
+  SpellFilter,
+  MonsterFilter,
+  ItemFilter,
+  CharacterSheet,
+  SkillView,
+  PassiveScores,
+  InitiativeView,
+  AttackView,
+  SpellcastingView,
+  SpellcastingClassView,
+  SpellListEntry,
+  SpellLevelGroup,
+  InventoryView,
+  InventoryEntry,
+  EquipSlot,
+  EncounterView,
+  CombatantView,
+  CombatantConditionView,
+  CombatantTurnView,
+} from './query/index.js';
 
 export {
   DefaultRNG,
@@ -324,6 +349,10 @@ export {
   computeAC,
   computeSavingThrow,
   computeAttackBonus,
+  computeWeaponDamage,
+  computeUnarmedStrike,
+  getEffectiveSpeed,
+  getEffectiveSpeeds,
   computeSpellSaveDC,
   computeSpellAttackBonus,
   computeSpellSlots,
@@ -344,6 +373,14 @@ export {
 export type {
   ACResult,
   AttackResult,
+  WeaponDamage,
+  WeaponDamageResult,
+  ComputeUnarmedStrikeInput,
+  UnarmedStrikeResult,
+  GetEffectiveSpeedInput,
+  EffectiveSpeeds,
+  EncumbranceResult,
+  EncumbranceLevel,
   SaveResult,
   SpellDCResult,
   SpellSlotsResult,
@@ -610,6 +647,7 @@ export type {
   ForagedForEvent,
 } from './schemas/events/index.js';
 
-export type { HandlerRegistry, EffectHandler, HandlerContext } from './handlers/index.js';
+export type { HandlerRegistry, EffectHandler, ActionHandler, HandlerContext, ContentBundle } from './handlers/index.js';
+export { HANDLER_API_VERSION, mergeHandlerRegistries } from './handlers/index.js';
 
 export { migrate } from './migrations/index.js';

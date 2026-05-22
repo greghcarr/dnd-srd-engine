@@ -17,7 +17,7 @@ import { loadStarterPack } from '../../src/content/packs/starter.js';
 import { resolveContent } from '../../src/content/pack.js';
 import { CharacterSchema, type Character } from '../../src/schemas/runtime/character.js';
 import { newCharacterId } from '../../src/ids.js';
-import { eventId, isoTimestamp } from '../fixtures/index.js';
+import { eventId, isoTimestamp, loadPhbExtrasTestPack } from '../fixtures/index.js';
 import type { CharacterCreatedEvent } from '../../src/schemas/events/progression.js';
 import type { CompanionSummonedEvent } from '../../src/schemas/events/summons.js';
 import type { ConcentrationBrokenEvent } from '../../src/schemas/events/concentration.js';
@@ -39,8 +39,8 @@ const buildWizard = (): Character =>
 describe('golden: summons + concentration cleanup', () => {
   it('summon, lose concentration, the bound companion disappears; familiar persists', async () => {
     const STARTER_PACK = loadStarterPack();
-    const STARTER_CONTENT = resolveContent([STARTER_PACK]);
-    const engine = createEngine({ contentPacks: [STARTER_PACK], rng: seededRNG(7) });
+    const STARTER_CONTENT = resolveContent([STARTER_PACK, loadPhbExtrasTestPack()]);
+    const engine = createEngine({ contentPacks: [STARTER_PACK, loadPhbExtrasTestPack()], rng: seededRNG(7) });
     const alyx = buildWizard();
     let campaign = engine.createCampaign({ name: 'summon-saga' });
     campaign = commit(campaign, [

@@ -28,7 +28,7 @@ import type {
   TempHPGrantedEvent,
 } from '../../../src/schemas/events/combat.js';
 import type { AttackRolledEvent } from '../../../src/schemas/events/attack.js';
-import { eventId, isoTimestamp, makeItemInstance } from '../../fixtures/index.js';
+import { eventId, isoTimestamp, makeItemInstance, loadPhbExtrasTestPack } from '../../fixtures/index.js';
 
 const PACK = loadStarterPack();
 
@@ -64,7 +64,7 @@ describe('Armor of Agathys', () => {
     // 5 base + 5 per slot above 1 → 10 temp HP at slot 2. Warlocks
     // only have access to their highest pact-slot level, so L3
     // warlock can only cast at slot 2.
-    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(1) });
+    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(1) });
     const warlock = buildWarlock();
     let campaign: Campaign = engine.createCampaign({ name: 'aoa-cast' });
     campaign = commit(campaign, [
@@ -94,7 +94,7 @@ describe('Armor of Agathys', () => {
     // attack the warlock; the rider should emit a DamageApplied of
     // type 'cold' targeting the attacker.
     for (let seed = 1; seed < 80; seed += 1) {
-      const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(seed) });
+      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(seed) });
       const longsword = makeItemInstance('longsword');
       const warlock = buildWarlock();
       const attacker = buildAttacker(longsword.id);
@@ -151,7 +151,7 @@ describe('Armor of Agathys', () => {
     // Same scene but no temp HP seeded. The OnEvent rider's gate
     // `bearer.tempHp > 0` evaluates false → no rider damage.
     for (let seed = 1; seed < 80; seed += 1) {
-      const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(seed) });
+      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(seed) });
       const longsword = makeItemInstance('longsword');
       const warlock = buildWarlock();
       const attacker = buildAttacker(longsword.id);
@@ -195,7 +195,7 @@ describe('Armor of Agathys', () => {
     // The slice-123 `event.attackKind === melee` filter clause should
     // suppress the rider on every hit.
     for (let seed = 1; seed < 80; seed += 1) {
-      const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(seed) });
+      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(seed) });
       const bow = makeItemInstance('shortbow');
       const warlock = buildWarlock();
       const attacker = buildAttacker(bow.id);

@@ -566,14 +566,6 @@
       "stealthDisadvantage": true
     },
     {
-      "id": "shield",
-      "itemKind": "armor",
-      "name": "Shield",
-      "category": "shield",
-      "baseAC": 2,
-      "stealthDisadvantage": false
-    },
-    {
       "id": "healing-potion",
       "itemKind": "consumable",
       "name": "Potion of Healing",

@@ -16,6 +16,7 @@ Peer dependencies (`zod`, `immer`, `ulid`) install transitively.
 
 ## 2. Create an engine with the starter pack
 
+<!-- typecheck -->
 ```ts
 import { createEngine, loadStarterPack, seededRNG } from 'dnd-srd-engine';
 
@@ -25,10 +26,11 @@ const engine = createEngine({
 });
 ```
 
-The starter pack ships in the package and includes all 12 PHB classes with full 1–20 level tables (features wired through L7, narrative-only beyond where the primitive vocabulary doesn't yet cover), 12 subclasses (one canonical per class, L3 baseline plus a handful of wired higher-tier features), 9 species, 19 backgrounds (4 SRD + 15 PHB 2024), 35 feats (12 origin + 7 general + 6 fighting style + 10 epic boon), 351 spells (the complete SRD 5.2.1 catalog plus 12 extras; 194 mechanically wired, 70 narrative-only, 87 schema-only), 52 weapons + 22 armors + 37 tools + 77 adventuring-gear items + 69 consumables, 258 magic items, 253 monster statblocks, the 2024 Bastion system, and 130 conditions (all 15 RAW plus 115 mechanic-rider variants). It's enough to instantiate a character and run combat with a meaningful spell selection; later-tier play exercises the long tail of schema-only spells and the higher subclass-feature tiers that aren't yet authored. See [docs/starter-pack-gaps.md](starter-pack-gaps.md) for the per-spell catalog of "wired vs schema-only" and the queue of primitives still on the menu.
+The starter pack ships in the package and includes all 12 PHB classes with full 1–20 level tables (features wired through L7, narrative-only beyond where the primitive vocabulary doesn't yet cover), 12 subclasses (one canonical per class, L3 baseline plus a handful of wired higher-tier features), 9 species, 4 backgrounds (the SRD 5.2.1 set: Acolyte, Criminal, Sage, Soldier), 18 feats (6 origin + 1 general + 4 fighting style + 7 epic boon), 339 spells (the complete SRD 5.2.1 catalog; 182 mechanically wired, 70 narrative-only, 87 schema-only), 54 weapons + 22 armors + 37 tools + 77 adventuring-gear items + 69 consumables, 258 magic items, 253 monster statblocks, the 2024 Bastion system, and 124 conditions (all 15 RAW plus 109 mechanic-rider variants; 6 non-SRD spell conditions moved to `phb-2024-extras` in slice 402). It's enough to instantiate a character and run combat with a meaningful spell selection; later-tier play exercises the long tail of schema-only spells and the higher subclass-feature tiers that aren't yet authored. See [docs/starter-pack-gaps.md](starter-pack-gaps.md) for the per-spell catalog of "wired vs schema-only" and the queue of primitives still on the menu. The starter pack is SRD-only by design; non-SRD, homebrew, or campaign content is user-supplied as your own pack(s) in the gitignored `content-packs/` folder (see [content-packs/README.md](../content-packs/README.md)).
 
 ## 3. Build a character
 
+<!-- typecheck:continue -->
 ```ts
 import { CharacterSchema, newCharacterId, newItemInstanceId, newEventId } from 'dnd-srd-engine';
 import { commit } from 'dnd-srd-engine';
@@ -63,6 +65,7 @@ The engine state is now populated. `commit` is pure: it returns a new `Campaign`
 
 ## 4. Derive their sheet
 
+<!-- typecheck:continue -->
 ```ts
 const sheet = engine.derive.character(campaign.state, alyx.id);
 const ac = engine.derive.ac(campaign.state, alyx.id);
@@ -77,6 +80,7 @@ Every derivation returns a typed result with a breakdown (each contributing modi
 
 Add a goblin, create an encounter, and attack:
 
+<!-- typecheck:continue -->
 ```ts
 const goblin = CharacterSchema.parse({
   id: newCharacterId(),
@@ -117,6 +121,7 @@ All randomness was consumed inside `engine.plan.attack`. The events it returned 
 
 ## 6. Save and load
 
+<!-- typecheck:continue -->
 ```ts
 import { replay, EventSchema } from 'dnd-srd-engine';
 
@@ -142,5 +147,6 @@ This is the practical payoff of event sourcing. Your save file is the truth; the
 - **Understand the mental model**: [docs/concepts.md](concepts.md) explains why the API has the shape it does (events, plan/commit, content packs, effect primitives, PendingChoice).
 - **Common how-tos**: [docs/recipes.md](recipes.md) covers save/undo/redo, branching timelines, adding content and feats, houserules, multiplayer sync, custom planners, and migrations.
 - **Browse the public surface**: [docs/api-overview.md](api-overview.md) lists every public symbol by namespace.
+- **Build a UI / consume the data**: the read/query layer renders the screens a player-facing app needs without reaching into raw state: `querySpells` / `queryMonsters` / `queryItems` (content browse), `buildCharacterSheet` (the full character sheet, beyond the partial `computeDerivedCharacter` used above), and `buildEncounterView` (combat tracker). See the "Content queries" section of [api-overview.md](api-overview.md).
 - **Larger scenarios**: [examples/](../examples/) has three runnable scripts. The showcase transcript at [tests/golden/transcripts/showcase.transcript.md](../tests/golden/transcripts/showcase.transcript.md) walks through a multi-act campaign exercising most of the engine.
 - **Bring your own content**: see [src/schemas/content/](../src/schemas/content/) for the Zod schemas of `Species`, `Background`, `Class`, `Spell`, `Feat`, `ItemDefinition`, `MonsterStatblock`, `Condition`. Load with `loadContentPack(json)` and merge with the starter via `resolveContent([starter, mine])`.

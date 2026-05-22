@@ -10,7 +10,8 @@ import type { CharacterCreatedEvent } from '../../../src/schemas/events/progress
 import type { ItemBuffAppliedEvent } from '../../../src/schemas/events/inventory.js';
 import type { AttackRolledEvent, DamageRolledEvent } from '../../../src/schemas/events/attack.js';
 import type { DamageAppliedEvent } from '../../../src/schemas/events/combat.js';
-import { eventId, isoTimestamp, makeItemInstance } from '../../fixtures/index.js';
+import { eventId, isoTimestamp, makeItemInstance, loadPhbExtrasTestPack } from '../../fixtures/index.js';
+import { elementalWeaponHandler } from '../../fixtures/handlers/elemental-weapon.js';
 
 // Tests Elemental Weapon's item-buff path. The dedicated planner
 // (engine.plan.elementalWeapon) stamps an ItemBuffApplied carrying
@@ -54,7 +55,7 @@ const buildTarget = (): Character =>
 // Elemental Weapon's RAW tiers are slot 3 (+1/1d4), slot 5 (+2/2d4),
 // slot 7 (+3/3d4) — testing requires slots 3, 5, 7, 9.
 const buildCampaign = (casterLevel: number) => {
-  const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(0) });
+  const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(0), handlers: { action: { 'elemental-weapon': elementalWeaponHandler } } });
   const longsword = makeItemInstance('longsword');
   const caster = buildCaster(casterLevel);
   const target = buildTarget();
@@ -67,15 +68,15 @@ const buildCampaign = (casterLevel: number) => {
   return { engine, campaign, longsword, caster, target };
 };
 
-describe('engine.plan.elementalWeapon', () => {
+describe('elemental-weapon plugin handler (via engine.plan.custom)', () => {
   it("stamps the weapon with +1 attack + 1d4 fire at slot 3", () => {
     const { engine, campaign, longsword, caster } = buildCampaign(19);
-    const events = engine.plan.elementalWeapon(campaign.state, {
+    const events = engine.plan.custom(campaign.state, { handlerId: 'elemental-weapon', params: {
       casterId: caster.id,
       weaponInstanceId: longsword.id,
       slotLevel: 3,
       damageType: 'fire',
-    }).events;
+    } }).events;
     const buff = events.find((e) => e.type === 'ItemBuffApplied') as ItemBuffAppliedEvent | undefined;
     expect(buff).toBeDefined();
     expect(buff!.attackBonus).toBe(1);
@@ -93,12 +94,12 @@ describe('engine.plan.elementalWeapon', () => {
     [9, 3, '3d4'],
   ])('slot %d → +%d attack and %s extra damage', (slotLevel, expectedBonus, expectedDice) => {
     const { engine, campaign, longsword, caster } = buildCampaign(19);
-    const events = engine.plan.elementalWeapon(campaign.state, {
+    const events = engine.plan.custom(campaign.state, { handlerId: 'elemental-weapon', params: {
       casterId: caster.id,
       weaponInstanceId: longsword.id,
       slotLevel,
       damageType: 'cold',
-    }).events;
+    } }).events;
     const buff = events.find((e) => e.type === 'ItemBuffApplied') as ItemBuffAppliedEvent | undefined;
     expect(buff).toBeDefined();
     expect(buff!.attackBonus).toBe(expectedBonus);
@@ -107,7 +108,7 @@ describe('engine.plan.elementalWeapon', () => {
 
   it('after casting, the caster attack rolls extra damage of the chosen type on hit', () => {
     for (let seed = 1; seed < 100; seed += 1) {
-      const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(seed) });
+      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(seed), handlers: { action: { 'elemental-weapon': elementalWeaponHandler } } });
       const longsword = makeItemInstance('longsword');
       const caster = buildCaster(19);
       const target = buildTarget();
@@ -120,12 +121,12 @@ describe('engine.plan.elementalWeapon', () => {
 
       campaign = commit(
         campaign,
-        engine.plan.elementalWeapon(campaign.state, {
+        engine.plan.custom(campaign.state, { handlerId: 'elemental-weapon', params: {
           casterId: caster.id,
           weaponInstanceId: longsword.id,
           slotLevel: 3,
           damageType: 'lightning',
-        }).events,
+        } }).events,
       );
 
       const attack = engine.plan.attack(campaign.state, {
@@ -169,12 +170,12 @@ describe('engine.plan.elementalWeapon', () => {
     const { engine, campaign, longsword, caster } = buildCampaign(19);
     const post = commit(
       campaign,
-      engine.plan.elementalWeapon(campaign.state, {
+      engine.plan.custom(campaign.state, { handlerId: 'elemental-weapon', params: {
         casterId: caster.id,
         weaponInstanceId: longsword.id,
         slotLevel: 7,
         damageType: 'thunder',
-      }).events,
+      } }).events,
     );
     expect(post.state.itemInstances[longsword.id]?.temporaryBuff?.attackBonus).toBe(3);
     expect(post.state.itemInstances[longsword.id]?.temporaryBuff?.extraDamageDice).toBe('3d4');
@@ -184,24 +185,24 @@ describe('engine.plan.elementalWeapon', () => {
   it('throws when the damage type is not in the allowed list', () => {
     const { engine, campaign, longsword, caster } = buildCampaign(19);
     expect(() =>
-      engine.plan.elementalWeapon(campaign.state, {
+      engine.plan.custom(campaign.state, { handlerId: 'elemental-weapon', params: {
         casterId: caster.id,
         weaponInstanceId: longsword.id,
         slotLevel: 3,
         damageType: 'radiant',
-      }),
+      } }),
     ).toThrow(/not in allowed list/);
   });
 
   it('throws when the slot is below 3', () => {
     const { engine, campaign, longsword, caster } = buildCampaign(19);
     expect(() =>
-      engine.plan.elementalWeapon(campaign.state, {
+      engine.plan.custom(campaign.state, { handlerId: 'elemental-weapon', params: {
         casterId: caster.id,
         weaponInstanceId: longsword.id,
         slotLevel: 2,
         damageType: 'fire',
-      }),
+      } }),
     ).toThrow(/insufficient/);
   });
 });

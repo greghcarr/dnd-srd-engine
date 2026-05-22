@@ -22,6 +22,8 @@ export {
 export {
   ItemDefinitionSchema,
   type ItemDefinition,
+  MagicRaritySchema,
+  type MagicRarity,
   WeaponSchema,
   type Weapon,
   ArmorSchema,

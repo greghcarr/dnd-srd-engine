@@ -10,7 +10,7 @@ import type { CharacterCreatedEvent } from '../../../src/schemas/events/progress
 import type { AttackRolledEvent } from '../../../src/schemas/events/attack.js';
 import type { DamageAppliedEvent } from '../../../src/schemas/events/combat.js';
 import type { DamageType } from '../../../src/schemas/primitives.js';
-import { eventId, isoTimestamp, makeItemInstance } from '../../fixtures/index.js';
+import { eventId, isoTimestamp, makeItemInstance, loadPhbExtrasTestPack } from '../../fixtures/index.js';
 
 // Tests Spirit Shroud's three caster-chosen damage variants. The
 // condition lives on the caster; the rider fires on every successful
@@ -53,7 +53,7 @@ describe("Spirit Shroud caster-chosen damage type (3-variant buff with attacker-
     ['radiant', 'radiant'],
   ])("the '%s' variant adds +1d8 %s to the caster's hits", (variantKey, damageType) => {
     for (let seed = 1; seed < 100; seed += 1) {
-      const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(seed) });
+      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(seed) });
       const longsword = makeItemInstance('longsword');
       const caster = buildCleric();
       const target = buildTarget();
@@ -100,7 +100,7 @@ describe("Spirit Shroud caster-chosen damage type (3-variant buff with attacker-
   });
 
   it('throws when no casterChoice is supplied', () => {
-    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(0) });
+    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(0) });
     const caster = buildCleric();
     let campaign: Campaign = engine.createCampaign({ name: 'shroud-missing-choice' });
     campaign = commit(campaign, [

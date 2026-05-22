@@ -6,7 +6,8 @@ import { resolveContent } from '../content/pack.js';
 import { validateCrossReferences } from '../content/validate.js';
 import type { RNG } from '../rng/index.js';
 import { defaultRNG } from '../rng/default.js';
-import type { HandlerRegistry } from '../handlers/index.js';
+import type { HandlerRegistry, HandlerContext, ContentBundle } from '../handlers/index.js';
+import { mergeHandlerRegistries } from '../handlers/index.js';
 import { apply, applyAll } from './apply.js';
 import { replay } from './replay.js';
 import { commit, type Campaign } from './commit.js';
@@ -59,7 +60,6 @@ import {
   planConsumeItem,
   planUseItem,
   planMagicWeapon,
-  planElementalWeapon,
   planRecklessAttack,
   planStunningStrike,
   planFlurryOfBlows,
@@ -98,7 +98,6 @@ import {
   planBreathWeapon,
   planIdentify,
   planShield,
-  planAbsorbElements,
   planSanctuaryWardSave,
   planProtection,
   planConsumeGuidance,
@@ -140,8 +139,6 @@ import {
   type IdentifyIntent,
   type ShieldIntent,
   type ShieldOutcome,
-  type AbsorbElementsIntent,
-  type AbsorbElementsOutcome,
   type SanctuaryWardSaveIntent,
   type SanctuaryWardSaveOutcome,
   type ProtectionIntent,
@@ -192,7 +189,6 @@ import {
   type ConsumeItemIntent,
   type UseItemIntent,
   type MagicWeaponIntent,
-  type ElementalWeaponIntent,
   type RecklessAttackIntent,
   type StunningStrikeIntent,
   type FlurryOfBlowsIntent,
@@ -232,7 +228,14 @@ import {
   type TickRecurringIntent,
   type TickRecurringSaveIntent,
 } from './plan/index.js';
-import { newCampaignId } from '../ids.js';
+import { newCampaignId, newEventId, newAppliedConditionId, newEffectInstanceId } from '../ids.js';
+import { nowIso } from '../internal/clock.js';
+import { rollDie, rollExpression } from '../rng/dice.js';
+import { HANDLER_API_VERSION } from '../handlers/index.js';
+import { assertActorCanAct } from './plan/_actor-state.js';
+import { assertReactionAvailable, economyConsumedIfEncountered } from './plan/reactive-spells.js';
+import { computeAvailableSpellSlots } from '../derive/spell-slots.js';
+import type { ULID } from './ids-utils.js';
 import { SCHEMA_VERSION } from '../version.js';
 import { computeAC } from '../derive/ac.js';
 import { computeSavingThrow } from '../derive/save.js';
@@ -245,7 +248,13 @@ import type { AbilityScore } from '../schemas/primitives.js';
 
 export interface CreateEngineOptions {
   readonly rng?: RNG;
-  readonly contentPacks: ReadonlyArray<ContentPack>;
+  // Plain content packs (data only). Optional when `bundles` is supplied.
+  readonly contentPacks?: ReadonlyArray<ContentPack>;
+  // Content packs paired with the behavior they supply, as single units.
+  // A bundle's pack joins `contentPacks`; its handlers merge into the
+  // registry (handlerId collisions across bundles throw).
+  readonly bundles?: ReadonlyArray<ContentBundle>;
+  // Standalone handler registry (merged with every bundle's handlers).
   readonly handlers?: HandlerRegistry;
 }
 
@@ -274,6 +283,11 @@ export interface Engine {
   do(campaign: Campaign, intent: { readonly type: string } & Record<string, unknown>): Campaign;
 
   plan: {
+    // Consumer-extensible action seam: dispatches to a handler registered
+    // under `opts.handlers.action[handlerId]`. Lets a content pack ship the
+    // behavior for a bespoke spell/item/action alongside its JSON, instead
+    // of the engine hardcoding it. See docs/plugin-api-design.md.
+    custom(state: CampaignState, intent: { handlerId: string; params?: unknown; at?: string }): PlanResult;
     shortRest(state: CampaignState, intent: { participantIds: ReadonlyArray<string>; at?: string }): PlanResult;
     longRest(state: CampaignState, intent: { participantIds: ReadonlyArray<string>; at?: string }): PlanResult;
     rest(state: CampaignState, intent: RestIntent): PlanResult;
@@ -323,7 +337,6 @@ export interface Engine {
     consumeItem(state: CampaignState, intent: Omit<ConsumeItemIntent, 'type'>): PlanResult;
     useItem(state: CampaignState, intent: Omit<UseItemIntent, 'type'>): PlanResult;
     magicWeapon(state: CampaignState, intent: Omit<MagicWeaponIntent, 'type'>): PlanResult;
-    elementalWeapon(state: CampaignState, intent: Omit<ElementalWeaponIntent, 'type'>): PlanResult;
     recklessAttack(state: CampaignState, intent: Omit<RecklessAttackIntent, 'type'>): PlanResult;
     stunningStrike(state: CampaignState, intent: Omit<StunningStrikeIntent, 'type'>): PlanResult;
     flurryOfBlows(state: CampaignState, intent: Omit<FlurryOfBlowsIntent, 'type'>): PlanResult;
@@ -362,7 +375,6 @@ export interface Engine {
     breathWeapon(state: CampaignState, intent: Omit<BreathWeaponIntent, 'type'>): PlanResult;
     identify(state: CampaignState, intent: Omit<IdentifyIntent, 'type'>): PlanResult;
     shield(state: CampaignState, intent: Omit<ShieldIntent, 'type'>): ShieldOutcome;
-    absorbElements(state: CampaignState, intent: Omit<AbsorbElementsIntent, 'type'>): AbsorbElementsOutcome;
     sanctuaryWardSave(
       state: CampaignState,
       intent: Omit<SanctuaryWardSaveIntent, 'type'>,
@@ -429,7 +441,12 @@ const requireCharacter = (state: CampaignState, id: string) => {
 };
 
 export const createEngine = (opts: CreateEngineOptions): Engine => {
-  const content = resolveContent(opts.contentPacks);
+  // A bundle's pack joins the plain content packs; its handlers merge into
+  // the registry. Handler-id collisions across bundles throw (mirrors the
+  // pack id-collision policy); pack id-collisions throw inside resolveContent.
+  const bundles = opts.bundles ?? [];
+  const content = resolveContent([...(opts.contentPacks ?? []), ...bundles.map((b) => b.pack)]);
+  const handlers = mergeHandlerRegistries([opts.handlers, ...bundles.map((b) => b.handlers)]);
   const validationIssues = validateCrossReferences(content);
   if (validationIssues.length > 0) {
     const formatted = validationIssues.map((i) => `${i.path}: ${i.message}`).join('\n');
@@ -438,6 +455,35 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
   const rng = opts.rng ?? defaultRNG();
 
   const planNs: Engine['plan'] = {
+    custom(state, intent) {
+      const handler = handlers.action?.[intent.handlerId];
+      if (handler === undefined) {
+        throw new Error(
+          `No custom action handler registered for '${intent.handlerId}' (register one under createEngine({ handlers: { action: { ... } } }))`,
+        );
+      }
+      const at = intent.at ?? nowIso();
+      const ctx: HandlerContext = {
+        apiVersion: HANDLER_API_VERSION,
+        state,
+        content,
+        rng,
+        at,
+        rollDie: (die) => rollDie(die, rng),
+        rollExpression: (expr) => rollExpression(expr, rng),
+        newEventId: () => newEventId() as ULID,
+        newAppliedConditionId,
+        newEffectInstanceId,
+        assertActorCanAct: (character, actionLabel) => assertActorCanAct(character, actionLabel),
+        spellSlotsRemaining: (character, slotLevel) =>
+          computeAvailableSpellSlots(character, content.classes).standardByLevel[slotLevel - 1] ?? 0,
+        assertReactionAvailable: (character, actionLabel) =>
+          assertReactionAvailable(state, character.id, actionLabel),
+        consumeActionEconomy: (character, kind) =>
+          economyConsumedIfEncountered(state, character.id, at, kind),
+      };
+      return { events: handler.plan(ctx, intent.params) };
+    },
     shortRest(state, intent) {
       return { events: planShortRest(state, { type: 'ShortRest', ...intent }) };
     },
@@ -598,9 +644,6 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     magicWeapon(state, intent) {
       return { events: planMagicWeapon(state, content, { type: 'MagicWeapon', ...intent }) };
     },
-    elementalWeapon(state, intent) {
-      return { events: planElementalWeapon(state, content, { type: 'ElementalWeapon', ...intent }) };
-    },
     recklessAttack(state, intent) {
       return { events: planRecklessAttack(state, content, { type: 'RecklessAttack', ...intent }) };
     },
@@ -714,9 +757,6 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     shield(state, intent) {
       return planShield(state, content, { type: 'Shield', ...intent });
-    },
-    absorbElements(state, intent) {
-      return planAbsorbElements(state, content, { type: 'AbsorbElements', ...intent });
     },
     sanctuaryWardSave(state, intent) {
       return planSanctuaryWardSave(state, content, rng, {

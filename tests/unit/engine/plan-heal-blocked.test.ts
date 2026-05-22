@@ -13,7 +13,7 @@ import type { Campaign } from '../../../src/engine/commit.js';
 import type { CharacterCreatedEvent } from '../../../src/schemas/events/progression.js';
 import type { HealedEvent, ConditionAppliedEvent } from '../../../src/schemas/events/combat.js';
 import type { AttackRolledEvent } from '../../../src/schemas/events/attack.js';
-import { eventId, isoTimestamp } from '../../fixtures/index.js';
+import { eventId, isoTimestamp, loadPhbExtrasTestPack } from '../../fixtures/index.js';
 
 // Slice 98 — heal-blocking primitive.
 //
@@ -73,7 +73,7 @@ const buildTarget = (): Character =>
 
 describe('healing-block primitive', () => {
   it('cure-wounds on a blocked target emits Healed with amount=0 and blocked annotation', () => {
-    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(1) });
+    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(1) });
     const cleric = buildCleric();
     const ally = buildWoundedAlly();
     let campaign: Campaign = engine.createCampaign({ name: 'heal-blocked' });
@@ -113,7 +113,7 @@ describe('healing-block primitive', () => {
   });
 
   it('cure-wounds on an unblocked target heals normally', () => {
-    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(2) });
+    const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(2) });
     const cleric = buildCleric();
     const ally = buildWoundedAlly();
     let campaign: Campaign = engine.createCampaign({ name: 'heal-normal' });
@@ -142,7 +142,7 @@ describe('Spirit Shroud applies healing-blocked-active on hit', () => {
     // Seed a scene where the warrior (with Spirit Shroud cold active)
     // attacks a target with a longsword. Walk seeds until we get a hit.
     for (let seed = 1; seed < 60; seed += 1) {
-      const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(seed) });
+      const engine = createEngine({ contentPacks: [PACK, loadPhbExtrasTestPack()], rng: seededRNG(seed) });
       const sword = longsword();
       const warrior = buildWoundedAlly(sword.id);
       const target = buildTarget();
