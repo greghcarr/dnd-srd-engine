@@ -38,7 +38,10 @@ const markdownFiles = (dir: string, acc: string[] = []): string[] => {
 const stripCode = (md: string): string =>
   md.replace(/```[\s\S]*?```/g, '').replace(/`[^`]*`/g, '');
 
-const LINK_RE = /\[[^\]]*\]\(([^)]+)\)/g;
+// `*` (not `+`) inside the parens so an empty href `[text]()` is captured too:
+// it renders as a dead link on GitHub and is a real defect (slice 437 hit it
+// when re-rooting moved links). A `+` here would silently skip empty hrefs.
+const LINK_RE = /\[[^\]]*\]\(([^)]*)\)/g;
 
 describe('doc-links audit (slice 432): internal markdown links resolve from their file', () => {
   const files = markdownFiles(REPO_ROOT).filter(
@@ -55,6 +58,10 @@ describe('doc-links audit (slice 432): internal markdown links resolve from thei
     const base = dirname(file);
     for (const m of text.matchAll(LINK_RE)) {
       const href = m[1]!.trim();
+      if (href === '') {
+        broken.push(`${relative(REPO_ROOT, file)} -> (empty link href)`);
+        continue;
+      }
       if (/^(https?:|mailto:|#|file:|tel:)/.test(href)) continue;
       const path = href.split('#')[0];
       if (!path) continue; // pure anchor
