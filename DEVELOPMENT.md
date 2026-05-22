@@ -85,12 +85,13 @@ A release promotes a coherent group of `dev` slices to `main` under a tag. The h
 
 On `dev`, before merging to `main`:
 
-1. `npm run release:doc-counts` — runs the full suite, derives the live test/file count, and rewrites the citations in README.md + docs/status.md in place. Review the diff (it should change only the numbers) and commit it as part of the release.
-2. Bump `version` in [package.json](package.json) and regenerate `package-lock.json` (`npm install --package-lock-only`).
-3. Bump `SCHEMA_VERSION` in [src/version.ts](src/version.ts) only if persisted shapes changed (see Schema migrations below).
-4. Promote the `## Unreleased` CHANGELOG heading to `## <version> - <date>` and add a fresh empty `## Unreleased` above it.
-5. `npm run ci` (typecheck + coverage + build) must be green.
-6. Merge `dev` into `main` and tag (`git tag v<version>`). **Only on explicit instruction** — see [CLAUDE.md](CLAUDE.md#commit-dont-push).
+1. `npm run release:doc-counts`: runs the full suite, derives the live test/file count, and rewrites the citations in README.md + docs/status.md in place. Review the diff (it should change only the numbers) and commit it as part of the release.
+2. `npm run release:doc-review`: read-only report of the front-door percentages and wired-counts that are NOT cleanly machine-derivable. For each figure it prints the ground-truth signal, every doc line that cites it, and a verdict (COMPUTED -> MATCH / DRIFT; JUDGMENT -> confirm against the signal). Fix any DRIFT; for JUDGMENT figures (magic-item / subclass / primitive maturity %, the headline aggregate) confirm the estimate against its signal and recent slices. **When any number changes, re-read the full sentence it sits in for stale accompanying text**; the report lists the surrounding line precisely, so this is a read, not a hunt.
+3. Bump `version` in [package.json](package.json) and regenerate `package-lock.json` (`npm install --package-lock-only`).
+4. Bump `SCHEMA_VERSION` in [src/version.ts](src/version.ts) only if persisted shapes changed (see Schema migrations below).
+5. Promote the `## Unreleased` CHANGELOG heading to `## <version> - <date>` and add a fresh empty `## Unreleased` above it.
+6. `npm run ci` (typecheck + coverage + build) must be green.
+7. Merge `dev` into `main` and tag (`git tag v<version>`). **Only on explicit instruction**, see [CLAUDE.md](CLAUDE.md#commit-dont-push).
 
 `npm run release:doc-counts:check` is the non-writing variant (exits non-zero if stale); use it in CI if the release ever becomes automated.
 
