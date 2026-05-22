@@ -6,7 +6,7 @@ import { resolveContent } from '../content/pack.js';
 import { validateCrossReferences } from '../content/validate.js';
 import type { RNG } from '../rng/index.js';
 import { defaultRNG } from '../rng/default.js';
-import type { HandlerRegistry } from '../handlers/index.js';
+import type { HandlerRegistry, HandlerContext } from '../handlers/index.js';
 import { apply, applyAll } from './apply.js';
 import { replay } from './replay.js';
 import { commit, type Campaign } from './commit.js';
@@ -232,7 +232,11 @@ import {
   type TickRecurringIntent,
   type TickRecurringSaveIntent,
 } from './plan/index.js';
-import { newCampaignId } from '../ids.js';
+import { newCampaignId, newEventId, newAppliedConditionId } from '../ids.js';
+import { nowIso } from '../internal/clock.js';
+import { rollDie, rollExpression } from '../rng/dice.js';
+import { HANDLER_API_VERSION } from '../handlers/index.js';
+import type { ULID } from './ids-utils.js';
 import { SCHEMA_VERSION } from '../version.js';
 import { computeAC } from '../derive/ac.js';
 import { computeSavingThrow } from '../derive/save.js';
@@ -274,6 +278,11 @@ export interface Engine {
   do(campaign: Campaign, intent: { readonly type: string } & Record<string, unknown>): Campaign;
 
   plan: {
+    // Consumer-extensible action seam: dispatches to a handler registered
+    // under `opts.handlers.action[handlerId]`. Lets a content pack ship the
+    // behavior for a bespoke spell/item/action alongside its JSON, instead
+    // of the engine hardcoding it. See docs/plugin-api-design.md.
+    custom(state: CampaignState, intent: { handlerId: string; params?: unknown; at?: string }): PlanResult;
     shortRest(state: CampaignState, intent: { participantIds: ReadonlyArray<string>; at?: string }): PlanResult;
     longRest(state: CampaignState, intent: { participantIds: ReadonlyArray<string>; at?: string }): PlanResult;
     rest(state: CampaignState, intent: RestIntent): PlanResult;
@@ -438,6 +447,27 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
   const rng = opts.rng ?? defaultRNG();
 
   const planNs: Engine['plan'] = {
+    custom(state, intent) {
+      const handler = opts.handlers?.action?.[intent.handlerId];
+      if (handler === undefined) {
+        throw new Error(
+          `No custom action handler registered for '${intent.handlerId}' (register one under createEngine({ handlers: { action: { ... } } }))`,
+        );
+      }
+      const at = intent.at ?? nowIso();
+      const ctx: HandlerContext = {
+        apiVersion: HANDLER_API_VERSION,
+        state,
+        content,
+        rng,
+        at,
+        rollDie: (die) => rollDie(die, rng),
+        rollExpression: (expr) => rollExpression(expr, rng),
+        newEventId: () => newEventId() as ULID,
+        newAppliedConditionId,
+      };
+      return { events: handler.plan(ctx, intent.params) };
+    },
     shortRest(state, intent) {
       return { events: planShortRest(state, { type: 'ShortRest', ...intent }) };
     },

@@ -1,6 +1,6 @@
 # Plugin API design (proposal)
 
-**Status: design proposal, not yet implemented.** This captures how a content pack could ship consumer-supplied *code* (handlers/planners for bespoke mechanics) alongside its JSON, so the engine becomes extensible by data *and* behavior, not data alone. It exists to pin the hard constraints and the public-API contract before any implementation, because a plugin API is a long-lived commitment.
+**Status: in progress.** Phase 1 (the custom-action seam) shipped in slice 406; the rest is designed, not yet built. This captures how a content pack ships consumer-supplied *code* (handlers/planners for bespoke mechanics) alongside its JSON, so the engine becomes extensible by data *and* behavior, not data alone. It exists to pin the hard constraints and the public-API contract before each phase, because a plugin API is a long-lived commitment.
 
 Motivating question (the user's): a pack like `phb-2024-extras.json` references behaviors (absorb-elements, thunder-step) that today live as hardcoded engine planners. Could a consumer instead ship a code file alongside their pack supplying those behaviors, so the engine doesn't have to carry code for content it doesn't ship?
 
@@ -109,8 +109,8 @@ The engine never reads the filesystem or imports modules. The consumer is fully 
 
 ## Phasing (so it ships incrementally, not as one mega-slice)
 
-1. **Wire Axis A with a minimal context.** Invoke registered `onApply`/`onTick`/`onExpire` from the effect-lifecycle planner layer; keep `HandlerContext = { state, rng, at, newEventId }`. One canonical user (a homebrew condition handler in a test). Proves the registry is live.
-2. **Wire Axis B1** (`engine.plan.custom`) + the `performIntent` dispatch entry + audit allowlist.
+1. ~~**Wire Axis B1** (`engine.plan.custom`) with a minimal context.~~ **Shipped (slice 406).** `engine.plan.custom(state, { handlerId, params })` dispatches to a handler registered under `opts.handlers.action[id]`; `HandlerContext` ships the minimal surface (`apiVersion`, `state`, `content`, `rng`, `at`, `rollDie`, `rollExpression`, `newEventId`, `newAppliedConditionId`); `HANDLER_API_VERSION = 1`. Started with Axis B1 rather than Axis A because it is both simpler to wire (a single new plan method, no trigger/tick/expiry hooks) and the axis the retrofit target spells actually use (casts, not effect-lifecycle). Allowlisted in the planner-wiring audit. Canonical user: a homebrew "arcane zap" action handler in [tests/unit/engine/plan-custom-handler.test.ts](../tests/unit/engine/plan-custom-handler.test.ts), with replay-equivalence proven.
+2. **Wire Axis A** (effect-lifecycle): invoke registered `onApply`/`onTick`/`onExpire` from the effect-lifecycle planner/trigger layer, for homebrew conditions/buffs/auras.
 3. **Enrich `HandlerContext`** with the curated rules helpers; introduce `HANDLER_API_VERSION` + the contract test; freeze the surface.
 4. **Pack manifest + validation**: `requiredHandlers` on `ContentPackSchema`, the load-time check in `validatePacks`/pack-integrity, and the authoring docs ([authoring-content-packs.md](authoring-content-packs.md) + [content-packs/README.md](../content-packs/README.md)).
 5. **(Optional) Axis B2** (cast/use-item indirection) once B1 has a real consumer.

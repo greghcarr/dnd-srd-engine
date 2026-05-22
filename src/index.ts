@@ -613,6 +613,7 @@ export type {
   ForagedForEvent,
 } from './schemas/events/index.js';
 
-export type { HandlerRegistry, EffectHandler, HandlerContext } from './handlers/index.js';
+export type { HandlerRegistry, EffectHandler, ActionHandler, HandlerContext } from './handlers/index.js';
+export { HANDLER_API_VERSION } from './handlers/index.js';
 
 export { migrate } from './migrations/index.js';
