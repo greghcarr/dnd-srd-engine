@@ -173,6 +173,12 @@ queryItems(content, { itemKind: 'magic', rarity: 'rare', search: 'sword' }); // 
 
 Each is per-category and returns that category's precise type. Every filter field is optional and AND-combines; an absent field matches everything. `search` is a case-insensitive name substring. `querySpells` takes `level` (exact) or `levelMin`/`levelMax` (inclusive range; exact wins), plus `school` / `class` (lowercase class id) / `concentration` / `ritual`. `queryMonsters` takes `type` / `size` / `cr` (exact) or `crMin`/`crMax` (inclusive; fractional CRs are decimals, 1/4 = 0.25). `queryItems` takes `itemKind` / `rarity` (`MagicRarity`). Results return in stable display order: spells by level then name, monsters by CR then name, items by name.
 
+```ts
+buildCharacterSheet({ character, itemInstances, content }); // -> CharacterSheet
+```
+
+`buildCharacterSheet` is the character-sheet view model. It extends `computeDerivedCharacter`'s `DerivedCharacter` (level, PB, ability mods, HP, AC, saves, spell slots, languages) with the rest of a sheet's computed stats: `skills` (all 18, each `{ skill, ability, proficiency, modifier, hasAdvantage, hasDisadvantage }`, in canonical order), `passiveScores` (`perception` / `investigation` / `insight`), and `initiative` (DEX mod + initiative modifiers, with advantage). Pure assembly over the derivations; invents no rules. Not yet on the sheet (follow-up slices): attacks list, spell save DC / attack bonus, effective speeds, inventory summary.
+
 ## RNG
 
 ```ts
