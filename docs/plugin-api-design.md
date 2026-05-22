@@ -1,0 +1,124 @@
+# Plugin API design (proposal)
+
+**Status: design proposal, not yet implemented.** This captures how a content pack could ship consumer-supplied *code* (handlers/planners for bespoke mechanics) alongside its JSON, so the engine becomes extensible by data *and* behavior, not data alone. It exists to pin the hard constraints and the public-API contract before any implementation, because a plugin API is a long-lived commitment.
+
+Motivating question (the user's): a pack like `phb-2024-extras.json` references behaviors (absorb-elements, thunder-step) that today live as hardcoded engine planners. Could a consumer instead ship a code file alongside their pack supplying those behaviors, so the engine doesn't have to carry code for content it doesn't ship?
+
+## Current reality (the starting point)
+
+- All behavior is engine code: the generic `planCastSpell` (reads declarative `mechanicalEffects`), the 52 effect primitives, and ~54 dedicated planners in `src/engine/plan/`. Content packs are pure **data** that names mechanics the engine already implements.
+- The extension scaffold exists but is **inert**: `HandlerRegistry`, `EffectHandler` (`onApply` / `onTick` / `onExpire`), the `engine.handlers?` option, and the `Custom { handlerId }` effect kind. None is wired: `opts.handlers` is never read, the `Custom` case in [src/effects/builder.ts](../src/effects/builder.ts) is a no-op, and no registry method is ever invoked. Today a `Custom { handlerId }` is only a **marker string** a hardcoded planner keys off (e.g. `martial-arts` in the attack planner).
+
+So this proposal is about **finishing the scaffold into a real seam**, on terms the architecture allows.
+
+## Goal and non-goals
+
+**Goal.** A consumer can register code that supplies the behavior for a pack's bespoke mechanics, and load it alongside the pack JSON, without modifying the engine.
+
+**Non-goals.**
+- Packs auto-executing code. The engine is a library; it never imports or runs arbitrary files. The consumer explicitly imports the code module and registers it. The "code file beside the JSON" is a consumer-side packaging convention, not engine behavior.
+- Consumer-defined **event types** or **reducers**. Those would break replay, schema-versioning, and migration guarantees (see constraints). Handlers compose the engine's *existing* event vocabulary; they don't add to it.
+- Replacing the primitive vocabulary. Most content is still data-only; plugins are the escape hatch for genuinely novel procedural mechanics, exactly like `CustomEffect` was always meant to be.
+
+## Hard constraints (these shape everything)
+
+The locked architecture (see [CLAUDE.md](../CLAUDE.md) "Architecture") dictates the rules a handler must obey:
+
+1. **Plan/commit split: RNG lives only in planners.** `engine.plan(...)` is the only place randomness is consumed; resolution events carry baked rolls. Therefore a handler that needs randomness **runs at plan time** and **bakes its rolls into the events it returns**.
+2. **`apply()` is pure and RNG-free; replay re-applies baked events.** Therefore handlers **must never run during `apply()` or replay**. The invocation point is the planner/trigger layer, not the reducer. At replay the handler's already-emitted events are simply re-applied; the handler does not run again.
+3. **Events are the only state-change mechanism, and they are Zod-validated existing types.** A handler returns `ReadonlyArray<Event>` of **existing** event types (DamageApplied, ConditionApplied, Healed, CombatantMoved, etc.). It cannot invent event types.
+4. **Determinism + purity.** Given the same `(state, rng, params)`, a handler must return the same events. No I/O, no clocks (the `at` timestamp is supplied), no hidden globals.
+
+These four turn "plugin API" from open-ended into a precise shape: **a pure function, run at plan time, given state + an RNG + curated helpers, returning baked existing-typed events.** That is exactly the shape a dedicated planner already has, which is why the seam is feasible.
+
+## The two extension axes
+
+Behavior attaches to the engine in two distinct places; a complete plugin API needs both.
+
+### Axis A: effect-lifecycle handlers (conditions / buffs / auras)
+For mechanics that ride on an *applied effect*. Fires from the planner/trigger layer at three moments:
+- `onApply(ctx, params)` when a `Custom` effect is first applied.
+- `onTick(ctx, params, trigger)` on the per-turn / on-event tick (the same hook `tickAura` / recurring-save use).
+- `onExpire(ctx, params)` when the effect ends.
+
+This matches the existing `EffectHandler` interface. Canonical fit: a homebrew condition that does something each turn.
+
+### Axis B: action/cast handlers (spells / items / actions)
+For mechanics invoked as an *action*, the shape absorb-elements / thunder-step actually need (a cast or reaction that emits an event chain). Two sub-options to decide between:
+- **B1: a generic `Custom` intent.** `engine.plan.custom(state, { handlerId, ...params })` routes to the registered handler. Wired into `performIntent` via the existing dispatch + the planner-wiring audit's allowlist.
+- **B2: spell/item-cast indirection.** `planCastSpell` / `planUseItem`, on encountering a content entry whose mechanic is `{ kind: 'Custom', handlerId }`, delegates to the registered handler instead of the generic pipeline.
+
+B2 is the more seamless one for spell/item packs (the consumer just `engine.plan.castSpell('my-spell')` and the handler fires), but it is the deeper change. B1 is simpler and more explicit. Likely both, with B2 layered on B1.
+
+## HandlerContext: the curated public surface
+
+Today `HandlerContext` is `{ state, rng }`, which is too thin to write absorb-elements (no save rolls, no mitigation). The design widens it to a **deliberately curated, versioned** surface, re-exporting existing engine helpers as the stable plugin API:
+
+```ts
+interface HandlerContext {
+  readonly apiVersion: number;          // HANDLER_API_VERSION, for compat checks
+  readonly state: CampaignState;        // read-only
+  readonly rng: RNG;                    // consume freely; results get baked into returned events
+  readonly at: string;                  // single timestamp to thread to every emitted event
+
+  // dice + rolls (from src/rng/)
+  rollDie(die: number): number;
+  rollExpression(expr: string): DiceRollResult;
+
+  // rules helpers (curated from src/derive/ + src/engine/plan/_*)
+  abilityModifier(score: number): number;
+  computeSavingThrow(input): SaveResult;
+  rollSaveAgainstDC(input): SaveRollResult | undefined;
+  mitigateDamage(input): DamageComponent[];
+  interceptFatalDamage(input): { components; extraEvents };  // the universal damage chokepoint
+  computeSpellSaveDC(input): SpellDCResult;
+  computeAttackBonus(input): AttackResult;
+
+  // id minting (so handlers emit well-formed events)
+  newEventId(): ULID;
+  newAppliedConditionId(): AppliedConditionId;
+}
+```
+
+The exact list is the real design work and the thing we must keep stable. Principle: expose what a planner legitimately needs to compose RAW mechanics (rolls, saves, damage, derivations, id minting), **not** raw engine internals (reducers, the apply switch, immer drafts). Everything exposed becomes a versioned contract; keep the surface as small as the use cases demand and grow it deliberately.
+
+## Pack <-> plugin wiring
+
+1. **The pack declares its code dependency.** Add an optional `requiredHandlers: string[]` to `ContentPackSchema`: the handlerIds this pack's `Custom` effects need supplied. Self-documenting and load-checkable.
+2. **The consumer registers + loads.**
+   ```ts
+   import { createEngine, loadStarterPack, loadContentPack } from 'dnd-srd-engine';
+   import { registerMyPackHandlers } from './content-packs/my-pack.js'; // the code file beside the JSON
+
+   const myPack = loadContentPack(JSON.parse(readFileSync('content-packs/my-pack.json', 'utf8')));
+   const handlers = createHandlerRegistry();
+   registerMyPackHandlers(handlers);              // handlers.register('my-spell', { onApply, ... })
+   const engine = createEngine({ contentPacks: [loadStarterPack(), myPack], handlers });
+   ```
+3. **Load-time validation.** `validatePacks` (and the pack-integrity audit) gains a check: every `requiredHandlers` id (and every `Custom` handlerId referenced by the pack) must be either backed by engine source or present in the supplied registry, so a pack missing its plugin **fails loudly at load**, not silently inert. This generalizes the current "every handlerId is referenced in engine source" audit.
+
+## Versioning + stability
+
+- `HANDLER_API_VERSION` (a monotonic integer, like `SCHEMA_VERSION`). The `HandlerContext` carries it; `createEngine` rejects a registry built against an incompatible major.
+- Additive changes to the context (new helpers) bump a minor and stay backward-compatible. Removing/changing a helper signature is a major bump, documented in a migration note.
+- The plugin API is exported from the single public barrel ([src/index.ts](../src/index.ts)) and gets its own contract test, the same way the export surface is snapshotted today.
+
+## Security model
+
+The engine never reads the filesystem or imports modules. The consumer is fully responsible for sourcing, vetting, and registering plugin code. A plugin runs with the same trust as the host app. Documented plainly so no one assumes packs are sandboxed.
+
+## Phasing (so it ships incrementally, not as one mega-slice)
+
+1. **Wire Axis A with a minimal context.** Invoke registered `onApply`/`onTick`/`onExpire` from the effect-lifecycle planner layer; keep `HandlerContext = { state, rng, at, newEventId }`. One canonical user (a homebrew condition handler in a test). Proves the registry is live.
+2. **Wire Axis B1** (`engine.plan.custom`) + the `performIntent` dispatch entry + audit allowlist.
+3. **Enrich `HandlerContext`** with the curated rules helpers; introduce `HANDLER_API_VERSION` + the contract test; freeze the surface.
+4. **Pack manifest + validation**: `requiredHandlers` on `ContentPackSchema`, the load-time check in `validatePacks`/pack-integrity, and the authoring docs ([authoring-content-packs.md](authoring-content-packs.md) + [content-packs/README.md](../content-packs/README.md)).
+5. **(Optional) Axis B2** (cast/use-item indirection) once B1 has a real consumer.
+6. **(Optional) Retro-fit** the 3 non-SRD planners (absorb-elements / thunder-step / elemental-weapon) as reference plugin handlers, proving the API is rich enough to express real spells. Note: there is no IP reason to move them (engine code is the package's own original implementation); this would be a proof-of-expressiveness exercise, not a cleanup.
+
+## Open questions (decide before Phase 3)
+
+- **Axis B shape:** B1 only, or B1 + B2? B2 is the seamless spell/item path but couples plugins into `planCastSpell`.
+- **Context breadth:** start minimal and grow on demand (recommended), or design the full surface up front? Minimal-and-grow keeps the contract small but means early plugins may hit gaps.
+- **Tick integration:** should plugin `onTick` ride the existing `tickAura` / recurring-save dispatch, or get its own tick entry point?
+- **Is the juice worth the squeeze now?** This is real, ongoing API-surface maintenance. It pays off only if there will be real consumers authoring bespoke mechanics. If the near-term need is just *using* the existing non-SRD content (which already works) and authoring content expressible in existing primitives (data-only), this can wait.

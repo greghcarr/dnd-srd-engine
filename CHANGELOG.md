@@ -4,6 +4,10 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Docs (slice 405): plugin API design proposal**
+
+Wrote [docs/plugin-api-design.md](docs/plugin-api-design.md), a design (not implementation) for letting a content pack ship consumer-supplied *code* (handlers for bespoke mechanics) alongside its JSON. Surfaced that the extension scaffold (`HandlerRegistry`, `EffectHandler` onApply/onTick/onExpire, `engine.handlers?`, `Custom { handlerId }`) exists but is **inert**: `opts.handlers` is never read, the `Custom` case in the effect-stack builder is a no-op, and handlerIds are only marker strings hardcoded planners key off. The doc pins the hard constraints the locked architecture imposes (plan/commit -> handlers run at plan time and bake RNG; pure `apply()` + replay -> handlers never run at apply/replay; events-only -> handlers emit existing event types, never new ones), defines the two extension axes (effect-lifecycle vs action/cast), a curated + versioned `HandlerContext` surface, the pack<->plugin wiring (`requiredHandlers` manifest + load-time validation), the security model (engine never auto-imports), and a 6-phase incremental plan. Open questions (Axis B shape, context breadth, and whether the maintenance cost is worth it now) left for decision before implementation. No code change.
+
 **Docs (slice 404): archive CHANGELOG slices 400-403 (single-Read ceiling)**
 
 The live CHANGELOG reached ~59.5 KB after the content-pack-separation cohort, at the edge of the 60 KB single-Read ceiling. Per the doc-size playbook, moved the per-slice detail for slices 400-403 to [docs/changelog/archive-slices-400-403.md](docs/changelog/archive-slices-400-403.md), leaving this entry plus the pointer below. Root-relative links rewritten for the archive's `docs/changelog/` location. No code or content change; docs only. doc-size + doc-counts green; live CHANGELOG back under ~50 KB.
