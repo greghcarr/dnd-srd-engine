@@ -4,6 +4,12 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Workflow (slice 435): resolve the contract-test policy contradiction**
+
+The testing standard listed "public API contract snapshot tests" under "Explicitly NOT required (cut as ceremony)", but [tests/contract/](tests/contract/) (`exports.test.ts` + `types.test.ts`) has shipped as a live, load-bearing layer all along (each header even cited itself as a required layer). Settled in favor of keeping them: added **Public API contract tests** as Required test layer 7 in CLAUDE.md (`exports.test.ts` snapshots the exported symbol surface, runtime + type-only; `types.test.ts` pins load-bearing signatures via `expectTypeOf`), and struck the "cut as ceremony" bullet with a visible "Reversed (slice 435)" note recording why: the "breaks on every export" fear didn't bear out (`tests/contract/` was untouched across slices 420-434, so it only moves on a real public-surface change, which is the signal). De-numbered the two contract-test headers (they cited a stale "Layer 9" from an earlier 9-layer scheme) to reference the standard by name. Comment + doc only; contract tests + tsc green.
+
+Open follow-ups: the legacy `Layer N` numbering in [tests/property/](tests/property/) headers ("Layer 7") and [tests/coverage/features.test.ts](tests/coverage/features.test.ts) ("Layer 8") is now stale relative to the current 1-7 Required-layers list (property tests + the feature-coverage matrix are NOT required layers per CLAUDE.md). A dedicated cleanup slice should de-number or reconcile them. **Still open.**
+
 **Infra (slice 434): doc code-example typecheck audit (the next guard slice 432 flagged)**
 
 Builds the guard slice 432 named as next: the doc code examples we present as runnable are now compiled against the real public barrel in CI, so a renamed / removed export or a method that never existed (the bogus `engine.handlers.register(...)` slice 433 found by hand) breaks CI in the same commit instead of shipping copy-paste-broken example code. This closes the last class of doc drift the link + count guards couldn't reach: prose claims, links, and counts were already CI-guarded; example code was not.

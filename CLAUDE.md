@@ -281,6 +281,7 @@ Tests are valued for what they catch, not for ceremony. The bar is high on the l
 4. **Replay equivalence** (hard architectural invariant). For every golden scenario: `replay(events).state` deep-equals `campaign.state`. Catches non-determinism in `apply()` reducers.
 5. **RNG capture proof** (hard architectural invariant). `apply()` is RNG-free; `ThrowOnCallRNG` test double on `applyAll()` for a planned event stream must not throw. Proves the plan/commit split holds.
 6. **Transcript snapshots** ([tests/golden/transcripts/](tests/golden/transcripts/)). Every golden scenario emits a human-readable markdown transcript via `formatTranscript()` from [tests/transcript.ts](tests/transcript.ts) and asserts it against a checked-in file. When a slice changes engine behavior, the transcript diff shows up in the PR alongside the code change. Update transcripts intentionally with `npx vitest run -u`. Use intent-revealing character names in golden tests (`'Alyx'`, `'Goblin A'`) since they appear in the transcript.
+7. **Public API contract tests** ([tests/contract/](tests/contract/)). Two complementary locks on the public barrel ([src/index.ts](src/index.ts)): `exports.test.ts` snapshots the exported symbol surface (runtime names plus type-only exports, extracted by parsing the barrel) so an accidental add / remove / rename surfaces as a reviewable snapshot diff; `types.test.ts` pins the load-bearing signatures via `expectTypeOf` so a same-name signature change (a renamed param, a newly-required argument) fails even when the name snapshot wouldn't notice. The engine is a foundation other tools build on, so an intentional, reviewed record of every public-surface change earns the snapshot update. Update with `npx vitest run -u tests/contract/exports.test.ts` and review the diff in the commit; it is the canonical record of what changed about the public API.
 
 ### Coverage gates (enforced in [vitest.config.ts](vitest.config.ts))
 
@@ -288,7 +289,7 @@ Single floor of **80% lines + statements** on `src/engine/`, `src/derive/`, `src
 
 ### Explicitly NOT required (cut as ceremony)
 
-- Public API contract snapshot tests. Breaks on every legitimate new export; signal-to-noise is too low.
+- ~~Public API contract snapshot tests. Breaks on every legitimate new export; signal-to-noise is too low.~~ **Reversed (slice 435): now a required layer (Layer 7 above).** The "breaks on every export" concern didn't bear out: the contract tests only move when the public surface actually changes (untouched across the 15 slices 420-434), which is the signal, not noise. For a foundation library consumers pin against, the reviewed per-change diff is worth keeping.
 - Schema round-trip tests. Zod already guarantees parse stability for valid input.
 - Effect-primitive coverage matrix as a separate file. Real features are exercised through golden scenarios and reducer tests.
 - Property tests at fixed-iteration CI gates. Useful as one-off fuzz runs locally, not as a permanent gate.
