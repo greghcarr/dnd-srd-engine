@@ -3097,7 +3097,10 @@
       "xp": 50,
       "proficiencyBonus": 2,
       "senses": { "darkvision": 60, "passivePerceptionOverride": 15 },
-      "languages": []
+      "languages": [],
+      "traits": [
+        { "kind": "SetAdvantage", "on": "attack", "mode": "advantage", "condition": { "kind": "eq", "path": "event.attackerHasAllyAdjacentToTarget", "value": true } }
+      ]
     },
     {
       "id": "skeleton",
@@ -3461,7 +3464,10 @@
       "cr": 0.125,
       "xp": 25,
       "proficiencyBonus": 2,
-      "languages": []
+      "languages": [],
+      "traits": [
+        { "kind": "SetAdvantage", "on": "attack", "mode": "advantage", "condition": { "kind": "eq", "path": "event.attackerHasAllyAdjacentToTarget", "value": true } }
+      ]
     },
     {
       "id": "giant-spider",
@@ -3529,7 +3535,10 @@
       "cr": 1,
       "xp": 200,
       "proficiencyBonus": 2,
-      "languages": []
+      "languages": [],
+      "traits": [
+        { "kind": "SetAdvantage", "on": "attack", "mode": "advantage", "condition": { "kind": "eq", "path": "event.attackerHasAllyAdjacentToTarget", "value": true } }
+      ]
     },
     {
       "id": "stirge",
@@ -7206,7 +7215,10 @@
       "cr": 0.125,
       "xp": 25,
       "proficiencyBonus": 2,
-      "languages": ["common", "draconic"]
+      "languages": ["common", "draconic"],
+      "traits": [
+        { "kind": "SetAdvantage", "on": "attack", "mode": "advantage", "condition": { "kind": "eq", "path": "event.attackerHasAllyAdjacentToTarget", "value": true } }
+      ]
     },
     {
       "id": "merfolk-skirmisher",

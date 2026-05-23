@@ -4,6 +4,33 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 445): Pack Tactics on L1 monsters (Wolf, Dire Wolf, Giant Rat, Kobold Warrior) - L1 playability arc**
+
+Wires the single highest-impact CR ≤ 1 monster trait. Every L1 wolf-pack or kobold-warren encounter now gets RAW Pack Tactics: advantage on attack rolls when an ally of the attacker is within 5 ft of the target and that ally isn't Incapacitated. Previously the four canonical Pack Tactics users at CR ≤ 1 (wolf, dire-wolf, giant-rat, kobold-warrior) all shipped with no traits, so L1 encounter difficulty was systematically under-tuned.
+
+**Mid-implementation discovery (no engine extension needed):** the `attackerHasAllyAdjacentToTarget` fact already existed end-to-end on `AttackRolledEvent` (slice 175 derives it from grid positions for Rogue Sneak Attack's flank arm; the trigger dispatcher already exposes it as `event.attackerHasAllyAdjacentToTarget`). The slice unifies it: moved the position-derivation up in `resolveAttack` so the value flows into both (a) the pre-roll `attackerSelfAdvantageFacts` map (so Pack Tactics' `SetAdvantage` gate fires during the d20 roll) AND (b) the existing `AttackRolledEvent.attackerHasAllyAdjacentToTarget` field (so Sneak Attack's post-roll OnEvent still works exactly as before). Content uses one canonical fact name: `event.attackerHasAllyAdjacentToTarget`.
+
+**Consumer-override path** (new this slice): added `attackerHasAllyAdjacentToTarget?: boolean` to `AttackIntent` and `ResolveAttackInput` ([src/engine/plan/attack.ts](src/engine/plan/attack.ts)). When set, it overrides the engine's position derivation, so position-less consumers (a CLI without grid positions, an older campaign model) can still signal the RAW condition. Opt-in semantic (predicate is `eq value:true`): undefined produces no Pack Tactics advantage, matching the slice-279 `lightLevel` pattern for "benefit gated on specific narrative context."
+
+**Content:** four monsters wired in [src/content/packs/starter-pack.json](src/content/packs/starter-pack.json) with `traits: [{ kind: 'SetAdvantage', on: 'attack', mode: 'advantage', condition: { kind: 'eq', path: 'event.attackerHasAllyAdjacentToTarget', value: true } }]`. Uses the inline-trait shape established by Imp's `GrantMagicResistance` and Troll Limb's `Regeneration` (slice 232).
+
+**Test:** [tests/unit/engine/pack-tactics.test.ts](tests/unit/engine/pack-tactics.test.ts) exercises three cases: explicit `true` -> advantage (`used: 'advantage'`, 2× d20), explicit `false` -> no advantage, undefined-without-encounter -> no advantage. The existing slice-7 Sneak Attack golden test continues to pass unchanged (the unified fact path didn't change post-roll behavior).
+
+**Catalog updates:** appended a new row to the consumer-coordinated fact slots catalog in [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md) noting both the engine-derived path (position-aware, pre-existing) and the consumer-override path (this slice).
+
+**Audit (engine + content slice):**
+- *RAW match*: SRD 5.2.1 animals.md L1287 ("The wolf has Advantage on an attack roll against a creature if at least one of the wolf's allies is within 5 feet of the creature and the ally doesn't have the Incapacitated condition") + identical text for Dire Wolf (line 1287), Giant Rat (line 3033), Kobold Warrior (monsters-A-Z.md `### Kobold Warrior`). The position-derivation excludes incapacitated allies (`findActorBlockingCondition`); the consumer-supplied override leaves the Incapacitated check to the consumer's spatial model.
+- *Names*: `attackerHasAllyAdjacentToTarget` matches the pre-existing schema field exactly. Fact-name `event.attackerHasAllyAdjacentToTarget` aligns with the established `event.*` dispatcher namespace consumed by Sneak Attack. No new noun introduced.
+- *DRY*: The position derivation moved from the late `AttackRolledEvent`-build site to a single shared computation feeding both the pre-roll facts and the event. Eliminated what would have been an "engine derives twice" path.
+- *SRP / sticking to existing primitives*: declined to add a new TriggerAction or a new "ally" entity model; instead reused the existing `SetAdvantage` + boolean predicate + position derivation. The slice description had projected a new engine fact slot; turned out unnecessary.
+- *Mechanical outcomes asserted*: with the consumer signaling `true`, the d20 rolls twice and `used === 'advantage'`; with `false` or undefined-out-of-encounter, the d20 rolls once and `used === 'none'`.
+
+**Open follow-ups:**
+- **More CR ≤ 1 traits unblocked by this same canonical pattern (engine work already done for some):** Keen Senses (wolf Perception advantage; just needs the existing skill-discriminated `SetAdvantage`), Brave (sprites; saves vs Frightened), Sunlight Sensitivity (kobold; needs an environmental fact). Content sweeps. *Still open.*
+- **Nimble Escape (goblin) and Aggressive (orc/gnoll):** monster-bonus-action surface for Disengage/Hide/move. A monster-action primitive separate from class features. *Still open.*
+- **Undead Fortitude (zombie):** save-on-lethal-damage rewrite. Same shape as Barbarian Relentless Rage (deferred). *Still open.*
+- **Threading through Opportunity Attacks and Cleave secondary attacks:** the slice-276/278 consumer-coordinated facts (LoS, Dodge) were never threaded through `planOpportunityAttack` or the Cleave secondary `resolveAttack`. Pack Tactics matches that precedent (not threaded). Pre-existing limitation. *Still open.*
+
 **Content (slice 444): wire Divine Smite (L1 Paladin) - first slice of the level-by-level playability arc**
 
 Direction shift: engine completion now organized by character-level playability (L1 complete, then L2, etc.) rather than primitive-cohort payoff. First sweep of the L1-playability audit surfaced three class-feature stubs (Wizard Ritual Adept, Rogue Thieves' Cant, Warlock Eldritch Invocations) and the deferred L1 spells (with Divine Smite the single highest-payoff for a L1 paladin since their entire combat identity hangs on the smite). This slice closes Divine Smite; the other L1 gaps cohort in follow-up slices.

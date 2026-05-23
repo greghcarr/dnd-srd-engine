@@ -256,6 +256,18 @@ export interface AttackIntent {
   //   undefined -> consumer didn't specify; default-apply (same as
   //                true). Predicate is `not eq value:false`.
   readonly targetCanSeeAttacker?: boolean;
+  // Slice 445: consumer-supplied per-attack fact for monster Pack
+  // Tactics. RAW (SRD 5.2.1, every Pack Tactics user): "The wolf has
+  // Advantage on an attack roll against a creature if at least one of
+  // the wolf's allies is within 5 feet of the creature and the ally
+  // doesn't have the Incapacitated condition." The engine doesn't
+  // model positions, so the consumer signals the combined predicate
+  // (an ally within 5 ft of the target AND that ally is not
+  // Incapacitated) as one boolean. Opt-in semantic (mirror of slice
+  // 279's `lightLevel`): `undefined` produces no advantage; the
+  // bearer must explicitly receive `true` to gain the benefit.
+  // Strict-RAW: never grants more advantage than the consumer signals.
+  readonly attackerHasAllyAdjacentToTarget?: boolean;
 }
 
 const chooseDamageAbility = (
@@ -325,6 +337,9 @@ export interface ResolveAttackInput {
   // Slice 278: consumer-supplied LoS fact for Dodge. See doc comment
   // on AttackIntent.targetCanSeeAttacker above.
   readonly targetCanSeeAttacker?: boolean;
+  // Slice 445: consumer-supplied fact for monster Pack Tactics. See
+  // doc comment on AttackIntent.attackerHasAllyAdjacentToTarget above.
+  readonly attackerHasAllyAdjacentToTarget?: boolean;
   // Rogue Cunning Strike (L5+): effects the attacker adds to this attack's
   // Sneak Attack, each forgoing 1d6 of Sneak Attack damage. See AttackIntent.
   readonly cunningStrike?: ReadonlyArray<CunningStrikeOption>;
@@ -562,6 +577,35 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     || effects.hasSense('truesight');
   const targetCanLocateInvisible = canLocateInvisible(targetEffects);
   const attackerCanLocateInvisible = canLocateInvisible(attackerEffects);
+  // Slice 445: derive the "ally adjacent to target" fact once, here,
+  // so it's available to both the pre-roll Pack Tactics SetAdvantage
+  // gate (via `attackerSelfAdvantageFacts` below) AND the post-roll
+  // AttackRolledEvent (so the existing Rogue Sneak Attack flank arm
+  // keeps working). The position-derived path requires an active
+  // encounter and a positioned target; the consumer-supplied
+  // `input.attackerHasAllyAdjacentToTarget` overrides when set, so
+  // position-less consumers can still signal the RAW condition. Opt-in:
+  // undefined produces no Pack Tactics advantage (predicate is
+  // `eq value:true`).
+  const positionDerivedAllyAdjacent = ((): boolean | undefined => {
+    if (!state.activeEncounterId) return undefined;
+    const enc = state.encounters[state.activeEncounterId];
+    if (!enc) return undefined;
+    const targetCb = enc.combatants.find((c) => c.combatantId === input.targetId);
+    if (!targetCb?.position) return undefined;
+    const targetPos = targetCb.position;
+    return enc.combatants.some((other) => {
+      if (other.combatantId === input.attackerId) return false;
+      if (other.combatantId === input.targetId) return false;
+      if (!other.position) return false;
+      const ch = state.characters[other.combatantId];
+      if (!ch) return false;
+      if (findActorBlockingCondition(ch) !== undefined) return false;
+      return chebyshevDistance(other.position, targetPos) <= 5;
+    });
+  })();
+  const attackerHasAllyAdjacentToTarget =
+    input.attackerHasAllyAdjacentToTarget ?? positionDerivedAllyAdjacent;
   // Generic attacker-side advantage on attacks (e.g. Invisible) and
   // disadvantage on attacks (e.g. Blinded, Frightened, Poisoned,
   // Prone, Restrained). Folded alongside target-side contributions
@@ -575,6 +619,10 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   const attackerSelfAdvantageFacts = new Map<string, unknown>([
     ['target.canLocateInvisible', targetCanLocateInvisible],
     ['bearer.canSeeFearSource', input.bearerCanSeeFearSource],
+    // Slice 445: monster Pack Tactics. Uses the same fact name as the
+    // existing post-roll trigger fact (consumed by Rogue Sneak Attack's
+    // flank arm) so content gates on one canonical name.
+    ['event.attackerHasAllyAdjacentToTarget', attackerHasAllyAdjacentToTarget],
   ]);
   const attackerSelfAdvantage = attackerEffects.advantageFor('attack', attackerSelfAdvantageFacts);
   // Build a small facts map for type-conditional ImposeDisadvantage
@@ -728,28 +776,11 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
 
   // RAW Rogue Sneak Attack (and equivalent content triggers): the
   // ally-adjacent path requires *another* positioned, non-incapacitated
-  // combatant within 5 ft of the target. The engine has no team
-  // model, so any third party counts (content can layer hostility on
-  // top via additional predicates). Excludes the attacker, the
-  // target, and any combatant whose action-blocking conditions would
-  // prevent them from "threatening" the target.
-  const attackerHasAllyAdjacentToTarget = ((): boolean | undefined => {
-    if (!state.activeEncounterId) return undefined;
-    const enc = state.encounters[state.activeEncounterId];
-    if (!enc) return undefined;
-    const targetCb = enc.combatants.find((c) => c.combatantId === input.targetId);
-    if (!targetCb?.position) return undefined;
-    const targetPos = targetCb.position;
-    return enc.combatants.some((other) => {
-      if (other.combatantId === input.attackerId) return false;
-      if (other.combatantId === input.targetId) return false;
-      if (!other.position) return false;
-      const ch = state.characters[other.combatantId];
-      if (!ch) return false;
-      if (findActorBlockingCondition(ch) !== undefined) return false;
-      return chebyshevDistance(other.position, targetPos) <= 5;
-    });
-  })();
+  // combatant within 5 ft of the target. Computed once earlier in this
+  // function (slice 445) so the value flows into both the pre-roll
+  // SetAdvantage facts (Pack Tactics) and this event field (Rogue
+  // Sneak Attack flank arm). See the earlier `positionDerivedAllyAdjacent`
+  // + `attackerHasAllyAdjacentToTarget` block.
 
   const attackRolled: AttackRolledEvent = {
     id: newEventId() as ULID,
@@ -1222,6 +1253,9 @@ export const planAttack = (
       : {}),
     ...(intent.targetCanSeeAttacker !== undefined
       ? { targetCanSeeAttacker: intent.targetCanSeeAttacker }
+      : {}),
+    ...(intent.attackerHasAllyAdjacentToTarget !== undefined
+      ? { attackerHasAllyAdjacentToTarget: intent.attackerHasAllyAdjacentToTarget }
       : {}),
     ...(intent.cunningStrike !== undefined ? { cunningStrike: intent.cunningStrike } : {}),
     at,
