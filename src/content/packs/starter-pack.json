@@ -2204,7 +2204,7 @@
     { "id": "antilife-shell", "name": "Antilife Shell", "level": 5, "school": "abjuration", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 hour", "concentration": true, "ritual": false, "classes": ["druid"], "mechanicalEffects": [] },
     { "id": "befuddlement", "name": "Befuddlement", "level": 8, "school": "enchantment", "castingTime": "Action", "range": "150 feet", "components": { "verbal": true, "somatic": true, "material": "a key ring with no keys" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["bard", "druid", "warlock", "wizard"], "mechanicalEffects": [{ "kind": "save", "ability": "INT", "damageDice": "10d12", "damageType": "psychic", "halfOnSuccess": true }] },
     { "id": "blink", "name": "Blink", "level": 3, "school": "transmutation", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true }, "duration": "1 minute", "concentration": false, "ritual": false, "classes": ["sorcerer", "wizard"], "mechanicalEffects": [] },
-    { "id": "divine-smite", "name": "Divine Smite", "level": 1, "school": "evocation", "castingTime": "Bonus Action", "range": "Self", "components": { "verbal": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["paladin"], "mechanicalEffects": [] },
+    { "id": "divine-smite", "name": "Divine Smite", "level": 1, "school": "evocation", "castingTime": "Bonus Action", "range": "Self", "components": { "verbal": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["paladin"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "divine-smite-active" }] },
     { "id": "elementalism", "name": "Elementalism", "level": 0, "school": "transmutation", "castingTime": "Action", "range": "30 feet", "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["druid", "sorcerer", "wizard"], "mechanicalEffects": [] },
     { "id": "floating-disk", "name": "Floating Disk", "level": 1, "school": "conjuration", "castingTime": "Action", "range": "30 feet", "components": { "verbal": true, "somatic": true, "material": "a drop of mercury" }, "duration": "1 hour", "concentration": false, "ritual": true, "classes": ["wizard"], "mechanicalEffects": [] },
     { "id": "freezing-sphere", "name": "Freezing Sphere", "level": 6, "school": "evocation", "castingTime": "Action", "range": "300 feet", "components": { "verbal": true, "somatic": true, "material": "a miniature crystal sphere" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["sorcerer", "wizard"], "targeting": { "shape": "sphere", "size": 60 }, "mechanicalEffects": [{ "kind": "save", "ability": "CON", "damageDice": "10d6", "damageType": "cold", "halfOnSuccess": true }] },
@@ -8239,6 +8239,47 @@
             "filter": { "kind": "all", "terms": [{ "kind": "eq", "path": "event.attackerIsSelf", "value": true }, { "kind": "eq", "path": "event.hit", "value": true }] }
           },
           "actions": [{ "kind": "AddDamage", "dice": "1d6", "damageType": "fire" }],
+          "consumeOnTrigger": true
+        }
+      ]
+    },
+    {
+      "id": "divine-smite-active",
+      "name": "Divine Smite Active",
+      "description": "Caster's next melee weapon (or Unarmed Strike) hit deals +2d8 radiant; +1d8 more if the target is a Fiend or Undead. The spell ends after that hit. Slice 444: base form only (no upcast scaling); the +1d8/slot above L1 upcast arm stays deferred pending slot-level-aware buff variants.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        {
+          "kind": "OnEvent",
+          "id": "divine-smite-base-rider",
+          "trigger": {
+            "eventType": "AttackRolled",
+            "filter": { "kind": "all", "terms": [
+              { "kind": "eq", "path": "event.attackerIsSelf", "value": true },
+              { "kind": "eq", "path": "event.hit", "value": true },
+              { "kind": "eq", "path": "event.attackKind", "value": "melee" }
+            ] }
+          },
+          "actions": [{ "kind": "AddDamage", "dice": "2d8", "damageType": "radiant" }],
+          "consumeOnTrigger": true
+        },
+        {
+          "kind": "OnEvent",
+          "id": "divine-smite-celestial-rider",
+          "trigger": {
+            "eventType": "AttackRolled",
+            "filter": { "kind": "all", "terms": [
+              { "kind": "eq", "path": "event.attackerIsSelf", "value": true },
+              { "kind": "eq", "path": "event.hit", "value": true },
+              { "kind": "eq", "path": "event.attackKind", "value": "melee" },
+              { "kind": "any", "terms": [
+                { "kind": "eq", "path": "event.targetCreatureType", "value": "Fiend" },
+                { "kind": "eq", "path": "event.targetCreatureType", "value": "Undead" }
+              ] }
+            ] }
+          },
+          "actions": [{ "kind": "AddDamage", "dice": "1d8", "damageType": "radiant" }],
           "consumeOnTrigger": true
         }
       ]

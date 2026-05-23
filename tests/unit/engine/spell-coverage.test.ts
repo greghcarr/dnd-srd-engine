@@ -258,7 +258,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'antilife-shell': { kind: 'skip', reason: 'positional 10-foot emanation barring most creature types; geometry primitive not modeled' },
   'befuddlement': { kind: 'save' },
   'blink': { kind: 'skip', reason: 'per-turn 1d6 ethereal-plane toggle; cross-plane mechanic not modeled' },
-  'divine-smite': { kind: 'skip', reason: 'paladin smite on-hit rider with slot scaling + Fiend/Undead +1d8; on-hit rider mechanic not yet wired through planCastSpell' },
+  'divine-smite': { kind: 'buff', conditionId: 'divine-smite-active' },
   'elementalism': { kind: 'skip', reason: '5-variant cosmetic utility cantrip (Beckon Air/Earth/Fire/Water + Sculpt Element); no mechanical effect' },
   'floating-disk': { kind: 'skip', reason: 'creates a 500-lb-capacity force disk; carry-capacity entity not modeled' },
   'freezing-sphere': { kind: 'save' },
