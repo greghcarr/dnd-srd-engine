@@ -4,6 +4,28 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 446): Wolf + Dire Wolf knock-prone-on-bite (size-gated) - L1 playability arc**
+
+Closes the rest of the Wolf and Dire Wolf RAW combat profile after slice 445's Pack Tactics. Wolves and dire wolves now apply Prone on a successful Bite hit, gated by target size per RAW (Wolf: Medium or smaller; Dire Wolf: Large or smaller). Knock-prone is the second-most defining wolf mechanic after Pack Tactics; together they make L1 wolf-pack encounters play correctly.
+
+**Engine extension** (1-line addition to [src/engine/plan/attack.ts](src/engine/plan/attack.ts) `riderFacts` map): `target.creatureSize` predicate fact, populated via the existing slice-386 `creatureSize` derive (the same source-of-truth used by Cunning Strike Trip and weapon-mastery Push). Joins the existing `target.creatureType` (slice 318) and `target.speciesId` (slice 319) facts as the third dimension content can gate onHit riders on.
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json), 2 new items): `wolf-bite` and `dire-wolf-bite` natural weapons with size-gated `applyConditionId: 'prone'` onHit riders. Wolf's gate matches `target.creatureSize ∈ {Tiny, Small, Medium}`; Dire Wolf's gate widens to include Large. Both use the slice-321 unconditional `applyConditionId` rider shape (no save) per RAW.
+
+**Test** at [tests/unit/engine/wolf-bite-prone.test.ts](tests/unit/engine/wolf-bite-prone.test.ts) — 5 cases exercising both weapons against Small / Medium / Large / Huge targets with seed-search for hits. Confirms: Wolf prones Small + Medium but not Large; Dire Wolf prones Large but not Huge.
+
+**Doc updates:** `54 weapons -> 56` in [docs/getting-started.md](docs/getting-started.md) and [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md) (caught by the doc-counts audit).
+
+**Audit (engine + content slice):**
+- *RAW match*: SRD 5.2.1 animals.md (Wolf Bite "If the target is a Medium or smaller creature, it has the Prone condition" and Dire Wolf Bite "If the target is a Large or smaller creature, it has the Prone condition"). Sizes are explicit; the predicate uses `any` over the enumerated `Size` enum values rather than a synthetic "or smaller" helper, matching how `Predicate` is shaped (each comparison is a single `eq`).
+- *Names*: `target.creatureSize` matches the existing `target.creatureType` / `target.speciesId` namespace. Item ids `wolf-bite` / `dire-wolf-bite` follow the established natural-weapon naming (`couatl-bite`, `ghoul-claws`).
+- *DRY*: imports the existing `creatureSize` derive rather than re-implementing the lookup. Predicate construction is verbose (4-term `any`) but inlining is the established pattern (Ghoul's Claw uses a similar `not(any(...))`); a future "creatureSizeAtMost" helper predicate could compress the shape if a third user appears.
+- *Mechanical outcomes asserted*: per-size gate fires the expected ConditionApplied (or doesn't), per-weapon. Hit prerequisite enforced (no prone application on a miss).
+
+**Open follow-ups:**
+- **More on-hit-prone-by-size users:** the Allosaurus's Claws (Large or smaller, Prone + bonus Bite arm) is a related shape that adds the "moved 30+ feet straight toward target" gate — needs a movement-derived fact the engine doesn't carry yet. Defer. *Still open.*
+- **A `target.creatureSizeAtMost` shorthand predicate** would let "Medium or smaller" express as `lte` against a Size ordering rather than a 3-term `any`. Two canonical users now (Wolf + Dire Wolf); add the shorthand when a third user lands. *Still open.*
+
 **Engine + content (slice 445): Pack Tactics on L1 monsters (Wolf, Dire Wolf, Giant Rat, Kobold Warrior) - L1 playability arc**
 
 Wires the single highest-impact CR ≤ 1 monster trait. Every L1 wolf-pack or kobold-warren encounter now gets RAW Pack Tactics: advantage on attack rolls when an ally of the attacker is within 5 ft of the target and that ally isn't Incapacitated. Previously the four canonical Pack Tactics users at CR ≤ 1 (wolf, dire-wolf, giant-rat, kobold-warrior) all shipped with no traits, so L1 encounter difficulty was systematically under-tuned.

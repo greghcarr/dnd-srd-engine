@@ -23,6 +23,7 @@ import { computeAC } from '../../derive/ac.js';
 import { buildEffectStack, collectEffectsFromCharacter } from '../../derive/effect-stack.js';
 import { cunningStrikeForgoDice, cunningStrikeMinLevel, type CunningStrikeOption } from './cunning-strike.js';
 import { getCreatureType } from '../../derive/creature-type.js';
+import { creatureSize } from '../../derive/creature-size.js';
 import { abilityModifier, effectiveAbilityScore } from '../../derive/ability.js';
 import { computeActionEconomyBudget } from '../../derive/action-economy.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
@@ -946,9 +947,14 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   // Slice 319: `target.speciesId` lets a rider gate on lineage (the
   // Ghoul's Claw fires "if the target isn't an Undead or elf"); the
   // creatureType fact alone can't express the elf exclusion.
+  // Slice 446: `target.creatureSize` for size-gated riders (Wolf's
+  // Bite "If the target is a Medium or smaller creature, it has the
+  // Prone condition"; Dire Wolf's Bite for Large-or-smaller). Uses the
+  // shared `creatureSize` derive so the source-of-truth is one place.
   const riderFacts = new Map<string, unknown>([
     ['target.creatureType', getCreatureType(target, content)],
     ['target.speciesId', target.speciesId],
+    ['target.creatureSize', creatureSize(target, content)],
   ]);
   // Slice 324: a rider gated `requiresCritical` fires only on a crit.
   const applicableRiders = [...(weaponDef.onHit ?? []), ...(enchantment?.onHit ?? [])].filter(
