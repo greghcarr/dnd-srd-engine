@@ -4,6 +4,34 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 452): Sunlight Sensitivity / Weakness sweep across 4 SRD Undead - L1 playability arc**
+
+Pure content sweep using the slice-451 primitive. RAW (SRD 5.2.1) gives four pack monsters a sunlight-gated disadvantage that previously shipped as `traits: []`:
+
+| Monster | CR | RAW name | Wired this slice |
+|---|---|---|---|
+| Specter | 1 | Sunlight Sensitivity | attack-disadvantage + check-disadvantage (full RAW) |
+| Wight | 3 | Sunlight Sensitivity | attack-disadvantage + check-disadvantage (full RAW) |
+| Wraith | 5 | Sunlight Sensitivity | attack-disadvantage + check-disadvantage (full RAW) |
+| Shadow | 1/2 | Sunlight Weakness | attack-disadvantage + check-disadvantage (partial; saves arm deferred) |
+
+Each monster's `traits` array in [src/content/packs/starter-pack.json](src/content/packs/starter-pack.json) gains two `SetAdvantage` entries (one `on: 'attack'`, one `on: { kind: 'check' }`) gated on `bearer.lightLevel == 'bright'`. Identical shape to Kobold Warrior's slice-451 wiring.
+
+**Shadow's Sunlight Weakness saves-arm deferral:** SRD says "Disadvantage on D20 Tests" — which in 2024 includes saving throws as well as attack rolls and ability checks. This slice wires the attack + check arms (which use the existing `bearer.lightLevel` fact on `AttackIntent` and `ComputeAbilityCheckInput`); the saves arm would need `lightLevel` threaded through `ComputeSaveInput` too. That's a small symmetric engine extension but it would also need to thread through every planner that calls `computeSavingThrow` (cast-spell, recurring-save, stunning-strike, transformations, movement, etc.), so it's a slice of its own. Documented as Open follow-up below.
+
+**Test** at [tests/unit/engine/slice-452-sunlight-sweep.test.ts](tests/unit/engine/slice-452-sunlight-sweep.test.ts) — 8 cases (4 monsters × {bright -> disadvantage, dim -> none}). Parametrized over the monster ids so adding a 5th sunlight-sensitive creature in a future slice extends the matrix by 2 lines.
+
+**Audit (content slice):**
+- *RAW match*: SRD 5.2.1 monsters-A-Z.md Specter / Wight / Wraith / Shadow Sunlight-Sensitivity / Weakness lines verbatim for the attack + check arms; Shadow's saves arm documented as deferred (not wired here).
+- *DRY*: identical 2-entry pattern across 4 monsters; declined to extract a "sunlight-sensitive" trait template — the shape is small enough that inline duplication beats a content-side template indirection (there are no other shared dimensions, and adding a 5th user later costs the same 2 lines).
+- *Mechanical outcomes asserted*: parametrized over all 4 monsters; bright -> disadvantage, dim -> none. Cross-monster confirms the slice-451 primitive doesn't accidentally couple to Kobold-specific state.
+
+**Open follow-ups:**
+- **Shadow's Sunlight Weakness saves arm** (closing slice 452 partial): thread `lightLevel?: 'bright' | 'dim' | 'darkness'` through `ComputeSaveInput` mirror-fashion (slice 279's check-side, slice 451's attack-side), and through every planner that calls `computeSavingThrow`. Wire a third `SetAdvantage on: { kind: 'save' }` arm on Shadow. *Still open.*
+- Other Undead Sunlight users still in scope but not in the SRD pack (Vampire Spawn's Sunlight Hypersensitivity is a damage shape, not a disadvantage shape — different primitive needed). *Still open.*
+
+~~Open follow-up from slice 451: **Other Sunlight Sensitivity / Sunlight Weakness users:** Shadow (CR 1/2), Wight (CR 3), Wraith (CR 5), Specter (CR 1).~~ **Closed by slice 452** (Shadow's saves arm reopened above as a narrower follow-up).
+
 **Engine + content (slice 451): Sunlight Sensitivity on Kobold Warrior - L1 playability arc**
 
 Completes the Kobold Warrior's RAW combat profile (Pack Tactics from slice 445 + Sunlight Sensitivity now). RAW (SRD 5.2.1 Kobold Warrior): "While in sunlight, the kobold has Disadvantage on ability checks and attack rolls." Slice 451 closes both arms by **extending slice 279's existing `bearer.lightLevel` consumer-coordinated fact** from the check-only intent (`ComputeAbilityCheckInput`) to the attack-side intents (`AttackIntent` + `ResolveAttackInput`); the check arm reuses slice 279 unchanged. The attack arm uses the same fact name + same opt-in semantic, so a consumer that already populates `lightLevel` on one intent populates the same value on the other.
@@ -34,7 +62,7 @@ Completes the Kobold Warrior's RAW combat profile (Pack Tactics from slice 445 +
 - *Mechanical outcomes asserted*: per-light-value gate fires correctly (`bright` -> disadvantage; everything else -> none) for both arms. The Pack Tactics trait on the same monster still works (cross-effect non-interference confirmed by the still-green slice-445 test).
 
 **Open follow-ups:**
-- **Other Sunlight Sensitivity / Sunlight Weakness users:** Shadow (CR 1/2), Wight (CR 3), Wraith (CR 5), Specter (CR 1). All canonical 2024 candidates. Shadow + Specter are L1-encounter monsters. Same primitive shape, just content sweeps. *Still open.*
+- ~~**Other Sunlight Sensitivity / Sunlight Weakness users:** Shadow (CR 1/2), Wight (CR 3), Wraith (CR 5), Specter (CR 1). All canonical 2024 candidates. Shadow + Specter are L1-encounter monsters. Same primitive shape, just content sweeps.~~ **Closed by slice 452** (Specter / Wight / Wraith fully; Shadow's attack + check arms; saves arm tracked as a narrower follow-up).
 - **Population from a "sun is up" boolean** on the consumer's encounter would let the consumer set `lightLevel: 'bright'` once on a per-encounter basis rather than per-intent; that's a consumer concern (the engine doesn't model time-of-day). *Still open* as a future consumer ergonomics note.
 
 **Engine + content (slice 450): `noAbilityModifierDamage` weapon flag - closes slice-449's documented RAW deviation**
