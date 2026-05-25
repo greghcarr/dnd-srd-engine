@@ -3112,7 +3112,10 @@
       "cr": 0.25,
       "xp": 50,
       "proficiencyBonus": 2,
-      "languages": ["common", "goblin"]
+      "languages": ["common", "goblin"],
+      "traits": [
+        { "kind": "Custom", "handlerId": "nimble-escape" }
+      ]
     },
     {
       "id": "wolf",
@@ -6931,7 +6934,10 @@
       "cr": 0.125,
       "xp": 25,
       "proficiencyBonus": 2,
-      "languages": ["common", "goblin"]
+      "languages": ["common", "goblin"],
+      "traits": [
+        { "kind": "Custom", "handlerId": "nimble-escape" }
+      ]
     },
     {
       "id": "goblin-boss",
@@ -6949,7 +6955,10 @@
       "cr": 1,
       "xp": 200,
       "proficiencyBonus": 2,
-      "languages": ["common", "goblin"]
+      "languages": ["common", "goblin"],
+      "traits": [
+        { "kind": "Custom", "handlerId": "nimble-escape" }
+      ]
     },
     {
       "id": "hobgoblin-warrior",

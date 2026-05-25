@@ -4,6 +4,30 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 455): Goblin Nimble Escape (Disengage or Hide as Bonus Action) - L1 playability arc**
+
+Closes the monster-bonus-action surface across all 3 goblin variants (Warrior, Minion, Boss). RAW (SRD 5.2.1 each Goblin statblock): "Nimble Escape. The goblin takes the Disengage or Hide action [as a Bonus Action]." At-will. L1 wolf-pack and goblin-warren encounters have this as their signature evasion mechanic; previously the goblins shipped with empty `traits` arrays.
+
+**New planner** [src/engine/plan/nimble-escape.ts](src/engine/plan/nimble-escape.ts): `planNimbleEscape({ goblinId, mode: 'disengage' | 'hide', dc?, at? })`. Hardcoded statblockId whitelist (`{goblin-warrior, goblin-minion, goblin-boss}`) — same gating shape as `planAdrenalineRush`'s species-id check. Both modes emit `ActionEconomyConsumed(bonusAction)` first. The `disengage` mode then emits a single `Disengaged` event (mirrors planDisengage's body without the Action gate); the `hide` mode rolls a Stealth check + emits `AbilityCheckRolled` + (on success) `ConditionApplied(invisible)` (mirrors planHide's body with bonus-action economy). DC defaults to 15 (matches planHide).
+
+**Wired across the 4 standard sites:** plan/index.ts export, engine/index.ts import + type re-export + `Engine.plan.nimbleEscape` (type + impl), conveniences.ts `performIntent` dispatch. Slice-364 planner-wiring audit verified green.
+
+**Content:** 3 goblin monsters in [src/content/packs/starter-pack.json](src/content/packs/starter-pack.json) each gain `traits: [{ kind: 'Custom', handlerId: 'nimble-escape' }]` — discoverable marker so consumers can surface the action.
+
+**Test** at [tests/unit/engine/slice-455-nimble-escape.test.ts](tests/unit/engine/slice-455-nimble-escape.test.ts) — 6 cases: disengage emits the 2-event chain; hide success emits the 3-event chain with `invisible` applied; hide failure emits the 2-event chain without `invisible`; minion + boss both accepted; non-goblin rejected; consecutive call rejected (bonus already used).
+
+**Audit (engine + content slice):**
+- *RAW match*: SRD 5.2.1 Goblin Warrior / Minion / Boss exact text. Hide rolls DEX (Stealth) against DC, applies `invisible` on success (mirrors planHide's outcome shape).
+- *Names*: `planNimbleEscape` / `NimbleEscapeIntent` mirror the `planAdrenalineRush` / `AdrenalineRushIntent` shape. `NIMBLE_ESCAPE_STATBLOCKS` constant centralizes the gating list. `NimbleEscapeMode` exported type for consumer-side discrimination.
+- *DRY*: planner body inlines the planHide stealth-roll chain rather than calling planHide directly, because planHide bundles its own action-consume (the wrong economy slot here). Declined to refactor planHide into a "rollHideCheck" helper (only 2 callers; below threshold). Disengage path is the trivial parallel.
+- *SRP*: a dedicated planner per "monster X as Bonus Action" trait is the established pattern (Step of the Wind, Patient Defense, Adrenaline Rush, Wholeness of Body). Declined to introduce a generic "monster bonus action" effect kind.
+- *at-threading*: single `nowIso()` resolution shared across all emitted events.
+- *Mechanical outcomes asserted*: per-mode chain shape; goblin-variant whitelist; non-goblin rejection; bonus-action gate.
+
+**Open follow-ups:**
+- **Gnoll Rampage**: 1/Day Bonus Action after damaging a Bloodied creature: half-Speed move + one Rend attack. Needs both a "Bloodied" target predicate and a DamageApplied-triggered bonus-action-attack grant. Distinct shape from Nimble Escape. *Still open.*
+- **Goblin Boss Redirect Attack** (Reaction): swap places with a Small/Medium ally within 5 ft; the ally becomes the attack target instead. Positional + reaction primitive; defer. *Still open.*
+
 **Content (slice 454): Brown Bear Claw + Mastiff Bite knock-prone-on-hit (L1)**
 
 Two new natural-weapon items reusing the slice-446 size-gated onHit Prone primitive. **Brown Bear Claw** (1d4 slashing, Prone on Large or smaller per SRD 5.2.1 animals.md Brown Bear); **Mastiff Bite** (1d6 piercing, Prone on Medium or smaller per SRD Mastiff). Both wield via the standard natural-weapon pattern: the item carries the dice + onHit rider, the wielder STR + PB produces the RAW attack/damage totals (Brown Bear STR 17 +PB 2 = +5 to hit / 1d4+3 dmg; Mastiff STR 13 +PB 2 = +3 / 1d6+1). Pure content; no engine work.
