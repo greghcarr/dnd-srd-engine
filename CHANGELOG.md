@@ -4,6 +4,38 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 456): Zombie Undead Fortitude - L1 playability arc**
+
+The signature Zombie save-on-lethal-damage mechanic. RAW (SRD 5.2.1 Zombie): "Undead Fortitude. If damage reduces the zombie to 0 Hit Points, it makes a Constitution saving throw (DC 5 plus the damage taken) unless the damage is Radiant or from a Critical Hit. On a successful save, the zombie drops to 1 Hit Point instead." Zombies are the most-encountered Undead at L1 — a Cleric pulling Sacred Flame (radiant) on a Zombie should bypass the save; a fighter critical-hitting one should bypass; everything else triggers the CON save.
+
+**New effect kind** `PreventFatalDamageOnSave { ability, baseDC, exemptDamageTypes?, exemptOnCrit? }` in [src/schemas/effects.ts](src/schemas/effects.ts). Distinct from slice-111's unconditional `PreventFatalDamage` (Death Ward shape): this rolls a save and is NOT consumed on success (Undead Fortitude is always-on, not one-shot). Same shape would fit Half-Orc Relentless Endurance (1/long-rest gate, not crit-exempt) and a few other undead variants.
+
+**interceptFatalDamage refactor** ([src/derive/fatal-damage-intercept.ts](src/derive/fatal-damage-intercept.ts)):
+- New optional `rng?: RNG` + `critical?: boolean` input fields. RNG threaded through all 14 active call sites (attack planner, trigger dispatcher x2, lands-aid, trap, thunder-step, weapon-mastery graze, breath-weapon, cast-spell x4, concentration ticks x3). `planFalling` doesn't have RNG in scope, so falling damage on a zombie passes through unsaved — documented limitation.
+- New scan path: after the Death Ward (`PreventFatalDamage` on applied conditions) check passes through, scan the full effect stack via `collectEffectsFromCharacter` for `PreventFatalDamageOnSave` — covers monster traits (Zombie) AND condition-applied versions (future Half-Orc shape).
+- Save: `d20 + abilityModifier(target.abilityScores[ability]) >= baseDC + totalDamage`. Bakes the roll into a `SaveRolled` event returned in `extraEvents` so replay stays RNG-free.
+- RAW exemptions check before rolling: `exemptOnCrit && critical` -> passthrough; any damage component type in `exemptDamageTypes` -> passthrough (skip the save entirely, target drops).
+
+**Content:** zombie monster in [src/content/packs/starter-pack.json](src/content/packs/starter-pack.json) gains `traits: [{ kind: 'PreventFatalDamageOnSave', ability: 'CON', baseDC: 5, exemptDamageTypes: ['radiant'], exemptOnCrit: true }]`. Discoverable via the standard effect-stack channel (`collectEffectsFromCharacter` includes `statblock.traits` per slice-179).
+
+**Test** at [tests/unit/engine/slice-456-undead-fortitude.test.ts](tests/unit/engine/slice-456-undead-fortitude.test.ts) — 7 cases: non-fatal damage skips the save; fatal non-radiant non-crit rolls the save (DC = 5 + damage = 13 for 8 damage; on success damage scales so HP lands at 1); save failure passes damage unscaled; fatal radiant skips the save (passthrough); mixed components with one radiant skip the save; fatal critical hit skips the save; control case (Wolf, no trait) confirms only PreventFatalDamageOnSave-bearing creatures trigger the new path.
+
+**Doc updates:** effect-kinds count 53 -> 54 (52 -> 53 primitives) in [docs/concepts.md](docs/concepts.md) and [docs/authoring-content-packs.md](docs/authoring-content-packs.md) (doc-counts audit caught both).
+
+**Audit (engine + content slice):**
+- *RAW match*: SRD 5.2.1 Zombie text exactly. CON save, DC 5 + damage, Radiant + crit exempt. Always-on (no per-rest cap, condition not consumed).
+- *Names*: `PreventFatalDamageOnSave` parallels the existing `PreventFatalDamage` shape; the "OnSave" suffix telegraphs the gate. `exemptDamageTypes` + `exemptOnCrit` are intention-revealing.
+- *DRY*: shares `scaleToOne()` helper with the existing PreventFatalDamage path. Both arms emit through the same `extraEvents` channel (now widened to `SaveRolledEvent | ConditionRemovedEvent`). Declined to refactor the save-roll into a shared helper with `computeSavingThrow` — this path uses raw ability mod (RAW for monster traits) while computeSavingThrow folds in proficiency + effect-stack save bonuses; two different shapes.
+- *SRP*: a single fatal-damage chokepoint handles both unconditional (Death Ward) and save-gated (Undead Fortitude) intercepts. Adding a new shape in the future is one new effect-kind branch + content authoring.
+- *at-threading*: SaveRolled inherits the caller's `input.at` like every other intercept-emitted event.
+- *Mechanical outcomes asserted*: 7-case matrix covers all 4 RAW gates (radiant exempt, crit exempt, save success, save failure) + non-fatal control + non-trait control.
+
+**Open follow-ups:**
+- **planFalling RNG threading**: planFalling doesn't have RNG in scope, so Undead Fortitude doesn't fire on falling damage. Acceptable edge case (zombies rarely fall in combat), but a follow-up could add an rng param to planFalling for completeness. *Still open.*
+- **Half-Orc Relentless Endurance**: same effect kind + a `consumeOnTrigger` flag for one-shot + a long-rest recharge. Distinct from Undead Fortitude in that it's PC-side and consumed. *Still open.*
+
+~~Open follow-up from slice 445: **Undead Fortitude (zombie):** save-on-lethal-damage rewrite. Same shape as Barbarian Relentless Rage (deferred).~~ **Closed by slice 456** (Barbarian Relentless Rage is a different shape — Rage uses Exhaustion-stack-on-success, not damage-scale-to-1 — so it stays its own follow-up).
+
 **Engine + content (slice 455): Goblin Nimble Escape (Disengage or Hide as Bonus Action) - L1 playability arc**
 
 Closes the monster-bonus-action surface across all 3 goblin variants (Warrior, Minion, Boss). RAW (SRD 5.2.1 each Goblin statblock): "Nimble Escape. The goblin takes the Disengage or Hide action [as a Bonus Action]." At-will. L1 wolf-pack and goblin-warren encounters have this as their signature evasion mechanic; previously the goblins shipped with empty `traits` arrays.

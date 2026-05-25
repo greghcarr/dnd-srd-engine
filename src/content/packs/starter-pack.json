@@ -3463,7 +3463,10 @@
       "cr": 0.25,
       "xp": 50,
       "proficiencyBonus": 2,
-      "languages": []
+      "languages": [],
+      "traits": [
+        { "kind": "PreventFatalDamageOnSave", "ability": "CON", "baseDC": 5, "exemptDamageTypes": ["radiant"], "exemptOnCrit": true }
+      ]
     },
     {
       "id": "ghoul",

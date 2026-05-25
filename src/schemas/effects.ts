@@ -440,6 +440,25 @@ export type Effect =
   // Canonical user: Death Ward. Future users: Half-Orc Relentless
   // Endurance, Aura of Life.
   | { kind: 'PreventFatalDamage' }
+  // Slice 456. Save-gated fatal-damage prevention. When incoming damage
+  // would drop HP to 0 or below, the bearer rolls a save (`ability` vs
+  // `baseDC` + total damage taken); on success, damage is scaled so HP
+  // lands at 1. RAW exemptions: `exemptDamageTypes` (skip the save entirely
+  // if any damage component is one of these — Undead Fortitude exempts
+  // Radiant) and `exemptOnCrit` (skip the save if the triggering attack was
+  // a critical hit — Undead Fortitude exempts crits). The bearing
+  // condition / trait is NOT removed on success (unlike PreventFatalDamage):
+  // Undead Fortitude is an always-on monster trait, not a one-shot.
+  // Canonical user: Zombie Undead Fortitude (CON, DC 5, exemptDamageTypes
+  // ['radiant'], exemptOnCrit true). Same shape would fit Half-Orc
+  // Relentless Endurance (1/long-rest gate, not crit-exempt).
+  | {
+      kind: 'PreventFatalDamageOnSave';
+      ability: AbilityScore;
+      baseDC: number;
+      exemptDamageTypes?: DamageType[];
+      exemptOnCrit?: boolean;
+    }
   // Slice 119. Marker that enables the Two-Weapon Fighting bonus:
   // planOffHandAttack adds the wielder's ability modifier to off-hand
   // damage (positive mods included). Without this flag, off-hand
@@ -733,6 +752,15 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       kind: z.literal('PreventFatalDamage'),
     }),
     z.object({
+      // Slice 456. Save-gated fatal-damage prevention (Undead Fortitude
+      // shape). See the corresponding union type comment above.
+      kind: z.literal('PreventFatalDamageOnSave'),
+      ability: AbilityScoreSchema,
+      baseDC: z.number().int().min(0),
+      exemptDamageTypes: z.array(DamageTypeSchema).optional(),
+      exemptOnCrit: z.boolean().optional(),
+    }),
+    z.object({
       kind: z.literal('GrantTwoWeaponFighting'),
     }),
     z.object({
@@ -801,6 +829,7 @@ export const EFFECT_KINDS = [
   'GrantAura',
   'GrantFallingProtection',
   'PreventFatalDamage',
+  'PreventFatalDamageOnSave',
   'GrantTwoWeaponFighting',
   'GrantProtectionFightingStyle',
   'GrantGreatWeaponFighting',

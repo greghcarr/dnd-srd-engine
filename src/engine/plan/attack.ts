@@ -1046,6 +1046,8 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     mitigatedComponents,
     causedByEventId: damageRolled.id,
     at,
+    rng,
+    critical,
   });
   const damageApplied: DamageAppliedEvent = {
     id: newEventId() as ULID,

@@ -231,6 +231,10 @@ export const planWeaponMastery = (
           mitigatedComponents: mitigated,
           causedByEventId: grazeDamageId,
           at,
+          rng,
+          // Graze is a miss-fallback (the attack roll missed); not a
+          // crit. The crit-exempt arm of Undead Fortitude doesn't apply.
+          critical: false,
         });
         const grazeDamage: DamageAppliedEvent = {
           id: grazeDamageId,

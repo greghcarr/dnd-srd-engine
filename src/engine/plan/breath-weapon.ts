@@ -160,6 +160,7 @@ export const planBreathWeapon = (
       mitigatedComponents: mitigated,
       causedByEventId: save.id,
       at,
+      rng,
     });
     const damage: DamageAppliedEvent = {
       id: newEventId() as ULID,
