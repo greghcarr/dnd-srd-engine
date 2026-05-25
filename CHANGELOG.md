@@ -4,6 +4,44 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 448): Darkvision + Dwarven Resilience + Gnomish Cunning species traits - L1 playability arc**
+
+Sweeps the obvious follow-up flagged at the close of slice 447: the remaining 7 SRD species in the pack still shipped empty `traits` arrays. This slice wires the clean wins — every species trait that composes with existing primitives (`GrantSense`, `GrantResistance`, `SetAdvantage` with slice-266 wildcard / slice-291 `savePreventsCondition` fact / per-ability save targeting). Higher-ceremony traits (Dragonborn Breath Weapon, Tiefling Fiendish Legacy, Goliath Giant Ancestry, Orc Adrenaline Rush, Halfling Lucky, Elven Lineage, Human Resourceful) stay deferred — each needs new primitives or choice scaffolding outside this slice's scope.
+
+**Wired** (all 6 darkvision species + 2 condition / save advantage trait clusters):
+- **Darkvision 60 ft**: Dragonborn, Elf, Gnome, Tiefling (each `GrantSense sense:'darkvision' range:60`).
+- **Darkvision 120 ft**: Dwarf, Orc (`range:120`).
+- **Dwarven Resilience**: `GrantResistance poison` + `SetAdvantage on:{kind:'save'} mode:'advantage' condition: {eq event.savePreventsCondition 'poisoned'}`. The save advantage shape matches the slice-447 Halfling Brave / Elf Fey Ancestry wire exactly (the predicate value is the only varying field).
+- **Gnomish Cunning**: three `SetAdvantage on:{kind:'save', ability:'INT'/'WIS'/'CHA'} mode:'advantage'` entries. Per-ability rather than wildcard since the gnome's advantage applies to *all* INT/WIS/CHA saves, not just condition-targeting ones (different shape from the slice-447 condition-gated form).
+
+**Test** at [tests/unit/engine/species-darkvision-and-saves.test.ts](tests/unit/engine/species-darkvision-and-saves.test.ts) — 9 cases:
+- Darkvision range correct for each of the 6 species; absent for Human and Halfling (negative control).
+- Dwarf vs Contagion (CON save with Poisoned-on-fail) rolls with advantage; Human vs Contagion rolls flat.
+- Gnome vs Hold Person (WIS), Fear (WIS), and Bane (CHA) all roll with advantage; Human vs Hold Person rolls flat.
+
+The 9 cases prove: GrantSense projects correctly through the effect stack, save-wildcard-with-savePreventsCondition predicate fires on the matching condition, per-ability SetAdvantage fires on the matching ability regardless of conditionOnFail.
+
+**Audit (content slice):**
+- *RAW match*: SRD 5.2.1 character-origins.md (Dragonborn L158, Dwarf L170-172, Elf L188, Gnome L243-245, Orc L321, Tiefling L333). All darkvision ranges verbatim; Dwarven Resilience two-arm structure verbatim; Gnomish Cunning verbatim "INT/WIS/CHA saving throws."
+- *Names*: trait shapes identical to existing wires (Eyes of the Eagle / Halfling Brave). No new identifiers introduced.
+- *DRY*: declined to author per-species "Darkvision" condition wrappers; effect entries inline match the existing magic-item GrantSense pattern (Goggles of Night, Robe of Eyes, etc.).
+- *Mechanical outcomes asserted*: Darkvision projects through the effect stack to `senseRange`; advantage fires on the gated save; per-ability gnomish advantage hits all three covered abilities.
+
+**Open follow-ups:**
+- **Dragonborn Breath Weapon + Damage Resistance**: needs Draconic Ancestry choice scaffolding + a per-Attack-action replacement planner + per-character-level dice scaling (L1=1d10, L5=2d10, etc.). Multi-slice. *Still open.*
+- **Dragonborn Draconic Flight (L5)**: bonus-action 10-min flight with Fly Speed = walk speed. Composes with the existing `flying-active`-shaped condition + `matchWalkSpeed` ModifySpeed. *Still open.*
+- **Tiefling Fiendish Legacy (Abyssal / Chthonic / Infernal)**: OfferChoice + per-lineage spell list + per-level spell grants (L1 cantrip + L3/L5 leveled spells, each once per Long Rest). Same shape as Warlock Mystic Arcanum. *Still open.*
+- **Goliath Giant Ancestry**: OfferChoice over 6 sub-feature packages (Cloud's Jaunt, Fire's Burn, Frost's Chill, Hill's Tumble, Stone's Endurance, Storm's Thunder), each its own primitive (teleport, damage rider, prone rider, reaction-reduce-damage, reaction-deal-damage). Multi-slice. *Still open.*
+- **Goliath Large Form (L5)**: size-change transformation. Defer alongside other tier-feature transformations. *Still open.*
+- **Goliath Powerful Build**: "Advantage on ability check to end the Grappled condition" needs a `eventEndsConditionViaCheck`-style fact (the engine has `event.savePreventsCondition` but not its check sibling). Small extension. *Still open.*
+- **Orc Adrenaline Rush**: Dash bonus action + temp HP. Same shape Rogue Cunning Action / Monk Patient Defense need. *Still open.*
+- **Orc Relentless Endurance**: "drop to 1 HP instead of 0, once per Long Rest." Shares shape with the deferred Barbarian Relentless Rage. *Still open.*
+- **Human Resourceful / Skillful / Versatile**: Heroic Inspiration isn't an engine concept; Skillful needs an OfferChoice over all 18 skills; Versatile needs an OfferChoice over origin feats. Each its own small slice. *Still open.*
+- **Dwarven Toughness**: +1 HP per character level. Needs a per-level scaling `Formula` on a `AddModifier hpMax`. Small. *Still open.*
+- **Dwarf Stonecunning**: bonus-action Tremorsense 60 ft for 10 min, PB uses per Long Rest. Needs ApplyCondition + GrantResource + a Tremorsense-granting condition. *Still open.*
+- **Elven Lineage** (Drow / High Elf / Wood Elf): OfferChoice + L1/L3/L5 spell grants (same shape as Tiefling Fiendish Legacy). *Still open.*
+- **Pack Tactics-shape sweep on Sprite (Brave)**: Sprite's `Brave` trait per SRD adds a save-advantage shape to monsters; same wire as Halfling Brave but on the Sprite statblock. Defer to a monster-trait sweep slice. *Still open.*
+
 **Content (slice 447): Halfling Brave + Elf Fey Ancestry + Elf Keen Senses - L1 playability arc**
 
 Wires three SRD species traits a L1 player character actually feels in play. Pure content slice — uses existing primitives end-to-end (slice-266 save wildcard + slice-291 `event.savePreventsCondition` fact + existing `OfferChoice` `GrantProficiency`). Before this slice, both starter-pack-shipped species had empty `traits` arrays, so a halfling fighter rolling a save vs Fear and an elf wizard rolling vs Charm Person both rolled flat — RAW gives them advantage.

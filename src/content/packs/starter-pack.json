@@ -8,6 +8,7 @@
   "species": [
     { "id": "human", "name": "Human", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common"], "traits": [] },
     { "id": "elf", "name": "Elf", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "elvish"], "traits": [
+      { "kind": "GrantSense", "sense": "darkvision", "range": 60 },
       { "kind": "SetAdvantage", "on": { "kind": "save" }, "mode": "advantage", "condition": { "kind": "eq", "path": "event.savePreventsCondition", "value": "charmed" } },
       { "kind": "OfferChoice", "choiceId": "elf-keen-senses", "prompt": "Choose a skill to gain proficiency in (Elf Keen Senses).", "oneOf": 1, "when": "onAcquire", "options": [
         { "id": "insight", "label": "Insight", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "insight", "level": "proficient" }] },
@@ -15,15 +16,30 @@
         { "id": "survival", "label": "Survival", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "survival", "level": "proficient" }] }
       ] }
     ] },
-    { "id": "dwarf", "name": "Dwarf", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "dwarvish"], "traits": [] },
+    { "id": "dwarf", "name": "Dwarf", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "dwarvish"], "traits": [
+      { "kind": "GrantSense", "sense": "darkvision", "range": 120 },
+      { "kind": "GrantResistance", "damageType": "poison" },
+      { "kind": "SetAdvantage", "on": { "kind": "save" }, "mode": "advantage", "condition": { "kind": "eq", "path": "event.savePreventsCondition", "value": "poisoned" } }
+    ] },
     { "id": "halfling", "name": "Halfling", "size": "Small", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "halfling"], "traits": [
       { "kind": "SetAdvantage", "on": { "kind": "save" }, "mode": "advantage", "condition": { "kind": "eq", "path": "event.savePreventsCondition", "value": "frightened" } }
     ] },
-    { "id": "tiefling", "name": "Tiefling", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "infernal"], "traits": [] },
-    { "id": "dragonborn", "name": "Dragonborn", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "draconic"], "traits": [] },
-    { "id": "gnome", "name": "Gnome", "size": "Small", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "gnomish"], "traits": [] },
+    { "id": "tiefling", "name": "Tiefling", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "infernal"], "traits": [
+      { "kind": "GrantSense", "sense": "darkvision", "range": 60 }
+    ] },
+    { "id": "dragonborn", "name": "Dragonborn", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "draconic"], "traits": [
+      { "kind": "GrantSense", "sense": "darkvision", "range": 60 }
+    ] },
+    { "id": "gnome", "name": "Gnome", "size": "Small", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "gnomish"], "traits": [
+      { "kind": "GrantSense", "sense": "darkvision", "range": 60 },
+      { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "INT" }, "mode": "advantage" },
+      { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "WIS" }, "mode": "advantage" },
+      { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "CHA" }, "mode": "advantage" }
+    ] },
     { "id": "goliath", "name": "Goliath", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 35 }, "languages": ["common", "giant"], "traits": [] },
-    { "id": "orc", "name": "Orc", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "orc"], "traits": [] }
+    { "id": "orc", "name": "Orc", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "orc"], "traits": [
+      { "kind": "GrantSense", "sense": "darkvision", "range": 120 }
+    ] }
   ],
   "backgrounds": [
     { "id": "soldier", "name": "Soldier", "abilityScoreIncreases": { "options": ["STR", "DEX", "CON"], "pattern": "+2/+1" }, "skillProficiencies": ["athletics", "intimidation"], "toolProficiencies": ["gaming"], "languages": [], "originFeatId": "savage-attacker", "traits": [] },
