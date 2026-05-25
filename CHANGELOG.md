@@ -4,6 +4,29 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 447): Halfling Brave + Elf Fey Ancestry + Elf Keen Senses - L1 playability arc**
+
+Wires three SRD species traits a L1 player character actually feels in play. Pure content slice — uses existing primitives end-to-end (slice-266 save wildcard + slice-291 `event.savePreventsCondition` fact + existing `OfferChoice` `GrantProficiency`). Before this slice, both starter-pack-shipped species had empty `traits` arrays, so a halfling fighter rolling a save vs Fear and an elf wizard rolling vs Charm Person both rolled flat — RAW gives them advantage.
+
+**Wired** in [src/content/packs/starter-pack.json](src/content/packs/starter-pack.json):
+- **Halfling Brave** — `SetAdvantage on:{kind:'save'} mode:'advantage' condition: {eq event.savePreventsCondition 'frightened'}`. The save-wildcard target + condition-specific predicate is identical to the slice-291 antitoxin-active wire (canonical user of the same fact infrastructure).
+- **Elf Fey Ancestry** — same shape, `value: 'charmed'`.
+- **Elf Keen Senses** — `OfferChoice oneOf:1 when:'onAcquire'` over Insight / Perception / Survival, each option granting the chosen skill proficiency. Mirrors the Wizard Scholar L2 entry's shape (slice 55).
+
+**Test** at [tests/unit/engine/species-saves.test.ts](tests/unit/engine/species-saves.test.ts) — 6 cases: Halfling vs Fear (advantage); Human vs Fear (no advantage, control); Elf vs Charm Person (advantage); Human vs Charm Person (no advantage); Halfling vs Charm Person (no advantage — gate is Frightened-specific); Elf vs Fear (no advantage — gate is Charmed-specific). The cross-pair tests prove the predicate gating is correctly condition-scoped.
+
+**Audit (content slice):**
+- *RAW match*: SRD 5.2.1 character-origins.md L229 (Elf Fey Ancestry), L231 (Elf Keen Senses), L287 (Halfling Brave). Exact verbatim wording for the save advantage; the Keen Senses choice is modeled as an OfferChoice with the three named skills.
+- *Names*: trait shapes match the existing `antitoxin-active` wire exactly (only the value differs). Choice id `elf-keen-senses` follows the established `wizard-scholar` / `fighting-style-fighter` convention.
+- *DRY*: declined to introduce a `Halfling Lucky` / `Elf Trance` row that would need new primitives; this slice ships only the arms that compose cleanly with existing infrastructure.
+- *Mechanical outcomes asserted*: per-species + per-targeting-condition gate; 6 cases prove both the positive direction and the cross-condition negative.
+
+**Open follow-ups:**
+- **Halfling Lucky** — natural-1 d20 reroll. Needs a per-roll "reroll if natural 1, must take the new result" primitive the engine doesn't carry. Defer (the rest of the halfling toolkit is positional / narrative anyway).
+- **Halfling Nimbleness + Naturally Stealthy** — movement-through-larger-creature, Hide-gated-on-cover. Both consumer territory (engine doesn't model positions for those). Defer.
+- **Elf Trance** — narrative (no sleep, 4-hour Long Rest). No mechanical event. Defer.
+- **Other CR ≤ 1 species traits (Dwarf Resilience, Gnome Cunning, Tiefling resistance, etc.):** the seven remaining SRD species also ship empty `traits`. A sweep slice would extend this pattern. Tracked as a content cohort, not a single primitive blocker.
+
 **Engine + content (slice 446): Wolf + Dire Wolf knock-prone-on-bite (size-gated) - L1 playability arc**
 
 Closes the rest of the Wolf and Dire Wolf RAW combat profile after slice 445's Pack Tactics. Wolves and dire wolves now apply Prone on a successful Bite hit, gated by target size per RAW (Wolf: Medium or smaller; Dire Wolf: Large or smaller). Knock-prone is the second-most defining wolf mechanic after Pack Tactics; together they make L1 wolf-pack encounters play correctly.
