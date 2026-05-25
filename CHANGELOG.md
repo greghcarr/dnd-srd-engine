@@ -4,6 +4,30 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 449): Rogue Thieves' Cant + Sprite natural weapons - L1 playability arc**
+
+Two unrelated content fixes batched. Closes the smallest of the L1 audit's class-feature stubs (Thieves' Cant), and wires the Sprite's RAW combat actions so the Sprite (CR 1/4 Fey) finally has a usable attack.
+
+**Wired:**
+- **Rogue L1 Thieves' Cant**: 1-line addition — `GrantProficiency target:'language' id:'thieves-cant' level:'proficient'`. Closes a long-standing stub flagged in the L1 audit; no new infrastructure required (languages are free-form strings in the species/feature schemas, not an enum).
+- **Sprite Needle Sword** (`sprite-needle-sword`): simple-melee piercing 1d4, no rider. Plain attack item.
+- **Sprite Enchanting Bow** (`sprite-enchanting-bow`): simple-ranged piercing `0d4+1` (flat 1), range 40/160, with `applyConditionId: 'charmed'` onHit rider. Charmed application uses the slice-321 unconditional `applyConditionId` shape established by Couatl's Bite (Poisoned). The bow's RAW "Hit: 1" damage doesn't perfectly survive the engine's automatic +ability-mod fold — a Sprite's DEX +4 adds to the base, so the engine emits ~5 damage where RAW says 1. The interesting RAW arm is the Charmed-on-hit, which works correctly. Documented as a RAW deviation pending a future `noAbilityModifierDamage?` weapon flag.
+
+**Test** at [tests/unit/engine/slice-449-thieves-cant-sprite.test.ts](tests/unit/engine/slice-449-thieves-cant-sprite.test.ts) — 4 cases: a L1 Rogue has `proficiencyLevel('language', 'thieves-cant') === 'proficient'`; a Human Fighter does not; Sprite Needle Sword fires a melee attack against a target; Sprite Enchanting Bow on a hit applies Charmed to the target (seed-searched for a hit).
+
+**Doc updates:** weapons count 56 → 58 (and items total 519 → 521) in [docs/getting-started.md](docs/getting-started.md) and [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md). Intentional coverage-matrix snapshot update at [tests/coverage/__snapshots__/features.test.ts.snap](tests/coverage/__snapshots__/features.test.ts.snap) — `thieves-cant` joins the wired class-feature catalog.
+
+**Audit (content slice):**
+- *RAW match*: SRD 5.2.1 monsters-A-Z.md (Sprite Needle Sword and Enchanting Bow text verbatim). Thieves' Cant per SRD 5.2.1 Rogue L1 ("You know Thieves' Cant, a combination of dialect, jargon, and code that lets you hide messages in seemingly normal conversation").
+- *Names*: `sprite-needle-sword` / `sprite-enchanting-bow` follow the established `couatl-bite` / `ghoul-claws` / `wolf-bite` natural-weapon convention. Language id `thieves-cant` matches the RAW spelling.
+- *DRY*: 1-line GrantProficiency for the cant uses the existing primitive directly. Sprite weapons match the slice-321 / slice-446 onHit rider patterns without introducing new shapes.
+- *Mechanical outcomes asserted*: Thieves' Cant proficiency derives correctly through the effect stack; sprite weapons emit AttackRolled with correct attackKind; Enchanting Bow's hit emits a Charmed ConditionApplied on the target.
+
+**Open follow-ups:**
+- **Sprite Enchanting Bow flat damage**: the engine adds the wielder's ability mod to base damage, so RAW "Hit: 1" inflates to ~5 for a Sprite (DEX +4). A `noAbilityModifierDamage?: boolean` weapon flag would close this cleanly. Same shape would help any monster natural weapon whose RAW damage is a flat amount rather than a die + ability mod (Imp's Sting variants, Pseudodragon's Sting, etc.). *Still open.*
+- **Sprite Heart Sight + Invisibility**: the Heart Sight CHA-save knowledge effect is narrative; the Invisibility self-cast needs the existing UseAction CastSpell variant which currently lives on items, not on monster traits. *Still open.*
+- **Sprite duration of the Charmed condition** ("until the start of the sprite's next turn"): consumer-managed per the slice-286 doc; engine emits ConditionApplied without an auto-expiry stamp. *Still open.*
+
 **Content (slice 448): Darkvision + Dwarven Resilience + Gnomish Cunning species traits - L1 playability arc**
 
 Sweeps the obvious follow-up flagged at the close of slice 447: the remaining 7 SRD species in the pack still shipped empty `traits` arrays. This slice wires the clean wins — every species trait that composes with existing primitives (`GrantSense`, `GrantResistance`, `SetAdvantage` with slice-266 wildcard / slice-291 `savePreventsCondition` fact / per-ability save targeting). Higher-ceremony traits (Dragonborn Breath Weapon, Tiefling Fiendish Legacy, Goliath Giant Ancestry, Orc Adrenaline Rush, Halfling Lucky, Elven Lineage, Human Resourceful) stay deferred — each needs new primitives or choice scaffolding outside this slice's scope.
