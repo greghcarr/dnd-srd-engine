@@ -65,6 +65,7 @@ import {
   planFlurryOfBlows,
   planPatientDefense,
   planStepOfTheWind,
+  planAdrenalineRush,
   planIntimidatingPresence,
   planDragonWings,
   planPreserveLife,
@@ -194,6 +195,7 @@ import {
   type FlurryOfBlowsIntent,
   type PatientDefenseIntent,
   type StepOfTheWindIntent,
+  type AdrenalineRushIntent,
   type IntimidatingPresenceIntent,
   type DragonWingsIntent,
   type PreserveLifeIntent,
@@ -342,6 +344,7 @@ export interface Engine {
     flurryOfBlows(state: CampaignState, intent: Omit<FlurryOfBlowsIntent, 'type'>): PlanResult;
     patientDefense(state: CampaignState, intent: Omit<PatientDefenseIntent, 'type'>): PlanResult;
     stepOfTheWind(state: CampaignState, intent: Omit<StepOfTheWindIntent, 'type'>): PlanResult;
+    adrenalineRush(state: CampaignState, intent: Omit<AdrenalineRushIntent, 'type'>): PlanResult;
     intimidatingPresence(state: CampaignState, intent: Omit<IntimidatingPresenceIntent, 'type'>): PlanResult;
     dragonWings(state: CampaignState, intent: Omit<DragonWingsIntent, 'type'>): PlanResult;
     preserveLife(state: CampaignState, intent: Omit<PreserveLifeIntent, 'type'>): PlanResult;
@@ -658,6 +661,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     stepOfTheWind(state, intent) {
       return { events: planStepOfTheWind(state, content, { type: 'StepOfTheWind', ...intent }) };
+    },
+    adrenalineRush(state, intent) {
+      return { events: planAdrenalineRush(state, content, { type: 'AdrenalineRush', ...intent }) };
     },
     intimidatingPresence(state, intent) {
       return { events: planIntimidatingPresence(state, content, rng, { type: 'IntimidatingPresence', ...intent }) };

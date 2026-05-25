@@ -38,7 +38,8 @@
     ] },
     { "id": "goliath", "name": "Goliath", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 35 }, "languages": ["common", "giant"], "traits": [] },
     { "id": "orc", "name": "Orc", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "orc"], "traits": [
-      { "kind": "GrantSense", "sense": "darkvision", "range": 120 }
+      { "kind": "GrantSense", "sense": "darkvision", "range": 120 },
+      { "kind": "Custom", "handlerId": "adrenaline-rush" }
     ] }
   ],
   "backgrounds": [

@@ -4,6 +4,16 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 453): Orc Adrenaline Rush species trait - L1 playability arc**
+
+Closes slice-448's deferred Adrenaline Rush row. RAW (SRD 5.2.1 character-origins.md L317): "Dash as a Bonus Action; you gain Temp HP equal to your PB." At-will. (Scope note: the queue's "Orc Aggressive" was a 2014 monster trait; 2024 SRD has no Orc monster, and the species's bonus-action trait is Adrenaline Rush. Gnoll Rampage is a different shape, future slice.)
+
+New planner [src/engine/plan/adrenaline-rush.ts](src/engine/plan/adrenaline-rush.ts) modeled on `planStepOfTheWind`: validates Orc species + active combatant + bonus available + not already dashed; emits `ActionEconomyConsumed(bonusAction)`, `Dashed`, `TempHPGranted(amount = proficiencyBonus(computeTotalLevel))`. Reuses the existing `Dashed` event so dashed-this-turn book-keeping layers in unchanged. Wired across the 4 standard sites; slice-364 planner-wiring audit verified green. Orc species in pack gains a `Custom { handlerId: 'adrenaline-rush' }` marker (discoverable signal; the planner reads species id directly).
+
+Test at [tests/unit/engine/slice-453-adrenaline-rush.test.ts](tests/unit/engine/slice-453-adrenaline-rush.test.ts) — 4 cases: Orc L1 (PB 2 -> TempHP 2), Orc L5 (PB 3 -> TempHP 3), Human rejected, bonus-already-used rejected.
+
+Audit: RAW match exactly; names mirror Step of the Wind; declined a "GrantBonusActionVariantOfAction" effect-kind abstraction (only 2 callers; below threshold); single at-threading; mechanical chain + PB scaling + species + economy gates all asserted. Open follow-ups: Gnoll Rampage (Bloodied predicate + damage-trigger bonus-action attack); other slice-448-deferred species traits.
+
 **Content (slice 452): Sunlight Sensitivity / Weakness sweep across 4 SRD Undead - L1 playability arc**
 
 Pure content sweep using the slice-451 primitive. RAW (SRD 5.2.1) gives four pack monsters a sunlight-gated disadvantage that previously shipped as `traits: []`:
@@ -144,7 +154,7 @@ The 9 cases prove: GrantSense projects correctly through the effect stack, save-
 - **Goliath Giant Ancestry**: OfferChoice over 6 sub-feature packages (Cloud's Jaunt, Fire's Burn, Frost's Chill, Hill's Tumble, Stone's Endurance, Storm's Thunder), each its own primitive (teleport, damage rider, prone rider, reaction-reduce-damage, reaction-deal-damage). Multi-slice. *Still open.*
 - **Goliath Large Form (L5)**: size-change transformation. Defer alongside other tier-feature transformations. *Still open.*
 - **Goliath Powerful Build**: "Advantage on ability check to end the Grappled condition" needs a `eventEndsConditionViaCheck`-style fact (the engine has `event.savePreventsCondition` but not its check sibling). Small extension. *Still open.*
-- **Orc Adrenaline Rush**: Dash bonus action + temp HP. Same shape Rogue Cunning Action / Monk Patient Defense need. *Still open.*
+- ~~**Orc Adrenaline Rush**: Dash bonus action + temp HP. Same shape Rogue Cunning Action / Monk Patient Defense need.~~ **Closed by slice 453.**
 - **Orc Relentless Endurance**: "drop to 1 HP instead of 0, once per Long Rest." Shares shape with the deferred Barbarian Relentless Rage. *Still open.*
 - **Human Resourceful / Skillful / Versatile**: Heroic Inspiration isn't an engine concept; Skillful needs an OfferChoice over all 18 skills; Versatile needs an OfferChoice over origin feats. Each its own small slice. *Still open.*
 - **Dwarven Toughness**: +1 HP per character level. Needs a per-level scaling `Formula` on a `AddModifier hpMax`. Small. *Still open.*

@@ -96,6 +96,7 @@ export { planStunningStrike, type StunningStrikeIntent } from './stunning-strike
 export { planFlurryOfBlows, type FlurryOfBlowsIntent } from './flurry-of-blows.js';
 export { planPatientDefense, type PatientDefenseIntent } from './patient-defense.js';
 export { planStepOfTheWind, type StepOfTheWindIntent } from './step-of-the-wind.js';
+export { planAdrenalineRush, type AdrenalineRushIntent } from './adrenaline-rush.js';
 export { planIntimidatingPresence, type IntimidatingPresenceIntent } from './intimidating-presence.js';
 export { planDragonWings, type DragonWingsIntent } from './dragon-wings.js';
 export { planPreserveLife, type PreserveLifeIntent } from './preserve-life.js';
