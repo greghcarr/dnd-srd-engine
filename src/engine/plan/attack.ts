@@ -835,7 +835,14 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   const damageBaseScore = attacker.abilityScores[damageAbility];
   const damageScoreFloor = attackerEffects.effectiveAbilityScoreFloor(damageAbility)?.value;
   const damageScoreIncrease = attackerEffects.effectiveAbilityScoreIncrease(damageAbility);
-  const damageAbilityMod = abilityModifier(effectiveAbilityScore(damageBaseScore, damageScoreFloor, damageScoreIncrease));
+  // Slice 450: a weapon flagged `noAbilityModifierDamage` is one whose
+  // RAW damage line is a flat number rather than a die + ability mod
+  // (Sprite Enchanting Bow's "Hit: 1"). Zero the ability fold so the
+  // engine's damage matches RAW exactly. Cleave secondary attacks
+  // honor the same flag below.
+  const damageAbilityMod = weaponDef.noAbilityModifierDamage === true
+    ? 0
+    : abilityModifier(effectiveAbilityScore(damageBaseScore, damageScoreFloor, damageScoreIncrease));
   // Flex mastery: a versatile weapon wielded two-handed (off-hand empty)
   // uses the larger versatileDice instead of damageDice. RAW 2024.
   const wieldedTwoHanded =
@@ -1364,7 +1371,12 @@ export const planCleave = (
   const cleaveScoreFloor = cleaveAttackerEffects.effectiveAbilityScoreFloor(damageAbility)?.value;
   const cleaveScoreIncrease = cleaveAttackerEffects.effectiveAbilityScoreIncrease(damageAbility);
   const abilityMod = abilityModifier(effectiveAbilityScore(cleaveBaseScore, cleaveScoreFloor, cleaveScoreIncrease));
-  const abilityModToStrip = abilityMod > 0 ? abilityMod : 0;
+  // Slice 450: if the weapon already suppresses the ability fold on
+  // its base damage, there's nothing to strip on the cleave (otherwise
+  // we'd over-subtract and drive damage negative).
+  const abilityModToStrip = weaponDef.noAbilityModifierDamage === true
+    ? 0
+    : abilityMod > 0 ? abilityMod : 0;
 
   for (const evt of resolution) {
     if (evt.type === 'DamageRolled' && abilityModToStrip > 0) {

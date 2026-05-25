@@ -4,6 +4,31 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 450): `noAbilityModifierDamage` weapon flag - closes slice-449's documented RAW deviation**
+
+Closes the documented RAW deviation flagged at the end of slice 449 (Sprite Enchanting Bow's flat-damage shape). Adds an opt-in weapon flag that suppresses the attack planner's automatic +ability_mod fold on base damage; canonical user is the Sprite Enchanting Bow. With the flag set, the bow's `damageDice: "0d4+1"` now yields exactly **1 piercing + Charmed on hit** for any wielder regardless of their DEX, matching SRD verbatim.
+
+**Engine** (small, two-touch):
+- New `noAbilityModifierDamage?: boolean` field on `WeaponSchema` in [src/schemas/content/item.ts](src/schemas/content/item.ts). Optional, defaults to omitted/false so the normal RAW path of adding STR/DEX to weapon damage stays unchanged for every existing weapon.
+- In [src/engine/plan/attack.ts](src/engine/plan/attack.ts), the primary `resolveAttack` zeros `damageAbilityMod` when the flag is true (the surrounding ability-score floor / increase logic is preserved for future flagged weapons whose effects might still touch the score). The Cleave secondary-attack path that normally strips the ability mod from the resolved damage events also skips the strip under the flag (defensive — Cleave is melee-only, so the canonical user can't hit it, but a future flagged melee weapon would).
+
+**Content:** sprite-enchanting-bow in [src/content/packs/starter-pack.json](src/content/packs/starter-pack.json) sets `noAbilityModifierDamage: true`. Description updated to reference both slices (449 wired Charmed, 450 added the flag).
+
+**Test** at [tests/unit/engine/slice-450-flat-damage.test.ts](tests/unit/engine/slice-450-flat-damage.test.ts) — 2 cases:
+- Sprite Enchanting Bow hit on a target emits a `DamageRolled` whose piercing roll has `rolls: []` (0d4) and `modifier: 1` (the flat +1 from the dice expression; **no DEX +4**). Proves the flag suppresses the ability fold.
+- Sprite Needle Sword (same wielder, no flag set) emits a piercing roll with `modifier: -4` (the Sprite's STR mod). Proves the flag is opt-in and doesn't accidentally affect other weapons.
+
+**Pattern-check sweep:** scanned the pack for other natural weapons with the `0dN` flat-damage shape — only sprite-enchanting-bow uses it currently. All other natural weapons (ghoul-claws, couatl-bite, wolf-bite, dire-wolf-bite, wyvern-sting, ettercap-bite, merrow-bite, sprite-needle-sword) use the standard `<count>d<die>` shape with RAW intent to add ability mod, so the flag stays opt-in. No sibling fixes required this slice.
+
+**Audit (engine + content slice):**
+- *RAW match*: SRD 5.2.1 monsters-A-Z.md Sprite Enchanting Bow ("Hit: 1 Piercing damage"). With the flag, the engine's damage event now matches that flat number exactly.
+- *Names*: `noAbilityModifierDamage` is intention-revealing and pairs symmetrically with the existing damage-mod fields (`damageBonus`, `attackBonus`). Matches the slice-122 / slice-325 "0dX+N" flat-damage rider naming style.
+- *DRY / SRP*: minimal-surface engine extension (one optional schema field, one branch in `damageAbilityMod` computation, one branch in Cleave's strip). Declined to refactor the whole damage-roll path; the existing helpers compose with one conditional.
+- *Mechanical outcomes asserted*: the flagged weapon emits exact-RAW flat damage; the unflagged weapon (same wielder) still folds in the ability mod. Cross-product proves opt-in scope.
+
+**Open follow-ups:**
+- No new ones tracked. The slice-449 follow-ups for Sprite (Heart Sight, at-will Invisibility, Charmed duration) remain unchanged. *Closes:* slice-449 "Sprite Enchanting Bow flat damage" follow-up.
+
 **Content (slice 449): Rogue Thieves' Cant + Sprite natural weapons - L1 playability arc**
 
 Two unrelated content fixes batched. Closes the smallest of the L1 audit's class-feature stubs (Thieves' Cant), and wires the Sprite's RAW combat actions so the Sprite (CR 1/4 Fey) finally has a usable attack.
@@ -24,7 +49,7 @@ Two unrelated content fixes batched. Closes the smallest of the L1 audit's class
 - *Mechanical outcomes asserted*: Thieves' Cant proficiency derives correctly through the effect stack; sprite weapons emit AttackRolled with correct attackKind; Enchanting Bow's hit emits a Charmed ConditionApplied on the target.
 
 **Open follow-ups:**
-- **Sprite Enchanting Bow flat damage**: the engine adds the wielder's ability mod to base damage, so RAW "Hit: 1" inflates to ~5 for a Sprite (DEX +4). A `noAbilityModifierDamage?: boolean` weapon flag would close this cleanly. Same shape would help any monster natural weapon whose RAW damage is a flat amount rather than a die + ability mod (Imp's Sting variants, Pseudodragon's Sting, etc.). *Still open.*
+- ~~**Sprite Enchanting Bow flat damage**: the engine adds the wielder's ability mod to base damage, so RAW "Hit: 1" inflates to ~5 for a Sprite (DEX +4). A `noAbilityModifierDamage?: boolean` weapon flag would close this cleanly. Same shape would help any monster natural weapon whose RAW damage is a flat amount rather than a die + ability mod (Imp's Sting variants, Pseudodragon's Sting, etc.).~~ **Closed by slice 450.**
 - **Sprite Heart Sight + Invisibility**: the Heart Sight CHA-save knowledge effect is narrative; the Invisibility self-cast needs the existing UseAction CastSpell variant which currently lives on items, not on monster traits. *Still open.*
 - **Sprite duration of the Charmed condition** ("until the start of the sprite's next turn"): consumer-managed per the slice-286 doc; engine emits ConditionApplied without an auto-expiry stamp. *Still open.*
 
