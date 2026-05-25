@@ -4,6 +4,39 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 451): Sunlight Sensitivity on Kobold Warrior - L1 playability arc**
+
+Completes the Kobold Warrior's RAW combat profile (Pack Tactics from slice 445 + Sunlight Sensitivity now). RAW (SRD 5.2.1 Kobold Warrior): "While in sunlight, the kobold has Disadvantage on ability checks and attack rolls." Slice 451 closes both arms by **extending slice 279's existing `bearer.lightLevel` consumer-coordinated fact** from the check-only intent (`ComputeAbilityCheckInput`) to the attack-side intents (`AttackIntent` + `ResolveAttackInput`); the check arm reuses slice 279 unchanged. The attack arm uses the same fact name + same opt-in semantic, so a consumer that already populates `lightLevel` on one intent populates the same value on the other.
+
+**Engine** (small, mirrors the slice-279 shape):
+- New `lightLevel?: 'bright' | 'dim' | 'darkness'` field on `AttackIntent` and `ResolveAttackInput` in [src/engine/plan/attack.ts](src/engine/plan/attack.ts). Optional; `undefined` produces no Sunlight Sensitivity disadvantage (opt-in default, matching slice 279).
+- Threaded into `attackerSelfAdvantageFacts` as `bearer.lightLevel` so attacker-side `SetAdvantage` entries can gate on it. Same fact-name namespace the existing slice-279 check-side path uses, so trait predicates are identical between the two paths.
+- Threaded from `AttackIntent` to `ResolveAttackInput` in the `planAttack -> resolveAttack` call site.
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)): kobold-warrior's traits array gains two entries alongside the existing Pack Tactics:
+- `SetAdvantage on:'attack' mode:'disadvantage' condition: eq bearer.lightLevel 'bright'`
+- `SetAdvantage on:{kind:'check'} mode:'disadvantage' condition: eq bearer.lightLevel 'bright'`
+
+**Test** at [tests/unit/engine/slice-451-sunlight-sensitivity.test.ts](tests/unit/engine/slice-451-sunlight-sensitivity.test.ts) — 5 cases:
+- Kobold attack with `lightLevel: 'bright'` -> `used: 'disadvantage'`, 2× d20.
+- Kobold attack with `lightLevel: 'dim'` -> `used: 'none'`.
+- Kobold attack with `lightLevel: 'darkness'` -> `used: 'none'`.
+- Kobold attack with `lightLevel` omitted -> `used: 'none'` (opt-in default).
+- Kobold ability check in `'bright'` light has disadvantage; in `'dim'` does not (re-confirms the slice-279 check-side arm still works for the kobold's check-disadvantage arm using the same `bearer.lightLevel` fact).
+
+**Catalog updates:** the consumer-coordinated fact slots row for `lightLevel` in [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md) now lists both check-side and attack-side entry points. Added a `Sunlight Sensitivity never fires (opt-in)` line to the until-consumer-wires-it section.
+
+**Audit (engine + content slice):**
+- *RAW match*: SRD 5.2.1 monsters-A-Z.md Kobold Warrior Sunlight Sensitivity exactly. The dim/darkness/undefined cases all correctly produce no disadvantage (the predicate is `eq 'bright'`, no other value matches).
+- *Names*: `lightLevel` matches the existing slice-279 field name exactly. The fact-name `bearer.lightLevel` is consistent across both intent types.
+- *DRY*: declined to introduce a separate "attack-side lightLevel" fact name; reused the slice-279 namespace so content gates on one canonical name regardless of whether it's a check or an attack.
+- *SRP*: the change is mechanical-only (one field, one map entry, one passthrough). The Sunlight Sensitivity trait is pure content; the engine doesn't get a "sunlight-sensitive" concept of its own.
+- *Mechanical outcomes asserted*: per-light-value gate fires correctly (`bright` -> disadvantage; everything else -> none) for both arms. The Pack Tactics trait on the same monster still works (cross-effect non-interference confirmed by the still-green slice-445 test).
+
+**Open follow-ups:**
+- **Other Sunlight Sensitivity / Sunlight Weakness users:** Shadow (CR 1/2), Wight (CR 3), Wraith (CR 5), Specter (CR 1). All canonical 2024 candidates. Shadow + Specter are L1-encounter monsters. Same primitive shape, just content sweeps. *Still open.*
+- **Population from a "sun is up" boolean** on the consumer's encounter would let the consumer set `lightLevel: 'bright'` once on a per-encounter basis rather than per-intent; that's a consumer concern (the engine doesn't model time-of-day). *Still open* as a future consumer ergonomics note.
+
 **Engine + content (slice 450): `noAbilityModifierDamage` weapon flag - closes slice-449's documented RAW deviation**
 
 Closes the documented RAW deviation flagged at the end of slice 449 (Sprite Enchanting Bow's flat-damage shape). Adds an opt-in weapon flag that suppresses the attack planner's automatic +ability_mod fold on base damage; canonical user is the Sprite Enchanting Bow. With the flag set, the bow's `damageDice: "0d4+1"` now yields exactly **1 piercing + Charmed on hit** for any wielder regardless of their DEX, matching SRD verbatim.

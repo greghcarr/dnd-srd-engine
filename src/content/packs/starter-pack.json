@@ -7246,7 +7246,9 @@
       "proficiencyBonus": 2,
       "languages": ["common", "draconic"],
       "traits": [
-        { "kind": "SetAdvantage", "on": "attack", "mode": "advantage", "condition": { "kind": "eq", "path": "event.attackerHasAllyAdjacentToTarget", "value": true } }
+        { "kind": "SetAdvantage", "on": "attack", "mode": "advantage", "condition": { "kind": "eq", "path": "event.attackerHasAllyAdjacentToTarget", "value": true } },
+        { "kind": "SetAdvantage", "on": "attack", "mode": "disadvantage", "condition": { "kind": "eq", "path": "bearer.lightLevel", "value": "bright" } },
+        { "kind": "SetAdvantage", "on": { "kind": "check" }, "mode": "disadvantage", "condition": { "kind": "eq", "path": "bearer.lightLevel", "value": "bright" } }
       ]
     },
     {

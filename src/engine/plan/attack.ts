@@ -269,6 +269,15 @@ export interface AttackIntent {
   // bearer must explicitly receive `true` to gain the benefit.
   // Strict-RAW: never grants more advantage than the consumer signals.
   readonly attackerHasAllyAdjacentToTarget?: boolean;
+  // Slice 451: consumer-supplied ambient light at the attacker's tile,
+  // for monster traits that gate on light (Kobold Warrior's Sunlight
+  // Sensitivity: "While in sunlight, the kobold has Disadvantage on
+  // ability checks and attack rolls"). Same 3-value enum and opt-in
+  // semantic as slice 279's check-side `lightLevel` field on
+  // ComputeAbilityCheckInput; this is the attack-side mirror so the
+  // disadvantage on attack rolls arm has its own fact source. Surfaces
+  // as `bearer.lightLevel` in the attacker-side SetAdvantage facts.
+  readonly lightLevel?: 'bright' | 'dim' | 'darkness';
 }
 
 const chooseDamageAbility = (
@@ -341,6 +350,9 @@ export interface ResolveAttackInput {
   // Slice 445: consumer-supplied fact for monster Pack Tactics. See
   // doc comment on AttackIntent.attackerHasAllyAdjacentToTarget above.
   readonly attackerHasAllyAdjacentToTarget?: boolean;
+  // Slice 451: consumer-supplied ambient light for Sunlight Sensitivity.
+  // See doc comment on AttackIntent.lightLevel above.
+  readonly lightLevel?: 'bright' | 'dim' | 'darkness';
   // Rogue Cunning Strike (L5+): effects the attacker adds to this attack's
   // Sneak Attack, each forgoing 1d6 of Sneak Attack damage. See AttackIntent.
   readonly cunningStrike?: ReadonlyArray<CunningStrikeOption>;
@@ -624,6 +636,12 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     // existing post-roll trigger fact (consumed by Rogue Sneak Attack's
     // flank arm) so content gates on one canonical name.
     ['event.attackerHasAllyAdjacentToTarget', attackerHasAllyAdjacentToTarget],
+    // Slice 451: attack-side mirror of slice 279's check-side
+    // `bearer.lightLevel`. Same opt-in semantic (undefined produces
+    // no Sunlight Sensitivity disadvantage); Kobold Warrior gates
+    // both its check-disadvantage and its attack-disadvantage on the
+    // same fact name so a consumer populates it once per intent.
+    ['bearer.lightLevel', input.lightLevel],
   ]);
   const attackerSelfAdvantage = attackerEffects.advantageFor('attack', attackerSelfAdvantageFacts);
   // Build a small facts map for type-conditional ImposeDisadvantage
@@ -1270,6 +1288,7 @@ export const planAttack = (
     ...(intent.attackerHasAllyAdjacentToTarget !== undefined
       ? { attackerHasAllyAdjacentToTarget: intent.attackerHasAllyAdjacentToTarget }
       : {}),
+    ...(intent.lightLevel !== undefined ? { lightLevel: intent.lightLevel } : {}),
     ...(intent.cunningStrike !== undefined ? { cunningStrike: intent.cunningStrike } : {}),
     at,
   });
