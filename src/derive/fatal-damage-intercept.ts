@@ -5,6 +5,7 @@ import type {
   ConditionRemovedEvent,
 } from '../schemas/events/combat.js';
 import type { SaveRolledEvent } from '../schemas/events/checks.js';
+import type { ResourceSpentEvent } from '../schemas/events/resources.js';
 import { newEventId } from '../ids.js';
 import type { ULID } from '../engine/ids-utils.js';
 import type { RNG } from '../rng/index.js';
@@ -53,7 +54,7 @@ export interface FatalDamageInterceptInput {
 
 export interface FatalDamageInterceptOutcome {
   readonly components: DamageComponent[];
-  readonly extraEvents: Array<ConditionRemovedEvent | SaveRolledEvent>;
+  readonly extraEvents: Array<ConditionRemovedEvent | SaveRolledEvent | ResourceSpentEvent>;
 }
 
 const sumAmounts = (components: ReadonlyArray<DamageComponent>): number =>
@@ -61,7 +62,7 @@ const sumAmounts = (components: ReadonlyArray<DamageComponent>): number =>
 
 const passthrough = (
   components: ReadonlyArray<DamageComponent>,
-  extraEvents: Array<ConditionRemovedEvent | SaveRolledEvent> = [],
+  extraEvents: Array<ConditionRemovedEvent | SaveRolledEvent | ResourceSpentEvent> = [],
 ): FatalDamageInterceptOutcome => ({
   components: components.map((c) => ({ ...c })),
   extraEvents,
@@ -107,7 +108,7 @@ export const interceptFatalDamage = (
   // Any positive (post-mitigation) damage removes the bearer's
   // `endsOnDamage` conditions. Computed up front so it applies on every
   // return path, independent of the fatal-damage intercept below.
-  const endsOnDamageRemovals: Array<ConditionRemovedEvent | SaveRolledEvent> =
+  const endsOnDamageRemovals: Array<ConditionRemovedEvent | SaveRolledEvent | ResourceSpentEvent> =
     totalDamage > 0
       ? target.appliedConditions
           .filter((applied) => applied.endsOnDamage === true)
@@ -153,6 +154,38 @@ export const interceptFatalDamage = (
       causedByEventId: input.causedByEventId as ULID,
     };
     return { components: scaleToOne(), extraEvents: [...endsOnDamageRemovals, conditionRemoved] };
+  }
+
+  // Slice 458 (resource-gated, no save): scan the full effect stack for
+  // PreventFatalDamageConsumingResource. If found AND the bearer has at
+  // least 1 of the named resource, scale to HP=1 and emit ResourceSpent.
+  // The bearing effect persists (Orc Relentless Endurance is species-
+  // built-in; per-long-rest semantics come from the resource's recharge).
+  const stackForResource = collectEffectsFromCharacter({
+    character: target,
+    content: input.content,
+    itemInstances: input.state.itemInstances,
+    pendingChoices: input.state.pendingChoices,
+  });
+  const resourceGated = stackForResource.find(
+    (e) => e.kind === 'PreventFatalDamageConsumingResource',
+  );
+  if (resourceGated !== undefined && resourceGated.kind === 'PreventFatalDamageConsumingResource') {
+    const resource = target.resources.find((r) => r.resourceId === resourceGated.resourceId);
+    if (resource !== undefined && resource.current > 0) {
+      const resourceSpent: ResourceSpentEvent = {
+        id: newEventId() as ULID,
+        at: input.at,
+        type: 'ResourceSpent',
+        characterId: input.targetId as ULID,
+        resourceId: resourceGated.resourceId,
+        amount: 1,
+      };
+      return {
+        components: scaleToOne(),
+        extraEvents: [...endsOnDamageRemovals, resourceSpent],
+      };
+    }
   }
 
   // Slice 456 (save-gated, condition-NOT-removed): scan the full effect

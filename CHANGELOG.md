@@ -4,6 +4,37 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 458): Orc Relentless Endurance species trait - L1 playability arc**
+
+The 2024 Orc species's signature drop-to-1-instead-of-0 mechanic. RAW (SRD 5.2.1 Orc): "Relentless Endurance. When you are reduced to 0 Hit Points but not killed outright, you can drop to 1 Hit Point instead. Once you use this trait, you can't do so again until you finish a Long Rest." Unconditional (no save), resource-gated 1/Long Rest — a different shape than slice-456's save-gated `PreventFatalDamageOnSave`.
+
+**RAW correction**: in 2024 SRD, Half-Orc doesn't exist as a separate species; it merged into Orc, which carries both Adrenaline Rush + Relentless Endurance. (Earlier follow-up text used the 2014 "Half-Orc" framing.)
+
+**New effect kind** `PreventFatalDamageConsumingResource { resourceId }` in [src/schemas/effects.ts](src/schemas/effects.ts). Sibling of slice-111's condition-based `PreventFatalDamage` (Death Ward — removed on trigger) and slice-456's save-gated `PreventFatalDamageOnSave` (Undead Fortitude — not consumed). This one: scans the effect stack, checks the named resource has at least 1 available, and emits `ResourceSpent { amount: 1 }`. The bearing effect persists (species-built-in); the per-long-rest cadence comes from the resource's own recharge (the existing rest reducer already refunds it).
+
+**interceptFatalDamage extension** ([src/derive/fatal-damage-intercept.ts](src/derive/fatal-damage-intercept.ts)): new arm between the existing Death-Ward path (PreventFatalDamage) and the slice-456 save-gated path (PreventFatalDamageOnSave). Order matters: condition-based intercepts fire before resource-based, which fire before save-based. extraEvents now also carry `ResourceSpentEvent`.
+
+**Content**: Orc species in [src/content/packs/starter-pack.json](src/content/packs/starter-pack.json) gains two new traits alongside the existing darkvision-120 + adrenaline-rush marker:
+- `GrantResource { resourceId: 'relentless-endurance', max: 1, recharge: 'longRest' }`
+- `PreventFatalDamageConsumingResource { resourceId: 'relentless-endurance' }`
+
+**Test** at [tests/unit/engine/slice-458-relentless-endurance.test.ts](tests/unit/engine/slice-458-relentless-endurance.test.ts) — 5 cases: fresh orc takes fatal damage -> drops to 1 HP + resource consumed; depleted-resource orc dies; non-fatal damage doesn't trigger; commit-then-second-hit dies (resource depletion is persistent); control case (Human with the resource manually granted) confirms the gate is on the species trait, not the resource alone.
+
+**Doc updates**: effect-kinds count 54 -> 55 (53 -> 54 primitives) in [docs/concepts.md](docs/concepts.md) and [docs/authoring-content-packs.md](docs/authoring-content-packs.md).
+
+**Audit (engine + content slice):**
+- *RAW match*: SRD 5.2.1 Orc Relentless Endurance text exactly. Unconditional drop-to-1; 1 per Long Rest via the resource.
+- *Names*: `PreventFatalDamageConsumingResource` parallels the existing `PreventFatalDamage` + `PreventFatalDamageOnSave` shape; the `resourceId` field makes the gate explicit.
+- *DRY*: shares `scaleToOne()` helper with the existing intercept arms. Reuses `collectEffectsFromCharacter` (the slice-456 path) to scan the effect stack so species traits and condition-based grants both qualify. The same shape would fit (a) a class-feature variant of Relentless Endurance, (b) a magic item that grants a one-use drop-to-1.
+- *SRP / sticking to existing primitives*: declined to extend `PreventFatalDamage` with an optional `resourceId` (would overload the existing intercept's "remove the bearing condition" semantic). The new sibling effect is more intention-revealing.
+- *Mechanical outcomes asserted*: 5-case matrix covers the success path (drop to 1 + ResourceSpent), the depleted-resource pass-through, the non-fatal control, the second-hit-after-commit case (proves resource persistence), and the species-gate control (Human can't trigger even with the resource present).
+
+**Open follow-ups:**
+- **Slice-453 Adrenaline Rush regression**: I implemented Adrenaline Rush as at-will in slice 453, but RAW (SRD 5.2.1 Orc, character-origins.md L317) actually says: "You can use this trait a number of times equal to your Proficiency Bonus, and you regain all expended uses when you finish a Short or Long Rest." Resource-gated, not at-will. Needs a `GrantResource { resourceId: 'adrenaline-rush', max: formula(PB), recharge: 'shortRest' }` + a `SpendResource` step in `planAdrenalineRush`. *Still open.*
+- **"Killed outright" massive-damage exception**: RAW says Relentless Endurance doesn't fire if the orc would be killed outright (HP <= -maxHP). The current intercept doesn't check this (same gap exists for Death Ward + Undead Fortitude). Acceptable edge case across all three intercepts. *Still open.*
+
+~~Open follow-up from slice 456: **Half-Orc Relentless Endurance**: same effect kind + a `consumeOnTrigger` flag for one-shot + a long-rest recharge. PC-side, one-shot.~~ **Closed by slice 458** (with the 2024 RAW correction: Orc, not Half-Orc; resource-gated via a new sibling effect kind rather than a `consumeOnTrigger` flag on the slice-456 primitive).
+
 **Content (slice 457): Wizard Ritual Adept marker - L1 playability arc**
 
 Closes the slice-444 L1-audit Wizard Ritual Adept stub. RAW (SRD 5.2.1 Wizard L1): "You can cast any spell as a Ritual if that spell has the Ritual tag and the spell is in your spellbook. You needn't have the spell prepared." Engine already supports this by default — `characterKnowsSpell` in [src/engine/plan/cast-spell.ts](src/engine/plan/cast-spell.ts) accepts either `knownSpells` (the wizard's spellbook) or `preparedSpells`, so `asRitual: true` on a ritual-tagged spellbook entry passes the gate without preparation. Wizard's empty `effects: []` ritual-adept feature now ships a `Custom { handlerId: 'ritual-adept' }` marker for discoverability; the `BACKED_INDIRECTLY` allowlist in [tests/audit/pack-integrity.test.ts](tests/audit/pack-integrity.test.ts) documents where the mechanic lives.

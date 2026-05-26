@@ -459,6 +459,15 @@ export type Effect =
       exemptDamageTypes?: DamageType[];
       exemptOnCrit?: boolean;
     }
+  // Slice 458. Resource-gated fatal-damage prevention. When incoming
+  // damage would drop HP to 0 or below AND the bearer has at least 1
+  // of `resourceId` remaining, scale damage so HP lands at 1 and emit
+  // a ResourceSpent for 1. The trait stays projected on the effect
+  // stack (it's species-built-in, not a one-shot condition); the per-
+  // long-rest semantic comes from the resource's own recharge cadence.
+  // Canonical user: Orc Relentless Endurance (resourceId
+  // 'relentless-endurance', max 1, recharge longRest).
+  | { kind: 'PreventFatalDamageConsumingResource'; resourceId: string }
   // Slice 119. Marker that enables the Two-Weapon Fighting bonus:
   // planOffHandAttack adds the wielder's ability modifier to off-hand
   // damage (positive mods included). Without this flag, off-hand
@@ -761,6 +770,13 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       exemptOnCrit: z.boolean().optional(),
     }),
     z.object({
+      // Slice 458. Resource-gated fatal-damage prevention (Orc
+      // Relentless Endurance shape). See the corresponding union type
+      // comment above.
+      kind: z.literal('PreventFatalDamageConsumingResource'),
+      resourceId: z.string(),
+    }),
+    z.object({
       kind: z.literal('GrantTwoWeaponFighting'),
     }),
     z.object({
@@ -830,6 +846,7 @@ export const EFFECT_KINDS = [
   'GrantFallingProtection',
   'PreventFatalDamage',
   'PreventFatalDamageOnSave',
+  'PreventFatalDamageConsumingResource',
   'GrantTwoWeaponFighting',
   'GrantProtectionFightingStyle',
   'GrantGreatWeaponFighting',
