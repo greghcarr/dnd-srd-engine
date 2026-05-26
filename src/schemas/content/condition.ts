@@ -106,5 +106,16 @@ export const ConditionSchema = z.object({
   // consumed on any attack. `autoExpiry` still bounds the "if no attack"
   // case (RAW: before the start/end of your next turn).
   consumeOnAttack: z.boolean().optional(),
+  // Mirror of `consumeOnAttack`, but for the inverse direction (slice 484):
+  // when the BEARER is the TARGET of an attack roll, the attack resolver
+  // removes the condition from the bearer after the attack, so any rider
+  // (typically `GrantAdvantageToAttackers`) applies to exactly one
+  // incoming attack. RAW user: Worg's Bite ("the next attack roll made
+  // against the target before the start of the worg's next turn has
+  // Advantage"). `autoExpiry` still bounds the "if no attack happens"
+  // case (the worg's next turn-start lifts the unused condition).
+  // Source-keyed wires are not currently used (any attacker consumes it);
+  // can be added later if a future RAW shape needs it.
+  consumeOnIncomingAttack: z.boolean().optional(),
 });
 export type Condition = z.infer<typeof ConditionSchema>;

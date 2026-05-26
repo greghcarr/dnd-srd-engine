@@ -450,6 +450,28 @@ const buildConsumeOnAttackRemovals = (
       conditionId: applied.conditionId,
     }));
 
+// Slice 484: target-side mirror of `consumeOnAttack`. After the bearer
+// is targeted by an attack roll, remove any `consumeOnIncomingAttack`
+// condition it carries so a rider (typically GrantAdvantageToAttackers)
+// applies to exactly one incoming attack. RAW user: Worg's Bite. No
+// source-keyed filter (RAW "next attack" doesn't constrain the attacker).
+const buildConsumeOnIncomingAttackRemovals = (
+  target: Character,
+  content: ResolvedContent,
+  at: string,
+): ConditionRemovedEvent[] =>
+  target.appliedConditions
+    .filter((applied) =>
+      content.conditions.get(applied.conditionId)?.consumeOnIncomingAttack === true,
+    )
+    .map((applied) => ({
+      id: newEventId() as ULID,
+      at,
+      type: 'ConditionRemoved',
+      targetId: target.id as ULID,
+      conditionId: applied.conditionId,
+    }));
+
 export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> => {
   const { state, content, rng, at } = input;
   const attacker = state.characters[input.attackerId];
@@ -877,8 +899,12 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   };
 
   // Sap / Vex are spent by this attack roll (RAW "next attack roll").
+  // Slice 484: target-side mirror; Worg's bite-target condition is spent
+  // by the next attack against the target (RAW "next attack roll made
+  // against the target").
   const consumed = buildConsumeOnAttackRemovals(attacker, input.targetId, content, at);
-  const stateAfterAttack = applyAll(state, [attackRolled, ...consumed]);
+  const targetConsumed = buildConsumeOnIncomingAttackRemovals(target, content, at);
+  const stateAfterAttack = applyAll(state, [attackRolled, ...consumed, ...targetConsumed]);
   const attackTriggers = dispatchTriggers({
     state: stateAfterAttack,
     content,
@@ -889,7 +915,7 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   });
 
   if (!hit) {
-    return [attackRolled, ...consumed, ...attackTriggers];
+    return [attackRolled, ...consumed, ...targetConsumed, ...attackTriggers];
   }
 
   const damageAbility = chooseDamageAbility(attacker, weaponDef);
@@ -1184,7 +1210,27 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   //   - slice 321 applyConditionId: apply the condition unconditionally
   //     (no save) — the 2024 poison-bite shape (Couatl's Bite).
   const onHitRiderEvents: Event[] = [];
+  // Slice 484: read the rider condition's declarative `autoExpiry`
+  // metadata and stamp `expiresOnRound` + `expiryTrigger` when inside an
+  // active encounter so `planAdvanceTurn` lifts the condition at the
+  // matching boundary. Mirrors the cast-spell.ts treatment for spell
+  // buffs. Outside an encounter the stamping is skipped and the consumer
+  // manages expiry (existing slice-286 behavior). Conditions without
+  // autoExpiry are unaffected.
+  const currentEncounterRound = state.activeEncounterId
+    ? state.encounters[state.activeEncounterId]?.round
+    : undefined;
   const applyRiderCondition = (conditionId: string): void => {
+    const autoExpiry = content.conditions.get(conditionId)?.autoExpiry;
+    const expiryFields: {
+      expiresOnRound?: number;
+      expiryTrigger?: 'turnStart' | 'turnEnd';
+    } = autoExpiry !== undefined && currentEncounterRound !== undefined
+      ? {
+          expiresOnRound: currentEncounterRound + autoExpiry.afterRounds,
+          expiryTrigger: autoExpiry.trigger,
+        }
+      : {};
     onHitRiderEvents.push({
       id: newEventId() as ULID,
       at,
@@ -1193,6 +1239,7 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
       conditionId,
       appliedConditionId: newAppliedConditionId(),
       sourceCharacterId: input.attackerId as ULID,
+      ...expiryFields,
     } satisfies ConditionAppliedEvent);
   };
   const destroyTarget = (): void => {
@@ -1247,6 +1294,7 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   return [
     attackRolled,
     ...consumed,
+    ...targetConsumed,
     ...attackTriggers,
     damageRolled,
     ...savageAttackerEvent,

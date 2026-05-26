@@ -4,6 +4,39 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 484): Worg Bite + `consumeOnIncomingAttack` + onHit autoExpiry stamping**
+
+Closes the slice-477 deferred Worg row. Three coordinated additions: a new condition-schema field, an attack-resolver helper + call site, and an extension to the onHit `applyConditionId` rider so the condition's declarative `autoExpiry` actually fires.
+
+RAW (SRD 5.2.1 Worg, CR 1/2): "Bite. Melee Attack Roll: +5, reach 5 ft. Hit: 7 (1d8 + 3) Piercing damage, and the next attack roll made against the target before the start of the worg's next turn has Advantage."
+
+**Engine** ([src/schemas/content/condition.ts](src/schemas/content/condition.ts), [src/engine/plan/attack.ts](src/engine/plan/attack.ts)):
+- New optional `consumeOnIncomingAttack: boolean` field on `ConditionSchema`, the target-side mirror of the slice-387 `consumeOnAttack`. When the bearer is the TARGET of an attack, the resolver removes any condition flagged `consumeOnIncomingAttack` so a rider (typically `GrantAdvantageToAttackers`) applies to exactly one incoming attack.
+- New `buildConsumeOnIncomingAttackRemovals(target, content, at)` helper alongside the existing `buildConsumeOnAttackRemovals`. No source-keyed filter (RAW "next attack" doesn't constrain the attacker); can be added later if a future shape needs it.
+- Call site folded into the same `applyAll` that processes the attacker-side consumption (line ~881), and the resulting events appended to both return branches (miss / hit).
+- `applyRiderCondition` now reads the rider condition's `autoExpiry` and stamps `expiresOnRound` + `expiryTrigger` on the emitted `ConditionApplied` when inside an active encounter. Mirrors the [src/engine/plan/cast-spell.ts](src/engine/plan/cast-spell.ts) treatment of spell buffs. Outside an encounter, the consumer manages expiry (existing slice-286 behavior preserved). Conditions without `autoExpiry` are unaffected.
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- New condition `worg-bite-targeted`: `effects: [GrantAdvantageToAttackers]`, `consumeOnIncomingAttack: true`, `autoExpiry: { afterRounds: 1, trigger: 'turnStart' }`.
+- New natural weapon `worg-bite`: 1d8 piercing + `onHit: [{ applyConditionId: 'worg-bite-targeted' }]`. The +3 damage / +5 attack come from wielder STR 16 + PB 2.
+
+**Doc-count update**: weapons 71 -> 72, items 534 -> 535, conditions 125 -> 126 (15 RAW + 110 -> 111 rider; effect-bearing 109 -> 110).
+
+**Tests** at [tests/unit/engine/slice-484-worg-bite.test.ts](tests/unit/engine/slice-484-worg-bite.test.ts) - 5 cases: weapon shape; condition shape (effects + consumeOnIncomingAttack + autoExpiry); onHit applies the buff to the target; an attack against a buffed target rolls with Advantage AND the buff is consumed; a second attack rolls without Advantage (proves consumption).
+
+**Audit:**
+- *RAW match*: Bite damage + RAW phrasing pinned by `worg-bite` description; the `next attack roll made against the target` + `before the start of the worg's next turn` envelope is the union of `consumeOnIncomingAttack` (the "next attack" arm) + `autoExpiry afterRounds:1 turnStart` (the envelope when no attack happens). Both arms are exercised by separate tests.
+- *Names*: `consumeOnIncomingAttack` mirrors the existing `consumeOnAttack` family naming exactly. `worg-bite-targeted` follows the `*-active` / `*-targeted` convention for transient applied conditions.
+- *DRY*: the helper mirrors `buildConsumeOnAttackRemovals` line-for-line. The autoExpiry stamping pattern in `applyRiderCondition` mirrors the cast-spell.ts site. No new abstraction.
+- *SRP*: each new piece does one thing. Helper = list removals. Resolver call site = thread them. Stamping = stamp expiry. New schema field = declare consumption-direction. New condition = declare buff shape. New weapon = declare delivery.
+- *Magic numbers*: none added.
+- *Mechanical outcomes asserted*: 5 cases pin (a) the wire shapes, (b) the apply-on-hit path, (c) the consume-on-incoming-attack arm, (d) the post-consumption no-advantage second attack.
+- *Tests*: would fail before the engine + content change (the schema field, the helper, the call site, the autoExpiry stamping, and both content entries are each load-bearing).
+
+**Pattern-check**: the autoExpiry stamping extension may help close the slice-286 family of consumer-managed "until start of X's next turn" durations on other onHit applyConditionId riders (Couatl's Bite, Giant Centipede's Bite, Sprite's Enchanting Bow, Wyvern's Sting, Ettercap's Bite, Merrow's Bite — all currently consumer-managed because they share generic conditions like `poisoned` / `charmed` that can't carry autoExpiry without over-applying to other sources). Closing those needs per-source unique conditions (e.g. `couatl-poisoned`, `wyvern-poisoned`) that each carry their own autoExpiry; deferred as a separate authoring sweep. The Worg case is the first that owns a unique condition AND has a "next attack" arm, so it's the natural canonical user.
+
+**Pattern-check (audit hardening)**: while writing this slice, the `worg-bite-targeted` condition failed [tests/audit/pack-integrity.test.ts](tests/audit/pack-integrity.test.ts)'s "every condition with effects is reachable" check because the audit's reference-walker enumerated only `conditionId` / `allyConditionId` / `conditionOnFail` / `bearerConditionId`, missing the `applyConditionId` and `conditionOnSuccess` keys on `onHit` riders + the `eligibleConditionIds` arrays on spell `remove-condition` mechanics. That was a pre-existing under-walking of reference shapes (mirror of the slice-301 false-positive lesson the audit's own comments warn about). Extended the walker to enumerate `applyConditionId` + `conditionOnSuccess` + `eligibleConditionIds` so the audit catches the full structural-reference surface, not just the legacy subset. Existing wired conditions stay reachable through unchanged paths; this only adds reference paths the audit previously missed.
+
 **Engine + content (slice 483): Boar Bloodied Fury + `bearer.bloodied` predicate fact**
 
 Smallest engine slice from the slice-477 deferred list (the Boar's Bloodied Fury trait was tracked there as needing a new predicate fact). Adds the fact and the canonical content user.
@@ -143,7 +176,7 @@ Pure content slice. Each statblock gains the same `SetAdvantage on:'attack' mode
 - *Mechanical outcomes asserted*: trait presence; advantage applies with the fact; no advantage without it.
 
 **Open follow-ups (per the broader sweep):**
-- **Worg Bite "next attack vs target gets advantage" rider** (RAW: "the next attack roll made against the target before the start of the worg's next turn has Advantage"): novel primitive. The Worg in 2024 SRD does NOT have Pack Tactics - the trait was replaced with this stronger, more positional shape. Needs an onHit-applied-condition that grants advantage to attackers, plus an "until end of source's next turn" lifetime. *Still open.*
+- ~~**Worg Bite "next attack vs target gets advantage" rider** (RAW: "the next attack roll made against the target before the start of the worg's next turn has Advantage"): novel primitive. The Worg in 2024 SRD does NOT have Pack Tactics - the trait was replaced with this stronger, more positional shape. Needs an onHit-applied-condition that grants advantage to attackers, plus an "until end of source's next turn" lifetime.~~ **Closed by slice 484.**
 - **Iconic beast/monstrosity traits**: Giant Spider's Spider Climb + Web Walker + Web (action), Stirge's Blood Drain attach, Giant Centipede's poison rider, Cockatrice's petrifying bite, Bugbear's Brute. Each is a small content (or content + small-primitive) slice. *Still open.*
 
 **Engine + content (slice 475): Cunning Action - closes the Spy statblock + wires the Rogue L2 feature**

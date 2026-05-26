@@ -232,10 +232,14 @@ describe('pack integrity: conditions with effects are reachable', () => {
             (k === 'conditionId' ||
               k === 'allyConditionId' ||
               k === 'conditionOnFail' ||
+              k === 'conditionOnSuccess' ||
+              k === 'applyConditionId' ||
               k === 'bearerConditionId') &&
             typeof v === 'string'
           ) {
             referenced.add(v);
+          } else if (k === 'eligibleConditionIds' && Array.isArray(v)) {
+            for (const id of v) if (typeof id === 'string') referenced.add(id);
           }
           walk(v);
         }
