@@ -4,6 +4,21 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 479): Brown Bear Multiattack (one Bite + one Claw)**
+
+Fourth user of the slice-464 `MonsterMultiattack` content field. RAW (SRD 5.2.1 Brown Bear, CR 1): "Multiattack. The bear makes one Bite attack and one Claw attack." Bite: 1d8 piercing. Claw: 1d4+3 slashing + Prone if Large or smaller (the `brown-bear-claw` was wired in slice 454).
+
+Closes the deferred follow-up from slice 454 + slice 464 ("Brown Bear Multiattack: blocked on the Brown Bear Bite natural weapon not yet existing in the pack").
+
+- New `brown-bear-bite` natural weapon (1d8 piercing, no rider).
+- Brown Bear statblock gains `multiattack: { name: 'Brown Bear Multiattack', attacks: [{ weaponId: 'brown-bear-bite', count: 1 }, { weaponId: 'brown-bear-claw', count: 1 }] }`.
+
+The slice-454 description on `brown-bear-claw` updated to point at this slice's bite + multiattack wiring.
+
+**Doc-count update**: weapons 67 -> 68, total items 530 -> 531.
+
+**Tests** at [tests/unit/engine/slice-479-brown-bear-multiattack.test.ts](tests/unit/engine/slice-479-brown-bear-multiattack.test.ts) - 3 cases: bite shape; statblock pattern; end-to-end `engine.plan.multiattack` emits 2 `AttackRolled` events with the two distinct weapon instances.
+
 **Content (slice 478): Hippogriff Multiattack - third monster-Multiattack user**
 
 Third user of the slice-464 `MonsterMultiattack` content field after Ghoul (slice 464) and Scout (slice 472). RAW (SRD 5.2.1 Hippogriff, CR 1): "Multiattack. The hippogriff makes two Rend attacks. Rend. Melee Attack Roll: +5, reach 5 ft. Hit: 7 (1d8 + 3) Slashing damage."
