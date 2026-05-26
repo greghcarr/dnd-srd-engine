@@ -43,6 +43,7 @@ export const applyEncounterCreated = (
         loadedWeaponsFiredThisTurn: [],
         recklessAttackActive: false,
         stunningStrikeUsedThisTurn: false,
+        savageAttackerUsedThisTurn: false,
         noProvokeMovementUpToFeet: 0,
       },
     })),
@@ -122,6 +123,7 @@ export const applyTurnStarted = (
   active.turnUsage.loadedWeaponsFiredThisTurn = [];
   active.turnUsage.recklessAttackActive = false;
   active.turnUsage.stunningStrikeUsedThisTurn = false;
+  active.turnUsage.savageAttackerUsedThisTurn = false;
   active.turnUsage.noProvokeMovementUpToFeet = 0;
 };
 

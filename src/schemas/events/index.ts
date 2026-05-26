@@ -62,6 +62,7 @@ import {
   ActionEconomyConsumedEventSchema,
   RecklessAttackActivatedEventSchema,
   StunningStrikeAttemptedEventSchema,
+  SavageAttackerUsedEventSchema,
 } from './action-economy.js';
 import {
   CombatantMovedEventSchema,
@@ -241,6 +242,7 @@ export const EventSchema = z.discriminatedUnion('type', [
   ActionEconomyConsumedEventSchema,
   RecklessAttackActivatedEventSchema,
   StunningStrikeAttemptedEventSchema,
+  SavageAttackerUsedEventSchema,
   CombatantMovedEventSchema,
   DashedEventSchema,
   DisengagedEventSchema,
@@ -384,6 +386,7 @@ export const EVENT_TYPES = [
   'ActionEconomyConsumed',
   'RecklessAttackActivated',
   'StunningStrikeAttempted',
+  'SavageAttackerUsed',
   'CombatantMoved',
   'Dashed',
   'Disengaged',
@@ -640,6 +643,7 @@ export {
   ActionEconomyConsumedEventSchema,
   RecklessAttackActivatedEventSchema,
   StunningStrikeAttemptedEventSchema,
+  SavageAttackerUsedEventSchema,
   ActionEconomyKindSchema,
   ACTION_ECONOMY_KINDS,
 } from './action-economy.js';
@@ -647,6 +651,7 @@ export type {
   ActionEconomyConsumedEvent,
   RecklessAttackActivatedEvent,
   StunningStrikeAttemptedEvent,
+  SavageAttackerUsedEvent,
   ActionEconomyKind,
 } from './action-economy.js';
 export {

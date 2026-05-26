@@ -4,6 +4,40 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 467): Savage Attacker (Origin Feat) - the Soldier background lights up end-to-end**
+
+Slice 466 made every Soldier background auto-project the `savage-attacker` feat through the effect stack; the feat itself shipped `effects: []`. This slice wires the mechanic.
+
+RAW (SRD 5.2.1 Savage Attacker): "You've trained to deal particularly damaging strikes. Once per turn when you hit a target with a weapon, you can roll the weapon's damage dice twice and use either roll against the target."
+
+**New attack-intent fact** `useSavageAttacker?: boolean` on [AttackIntent](src/engine/plan/attack.ts) (and [ResolveAttackInput](src/engine/plan/attack.ts) for the lower-level reuse from cleave / opportunity / multiattack paths). Opt-in per attack — the consumer signals "spend the per-turn use on this swing." Mirrors the slice-274 / 276 / 279 / 445 / 451 consumer-coordinated fact pattern.
+
+**Validation up front** in `resolveAttack`: rejects (a) attackers without `savage-attacker` on the slice-466 effective feat list, and (b) in-encounter attackers whose `turnUsage.savageAttackerUsedThisTurn` flag is set. The error fires before any d20 commits, so a malformed intent doesn't show up as a misleading "you missed."
+
+**Reroll site** at the damage-roll loop: rolls two full sets of weapon dice (handling crits and Martial Arts scaling), keeps the higher-sum set, surfaces the discarded set on the new `SavageAttackerUsed` event. The reroll scopes to the **weapon's damage dice only** per RAW — modifiers, item-buff extra dice, on-hit riders, and Sneak Attack damage are not rerolled. Great Weapon Fighting's reroll-to-3 still applies to whichever set is kept (it runs against `damageRolls` after the Savage Attacker pick).
+
+**New event** `SavageAttackerUsed` ([src/schemas/events/action-economy.ts](src/schemas/events/action-economy.ts)) emitted between `DamageRolled` and `DamageApplied`. Carries `discardedRolls` (the rejected dice) for transcript visibility + an optional encounter/combatant pair (omitted out-of-encounter). Wired into `EventSchema`, `EVENT_TYPES`, the typed `EventEnvelope`, `apply.ts` switch, and the transcript formatter.
+
+**Once-per-turn enforcement**: the new reducer `applySavageAttackerUsed` sets `turnUsage.savageAttackerUsedThisTurn = true` when the event carries combatant info. `TurnUsage` schema gains the field (default false) and the encounter reducers (TurnStarted reset + planning-time defaults) clear it alongside `stunningStrikeUsedThisTurn`. Out-of-encounter calls omit the encounter+combatant ids and skip the state mutation — no turn structure to gate against — so consumers running combat tests outside an active encounter can use Savage Attacker freely (mirror of Stunning Strike's slice-design choice).
+
+**Hit-only consumption**: RAW says "Once per turn **when you hit**." The reroll lives in the damage-roll path which executes only on a hit, so a missed swing with `useSavageAttacker=true` does not emit `SavageAttackerUsed`, does not set the turn flag, and leaves the per-turn use available for the next swing. The validation rejects only **already-used** attempts; an opt-in that misses is fine and free.
+
+**Tests** at [tests/unit/engine/slice-467-savage-attacker.test.ts](tests/unit/engine/slice-467-savage-attacker.test.ts) — 4 cases: (1) seed-search for a hit, then assert `SavageAttackerUsed` emitted with non-empty `discardedRolls` and out-of-encounter fields omitted; (2) seed-search for a miss against a very-high-AC target, assert no `SavageAttackerUsed` (per-turn use preserved); (3) a Sage-background character (different origin feat) is rejected up front; (4) the kept set's sum is >= the discarded set's sum (the engine always picks the better roll).
+
+**Audit (engine slice):**
+- *RAW match*: SRD 5.2.1 Savage Attacker exactly. "Once per turn when you hit a target with a weapon" — once-per-turn gate via `turnUsage`, hit-gated by living in the damage-roll path, weapon-gated by being in the weapon attack planner (spell attacks don't go through this code).
+- *Names*: `SavageAttackerUsed` mirrors `StunningStrikeAttempted` (the closest sibling: both are once-per-turn marker events emitted by the attack pipeline). The field `useSavageAttacker?` mirrors the existing consumer-coordinated boolean facts (`attackerHasAllyAdjacentToTarget?`, `lightLevel?`, etc.).
+- *DRY*: per-turn gating reuses the existing `turnUsage` shape + TurnStarted reset; the reducer mirrors `applyStunningStrikeAttempted` exactly. The hit-gated event-emission pattern (event lives in `causedByEventId: damageRolled.id`) mirrors the existing on-hit rider events.
+- *SRP*: planner validates and rolls; the new event records the use; the reducer updates state. Three concerns, three sites.
+- *Magic numbers*: `SAVAGE_ATTACKER_FEAT_ID = 'savage-attacker'` extracted as a named constant near `CUNNING_STRIKE_LEVEL`.
+- *at-threading*: single `at` from the existing planner site propagates to the new event.
+- *Mechanical outcomes asserted*: reroll fires on hit; does not fire on miss; rejected for featless attacker; higher-sum set is always kept.
+
+**Open follow-ups:**
+- **Soldier background integration test** in the golden / transcript suites: a Soldier character making an attack with `useSavageAttacker: true` should be runnable as a one-line addition to an existing golden scenario, demonstrating the slice-466 + 467 chain end-to-end with a transcript line. *Still open.*
+- **Wire Alert** (Criminal background origin feat): RAW "+PB to initiative; swap initiative results with a willing creature." The +PB arm fits the existing `ModifyInitiative` family; the swap is a new mechanic. *Still open.*
+- **Wire Magic Initiate (Cleric / Wizard)** (Sage / Acolyte background origin feats): grants 2 cantrips + 1 L1 spell + 1 free cast / long rest. Sibling of Tiefling Fiendish Legacy spell grants. *Still open.*
+
 **Engine + content (slice 466): backgrounds auto-project their Origin Feat + Sage RAW correction**
 
 Pre-slice, every 2024 background ([Soldier](src/content/packs/starter-pack.json), Sage, Criminal, Acolyte) shipped with the correct skill / tool / language / origin-feat fields, but the engine only projected the **first three** through the effect stack. The Origin Feat (Soldier → Savage Attacker, Sage → Magic Initiate (Wizard), etc.) was descriptive metadata: a consumer who built a Soldier and forgot to also list `'savage-attacker'` in `featsTaken` got a feat-less Soldier. This slice closes that gap and adds a public helper so consumers can introspect the effective feat set.

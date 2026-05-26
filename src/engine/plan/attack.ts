@@ -20,7 +20,7 @@ import { rollDie, parseDiceExpression } from '../../rng/dice.js';
 import { newEventId, newAppliedConditionId } from '../../ids.js';
 import { computeAttackBonus } from '../../derive/attack.js';
 import { computeAC } from '../../derive/ac.js';
-import { buildEffectStack, collectEffectsFromCharacter } from '../../derive/effect-stack.js';
+import { buildEffectStack, collectEffectsFromCharacter, getEffectiveFeatIds } from '../../derive/effect-stack.js';
 import { cunningStrikeForgoDice, cunningStrikeMinLevel, type CunningStrikeOption } from './cunning-strike.js';
 import { getCreatureType } from '../../derive/creature-type.js';
 import { creatureSize } from '../../derive/creature-size.js';
@@ -278,6 +278,17 @@ export interface AttackIntent {
   // disadvantage on attack rolls arm has its own fact source. Surfaces
   // as `bearer.lightLevel` in the attacker-side SetAdvantage facts.
   readonly lightLevel?: 'bright' | 'dim' | 'darkness';
+  // Slice 467: Savage Attacker (Origin Feat). RAW (SRD 5.2.1): "Once
+  // per turn when you hit a target with a weapon, you can roll the
+  // weapon's damage dice twice and use either roll against the target."
+  // Opt-in per-attack: the consumer signals true to spend the per-turn
+  // use on this attack. The planner validates the attacker has
+  // savage-attacker on its effective feat list (via getEffectiveFeatIds,
+  // which auto-projects the background's originFeatId since slice 466)
+  // and, in an active encounter, that the turn-usage flag is unset.
+  // The reroll only fires on a hit; a miss with this flag set does NOT
+  // consume the per-turn use (RAW: "when you hit").
+  readonly useSavageAttacker?: boolean;
 }
 
 const chooseDamageAbility = (
@@ -356,10 +367,14 @@ export interface ResolveAttackInput {
   // Rogue Cunning Strike (L5+): effects the attacker adds to this attack's
   // Sneak Attack, each forgoing 1d6 of Sneak Attack damage. See AttackIntent.
   readonly cunningStrike?: ReadonlyArray<CunningStrikeOption>;
+  // Slice 467: see AttackIntent.useSavageAttacker doc comment above.
+  readonly useSavageAttacker?: boolean;
 }
 
 const CUNNING_STRIKE_LEVEL = 5;
 const IMPROVED_CUNNING_STRIKE_LEVEL = 11;
+// Slice 467: feat id read by resolveAttack to gate the per-attack reroll.
+const SAVAGE_ATTACKER_FEAT_ID = 'savage-attacker';
 
 // The attacker's Sneak Attack die count, read from the `cunningStrikeEligible`
 // AddDamage rider so it tracks the pack's per-level wiring rather than a
@@ -449,6 +464,27 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   const weaponDef = content.items.get(weaponInstance.definitionId);
   if (!weaponDef || weaponDef.itemKind !== 'weapon') {
     throw new Error(`Item ${weaponInstance.definitionId} is not a weapon`);
+  }
+  // Slice 467: Savage Attacker validation. The reroll itself fires
+  // below at the damage-roll site (only when the attack actually hits,
+  // matching RAW "when you hit"); the validation here rejects malformed
+  // intents up front so the consumer sees the error before any d20 is
+  // committed.
+  if (input.useSavageAttacker === true) {
+    if (!getEffectiveFeatIds(attacker, content).includes(SAVAGE_ATTACKER_FEAT_ID)) {
+      throw new Error(`${attacker.name} does not have the Savage Attacker feat`);
+    }
+    const encounterForSA = state.activeEncounterId
+      ? state.encounters[state.activeEncounterId]
+      : undefined;
+    const attackerCbForSA = encounterForSA?.combatants.find(
+      (c) => c.combatantId === input.attackerId,
+    );
+    if (attackerCbForSA?.turnUsage.savageAttackerUsedThisTurn === true) {
+      throw new Error(
+        `${attacker.name} has already used Savage Attacker this turn`,
+      );
+    }
   }
 
   const attackBonusResult = computeAttackBonus({
@@ -877,9 +913,35 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   const damageExpression = applyMartialArtsDieScaling(attacker, weaponDef.id, baseDamageExpression);
   const parsed = parseDiceExpression(damageExpression);
   const totalRolls = critical ? parsed.count * 2 : parsed.count;
-  const damageRolls: number[] = [];
-  for (let i = 0; i < totalRolls; i++) {
-    damageRolls.push(rollDie(parsed.die, rng));
+  // Slice 467: Savage Attacker reroll. RAW (SRD 5.2.1): "you can roll
+  // the weapon's damage dice twice and use either roll against the
+  // target." Roll two sets, keep the higher-sum set, surface the
+  // discarded set on the per-attack SavageAttackerUsed event below.
+  // Modifiers, riders, and extra-damage dice are not rerolled (RAW
+  // scopes the reroll to "the weapon's damage dice").
+  let damageRolls: number[];
+  let savageAttackerDiscarded: number[] | undefined;
+  if (input.useSavageAttacker === true) {
+    const setA: number[] = [];
+    const setB: number[] = [];
+    for (let i = 0; i < totalRolls; i++) {
+      setA.push(rollDie(parsed.die, rng));
+      setB.push(rollDie(parsed.die, rng));
+    }
+    const sumA = setA.reduce((s, v) => s + v, 0);
+    const sumB = setB.reduce((s, v) => s + v, 0);
+    if (sumA >= sumB) {
+      damageRolls = setA;
+      savageAttackerDiscarded = setB;
+    } else {
+      damageRolls = setB;
+      savageAttackerDiscarded = setA;
+    }
+  } else {
+    damageRolls = [];
+    for (let i = 0; i < totalRolls; i++) {
+      damageRolls.push(rollDie(parsed.die, rng));
+    }
   }
   // Slice 121: Great Weapon Fighting reroll-to-3 rule. Triggers on a
   // melee attack with a two-handed wield (Two-Handed property, or
@@ -1008,6 +1070,31 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     critical,
     causedByEventId: attackRolled.id,
   };
+
+  // Slice 467: emit a SavageAttackerUsed marker when the reroll actually
+  // fired (the attack hit AND the consumer opted in). RAW (SRD 5.2.1):
+  // "Once per turn when you hit a target with a weapon" — gating on hit
+  // means a missed swing with useSavageAttacker=true does NOT consume
+  // the per-turn use. The reducer for this event sets the turnUsage
+  // flag; subsequent attempts this turn fail validation above.
+  const savageAttackerEvent: ReadonlyArray<Event> = savageAttackerDiscarded !== undefined
+    ? [{
+        id: newEventId() as ULID,
+        at,
+        type: 'SavageAttackerUsed',
+        attackerId: input.attackerId as ULID,
+        targetId: input.targetId as ULID,
+        weaponInstanceId: input.weaponInstanceId as ULID,
+        ...(state.activeEncounterId !== undefined
+          ? {
+              encounterId: state.activeEncounterId,
+              combatantId: input.attackerId as ULID,
+            }
+          : {}),
+        discardedRolls: savageAttackerDiscarded,
+        causedByEventId: damageRolled.id,
+      }]
+    : [];
 
   const damageTotal = damageRolls.reduce((s, v) => s + v, 0) + damageRollPayload.modifier;
   const rawComponents: { amount: number; type: typeof weaponDef.damageType }[] = [
@@ -1155,6 +1242,7 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     ...consumed,
     ...attackTriggers,
     damageRolled,
+    ...savageAttackerEvent,
     damageApplied,
     ...damageTriggers,
     ...onHitRiderEvents,
@@ -1292,6 +1380,7 @@ export const planAttack = (
       : {}),
     ...(intent.lightLevel !== undefined ? { lightLevel: intent.lightLevel } : {}),
     ...(intent.cunningStrike !== undefined ? { cunningStrike: intent.cunningStrike } : {}),
+    ...(intent.useSavageAttacker === true ? { useSavageAttacker: true } : {}),
     at,
   });
   // If we fired a Loading weapon, append a WeaponLoaded event so the

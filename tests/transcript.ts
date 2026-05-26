@@ -239,6 +239,8 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       return `**${characterName(stateBefore, event.combatantId)}** attacks recklessly.`;
     case 'StunningStrikeAttempted':
       return `**${characterName(stateBefore, event.combatantId)}** attempts a Stunning Strike against **${characterName(stateBefore, event.targetId)}**.`;
+    case 'SavageAttackerUsed':
+      return `**${characterName(stateBefore, event.attackerId)}** uses Savage Attacker (discarded: [${event.discardedRolls.join(', ')}]).`;
     case 'CombatantMoved': {
       const who = characterName(stateBefore, event.combatantId);
       const from = event.fromPosition;

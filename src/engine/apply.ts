@@ -69,6 +69,7 @@ import {
   applyActionEconomyConsumed,
   applyRecklessAttackActivated,
   applyStunningStrikeAttempted,
+  applySavageAttackerUsed,
 } from './reducers/action-economy.js';
 import {
   applyCombatantMoved,
@@ -319,6 +320,9 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
         break;
       case 'StunningStrikeAttempted':
         applyStunningStrikeAttempted(draft, event);
+        break;
+      case 'SavageAttackerUsed':
+        applySavageAttackerUsed(draft, event);
         break;
       case 'CombatantMoved':
         applyCombatantMoved(draft, event);
