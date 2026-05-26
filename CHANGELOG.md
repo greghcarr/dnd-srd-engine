@@ -4,6 +4,17 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 480): Black Bear Multiattack (two Rends)**
+
+Fifth user of the slice-464 `MonsterMultiattack` content field. RAW (SRD 5.2.1 Black Bear, CR 1/2): "Multiattack. The bear makes two Rend attacks. Rend: 1d6 slashing." Same single-weapon two-swing shape as Hippogriff Multiattack (slice 478).
+
+- New `black-bear-rend` natural weapon (1d6 slashing, no rider).
+- Black Bear statblock gains `multiattack: { name: 'Black Bear Multiattack', attacks: [{ weaponId: 'black-bear-rend', count: 2 }] }`.
+
+**Doc-count update**: weapons 68 -> 69, items 531 -> 532.
+
+**Tests** at [tests/unit/engine/slice-480-black-bear-multiattack.test.ts](tests/unit/engine/slice-480-black-bear-multiattack.test.ts) - 3 cases: weapon shape; statblock pattern; 2 AttackRolled events.
+
 **Content (slice 479): Brown Bear Multiattack (one Bite + one Claw)**
 
 Fourth user of the slice-464 `MonsterMultiattack` content field. RAW (SRD 5.2.1 Brown Bear, CR 1): "Multiattack. The bear makes one Bite attack and one Claw attack." Bite: 1d8 piercing. Claw: 1d4+3 slashing + Prone if Large or smaller (the `brown-bear-claw` was wired in slice 454).
