@@ -129,6 +129,7 @@ export {
   ConsumableSchema,
   GearSchema,
   MonsterStatblockSchema,
+  MonsterMultiattackSchema,
 } from './schemas/content/index.js';
 export {
   CharacterSchema,
@@ -369,6 +370,7 @@ export {
   isInRangeFeet,
   hasLineOfSight,
   hasLineOfEffect,
+  runtimeMultiattackFromStatblock,
 } from './derive/index.js';
 export type {
   ACResult,

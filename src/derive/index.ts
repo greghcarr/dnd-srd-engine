@@ -79,3 +79,4 @@ export {
   hasLineOfSight,
   hasLineOfEffect,
 } from './terrain.js';
+export { runtimeMultiattackFromStatblock } from './multiattack.js';

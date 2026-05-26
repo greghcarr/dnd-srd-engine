@@ -61,6 +61,34 @@ export const BreathWeaponSpecSchema = z.object({
 });
 export type BreathWeaponSpec = z.infer<typeof BreathWeaponSpecSchema>;
 
+// Slice 464: statblock-side declaration of a monster's Multiattack
+// action. RAW examples (SRD 5.2.1):
+//   Ghoul Multiattack: "The ghoul makes two Bite attacks."
+//   Brown Bear Multiattack: "one Bite attack and two Claw attacks."
+//   Bulette Multiattack: "two Bite attacks."
+//
+// Each `attacks` entry names a weapon DEFINITION id from the pack
+// (e.g. "ghoul-bite") plus how many swings. Consumers mint per-monster
+// weapon item instances and bridge to the runtime Character.multiattack
+// pattern via runtimeMultiattackFromStatblock (src/derive/multiattack.ts);
+// the existing planMultiattack then consumes the runtime pattern.
+//
+// The runtime pattern uses weaponInstanceId (one per swing source, even
+// for "two Bites" where both reuse the same definition) because each
+// monster instance owns a unique inventory item. The statblock pattern
+// is definition-keyed precisely because content cannot know which
+// instances a consumer will mint.
+export const MonsterMultiattackSchema = z.object({
+  name: z.string(),
+  attacks: z.array(
+    z.object({
+      weaponId: z.string(),
+      count: z.number().int().min(1),
+    }),
+  ).min(1),
+});
+export type MonsterMultiattack = z.infer<typeof MonsterMultiattackSchema>;
+
 export const MonsterStatblockSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -88,5 +116,6 @@ export const MonsterStatblockSchema = z.object({
   proficiencyBonus: z.number().int().min(2).max(9),
   traits: z.array(EffectSchema).default([]),
   breathWeapon: BreathWeaponSpecSchema.optional(),
+  multiattack: MonsterMultiattackSchema.optional(),
 });
 export type MonsterStatblock = z.infer<typeof MonsterStatblockSchema>;

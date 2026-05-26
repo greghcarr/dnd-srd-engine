@@ -4,6 +4,34 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 464): monster Multiattack content declaration - the deferred-since-slice-462 primitive lands**
+
+The `planMultiattack` planner has been in the engine since slice 13 (Ogre with two Greatclub swings, the s13-creature golden) and works fine — the gap was always content-side: statblocks couldn't *declare* their Multiattack pattern, so consumers had to read RAW by hand and hand-author the runtime `multiattack` field. This slice closes that gap and ships the Ghoul's "two Bites" as the canonical user.
+
+**New content field** `MonsterStatblockSchema.multiattack` ([src/schemas/content/monster.ts:64](src/schemas/content/monster.ts#L64)) of shape `{ name, attacks: [{ weaponId, count }] }`. `weaponId` references the item DEFINITION id (e.g. `"ghoul-bite"`) — content cannot know which instance ids a consumer will mint. The runtime `MultiattackPattern` on `Character` continues to use `weaponInstanceId` (unchanged since slice 13).
+
+**New derive helper** `runtimeMultiattackFromStatblock(declared, weaponIdToInstance)` ([src/derive/multiattack.ts](src/derive/multiattack.ts)) bridges the two: consumers mint one item instance per referenced weaponId, pass a `Record<weaponId, instanceId>` map, and get back the runtime pattern ready to drop into `Character.multiattack`. Throws with a precise error naming the missing weapon when the map is incomplete. Exported from [src/index.ts](src/index.ts) + [src/derive/index.ts](src/derive/index.ts) + as `MonsterMultiattackSchema` from [src/schemas/content/index.ts](src/schemas/content/index.ts).
+
+**Canonical user (Ghoul)**: RAW (SRD 5.2.1 Ghoul): "Multiattack. The ghoul makes two Bite attacks." Wired as `"multiattack": { "name": "Ghoul Multiattack", "attacks": [{ "weaponId": "ghoul-bite", "count": 2 }] }` on the Ghoul statblock. Closes the deferred follow-up from slice 462 ("Ghoul Multiattack stays deferred until the monster-Multiattack primitive ships").
+
+**Test** at [tests/unit/engine/slice-464-monster-multiattack.test.ts](tests/unit/engine/slice-464-monster-multiattack.test.ts) — 4 cases: Ghoul statblock declares the expected pattern; helper maps weaponId → instanceId correctly; helper throws on missing instance; end-to-end (load pack → mint ghoul-bite → build runtime pattern via helper → set on Character → `engine.plan.multiattack` → exactly 2 `AttackRolled` events).
+
+**Contract snapshot updated** intentionally for two new public exports: `runtimeMultiattackFromStatblock` + `MonsterMultiattackSchema`.
+
+**Audit (engine + content slice):**
+- *RAW match*: SRD 5.2.1 Ghoul Multiattack exactly. The "two Bite attacks" pattern is data; the planner already threads state between swings (slice 392) so a prone-on-first-bite would apply to the second swing's resolution.
+- *Names*: `MonsterMultiattack` mirrors `MultiattackPattern` (the runtime type, slice 13). `weaponId` vs `weaponInstanceId` distinguishes content (definition) from runtime (instance), matching the rest of the codebase's definition/instance vocabulary.
+- *DRY*: helper is 15 lines, single caller-shape, but lives on the derive seam because it's a pure transformation from content → runtime — same seam as `computeAC`, `computeSpellSaveDC`, etc. Consumers who want bespoke shapes (mixed weapons across instances, custom names) still build the runtime pattern by hand.
+- *SRP*: the content schema declares; the helper transforms; the planner consumes. Three concerns, three files.
+- *Magic numbers*: none introduced. Count is content-driven.
+- *at-threading*: not applicable (no events emitted by the helper).
+- *Mechanical outcomes asserted*: presence on the loaded pack; helper output shape; helper error message; end-to-end attack count.
+
+**Open follow-ups:**
+- **Brown Bear Multiattack** (one Bite + two Claws): blocked on the Brown Bear Bite natural weapon not yet existing in the pack (only Brown Bear Claw was wired in slice 454). One-line content add for the Bite + multiattack declaration. *Still open.*
+- **Bulette / Bandit / Centaur / etc. Multiattacks**: the same content-declaration pattern applies wholesale to every CR ≥ 1 monster with a Multiattack action. Each is a small content slice now that the schema field exists. *Still open.*
+- **Dragon-style "X Rend attacks OR Spellcasting" Multiattacks** (SRD 5.2.1, e.g. Adult Black Dragon): the RAW has "It can replace one attack with a use of Spellcasting." The schema's per-entry `weaponId + count` doesn't model "swap one attack for a cast." A future extension (`alternates: [{ replaces: weaponId, with: spellId }]` per swing) could capture it. *Still open.*
+
 **Engine + content (slice 463): Cleric Channel Divinity - Turn Undead (L2 caster playability)**
 
 The iconic Cleric action. RAW (SRD 5.2.1 Cleric L2): "As a Magic action, you present your Holy Symbol and censure Undead creatures. Each Undead of your choice within 30 feet of you must make a Wisdom saving throw. If the creature fails its save, it has the Frightened and Incapacitated conditions for 1 minute. ... This effect ends early on the creature if it takes any damage, if you have the Incapacitated condition, or if you die."

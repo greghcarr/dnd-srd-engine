@@ -3509,7 +3509,8 @@
       "cr": 1,
       "xp": 200,
       "proficiencyBonus": 2,
-      "languages": ["common"]
+      "languages": ["common"],
+      "multiattack": { "name": "Ghoul Multiattack", "attacks": [{ "weaponId": "ghoul-bite", "count": 2 }] }
     },
     {
       "id": "giant-rat",
