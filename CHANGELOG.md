@@ -4,6 +4,41 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 466): backgrounds auto-project their Origin Feat + Sage RAW correction**
+
+Pre-slice, every 2024 background ([Soldier](src/content/packs/starter-pack.json), Sage, Criminal, Acolyte) shipped with the correct skill / tool / language / origin-feat fields, but the engine only projected the **first three** through the effect stack. The Origin Feat (Soldier → Savage Attacker, Sage → Magic Initiate (Wizard), etc.) was descriptive metadata: a consumer who built a Soldier and forgot to also list `'savage-attacker'` in `featsTaken` got a feat-less Soldier. This slice closes that gap and adds a public helper so consumers can introspect the effective feat set.
+
+**New behavior**: `collectFeatEffects` ([src/derive/effect-stack.ts](src/derive/effect-stack.ts)) walks `featsTaken ∪ background.originFeatId`, deduped. A consumer who explicitly lists the origin feat doesn't get it twice. A consumer who omits it still gets it.
+
+**New public export** `getEffectiveFeatIds(character, content)` ([src/derive/effect-stack.ts](src/derive/effect-stack.ts)) returns the union as an array, in featsTaken-order with the origin feat appended if absent. Useful for character-sheet UIs surfacing "your active feats" without needing to recompute the union by hand.
+
+**No test churn from auto-projection**: the four SRD origin feats (savage-attacker, alert, magic-initiate-cleric, magic-initiate-wizard) all still ship `effects: []` today, so projecting them is a no-op for the rendered effect stack across the 2400+ existing tests. The plumbing lights up the moment those feats are individually wired in future slices — every existing Soldier / Sage / Criminal / Acolyte character starts receiving the right RAW behavior automatically.
+
+**Sage RAW correction**: Sage's `abilityScoreIncreases.options` was `INT / WIS / CHA` in the pack; SRD 5.2.1 ("**Ability Scores:** Constitution, Intelligence, Wisdom") says `CON / INT / WIS`. Fixed. The slice-466 audit extension would have caught this from the SRD ground truth at any prior point — it's now wired in CI so the deviation can't recur.
+
+**Audit extension** at [tests/audit/srd-background-skill-conformance.test.ts](tests/audit/srd-background-skill-conformance.test.ts): the existing slice-425 audit parsed "**Skill Proficiencies:** X and Y" from `character-origins.md` and asserted pack conformance. Slice 466 extends it to also parse "**Ability Scores:** X, Y, Z" and "**Feat:** Name (Qualifier)" lines and assert the pack matches. The "(see "Feats")" cross-reference at the end of SRD feat lines is filtered out (the parser only treats parentheticals like "(Cleric)" or "(Wizard)" as feat-name qualifiers). Each of the four SRD backgrounds now contributes three asserted axes: skills (existing), ability options (new), origin feat (new). Fires on any future RAW drift from any of the three.
+
+**Tests** at [tests/unit/engine/slice-466-background-origin-feat.test.ts](tests/unit/engine/slice-466-background-origin-feat.test.ts) — 7 cases: Soldier with empty `featsTaken` yields `['savage-attacker']`; consumer-explicit listing doesn't double-project; a non-origin feat coexists with the origin (union, not replace); all four SRD backgrounds carry their RAW Origin Feat through the helper; integration test with an inline pack whose origin feat carries a sentinel `GrantProficiency`, proving the auto-projection actually reaches the effect stack; Sage's ability-score options match SRD.
+
+**Test cleanup** in [tests/unit/engine/slice-465-goliath-species.test.ts](tests/unit/engine/slice-465-goliath-species.test.ts): the slice-465 test predicates used overly-loose `unknown` types on the type-guard return signatures, which `tsc --noEmit` flags. Replaced the type predicates with direct `kind`-based narrowing (`grant && grant.kind === 'GrantResource'`). No behavior change.
+
+**Contract snapshot updated** intentionally for the new public export `getEffectiveFeatIds`.
+
+**Audit (engine + content slice):**
+- *RAW match*: SRD 5.2.1 ability-score options for all four backgrounds verified via the new audit lines. Sage corrected. Each Origin Feat name also verified.
+- *Names*: `getEffectiveFeatIds` mirrors `getEffectiveSpeed` / `getEffectiveSpeeds` (the existing derive-layer "effective" helpers).
+- *DRY*: union shape is computed once via the new helper; `collectFeatEffects` (and any future consumer) calls it. No duplication of the set-union logic.
+- *SRP*: helper computes the set; collectFeatEffects walks the set into effects; the audit verifies the source data matches RAW.
+- *Magic numbers*: none. All ids are content-driven.
+- *at-threading*: not applicable (no events emitted).
+- *Mechanical outcomes asserted*: helper returns correct union for the empty / already-listed / mixed cases; all four backgrounds pin to their RAW Origin Feat; integration shows the auto-projection reaches the stack; Sage matches RAW post-fix.
+
+**Open follow-ups:**
+- **Wire Savage Attacker** (RAW: "When you roll damage for a Weapon attack, you can roll the weapon's damage dice twice and use either roll. You can use this feature a number of times equal to your Proficiency Bonus..."): needs a damage-reroll planner + a per-attack consumer fact. The auto-projection plumbing will deliver it to every Soldier the moment the feat is wired. *Still open.*
+- **Wire Alert** (RAW: "+ PB to initiative; you swap initiative results with a willing creature when both you and they have rolled"): needs an initiative-bonus arm (likely already supported by ModifyInitiative) plus the swap arm (new mechanic). *Still open.*
+- **Wire Magic Initiate (Cleric / Wizard)**: needs the choose-a-cantrip-plus-a-L1-spell + once-per-long-rest free-cast mechanic. Sibling of Tiefling Fiendish Legacy spell grants. *Still open.*
+- **Background equipment packages** (RAW: each background offers "Choose A or B" equipment): not modeled today — equipment is consumer-chosen at character build. A `BackgroundEquipmentOption` schema field could enumerate the packages for discoverability without auto-applying. *Still open.*
+
 **Engine + content (slice 465): Goliath species - L1 playability arc closes the last empty species**
 
 Pre-slice, Goliath was the only playable L1 species shipping with `traits: []`. RAW (SRD 5.2.1 Goliath): Medium, 35 ft speed, Humanoid + four traits — Giant Ancestry (6-option choice), Large Form (level-5+), Powerful Build (grapple-escape Advantage + carrying-capacity-as-Large), creature-type. This slice lands the engine-modelable arms for L1 + ships the rest as discoverable deferred markers, on the same content-shape conventions as the slices 444-461 species arc.

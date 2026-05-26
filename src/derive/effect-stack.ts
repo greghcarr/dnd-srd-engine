@@ -72,9 +72,25 @@ const collectClassEffects = (character: Character, content: ResolvedContent): Ef
   return effects;
 };
 
+// Slice 466: the set of feat ids that effectively apply to a character.
+// 2024 RAW gives every background an Origin Feat (Soldier -> Savage
+// Attacker, Sage -> Magic Initiate (Wizard), etc.); pre-slice the feat
+// only projected if the consumer hand-added it to `featsTaken`. The set
+// is now `featsTaken` UNION the background's `originFeatId`, deduped so
+// a consumer who explicitly lists the origin feat doesn't double-project.
+export const getEffectiveFeatIds = (
+  character: Character,
+  content: ResolvedContent,
+): ReadonlyArray<string> => {
+  const ids = new Set<string>(character.featsTaken);
+  const background = content.backgrounds.get(character.backgroundId);
+  if (background !== undefined) ids.add(background.originFeatId);
+  return [...ids];
+};
+
 const collectFeatEffects = (character: Character, content: ResolvedContent): Effect[] => {
   const effects: Effect[] = [];
-  for (const featId of character.featsTaken) {
+  for (const featId of getEffectiveFeatIds(character, content)) {
     const feat = content.feats.get(featId);
     if (feat) effects.push(...feat.effects);
   }

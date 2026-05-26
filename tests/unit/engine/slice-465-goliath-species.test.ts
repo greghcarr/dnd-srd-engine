@@ -187,22 +187,23 @@ describe('Goliath species (slice 465)', () => {
   it('Giant Ancestry: species declares GrantResource giant-ancestry PB-uses / long rest', () => {
     const goliath = PACK.species.find((s) => s.id === 'goliath')!;
     const grant = goliath.traits.find(
-      (t): t is { kind: 'GrantResource'; resourceId: string; max: unknown; recharge: string } =>
-        t.kind === 'GrantResource' && (t as { resourceId?: string }).resourceId === 'giant-ancestry',
+      (t) => t.kind === 'GrantResource' && t.resourceId === 'giant-ancestry',
     );
     expect(grant).toBeDefined();
-    expect(grant!.recharge).toBe('longRest');
-    expect(grant!.max).toEqual({ kind: 'profBonus' });
+    expect(grant && grant.kind === 'GrantResource' ? grant.recharge : undefined).toBe('longRest');
+    expect(grant && grant.kind === 'GrantResource' ? grant.max : undefined).toEqual({ kind: 'profBonus' });
   });
 
   it('Giant Ancestry: species declares an OfferChoice over the 6 RAW ancestries', () => {
     const goliath = PACK.species.find((s) => s.id === 'goliath')!;
     const choice = goliath.traits.find(
-      (t): t is { kind: 'OfferChoice'; choiceId: string; options: ReadonlyArray<{ id: string }> } =>
-        t.kind === 'OfferChoice' && (t as { choiceId?: string }).choiceId === 'goliath-giant-ancestry',
+      (t) => t.kind === 'OfferChoice' && t.choiceId === 'goliath-giant-ancestry',
     );
     expect(choice).toBeDefined();
-    expect(choice!.options.map((o) => o.id).sort()).toEqual(
+    const optionIds = choice && choice.kind === 'OfferChoice'
+      ? choice.options.map((o) => o.id).sort()
+      : [];
+    expect(optionIds).toEqual(
       ['clouds-jaunt', 'fires-burn', 'frosts-chill', 'hills-tumble', 'stones-endurance', 'storms-thunder'].sort(),
     );
   });

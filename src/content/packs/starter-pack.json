@@ -79,7 +79,7 @@
   ],
   "backgrounds": [
     { "id": "soldier", "name": "Soldier", "abilityScoreIncreases": { "options": ["STR", "DEX", "CON"], "pattern": "+2/+1" }, "skillProficiencies": ["athletics", "intimidation"], "toolProficiencies": ["gaming"], "languages": [], "originFeatId": "savage-attacker", "traits": [] },
-    { "id": "sage", "name": "Sage", "abilityScoreIncreases": { "options": ["INT", "WIS", "CHA"], "pattern": "+2/+1" }, "skillProficiencies": ["arcana", "history"], "toolProficiencies": ["calligraphers-supplies"], "languages": [], "originFeatId": "magic-initiate-wizard", "traits": [] },
+    { "id": "sage", "name": "Sage", "abilityScoreIncreases": { "options": ["CON", "INT", "WIS"], "pattern": "+2/+1" }, "skillProficiencies": ["arcana", "history"], "toolProficiencies": ["calligraphers-supplies"], "languages": [], "originFeatId": "magic-initiate-wizard", "traits": [] },
     { "id": "criminal", "name": "Criminal", "abilityScoreIncreases": { "options": ["DEX", "CON", "INT"], "pattern": "+2/+1" }, "skillProficiencies": ["sleight-of-hand", "stealth"], "toolProficiencies": ["thieves-tools"], "languages": [], "originFeatId": "alert", "traits": [] },
     { "id": "acolyte", "name": "Acolyte", "abilityScoreIncreases": { "options": ["INT", "WIS", "CHA"], "pattern": "+2/+1" }, "skillProficiencies": ["insight", "religion"], "toolProficiencies": ["calligraphers-supplies"], "languages": [], "originFeatId": "magic-initiate-cleric", "traits": [] }
   ],

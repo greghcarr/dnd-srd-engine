@@ -96,4 +96,81 @@ describe.runIf(SRD_AVAILABLE)('SRD background skill conformance (ground-truth, p
       }
     });
   }
+
+  // Slice 466: extend the SRD ground-truth audit to also catch drift in
+  // the two other content fields a 2024 background declares: its three
+  // ability-score options (RAW: "**Ability Scores:** X, Y, Z") and its
+  // Origin Feat ("**Feat:** Magic Initiate (Cleric)"). Caught the
+  // shipped Sage CHA-vs-CON deviation when this audit was first added.
+  const ABILITY_NAME_TO_ID: Readonly<Record<string, string>> = {
+    strength: 'STR',
+    dexterity: 'DEX',
+    constitution: 'CON',
+    intelligence: 'INT',
+    wisdom: 'WIS',
+    charisma: 'CHA',
+  };
+
+  const parseBackgroundExtras = (
+    sourceMd: string,
+    isBackground: (id: string) => boolean,
+  ): ReadonlyArray<{
+    backgroundId: string;
+    abilityOptions: ReadonlyArray<string>;
+    featName: string;
+  }> => {
+    const out: { backgroundId: string; abilityOptions: string[]; featName: string }[] = [];
+    for (const section of sourceMd.split(/^#### /m)) {
+      const name = /^([A-Za-z][\w' ]*)\n/.exec(section)?.[1]?.trim();
+      if (name === undefined) continue;
+      const backgroundId = name.toLowerCase();
+      if (!isBackground(backgroundId)) continue;
+      const abilityLine = /\*\*Ability Scores:\*\*\s*([^\n]+)/.exec(section);
+      const featLine = /\*\*Feat:\*\*\s*([^\n(]+)(?:\s*\(([^)]+)\))?/.exec(section);
+      if (abilityLine === null || featLine === null) continue;
+      const abilityOptions = abilityLine[1]!
+        .split(/[,\s]+(?:and\s+)?/)
+        .map((w) => w.trim().toLowerCase())
+        .filter((w) => w.length > 0)
+        .map((w) => ABILITY_NAME_TO_ID[w])
+        .filter((a): a is string => a !== undefined);
+      const featBaseName = featLine[1]!.trim();
+      // SRD writes feats two ways: bare ("Savage Attacker (see "Feats")")
+      // or qualified ("Magic Initiate (Cleric) (see "Feats")"). The
+      // first parenthetical is the qualifier IFF it isn't the trailing
+      // cross-reference "(see "Feats")" — skip that to leave bare
+      // feats unqualified.
+      const featQualifierRaw = featLine[2]?.trim();
+      const featQualifier =
+        featQualifierRaw !== undefined && !/^see\b/i.test(featQualifierRaw)
+          ? featQualifierRaw
+          : undefined;
+      // "Magic Initiate (Cleric)" -> "magic-initiate-cleric"
+      const featName = (featQualifier !== undefined
+        ? `${featBaseName} ${featQualifier}`
+        : featBaseName
+      )
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      out.push({ backgroundId, abilityOptions, featName });
+    }
+    return out;
+  };
+
+  const extras = parseBackgroundExtras(md, (id) => content.backgrounds.has(id));
+
+  for (const { backgroundId, abilityOptions, featName } of extras) {
+    it(`${backgroundId}: ability-score options match SRD (${abilityOptions.join(', ')})`, () => {
+      const background = content.backgrounds.get(backgroundId)!;
+      expect([...background.abilityScoreIncreases.options].sort()).toEqual(
+        [...abilityOptions].sort(),
+      );
+    });
+
+    it(`${backgroundId}: origin feat matches SRD (${featName})`, () => {
+      const background = content.backgrounds.get(backgroundId)!;
+      expect(background.originFeatId).toBe(featName);
+    });
+  }
 });

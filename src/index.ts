@@ -371,6 +371,7 @@ export {
   hasLineOfSight,
   hasLineOfEffect,
   runtimeMultiattackFromStatblock,
+  getEffectiveFeatIds,
 } from './derive/index.js';
 export type {
   ACResult,
