@@ -6,7 +6,28 @@
   "attribution": "Portions of this content pack are derived from the Dungeons & Dragons System Reference Document 5.2, copyright Wizards of the Coast LLC, used under the Creative Commons Attribution 4.0 International License (CC BY 4.0). The mechanical encodings are this package's own implementation. See docs/content-attribution.md for an item-by-item audit.",
   "derivedFrom": "D&D SRD 5.2 (CC BY 4.0)",
   "species": [
-    { "id": "human", "name": "Human", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common"], "traits": [] },
+    { "id": "human", "name": "Human", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common"], "traits": [
+      { "kind": "OfferChoice", "choiceId": "human-skillful", "prompt": "Choose a skill to gain proficiency in (Human Skillful).", "oneOf": 1, "when": "onAcquire", "options": [
+        { "id": "acrobatics", "label": "Acrobatics", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "acrobatics", "level": "proficient" }] },
+        { "id": "animal-handling", "label": "Animal Handling", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "animal-handling", "level": "proficient" }] },
+        { "id": "arcana", "label": "Arcana", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "arcana", "level": "proficient" }] },
+        { "id": "athletics", "label": "Athletics", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "athletics", "level": "proficient" }] },
+        { "id": "deception", "label": "Deception", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "deception", "level": "proficient" }] },
+        { "id": "history", "label": "History", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "history", "level": "proficient" }] },
+        { "id": "insight", "label": "Insight", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "insight", "level": "proficient" }] },
+        { "id": "intimidation", "label": "Intimidation", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "intimidation", "level": "proficient" }] },
+        { "id": "investigation", "label": "Investigation", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "investigation", "level": "proficient" }] },
+        { "id": "medicine", "label": "Medicine", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "medicine", "level": "proficient" }] },
+        { "id": "nature", "label": "Nature", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "nature", "level": "proficient" }] },
+        { "id": "perception", "label": "Perception", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "perception", "level": "proficient" }] },
+        { "id": "performance", "label": "Performance", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "performance", "level": "proficient" }] },
+        { "id": "persuasion", "label": "Persuasion", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "persuasion", "level": "proficient" }] },
+        { "id": "religion", "label": "Religion", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "religion", "level": "proficient" }] },
+        { "id": "sleight-of-hand", "label": "Sleight of Hand", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "sleight-of-hand", "level": "proficient" }] },
+        { "id": "stealth", "label": "Stealth", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "stealth", "level": "proficient" }] },
+        { "id": "survival", "label": "Survival", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "survival", "level": "proficient" }] }
+      ] }
+    ] },
     { "id": "elf", "name": "Elf", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "elvish"], "traits": [
       { "kind": "GrantSense", "sense": "darkvision", "range": 60 },
       { "kind": "SetAdvantage", "on": { "kind": "save" }, "mode": "advantage", "condition": { "kind": "eq", "path": "event.savePreventsCondition", "value": "charmed" } },

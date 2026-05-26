@@ -4,6 +4,21 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 461): Human Skillful species trait - L1 playability arc**
+
+Wires the simplest of the Human species's three traits. RAW (SRD 5.2.1 Human): "Skillful. You gain proficiency in one skill of your choice." Modeled as `OfferChoice oneOf:1 when:'onAcquire'` over the 18 skills (each option grants the matching `GrantProficiency target:'skill' level:'proficient'`), mirroring slice-447's Elf Keen Senses pattern. Pure content slice; no engine work.
+
+**Test** at [tests/unit/engine/slice-461-human-skillful.test.ts](tests/unit/engine/slice-461-human-skillful.test.ts) — 3 cases: a Human who picks Perception gets it on the effect stack; another who picks Stealth gets Stealth (not Perception); a Human without a resolved choice has neither.
+
+**Audit (content slice):**
+- *RAW match*: SRD 5.2.1 Human Skillful exactly. All 18 skills offered.
+- *Names*: `choiceId: 'human-skillful'` matches the trait name. Option ids match the canonical skill ids (Wizard Scholar / Rogue Expertise / Elf Keen Senses conventions).
+- *DRY*: 18-option OfferChoice is verbose but mirrors slice-55 Wizard Scholar + slice-60 Rogue Expertise patterns. Declined to introduce a content-side "AllSkillsChoice" template — only 2 callers now (Skillful + Skilled feat), still inline-readable.
+
+**Open follow-ups:**
+- **Human Resourceful**: "You gain Heroic Inspiration whenever you finish a Long Rest." Engine doesn't carry Heroic Inspiration as a tracked resource; closing this needs a new resource shape + a reroll mechanic that consumes it. *Still open.*
+- **Human Versatile**: "You gain an Origin feat of your choice." Needs a "grant feat from choice" resolution path — feats are typically chosen at character creation and recorded in `featsTaken`, not granted via OfferChoice option effects. A `Custom { handlerId: 'versatile-origin-feat' }` marker would close the discoverability gap but defer the structural work. *Still open.*
+
 **Docs (slice 460): archive slices 451-459 (L1 playability arc, part 2) to free CHANGELOG headroom**
 
 Pure CHANGELOG-archive operation. The live CHANGELOG had reached ~53 KB / 60 KB ceiling after slices 451-459. Moved that nine-slice cohort to a new sibling archive file at [docs/changelog/archive-slices-451-459.md](docs/changelog/archive-slices-451-459.md), continuing from [docs/changelog/archive-slices-444-450.md](docs/changelog/archive-slices-444-450.md) (L1 arc part 1). Live CHANGELOG drops from ~53 KB to ~19 KB; archive holds the full per-slice detail with sibling-rooted links (`../../src/...`, `archive-slices-444-450.md`). Index in [docs/changelog/README.md](docs/changelog/README.md) updated. The split-treadmill stays at bay: the active CHANGELOG holds the alpha.14 cycle + the 1-slice docs entry (443) + this archive note; future slices accumulate against a near-empty live file.
