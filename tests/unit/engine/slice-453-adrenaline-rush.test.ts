@@ -30,8 +30,12 @@ import type { TempHPGrantedEvent } from '../../../src/schemas/events/combat.js';
 
 const PACK = loadStarterPack();
 
-const buildOrc = (level: number): Character =>
-  CharacterSchema.parse({
+const buildOrc = (level: number, adrenalineRemaining?: number): Character => {
+  // PB for fighter level 1-4 is 2; 5-8 is 3. Default the resource to
+  // a "full pool" (= PB) so tests that don't care about depletion
+  // start with what slice 459's GrantResource would refund on rest.
+  const pb = level >= 5 ? 3 : 2;
+  return CharacterSchema.parse({
     id: newCharacterId(),
     name: 'Grug',
     speciesId: 'orc',
@@ -39,7 +43,12 @@ const buildOrc = (level: number): Character =>
     classes: [{ classId: 'fighter', level, hitDiceRemaining: level }],
     abilityScores: { STR: 16, DEX: 12, CON: 14, INT: 10, WIS: 10, CHA: 8 },
     hp: { current: 12, max: 12, temp: 0 },
+    resources: [
+      { resourceId: 'adrenaline-rush', current: adrenalineRemaining ?? pb, max: pb },
+      { resourceId: 'relentless-endurance', current: 1, max: 1 },
+    ],
   });
+};
 
 const buildHuman = (): Character =>
   CharacterSchema.parse({
@@ -69,18 +78,19 @@ const startEncounter = (engine: ReturnType<typeof createEngine>, characters: Cha
   return campaign;
 };
 
-describe('Orc Adrenaline Rush (slice 453)', () => {
-  it('Orc L1 uses Adrenaline Rush: emits bonus-action, Dashed, TempHP = PB 2', () => {
+describe('Orc Adrenaline Rush (slice 453 + slice 459 PB-uses correction)', () => {
+  it('Orc L1 uses Adrenaline Rush: emits bonus-action, ResourceSpent, Dashed, TempHP = PB 2', () => {
     const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(1) });
     const orc = buildOrc(1);
     const campaign = startEncounter(engine, [orc]);
     const events = engine.plan.adrenalineRush(campaign.state, { orcId: orc.id }).events;
-    expect(events.length).toBe(3);
+    expect(events.length).toBe(4);
     expect(events[0]!.type).toBe('ActionEconomyConsumed');
-    expect(events[1]!.type).toBe('Dashed');
-    expect(events[2]!.type).toBe('TempHPGranted');
-    expect((events[2] as TempHPGrantedEvent).amount).toBe(2);
-    expect((events[2] as TempHPGrantedEvent).targetId).toBe(orc.id);
+    expect(events[1]!.type).toBe('ResourceSpent');
+    expect(events[2]!.type).toBe('Dashed');
+    expect(events[3]!.type).toBe('TempHPGranted');
+    expect((events[3] as TempHPGrantedEvent).amount).toBe(2);
+    expect((events[3] as TempHPGrantedEvent).targetId).toBe(orc.id);
   });
 
   it('Orc L5 (PB 3) gains 3 Temporary HP', () => {
@@ -90,6 +100,14 @@ describe('Orc Adrenaline Rush (slice 453)', () => {
     const events = engine.plan.adrenalineRush(campaign.state, { orcId: orc.id }).events;
     const tempHP = events.find((e) => e.type === 'TempHPGranted') as TempHPGrantedEvent | undefined;
     expect(tempHP?.amount).toBe(3);
+  });
+
+  it('Orc with depleted adrenaline-rush resource: rejected', () => {
+    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(7) });
+    const orc = buildOrc(1, 0); // resource current = 0
+    const campaign = startEncounter(engine, [orc]);
+    expect(() => engine.plan.adrenalineRush(campaign.state, { orcId: orc.id }))
+      .toThrow(/no Adrenaline Rush uses remaining/);
   });
 
   it('non-Orc is rejected', () => {

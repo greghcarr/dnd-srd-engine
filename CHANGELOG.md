@@ -4,6 +4,27 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Fix (slice 459): Orc Adrenaline Rush PB-uses-per-rest correction - L1 playability arc**
+
+Closes the slice-458 regression follow-up: slice 453 shipped Adrenaline Rush as at-will, but RAW (SRD 5.2.1 Orc, character-origins.md L317-319) actually says: "You can use this trait a number of times equal to your Proficiency Bonus, and you regain all expended uses when you finish a Short or Long Rest." Resource-gated, not at-will.
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)): orc species traits gain `GrantResource { resourceId: 'adrenaline-rush', max: { kind: 'profBonus' }, recharge: 'shortRest' }`. The pool refunds on short or long rest via the existing rest reducer.
+
+**Planner** ([src/engine/plan/adrenaline-rush.ts](src/engine/plan/adrenaline-rush.ts)): added a gate after the species check that requires `current >= 1` of the `adrenaline-rush` resource, and a `ResourceSpent { amount: 1 }` event emitted between `ActionEconomyConsumed` and `Dashed`. Event chain is now 4 events instead of 3.
+
+**Test updates** in [tests/unit/engine/slice-453-adrenaline-rush.test.ts](tests/unit/engine/slice-453-adrenaline-rush.test.ts): updated `buildOrc` helper to seed both `adrenaline-rush` (PB max, defaults to full pool) and `relentless-endurance` resources (the latter to keep slice-458's intercept tests happy if exercised). Updated the L1 success case to assert 4-event chain. Added a depletion case (orc with 0 `adrenaline-rush` resource is rejected with the no-uses-remaining error).
+
+**Audit (fix slice):**
+- *RAW match*: SRD 5.2.1 Orc Adrenaline Rush exactly. PB-uses per Short or Long Rest. `max: { kind: 'profBonus' }` resolves correctly because the engine's `profBonus` formula reads `computeTotalLevel`.
+- *Names*: `ADRENALINE_RUSH_RESOURCE = 'adrenaline-rush'` constant matches the species trait's resourceId; both match the feature id used throughout.
+- *DRY*: the planner pattern (resource gate -> emit ResourceSpent in the event chain) matches Step of the Wind's focus-spend arm + Patient Defense's focus-spend arm. Same shape.
+- *Mechanical outcomes asserted*: 4-event chain confirmed; PB scaling at L1 (PB 2) and L5 (PB 3) unchanged; depletion rejected; non-orc rejected; bonus-action-already-used rejected; consecutive call still rejected (now via the bonus-action gate, which fires before the resource gate in the planner's order).
+
+**Open follow-ups:**
+- "Killed outright" massive-damage exception (carried from slice 458). *Still open.*
+
+~~Open follow-up from slice 458: **Slice-453 Adrenaline Rush regression**: I implemented at-will, but RAW says PB uses per short/long rest. Needs GrantResource max: formula(PB) recharge: 'shortRest' + SpendResource in planAdrenalineRush.~~ **Closed by slice 459.**
+
 **Engine + content (slice 458): Orc Relentless Endurance species trait - L1 playability arc**
 
 The 2024 Orc species's signature drop-to-1-instead-of-0 mechanic. RAW (SRD 5.2.1 Orc): "Relentless Endurance. When you are reduced to 0 Hit Points but not killed outright, you can drop to 1 Hit Point instead. Once you use this trait, you can't do so again until you finish a Long Rest." Unconditional (no save), resource-gated 1/Long Rest — a different shape than slice-456's save-gated `PreventFatalDamageOnSave`.
