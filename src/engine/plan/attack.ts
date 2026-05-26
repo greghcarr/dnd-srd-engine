@@ -665,6 +665,12 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   // true and the Frightened disadvantage fires). Consumers that
   // model line of sight pass `false` to bypass when the source is
   // out of sight.
+  // Slice 483: `bearer.bloodied` is derived engine-side (HP <= floor(max/2),
+  // 2024 RAW). Unlike `bearer.lightLevel` / `bearer.canSeeFearSource` (scene
+  // facts the engine can't observe), bloodied state lives entirely in
+  // character HP that the engine already owns, so no consumer wiring is
+  // needed. Boar Bloodied Fury reads this fact.
+  const attackerBloodied = attacker.hp.current <= Math.floor(attacker.hp.max / 2);
   const attackerSelfAdvantageFacts = new Map<string, unknown>([
     ['target.canLocateInvisible', targetCanLocateInvisible],
     ['bearer.canSeeFearSource', input.bearerCanSeeFearSource],
@@ -678,6 +684,7 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     // both its check-disadvantage and its attack-disadvantage on the
     // same fact name so a consumer populates it once per intent.
     ['bearer.lightLevel', input.lightLevel],
+    ['bearer.bloodied', attackerBloodied],
   ]);
   const attackerSelfAdvantage = attackerEffects.advantageFor('attack', attackerSelfAdvantageFacts);
   // Build a small facts map for type-conditional ImposeDisadvantage

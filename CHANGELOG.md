@@ -4,6 +4,29 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 483): Boar Bloodied Fury + `bearer.bloodied` predicate fact**
+
+Smallest engine slice from the slice-477 deferred list (the Boar's Bloodied Fury trait was tracked there as needing a new predicate fact). Adds the fact and the canonical content user.
+
+RAW (SRD 5.2.1 Boar): "Bloodied Fury. While Bloodied, the boar has Advantage on attack rolls." 2024 Bloodied semantics: HP at or below half the creature's HP maximum.
+
+**Engine** ([src/engine/plan/attack.ts](src/engine/plan/attack.ts)): adds `['bearer.bloodied', attacker.hp.current <= Math.floor(attacker.hp.max / 2)]` to the `attackerSelfAdvantageFacts` map. Unlike `bearer.lightLevel` (slice 451) and `bearer.canSeeFearSource` (slice 276) - scene facts the engine can't observe and that route through consumer input - bloodied is **derived engine-side** from character HP that the engine already owns. No consumer wiring is needed. The fact name follows the existing `bearer.*` naming convention so future "while bloodied" features (CR-1+ bestiary has several) gate on one canonical fact name.
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)): Boar statblock gains one trait: `SetAdvantage on:'attack' mode:'advantage' condition: eq path:'bearer.bloodied' value:true`. Same shape as the existing `bearer.lightLevel`-gated SetAdvantage entries on the Kobold Warrior / Drow / Duergar / Goblin Boss family (slice 451/452 sunlight sensitivity).
+
+**Tests** at [tests/unit/engine/slice-483-boar-bloodied-fury.test.ts](tests/unit/engine/slice-483-boar-bloodied-fury.test.ts) - 6 cases: trait shape on the statblock; boundary semantics at full HP, just above half, exactly half on odd max (floor), 1 HP, exactly half on even max.
+
+**Audit:**
+- *RAW match*: the Bloodied threshold matches the 2024 PHB glossary entry (`HP <= floor(max / 2)`); the boundary tests pin both the equal-to-half case (advantage fires) and the just-above case (no advantage).
+- *Names*: `bearer.bloodied` mirrors the existing `bearer.lightLevel` / `bearer.canSeeFearSource` / `bearer.canSeeAttacker` / `bearer.hasIncapacitated` / `bearer.speedZero` family.
+- *DRY*: re-used the half-HP idiom (`Math.floor(target.hp.max / 2)`) already established in [src/engine/plan/preserve-life.ts](src/engine/plan/preserve-life.ts).
+- *SRP*: one fact added at one site; the SetAdvantage primitive already supports `bearer.*`-gated predicates.
+- *Magic numbers*: the `2` divisor cites the 2024 Bloodied definition inline.
+- *Mechanical outcomes asserted*: six boundary cases pin the predicate logic; trait shape pins the content wire.
+- *Tests*: would have failed before the engine change (the fact wouldn't be in the facts map) and before the content change (Boar had `traits: []`).
+
+**Pattern-check**: swept the bestiary + magic items for other RAW "while bloodied" mechanics that could now wire on the new fact. Boar is the only current pack user; the 2024 MM has several CR-2+ creatures with "Bloodied" triggers (e.g. Cyclops Wounded Fury, Tarrasque Frenzy, various dragons' Bloodied Breath recharge) that aren't in the starter pack yet but will all reuse this fact when authored. No regression risk: the fact is added to the attacker-side facts only, so existing predicates not referencing `bearer.bloodied` are unaffected.
+
 **Content (slice 482): Animated Armor + Death Dog Multiattacks**
 
 Seventh and eighth users of the slice-464 `MonsterMultiattack` content field. Both CR 1; both "two of same weapon" shapes.
@@ -98,7 +121,7 @@ The +3 damage / +5 attack (spider) and +2 damage / +4 attack (centipede) come fr
 
 **Deferred (need new primitives, listed for the next slices):**
 - **Giant Spider Web Walker**: needs an immunity to "Restrained from webs" specifically (distinct from Restrained from any source). A new gating predicate on movement-restriction sources. *Still open.*
-- **Boar Bloodied Fury** (Advantage on attacks while HP <= max/2): needs a `bearer.bloodied` predicate fact. *Still open.*
+- ~~**Boar Bloodied Fury** (Advantage on attacks while HP <= max/2): needs a `bearer.bloodied` predicate fact.~~ **Closed by slice 483.**
 - **Boar Gore movement-conditional rider** (extra damage + Prone if moved 20+ ft straight at the target): needs a movement-direction fact and a "moved straight N feet" tracker; bigger shape, deferred. *Still open.*
 - **Stirge Blood Drain attach** (attaches on hit, drains HP each turn while attached): needs a stateful attached-condition + periodic damage primitive; bigger. *Still open.*
 
