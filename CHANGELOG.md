@@ -4,6 +4,28 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 473): Cultist Ritual Sickle natural weapon (low-CR encounter sweep)**
+
+Second L1-encounter content slice in the low-CR sweep. RAW (SRD 5.2.1 Cultist, CR 1/8): "Ritual Sickle. Melee Attack Roll: +3, reach 5 ft. Hit: 3 (1d4 + 1) Slashing damage plus 1 Necrotic damage."
+
+New `ritual-sickle` item ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)): regular sickle base (1d4 slashing, `light`, Nick mastery) plus a slice-316 unconditional onHit flat-1 necrotic rider via the `0d6+1` flat-damage shape (the same shape Mace of Smiting / Sword of Life Stealing / Sprite Enchanting Bow use for fixed-amount riders). Distinct from the generic `sickle` so adventurer-wielded sickles don't inherit the necrotic rider. The +1 damage / +3 attack come from the wielder's DEX + PB, not the weapon.
+
+**Doc-count update**: weapons 61 -> 62 in [docs/getting-started.md](docs/getting-started.md) (items-by-kind line) and [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md) (Items row); 524 -> 525 total items in starter-pack-gaps.
+
+**Tests** at [tests/unit/engine/slice-473-ritual-sickle.test.ts](tests/unit/engine/slice-473-ritual-sickle.test.ts) - 3 cases: pack declares the right damage / properties / onHit rider; on a non-critical hit the DamageRolled carries slashing primary + exactly 1 necrotic; the generic `sickle` is unaffected (still has no onHit rider).
+
+**Audit (content slice):**
+- *RAW match*: SRD 5.2.1 Cultist Ritual Sickle exactly. The 1d4+1 slashing comes from sickle damage + wielder ability mod (DEX), the +3 attack comes from DEX + PB, the flat 1 necrotic is the rider.
+- *DRY*: reuses the slice-316 unconditional onHit rider shape (same as Ghoul Bite, slice 462) with the slice-324 `0d6+N` flat-damage convention. No new primitive.
+- *SRP*: weapon definition declares; existing attack planner consumes; rider fires on every hit.
+- *Mechanical outcomes asserted*: pack shape; on-hit emits both damage components; generic sickle untouched.
+
+**Closes the Cultist statblock's RAW gap** (only the Ritual Sickle was missing; the cultist's skills / WIS save proficiency / no-multiattack / no-trait shape were already correct in the pack).
+
+**Open follow-ups (from slice 472):**
+- **Spy poison weapons** (RAW: Shortsword + Hand Crossbow each deal +2d6 poison damage on hit): two new pack items (`spy-shortsword` + `spy-hand-crossbow`) following the same onHit-rider pattern. *Still open.*
+- **Spy Cunning Action** (RAW: takes Dash, Disengage, or Hide as a Bonus Action): needs the Rogue L2 Cunning Action mechanic to apply to non-Rogue creatures via a feature marker. *Still open.*
+
 **Content (slice 472): Scout Multiattack - second monster-Multiattack content user (opens the low-CR encounter sweep)**
 
 Slice 464 shipped the `MonsterMultiattack` content field with Ghoul (two Bites) as the canonical user. This slice opens the next-arc encounter sweep with the second user: Scout (CR 1/2). RAW (SRD 5.2.1 Scout): "Multiattack. The scout makes two attacks, using Shortsword and Longbow in any combination."
