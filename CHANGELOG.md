@@ -4,6 +4,28 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 485): Magic Initiate (Druid) - third variant wired**
+
+Closes the slice-469 open follow-up. Pure content: the `magic-initiate-druid` feat had been in the pack as an `effects: []` stub; this slice fills in the same OfferChoice + GrantSpell pattern slice 469 established for the Cleric and Wizard variants, scoped to the Druid spell list available in the starter pack.
+
+RAW (SRD 5.2.1 Magic Initiate, Druid list): two Druid cantrips of the player's choice (always-prepared) + one Druid level-1 spell (oncePerLongRest free cast plus castable via owned slots).
+
+Pack additions ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- `magic-initiate-druid-cantrips`: oneOf:2 OfferChoice across all 11 Druid cantrips currently in the pack (guidance, druidcraft, mending, message, poison-spray, produce-flame, resistance, shillelagh, spare-the-dying, starry-wisp, elementalism). Each option's effects: `GrantSpell preparation:'always-prepared' spellcastingAbility:'WIS'`.
+- `magic-initiate-druid-l1`: oneOf:1 OfferChoice across all 18 Druid L1 spells in the pack (detect-magic, cure-wounds, healing-word, thunderwave, faerie-fire, charm-person, animal-friendship, create-or-destroy-water, detect-poison-and-disease, entangle, fog-cloud, goodberry, jump, longstrider, protection-from-evil-and-good, purify-food-and-drink, speak-with-animals, ice-knife). Each option's effects: `GrantSpell preparation:'oncePerLongRest' spellcastingAbility:'WIS'`.
+
+The `spellcastingAbility` is hard-coded to WIS (the canonical Druid default per RAW); the player choice across INT/WIS/CHA stays deferred (same follow-up the Cleric / Wizard variants carry).
+
+**Tests** at [tests/unit/engine/slice-485-magic-initiate-druid.test.ts](tests/unit/engine/slice-485-magic-initiate-druid.test.ts) - 4 cases: feat ships two OfferChoice effects with correct oneOf counts; every cantrip option grants a real druid cantrip with `always-prepared` + WIS; every L1 option grants a real druid L1 spell with `oncePerLongRest` + WIS; a PC who picks Druidcraft + Guidance + Goodberry has all three granted to the effect stack.
+
+**Audit (content slice):**
+- *RAW match*: SRD 5.2.1 Magic Initiate. The Druid spell list matches the pack's wider Druid catalog. The `always-prepared` / `oncePerLongRest` preparation split matches the Cleric / Wizard variants exactly (and the RAW free-cast semantics).
+- *Names*: choiceIds follow the `magic-initiate-{class}-{cantrips|l1}` convention.
+- *DRY*: identical shape to the Cleric and Wizard variants from slice 469.
+- *Mechanical outcomes asserted*: every option's GrantSpell shape is verified against the real spell catalog; the integration test pins one canonical choice path end-to-end.
+
+**Pattern-check**: the three "Magic Initiate" variants now form a complete cohort (Cleric / Wizard / Druid). No background origin feat references Druid Magic Initiate yet (Acolyte -> Cleric, Sage -> Wizard, Criminal / Soldier -> other origin feats), so the feat is reachable only via repeatable-feat selection at level-up. That's RAW: the player can repeat Magic Initiate for a different list. The once-per-long-rest free-cast resource tracking (slice 469 open follow-up) is still consumer-managed across all three variants.
+
 **Engine + content (slice 484): Worg Bite + `consumeOnIncomingAttack` + onHit autoExpiry stamping**
 
 Closes the slice-477 deferred Worg row. Three coordinated additions: a new condition-schema field, an attack-resolver helper + call site, and an extension to the onHit `applyConditionId` rider so the condition's declarative `autoExpiry` actually fires.
@@ -350,7 +372,7 @@ RAW (SRD 5.2.1 Magic Initiate):
 - **Once-per-long-rest free-cast gate**: a per-feat resource the engine auto-tracks (granted via the GrantSpell `oncePerLongRest` preparation, consumed by a cast with `noSlotCost: true`) would close the consumer-responsibility gap for Magic Initiate's L1-spell free cast, Warlock Contact Patron, and any other future once-per-long-rest cast. Sibling primitive opportunity. *Still open.*
 - **Spell Change at level-up** (RAW: "Whenever you gain a new level, you can replace one of the spells you chose for this feat"): needs an OfferChoice mode that exposes a "replace one of your prior selections" semantic on level-up. The schema's `when: 'onLevelUp'` is there but the replace-prior-pick shape isn't expressed. *Still open.*
 - **spellcastingAbility player choice** (RAW: pick INT/WIS/CHA at feat acquisition): a third OfferChoice on each feat over the three abilities, with each option re-projecting the GrantSpell entries with that ability. Deferred for now; the canonical defaults match the linked backgrounds' ability options. *Still open.*
-- **Magic Initiate (Druid)**: not currently in the pack as a feat; would mirror the Cleric / Wizard wiring over the Druid list once that list is fully present. *Still open.*
+- ~~**Magic Initiate (Druid)**: not currently in the pack as a feat; would mirror the Cleric / Wizard wiring over the Druid list once that list is fully present.~~ **Closed by slice 485.**
 
 **Docs (slice 470): archive slices 460-468 (L1 background-mechanics arc) to free CHANGELOG headroom**
 

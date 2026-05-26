@@ -253,6 +253,7 @@ exports[`feature-coverage matrix: feats > wired feats catalog is stable 1`] = `
   "fighting-style:fighting-style-two-weapon",
   "origin:alert",
   "origin:magic-initiate-cleric",
+  "origin:magic-initiate-druid",
   "origin:magic-initiate-wizard",
 ]
 `;
