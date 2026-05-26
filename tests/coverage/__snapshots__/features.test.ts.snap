@@ -114,6 +114,7 @@ exports[`feature-coverage matrix: class features > wired class features catalog 
   "sorcerer L7 sorcery-incarnate",
   "warlock L9 contact-patron",
   "wizard L1 arcane-recovery",
+  "wizard L1 ritual-adept",
   "wizard L2 scholar",
 ]
 `;

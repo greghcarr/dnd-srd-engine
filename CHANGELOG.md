@@ -4,6 +4,26 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 457): Wizard Ritual Adept marker - L1 playability arc**
+
+Closes the slice-444 L1-audit Wizard Ritual Adept stub. RAW (SRD 5.2.1 Wizard L1): "You can cast any spell as a Ritual if that spell has the Ritual tag and the spell is in your spellbook. You needn't have the spell prepared." Engine already supports this by default — `characterKnowsSpell` in [src/engine/plan/cast-spell.ts](src/engine/plan/cast-spell.ts) accepts either `knownSpells` (the wizard's spellbook) or `preparedSpells`, so `asRitual: true` on a ritual-tagged spellbook entry passes the gate without preparation. Wizard's empty `effects: []` ritual-adept feature now ships a `Custom { handlerId: 'ritual-adept' }` marker for discoverability; the `BACKED_INDIRECTLY` allowlist in [tests/audit/pack-integrity.test.ts](tests/audit/pack-integrity.test.ts) documents where the mechanic lives.
+
+**Surprise RAW finding**: 2024 PHB / SRD 5.2.1 (rules-glossary.md, Ritual) states "If you have a spell prepared that has the Ritual tag, you can cast that spell as a Ritual." Ritual casting is NOT class-gated in 2024 — any caster with a prepared ritual-tagged spell can asRitual. Wizard Ritual Adept's unique contribution is extending the gate to *spellbook entries that aren't prepared*. The engine's permissive `characterKnowsSpell` (which treats knownSpells and preparedSpells equivalently) already permits this for wizards. The slice-453-style "discoverable Custom marker" closes the L1 audit stub cleanly without an engine change.
+
+**Test** at [tests/unit/engine/slice-457-ritual-adept.test.ts](tests/unit/engine/slice-457-ritual-adept.test.ts) — 3 cases: L1 wizard with `detect-magic` in `knownSpells` (NOT `preparedSpells`) successfully casts asRitual with no slot consumed; wizard who doesn't know the spell at all is rejected; the marker is discoverable on the L1 feature.
+
+**Audit (content slice):**
+- *RAW match*: SRD 5.2.1 Wizard L1 Ritual Adept exact text. Engine's spellbook-equals-knownSpells modeling matches the RAW gate.
+- *Names*: `ritual-adept` handlerId matches the feature id + the slice-453/455 marker convention.
+- *DRY*: declined a new `GrantRitualCasting` effect kind + caster-side gate refactor. Two reasons: (a) the engine's current permissive ritual-cast path is RAW-correct for everyone (any prepared ritual spell is castable as ritual per 2024 PHB); (b) gating on a feature flag would regress other classes that don't yet have a wired counterpart trait, opening a worse gap than it closes.
+- *Mechanical outcomes asserted*: spellbook-only ritual cast succeeds with no slot consumed; unknown-spell ritual cast rejected; marker present in pack.
+
+**Open follow-ups:**
+- **Wizard preparation-enforcement**: the engine's `characterKnowsSpell` accepts `knownSpells` for ANY cast (not just ritual), so a wizard can cast any spellbook spell directly without preparing — broader than RAW. Closing this gap requires (a) tightening characterKnowsSpell to require `preparedSpells` for non-ritual cast and (b) adding a `GrantRitualAdept` flag that re-permits spellbook ritual casts. Multi-touch refactor; defer. *Still open.*
+- **Sorcerer / Warlock / Paladin / Ranger ritual casts**: the engine permits these classes to ritual-cast prepared spells, which is RAW per the 2024 rules-glossary entry. Pre-existing behavior preserved.
+
+~~Open follow-up from slice 444's L1 audit: **wizard.ritual-adept**: needs a "treat this prepared spell as ritual" path.~~ **Closed by slice 457** (the engine already provides the mechanic; the marker now closes the stub).
+
 **Engine + content (slice 456): Zombie Undead Fortitude - L1 playability arc**
 
 The signature Zombie save-on-lethal-damage mechanic. RAW (SRD 5.2.1 Zombie): "Undead Fortitude. If damage reduces the zombie to 0 Hit Points, it makes a Constitution saving throw (DC 5 plus the damage taken) unless the damage is Radiant or from a Critical Hit. On a successful save, the zombie drops to 1 Hit Point instead." Zombies are the most-encountered Undead at L1 — a Cleric pulling Sacred Flame (radiant) on a Zombie should bypass the save; a fighter critical-hitting one should bypass; everything else triggers the CON save.
