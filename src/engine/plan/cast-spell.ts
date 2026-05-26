@@ -2,6 +2,7 @@ import type { CampaignState } from '../../schemas/runtime/campaign.js';
 import type { ResolvedContent } from '../../content/pack.js';
 import type { Event } from '../../schemas/events/index.js';
 import type {
+  FreeCastUsedEvent,
   PactSlotConsumedEvent,
   SpellCastDeclaredEvent,
   SpellSlotConsumedEvent,
@@ -110,6 +111,15 @@ export interface CastSpellIntent {
   // by magic items that let the bearer cast from a fixed catalog
   // regardless of class.
   readonly ignorePreparation?: boolean;
+  // Slice 486: opts this cast into the once-per-long-rest free-cast
+  // tracker. Validates that the spell is granted with `oncePerLongRest`
+  // preparation (Magic Initiate L1 spell, Warlock Contact Patron) AND
+  // hasn't already been used since the last long rest, then implies
+  // `noSlotCost: true` and emits a FreeCastUsed event so the reducer
+  // records the consumption. Without this flag, the same caster can
+  // still cast the spell normally via an owned slot (RAW: "You can
+  // also cast the spell using any spell slots you have").
+  readonly useFreeCast?: boolean;
   readonly at?: string;
 }
 
@@ -1347,7 +1357,33 @@ export const planCastSpell = (
     throw new Error(`Spell ${spell.id} cannot be cast as a ritual`);
   }
 
-  const noSlotCost = intent.noSlotCost === true;
+  // Slice 486: useFreeCast implies noSlotCost and gates on the bearer's
+  // GrantSpell oncePerLongRest grants + the usedFreeCastSpellIds tracker.
+  // Computed before the slot-availability gate so the validation errors
+  // surface even when the caster has no slots of the requested level.
+  const useFreeCast = intent.useFreeCast === true;
+  if (useFreeCast) {
+    const effects = buildEffectStack({
+      character,
+      content,
+      itemInstances: state.itemInstances,
+      pendingChoices: state.pendingChoices,
+    });
+    const freeCastGrant = effects
+      .grantedSpells()
+      .find((g) => g.spellId === intent.spellId && g.preparation === 'oncePerLongRest');
+    if (freeCastGrant === undefined) {
+      throw new Error(
+        `${character.name} cannot use a free cast for ${spell.name}: no oncePerLongRest grant for this spell`,
+      );
+    }
+    if (character.usedFreeCastSpellIds.includes(intent.spellId)) {
+      throw new Error(
+        `${character.name} has already used the free cast for ${spell.name} since the last long rest`,
+      );
+    }
+  }
+  const noSlotCost = intent.noSlotCost === true || useFreeCast;
   if (spell.level > CANTRIP_LEVEL && !castAsRitual && !noSlotCost) {
     const available = computeAvailableSpellSlots(character, content.classes);
     if (slotSource === 'pact') {
@@ -1465,6 +1501,20 @@ export const planCastSpell = (
       };
       events.push(consumed);
     }
+  }
+  // Slice 486: record the free-cast consumption when useFreeCast was set
+  // (validated above). The reducer appends spellId to the bearer's
+  // usedFreeCastSpellIds; long rest clears it.
+  if (useFreeCast) {
+    const freeCast: FreeCastUsedEvent = {
+      id: newEventId() as ULID,
+      at,
+      type: 'FreeCastUsed',
+      characterId: intent.characterId,
+      spellId: intent.spellId,
+      causedByEventId: declared.id,
+    };
+    events.push(freeCast);
   }
 
   const conditionsApplied: AppliedConditionRef[] = [];

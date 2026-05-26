@@ -222,6 +222,8 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       return `Slot consumed: ${ordinal(event.slotLevel)}-level.`;
     case 'PactSlotConsumed':
       return `Pact slot consumed.`;
+    case 'FreeCastUsed':
+      return `Free cast used: ${spellName(content, event.spellId)}.`;
     case 'ConcentrationStarted': {
       const caster = characterName(stateBefore, event.casterId);
       const spell = spellName(content, event.spellId);

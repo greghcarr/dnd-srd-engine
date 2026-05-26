@@ -4,6 +4,39 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 486): once-per-long-rest free-cast resource tracking**
+
+Closes the slice-469 open follow-up. Adds engine-enforced tracking of which `oncePerLongRest`-granted spells have used their free cast since the last long rest, so Magic Initiate's L1 spell, Warlock Contact Patron, and any future `oncePerLongRest` GrantSpell stop being consumer-managed.
+
+RAW (SRD 5.2.1 Magic Initiate): "You can cast it once without a spell slot, and you regain the ability to cast it in that way when you finish a Long Rest. You can also cast the spell using any spell slots you have."
+
+**Engine surface (additive, no breaking changes):**
+- New `useFreeCast?: boolean` flag on `CastSpellIntent` ([src/engine/plan/cast-spell.ts](src/engine/plan/cast-spell.ts)). When `true`, validates: (a) the spell has a `GrantSpell` entry with `preparation: 'oncePerLongRest'` in the bearer's effect stack; (b) the spell is not in `character.usedFreeCastSpellIds`. Throws an intent-revealing error on either failure. Implies `noSlotCost: true` and emits a `FreeCastUsed` event after `SpellCastDeclared`.
+- New `usedFreeCastSpellIds: string[]` field on the runtime `Character` schema ([src/schemas/runtime/character.ts](src/schemas/runtime/character.ts)). Defaults to `[]`; pre-slice-486 saves load clean.
+- New `FreeCastUsedEvent` ([src/schemas/events/spellcasting.ts](src/schemas/events/spellcasting.ts)) with reducer `applyFreeCastUsed` appending the spellId (deduped by id).
+- `applyLongRestEnded` ([src/engine/reducers/rest.ts](src/engine/reducers/rest.ts)) clears `usedFreeCastSpellIds` alongside the existing `spellSlotsUsed = {}` / `pactSlotsUsed = 0` resets.
+- Transcript formatting case for `FreeCastUsed` ([tests/transcript.ts](tests/transcript.ts)).
+
+**Tests** at [tests/unit/engine/slice-486-free-cast.test.ts](tests/unit/engine/slice-486-free-cast.test.ts) - 5 cases:
+1. A Magic Initiate (Cleric) cast with `useFreeCast: true` emits `FreeCastUsed`, no `SpellSlotConsumed` or `PactSlotConsumed`.
+2. After the cast, `character.usedFreeCastSpellIds` includes the spellId.
+3. A second `useFreeCast: true` cast of the same spell before a long rest throws.
+4. `useFreeCast: true` on a spell lacking an `oncePerLongRest` grant throws.
+5. `LongRestEnded` clears the list and the next free cast succeeds.
+
+**Audit:**
+- *RAW match*: the free-cast / slot-cast / long-rest-reset semantics match the 2024 Magic Initiate text. Whether the player chooses to cast via the free cast or a regular slot is preserved (the existing slot path is untouched; `useFreeCast` is the new opt-in).
+- *Names*: `useFreeCast` mirrors `noSlotCost` / `ignorePreparation` (existing per-cast modifier flags). `usedFreeCastSpellIds` mirrors `spellSlotsUsed` / `pactSlotsUsed` (per-character per-rest tracking).
+- *DRY*: the long-rest reset reuses the same `applyLongRestEnded` loop that already resets slots, exhaustion, hit-dice, item time budgets. The event + reducer follow the existing `SpellSlotConsumed` pattern.
+- *SRP*: each new piece does one thing (validate / emit / reduce / reset). The existing `findCastingClass` + slot-consumption logic is unchanged.
+- *Magic numbers*: none added.
+- *Mechanical outcomes asserted*: 5 cases pin validation gates, event emission, state mutation, and long-rest reset.
+- *Tests*: every new code path has a case that would fail without the change (the validate gate, the FreeCastUsed emission, the reducer, the long-rest clear).
+
+**Documented separate gap (not closed here)**: `planCastSpell` still requires the bearer to have a spellcasting class (the `findCastingClass` gate). A Magic Initiate Fighter / Rogue / Barbarian can carry the `oncePerLongRest` grant but cannot reach the planner today. The test character is a Cleric to scope this slice tightly; the broader non-spellcaster-Magic-Initiate path needs its own slice (the planner would need to route DC computation through the `GrantSpell.spellcastingAbility` instead of the class's spellcasting ability when there's no spellcasting class).
+
+**Pattern-check**: swept the codebase for other `oncePerLongRest`-shaped resources that could opt into the new mechanism. Divine Intervention (Cleric L10) is the only other current user of "free cast on a oncePerLongRest cadence" but is already wired through a dedicated `firedThisLongRest` trigger-counter mechanism (different shape — uses the trigger-counter family rather than per-spell tracking, since it's a one-shot per long rest rather than a specific spell grant). No other current pack content uses the GrantSpell `oncePerLongRest` preparation beyond Magic Initiate (3 variants) and Warlock Contact Patron, all of which now benefit from the new tracker.
+
 **Content (slice 485): Magic Initiate (Druid) - third variant wired**
 
 Closes the slice-469 open follow-up. Pure content: the `magic-initiate-druid` feat had been in the pack as an `effects: []` stub; this slice fills in the same OfferChoice + GrantSpell pattern slice 469 established for the Cleric and Wizard variants, scoped to the Druid spell list available in the starter pack.
@@ -369,7 +402,7 @@ RAW (SRD 5.2.1 Magic Initiate):
 **Closes the L1 background arc.** Every 2024 SRD background that ships in the starter pack (Soldier, Sage, Criminal, Acolyte) now lights up end-to-end: ability-score options, skill / tool proficiencies, languages, and Origin Feat mechanics. A consumer building any of the four with default `featsTaken: []` gets the RAW behavior automatically through the slice-466 auto-projection.
 
 **Open follow-ups:**
-- **Once-per-long-rest free-cast gate**: a per-feat resource the engine auto-tracks (granted via the GrantSpell `oncePerLongRest` preparation, consumed by a cast with `noSlotCost: true`) would close the consumer-responsibility gap for Magic Initiate's L1-spell free cast, Warlock Contact Patron, and any other future once-per-long-rest cast. Sibling primitive opportunity. *Still open.*
+- ~~**Once-per-long-rest free-cast gate**: a per-feat resource the engine auto-tracks (granted via the GrantSpell `oncePerLongRest` preparation, consumed by a cast with `noSlotCost: true`) would close the consumer-responsibility gap for Magic Initiate's L1-spell free cast, Warlock Contact Patron, and any other future once-per-long-rest cast. Sibling primitive opportunity.~~ **Closed by slice 486.**
 - **Spell Change at level-up** (RAW: "Whenever you gain a new level, you can replace one of the spells you chose for this feat"): needs an OfferChoice mode that exposes a "replace one of your prior selections" semantic on level-up. The schema's `when: 'onLevelUp'` is there but the replace-prior-pick shape isn't expressed. *Still open.*
 - **spellcastingAbility player choice** (RAW: pick INT/WIS/CHA at feat acquisition): a third OfferChoice on each feat over the three abilities, with each option re-projecting the GrantSpell entries with that ability. Deferred for now; the canonical defaults match the linked backgrounds' ability options. *Still open.*
 - ~~**Magic Initiate (Druid)**: not currently in the pack as a feat; would mirror the Cleric / Wizard wiring over the Druid list once that list is fully present.~~ **Closed by slice 485.**

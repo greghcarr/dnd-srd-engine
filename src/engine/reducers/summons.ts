@@ -56,6 +56,7 @@ export const applyCompanionSummoned = (
     preparedSpells: [],
     spellSlotsUsed: {},
     pactSlotsUsed: 0,
+    usedFreeCastSpellIds: [],
     triggerCounters: {},
     featsTaken: [],
     pendingChoiceIds: [],

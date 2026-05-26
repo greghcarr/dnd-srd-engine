@@ -159,6 +159,14 @@ export const CharacterSchema = z.object({
     )
     .default({}),
   pactSlotsUsed: z.number().int().min(0).default(0),
+  // Slice 486: tracks which `oncePerLongRest`-granted spell IDs have
+  // consumed their free cast since the last long rest. Magic Initiate
+  // (Cleric / Wizard / Druid), Warlock Contact Patron, and any other
+  // feature that GrantSpell-with-`oncePerLongRest` populates this when
+  // the consumer passes `useFreeCast: true` on the cast intent. Cleared
+  // by `applyLongRestEnded`. Empty by default; pre-slice-486 saves load
+  // clean.
+  usedFreeCastSpellIds: z.array(z.string()).default([]),
   concentrationEffectId: ULIDSchema.optional(),
   triggerCounters: z
     .record(
