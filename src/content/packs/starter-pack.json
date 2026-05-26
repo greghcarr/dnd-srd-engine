@@ -57,7 +57,18 @@
       { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "WIS" }, "mode": "advantage" },
       { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "CHA" }, "mode": "advantage" }
     ] },
-    { "id": "goliath", "name": "Goliath", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 35 }, "languages": ["common", "giant"], "traits": [] },
+    { "id": "goliath", "name": "Goliath", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 35 }, "languages": ["common", "giant"], "traits": [
+      { "kind": "SetAdvantage", "on": { "kind": "check" }, "mode": "advantage", "condition": { "kind": "eq", "path": "event.endingCondition", "value": "grappled" } },
+      { "kind": "GrantResource", "resourceId": "giant-ancestry", "max": { "kind": "profBonus" }, "recharge": "longRest" },
+      { "kind": "OfferChoice", "choiceId": "goliath-giant-ancestry", "prompt": "Choose a Giant Ancestry: Cloud's Jaunt (bonus-action teleport 30 ft), Fire's Burn (+1d10 fire on hit), Frost's Chill (+1d6 cold + speed -10 on hit), Hill's Tumble (Prone on hit vs Large or smaller), Stone's Endurance (reaction reduce damage by 1d12 + CON), Storm's Thunder (reaction 1d8 thunder to attacker within 60 ft).", "oneOf": 1, "when": "onAcquire", "options": [
+        { "id": "clouds-jaunt", "label": "Cloud's Jaunt (Cloud Giant)", "effects": [] },
+        { "id": "fires-burn", "label": "Fire's Burn (Fire Giant)", "effects": [] },
+        { "id": "frosts-chill", "label": "Frost's Chill (Frost Giant)", "effects": [] },
+        { "id": "hills-tumble", "label": "Hill's Tumble (Hill Giant)", "effects": [] },
+        { "id": "stones-endurance", "label": "Stone's Endurance (Stone Giant)", "effects": [] },
+        { "id": "storms-thunder", "label": "Storm's Thunder (Storm Giant)", "effects": [] }
+      ] }
+    ] },
     { "id": "orc", "name": "Orc", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "orc"], "traits": [
       { "kind": "GrantSense", "sense": "darkvision", "range": 120 },
       { "kind": "Custom", "handlerId": "adrenaline-rush" },

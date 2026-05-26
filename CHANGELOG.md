@@ -4,6 +4,36 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 465): Goliath species - L1 playability arc closes the last empty species**
+
+Pre-slice, Goliath was the only playable L1 species shipping with `traits: []`. RAW (SRD 5.2.1 Goliath): Medium, 35 ft speed, Humanoid + four traits — Giant Ancestry (6-option choice), Large Form (level-5+), Powerful Build (grapple-escape Advantage + carrying-capacity-as-Large), creature-type. This slice lands the engine-modelable arms for L1 + ships the rest as discoverable deferred markers, on the same content-shape conventions as the slices 444-461 species arc.
+
+**New consumer-coordinated fact** `endingCondition?: string` on `ComputeAbilityCheckInput` ([src/derive/ability-check.ts](src/derive/ability-check.ts)) + `AbilityCheckIntent` ([src/engine/plan/checks.ts](src/engine/plan/checks.ts)). Mirrors the slice-291 save-side `savePreventsCondition`: the consumer reports the condition this check is attempting to end, and gated effects (Powerful Build, future "advantage on check to end X") fire only when it matches. Generic checks leave it undefined; gated SetAdvantage entries evaluate false. Threaded into the predicate-fact map as `event.endingCondition`.
+
+**Powerful Build grapple-escape arm** (the engine-modelable half): `SetAdvantage on: { kind: 'check' }, mode: 'advantage', condition: event.endingCondition == 'grappled'`. RAW: "Advantage on any ability check you make to end the Grappled condition" — note "any ability check," so the gate is **condition-keyed not skill-keyed** (slice-274's `athleticsSubAction` would miss the Acrobatics-escape arm; the new `endingCondition` fact covers Athletics OR Acrobatics OR any).
+
+**Giant Ancestry frame**: `GrantResource giant-ancestry`, `max: { kind: 'profBonus' }`, `recharge: 'longRest'` at trait-top + `OfferChoice oneOf:1 when:'onAcquire'` over the 6 RAW options (Cloud's Jaunt / Fire's Burn / Frost's Chill / Hill's Tumble / Stone's Endurance / Storm's Thunder). Each option ships with `effects: []` (the Blessed Strikes / Potent Spellcasting pattern, not Custom markers — slice-303 pack-integrity audit rules out Custom markers without backing implementations). The choice path is discoverable + selectable; the individual ancestry mechanics each become their own future slice (six follow-ups: see below).
+
+**Tests** at [tests/unit/engine/slice-465-goliath-species.test.ts](tests/unit/engine/slice-465-goliath-species.test.ts) — 9 cases: basics (size/speed/type/languages); Powerful Build advantage applies via planner when `endingCondition='grappled'`; absent or different condition → no advantage; works at the derive layer; condition-keyed gate (Acrobatics-escape also gets Advantage); species declares the giant-ancestry GrantResource with `max: { kind: 'profBonus' }` + `recharge: 'longRest'`; species declares OfferChoice over the 6 RAW ancestries; choice resolves end-to-end via ChoiceRequired + ChoiceResolved.
+
+**Audit (engine + content slice):**
+- *RAW match*: SRD 5.2.1 Goliath exactly for the engine-modelable arms. Documented deferrals: Powerful Build's carrying-capacity-as-Large arm (needs an encumbrance "count as one size larger" primitive that doesn't exist), Large Form (level-5+ transformation, deferred mechanically), and each of the 6 Giant Ancestry mechanics (Cloud's Jaunt: bonus-action teleport; Fire's Burn / Frost's Chill: per-attack on-hit damage riders at the character level, not weapon level; Hill's Tumble: on-hit Prone vs Large-or-smaller; Stone's Endurance: reaction damage reduction; Storm's Thunder: reaction thunder retaliation).
+- *Names*: `endingCondition` mirrors `savePreventsCondition` (the save-side analog). The "ending X condition" phrasing matches the RAW.
+- *DRY*: same predicate-fact pattern as slice 291 — third caller (saves + ability checks + nothing else for now). Below the abstraction threshold; the two derive functions read identical-shape facts but at different events.
+- *SRP*: derive function reads the fact; planner threads it; content gates on it.
+- *Magic numbers*: none introduced. `'grappled'` is a known condition id.
+- *at-threading*: not applicable (no new events emitted).
+- *Mechanical outcomes asserted*: presence on the loaded pack; Advantage applies on grapple-escape checks (planner + derive); does NOT apply on generic checks or other-condition checks; Acrobatics-escape also gets Advantage (condition-keyed gate); choice path resolves.
+
+**Open follow-ups:**
+- **Powerful Build carrying-capacity arm** (RAW: "count as one size larger when determining your carrying capacity"): needs a new effect kind (`CountAsLargerForEncumbrance` or `MultiplyCarryingCapacity`) + an encumbrance derive that reads it. *Still open.*
+- **Large Form** (level-5+ transformation: "change your size to Large as a Bonus Action ... Advantage on Strength checks, Speed +10 for 10 minutes, 1/long rest"): needs a size-transformation primitive (sibling of Wild Shape's statblock-swap but lighter-weight) + bonus-action toggle planner. *Still open.*
+- **Cloud's Jaunt** (Cloud Giant: bonus-action 30-ft teleport, PB / long rest): new `planCloudsJaunt` planner consuming the giant-ancestry resource. *Still open.*
+- **Fire's Burn / Frost's Chill** (per-attack on-hit damage riders): need character-level "next attack gains +XdY damage" pattern. Sibling of Hex / Hunter's Mark per-hit rider, but consumer-coordinated since it's opt-in per attack (not always-on). *Still open.*
+- **Hill's Tumble** (Prone on hit vs Large-or-smaller): same shape as slice-446 Dire Wolf knock-prone, but character-level instead of weapon-level. The natural pair is "Wolf knock-prone for monsters / Hill's Tumble for PCs," same predicate. *Still open.*
+- **Stone's Endurance** (reaction: roll 1d12 + CON, reduce damage taken by that total): new primitive — reaction damage reduction. The existing fatal-damage-intercept family (slices 111 / 456 / 458) handles death-prevention; this is a different shape (general damage mitigation, not just at 0 HP). *Still open.*
+- **Storm's Thunder** (reaction: when damaged by a creature within 60 ft, deal 1d8 thunder to it): reaction retaliation. Sibling of Fire Shield's onHit rider but consumer-triggered + range-gated. *Still open.*
+
 **Engine + content (slice 464): monster Multiattack content declaration - the deferred-since-slice-462 primitive lands**
 
 The `planMultiattack` planner has been in the engine since slice 13 (Ogre with two Greatclub swings, the s13-creature golden) and works fine — the gap was always content-side: statblocks couldn't *declare* their Multiattack pattern, so consumers had to read RAW by hand and hand-author the runtime `multiattack` field. This slice closes that gap and ships the Ghoul's "two Bites" as the canonical user.
