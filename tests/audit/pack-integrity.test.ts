@@ -480,6 +480,7 @@ describe('pack integrity: every Custom handlerId has a backing implementation', 
   const BACKED_INDIRECTLY: ReadonlyMap<string, string> = new Map([
     ['martial-arts', 'attack planner: martialArtsDie / applyMartialArtsDieScaling key off the monk class + weapon, not the handlerId'],
     ['slow-fall', 'planFalling reduces fall damage via its `useSlowFall` arm (5 x monk level), keyed off the intent flag'],
+    ['ritual-adept', 'cast-spell planner: characterKnowsSpell accepts knownSpells (the wizard spellbook), so asRitual: true on a ritual-tagged spellbook entry already passes the gate. The marker is the discoverable surface; the mechanic is engine-default. A future preparation-enforcement slice would convert this to a referenced handler.'],
   ]);
 
   it('every Custom handlerId is referenced in engine source or allowlisted as indirectly backed', () => {

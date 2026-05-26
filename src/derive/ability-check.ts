@@ -75,6 +75,17 @@ export interface ComputeAbilityCheckInput {
   // to get the gated benefit. The three-value enum matches the
   // 2024 PHB / DMG light-tier vocabulary.
   readonly lightLevel?: 'bright' | 'dim' | 'darkness';
+  // Slice 465: consumer-supplied "this ability check is to end the
+  // named condition" fact, mirroring the slice-291 save-side
+  // `savePreventsCondition`. RAW driver: 2024 Goliath Powerful Build
+  // grants Advantage on "any ability check you make to end the Grappled
+  // condition" — the escape attempt can be Athletics OR Acrobatics
+  // (or any other), so the fact is condition-keyed rather than skill-
+  // keyed (the slice-274 `athleticsSubAction` would miss the
+  // Acrobatics-escape arm). Same opt-in semantic: the consumer reports
+  // the condition the check ends, and gated effects fire only when
+  // it matches. Generic checks leave this undefined.
+  readonly endingCondition?: string;
 }
 
 const exhaustionPenalty = (level: number): number =>
@@ -151,6 +162,9 @@ export const computeAbilityCheck = (input: ComputeAbilityCheckInput): AbilityChe
     ['bearer.canSeeFearSource', input.bearerCanSeeFearSource],
     // Slice 279: ambient-light fact (Cloak of the Bat dim-light gate).
     ['bearer.lightLevel', input.lightLevel],
+    // Slice 465: condition-ended fact (Goliath Powerful Build's
+    // "ability check to end the Grappled condition" gate).
+    ['event.endingCondition', input.endingCondition],
   ]);
   // Slice 265: a skill check IS an ability check (RAW: skill check =
   // ability mod + skill bonus + d20). Pre-slice, `advantageFor` was

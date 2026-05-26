@@ -97,6 +97,12 @@ export interface AbilityCheckIntent {
   readonly skill?: Skill;
   readonly dc?: number;
   readonly advantage?: CheckAdvantage;
+  // Slice 465: when present, marks this ability check as the attempt
+  // to end the named condition (e.g. 'grappled'). Goliath's Powerful
+  // Build gates Advantage on this fact. Mirrors the slice 291 save-
+  // side `savePreventsCondition`; semantics in
+  // [src/derive/ability-check.ts](../../derive/ability-check.ts).
+  readonly endingCondition?: string;
   readonly at?: string;
 }
 
@@ -114,6 +120,9 @@ export const planAbilityCheck = (
     content,
     ability: intent.ability,
     ...(intent.skill !== undefined ? { skill: intent.skill } : {}),
+    ...(intent.endingCondition !== undefined
+      ? { endingCondition: intent.endingCondition }
+      : {}),
     pendingChoices: state.pendingChoices,
     characters: state.characters,
   });

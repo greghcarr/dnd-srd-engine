@@ -145,6 +145,7 @@ export const planTriggerTrap = (
       mitigatedComponents: mitigated,
       causedByEventId: saveEvent.id,
       at,
+      rng,
     });
     const damage: DamageAppliedEvent = {
       id: newEventId() as ULID,

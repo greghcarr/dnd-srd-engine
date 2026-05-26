@@ -174,6 +174,7 @@ export const planLandsAid = (
       mitigatedComponents: mitigated,
       causedByEventId: result.event.id,
       at,
+      rng,
     });
     const damageApplied: DamageAppliedEvent = {
       id: newEventId() as ULID,

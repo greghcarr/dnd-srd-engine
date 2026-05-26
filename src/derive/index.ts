@@ -51,7 +51,7 @@ export {
   spellSlotsForLevel,
   type SpellSlotsResult,
 } from './spell-slots.js';
-export { buildEffectStack, type BuildEffectStackInput } from './effect-stack.js';
+export { buildEffectStack, getEffectiveFeatIds, type BuildEffectStackInput } from './effect-stack.js';
 export { computeKnownLanguages, type ComputeKnownLanguagesInput } from './languages.js';
 export {
   computeDerivedCharacter,
@@ -79,3 +79,4 @@ export {
   hasLineOfSight,
   hasLineOfEffect,
 } from './terrain.js';
+export { runtimeMultiattackFromStatblock } from './multiattack.js';

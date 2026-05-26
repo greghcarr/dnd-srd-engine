@@ -20,12 +20,14 @@ export {
 export {
   planCreateEncounter,
   planRollInitiative,
+  planSwapInitiative,
   planStartEncounter,
   planAdvanceTurn,
   planBeginFirstTurn,
   planEndEncounter,
   type CreateEncounterIntent,
   type RollInitiativeIntent,
+  type SwapInitiativeIntent,
   type StartEncounterIntent,
   type AdvanceTurnIntent,
   type BeginFirstTurnIntent,
@@ -96,6 +98,9 @@ export { planStunningStrike, type StunningStrikeIntent } from './stunning-strike
 export { planFlurryOfBlows, type FlurryOfBlowsIntent } from './flurry-of-blows.js';
 export { planPatientDefense, type PatientDefenseIntent } from './patient-defense.js';
 export { planStepOfTheWind, type StepOfTheWindIntent } from './step-of-the-wind.js';
+export { planAdrenalineRush, type AdrenalineRushIntent } from './adrenaline-rush.js';
+export { planNimbleEscape, type NimbleEscapeIntent, type NimbleEscapeMode } from './nimble-escape.js';
+export { planTurnUndead, type TurnUndeadIntent } from './turn-undead.js';
 export { planIntimidatingPresence, type IntimidatingPresenceIntent } from './intimidating-presence.js';
 export { planDragonWings, type DragonWingsIntent } from './dragon-wings.js';
 export { planPreserveLife, type PreserveLifeIntent } from './preserve-life.js';

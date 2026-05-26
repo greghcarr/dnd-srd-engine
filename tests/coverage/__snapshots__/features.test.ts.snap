@@ -25,6 +25,7 @@ exports[`feature-coverage matrix: class features > wired class features catalog 
   "bard L20 words-of-creation",
   "cleric L1 divine-order",
   "cleric L2 channel-divinity",
+  "cleric L2 turn-undead",
   "cleric L6 channel-divinity-cleric-2",
   "cleric L7 blessed-strikes",
   "cleric L10 divine-intervention",
@@ -88,6 +89,7 @@ exports[`feature-coverage matrix: class features > wired class features catalog 
   "ranger L18 feral-senses",
   "rogue L1 expertise-rogue",
   "rogue L1 sneak-attack",
+  "rogue L1 thieves-cant",
   "rogue L1 weapon-mastery-rogue",
   "rogue L3 sneak-attack",
   "rogue L5 cunning-strike",
@@ -113,6 +115,7 @@ exports[`feature-coverage matrix: class features > wired class features catalog 
   "sorcerer L7 sorcery-incarnate",
   "warlock L9 contact-patron",
   "wizard L1 arcane-recovery",
+  "wizard L1 ritual-adept",
   "wizard L2 scholar",
 ]
 `;
@@ -153,6 +156,7 @@ exports[`feature-coverage matrix: conditions > wired conditions catalog is stabl
   "darkvision-active",
   "death-ward-active",
   "divine-favor-active",
+  "divine-smite-active",
   "dodged",
   "dragon-wings-active",
   "eagles-splendor-active",
@@ -245,6 +249,9 @@ exports[`feature-coverage matrix: feats > wired feats catalog is stable 1`] = `
   "fighting-style:fighting-style-great-weapon",
   "fighting-style:fighting-style-protection",
   "fighting-style:fighting-style-two-weapon",
+  "origin:alert",
+  "origin:magic-initiate-cleric",
+  "origin:magic-initiate-wizard",
 ]
 `;
 

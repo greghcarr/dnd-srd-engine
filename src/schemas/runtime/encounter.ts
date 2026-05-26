@@ -32,6 +32,12 @@ export const TurnUsageSchema = z.object({
   // Monk Stunning Strike "once per turn" gate. Set when the Monk
   // attempts a Stunning Strike, cleared at TurnStarted.
   stunningStrikeUsedThisTurn: z.boolean().default(false),
+  // Slice 467: Savage Attacker (Origin Feat) "once per turn" gate.
+  // Set when the attacker's reroll fired (i.e. they hit AND opted in).
+  // Cleared at TurnStarted. A planner attempt to use Savage Attacker
+  // again while this is true throws. Out-of-encounter calls bypass
+  // the gate entirely (no turn structure).
+  savageAttackerUsedThisTurn: z.boolean().default(false),
   // Rogue Withdraw (Cunning Strike): the high-water-mark of
   // `feetMovedThisTurn` up to which movement does NOT provoke Opportunity
   // Attacks (RAW "move up to half your Speed without provoking"). Distinct
@@ -53,6 +59,7 @@ export const EMPTY_TURN_USAGE: TurnUsage = {
   loadedWeaponsFiredThisTurn: [],
   recklessAttackActive: false,
   stunningStrikeUsedThisTurn: false,
+  savageAttackerUsedThisTurn: false,
   noProvokeMovementUpToFeet: 0,
 };
 

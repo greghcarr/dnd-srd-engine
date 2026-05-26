@@ -6,19 +6,80 @@
   "attribution": "Portions of this content pack are derived from the Dungeons & Dragons System Reference Document 5.2, copyright Wizards of the Coast LLC, used under the Creative Commons Attribution 4.0 International License (CC BY 4.0). The mechanical encodings are this package's own implementation. See docs/content-attribution.md for an item-by-item audit.",
   "derivedFrom": "D&D SRD 5.2 (CC BY 4.0)",
   "species": [
-    { "id": "human", "name": "Human", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common"], "traits": [] },
-    { "id": "elf", "name": "Elf", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "elvish"], "traits": [] },
-    { "id": "dwarf", "name": "Dwarf", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "dwarvish"], "traits": [] },
-    { "id": "halfling", "name": "Halfling", "size": "Small", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "halfling"], "traits": [] },
-    { "id": "tiefling", "name": "Tiefling", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "infernal"], "traits": [] },
-    { "id": "dragonborn", "name": "Dragonborn", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "draconic"], "traits": [] },
-    { "id": "gnome", "name": "Gnome", "size": "Small", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "gnomish"], "traits": [] },
-    { "id": "goliath", "name": "Goliath", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 35 }, "languages": ["common", "giant"], "traits": [] },
-    { "id": "orc", "name": "Orc", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "orc"], "traits": [] }
+    { "id": "human", "name": "Human", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common"], "traits": [
+      { "kind": "OfferChoice", "choiceId": "human-skillful", "prompt": "Choose a skill to gain proficiency in (Human Skillful).", "oneOf": 1, "when": "onAcquire", "options": [
+        { "id": "acrobatics", "label": "Acrobatics", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "acrobatics", "level": "proficient" }] },
+        { "id": "animal-handling", "label": "Animal Handling", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "animal-handling", "level": "proficient" }] },
+        { "id": "arcana", "label": "Arcana", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "arcana", "level": "proficient" }] },
+        { "id": "athletics", "label": "Athletics", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "athletics", "level": "proficient" }] },
+        { "id": "deception", "label": "Deception", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "deception", "level": "proficient" }] },
+        { "id": "history", "label": "History", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "history", "level": "proficient" }] },
+        { "id": "insight", "label": "Insight", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "insight", "level": "proficient" }] },
+        { "id": "intimidation", "label": "Intimidation", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "intimidation", "level": "proficient" }] },
+        { "id": "investigation", "label": "Investigation", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "investigation", "level": "proficient" }] },
+        { "id": "medicine", "label": "Medicine", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "medicine", "level": "proficient" }] },
+        { "id": "nature", "label": "Nature", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "nature", "level": "proficient" }] },
+        { "id": "perception", "label": "Perception", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "perception", "level": "proficient" }] },
+        { "id": "performance", "label": "Performance", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "performance", "level": "proficient" }] },
+        { "id": "persuasion", "label": "Persuasion", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "persuasion", "level": "proficient" }] },
+        { "id": "religion", "label": "Religion", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "religion", "level": "proficient" }] },
+        { "id": "sleight-of-hand", "label": "Sleight of Hand", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "sleight-of-hand", "level": "proficient" }] },
+        { "id": "stealth", "label": "Stealth", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "stealth", "level": "proficient" }] },
+        { "id": "survival", "label": "Survival", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "survival", "level": "proficient" }] }
+      ] }
+    ] },
+    { "id": "elf", "name": "Elf", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "elvish"], "traits": [
+      { "kind": "GrantSense", "sense": "darkvision", "range": 60 },
+      { "kind": "SetAdvantage", "on": { "kind": "save" }, "mode": "advantage", "condition": { "kind": "eq", "path": "event.savePreventsCondition", "value": "charmed" } },
+      { "kind": "OfferChoice", "choiceId": "elf-keen-senses", "prompt": "Choose a skill to gain proficiency in (Elf Keen Senses).", "oneOf": 1, "when": "onAcquire", "options": [
+        { "id": "insight", "label": "Insight", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "insight", "level": "proficient" }] },
+        { "id": "perception", "label": "Perception", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "perception", "level": "proficient" }] },
+        { "id": "survival", "label": "Survival", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "survival", "level": "proficient" }] }
+      ] }
+    ] },
+    { "id": "dwarf", "name": "Dwarf", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "dwarvish"], "traits": [
+      { "kind": "GrantSense", "sense": "darkvision", "range": 120 },
+      { "kind": "GrantResistance", "damageType": "poison" },
+      { "kind": "SetAdvantage", "on": { "kind": "save" }, "mode": "advantage", "condition": { "kind": "eq", "path": "event.savePreventsCondition", "value": "poisoned" } }
+    ] },
+    { "id": "halfling", "name": "Halfling", "size": "Small", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "halfling"], "traits": [
+      { "kind": "SetAdvantage", "on": { "kind": "save" }, "mode": "advantage", "condition": { "kind": "eq", "path": "event.savePreventsCondition", "value": "frightened" } }
+    ] },
+    { "id": "tiefling", "name": "Tiefling", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "infernal"], "traits": [
+      { "kind": "GrantSense", "sense": "darkvision", "range": 60 }
+    ] },
+    { "id": "dragonborn", "name": "Dragonborn", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "draconic"], "traits": [
+      { "kind": "GrantSense", "sense": "darkvision", "range": 60 }
+    ] },
+    { "id": "gnome", "name": "Gnome", "size": "Small", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "gnomish"], "traits": [
+      { "kind": "GrantSense", "sense": "darkvision", "range": 60 },
+      { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "INT" }, "mode": "advantage" },
+      { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "WIS" }, "mode": "advantage" },
+      { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "CHA" }, "mode": "advantage" }
+    ] },
+    { "id": "goliath", "name": "Goliath", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 35 }, "languages": ["common", "giant"], "traits": [
+      { "kind": "SetAdvantage", "on": { "kind": "check" }, "mode": "advantage", "condition": { "kind": "eq", "path": "event.endingCondition", "value": "grappled" } },
+      { "kind": "GrantResource", "resourceId": "giant-ancestry", "max": { "kind": "profBonus" }, "recharge": "longRest" },
+      { "kind": "OfferChoice", "choiceId": "goliath-giant-ancestry", "prompt": "Choose a Giant Ancestry: Cloud's Jaunt (bonus-action teleport 30 ft), Fire's Burn (+1d10 fire on hit), Frost's Chill (+1d6 cold + speed -10 on hit), Hill's Tumble (Prone on hit vs Large or smaller), Stone's Endurance (reaction reduce damage by 1d12 + CON), Storm's Thunder (reaction 1d8 thunder to attacker within 60 ft).", "oneOf": 1, "when": "onAcquire", "options": [
+        { "id": "clouds-jaunt", "label": "Cloud's Jaunt (Cloud Giant)", "effects": [] },
+        { "id": "fires-burn", "label": "Fire's Burn (Fire Giant)", "effects": [] },
+        { "id": "frosts-chill", "label": "Frost's Chill (Frost Giant)", "effects": [] },
+        { "id": "hills-tumble", "label": "Hill's Tumble (Hill Giant)", "effects": [] },
+        { "id": "stones-endurance", "label": "Stone's Endurance (Stone Giant)", "effects": [] },
+        { "id": "storms-thunder", "label": "Storm's Thunder (Storm Giant)", "effects": [] }
+      ] }
+    ] },
+    { "id": "orc", "name": "Orc", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "orc"], "traits": [
+      { "kind": "GrantSense", "sense": "darkvision", "range": 120 },
+      { "kind": "Custom", "handlerId": "adrenaline-rush" },
+      { "kind": "GrantResource", "resourceId": "adrenaline-rush", "max": { "kind": "profBonus" }, "recharge": "shortRest" },
+      { "kind": "GrantResource", "resourceId": "relentless-endurance", "max": 1, "recharge": "longRest" },
+      { "kind": "PreventFatalDamageConsumingResource", "resourceId": "relentless-endurance" }
+    ] }
   ],
   "backgrounds": [
     { "id": "soldier", "name": "Soldier", "abilityScoreIncreases": { "options": ["STR", "DEX", "CON"], "pattern": "+2/+1" }, "skillProficiencies": ["athletics", "intimidation"], "toolProficiencies": ["gaming"], "languages": [], "originFeatId": "savage-attacker", "traits": [] },
-    { "id": "sage", "name": "Sage", "abilityScoreIncreases": { "options": ["INT", "WIS", "CHA"], "pattern": "+2/+1" }, "skillProficiencies": ["arcana", "history"], "toolProficiencies": ["calligraphers-supplies"], "languages": [], "originFeatId": "magic-initiate-wizard", "traits": [] },
+    { "id": "sage", "name": "Sage", "abilityScoreIncreases": { "options": ["CON", "INT", "WIS"], "pattern": "+2/+1" }, "skillProficiencies": ["arcana", "history"], "toolProficiencies": ["calligraphers-supplies"], "languages": [], "originFeatId": "magic-initiate-wizard", "traits": [] },
     { "id": "criminal", "name": "Criminal", "abilityScoreIncreases": { "options": ["DEX", "CON", "INT"], "pattern": "+2/+1" }, "skillProficiencies": ["sleight-of-hand", "stealth"], "toolProficiencies": ["thieves-tools"], "languages": [], "originFeatId": "alert", "traits": [] },
     { "id": "acolyte", "name": "Acolyte", "abilityScoreIncreases": { "options": ["INT", "WIS", "CHA"], "pattern": "+2/+1" }, "skillProficiencies": ["insight", "religion"], "toolProficiencies": ["calligraphers-supplies"], "languages": [], "originFeatId": "magic-initiate-cleric", "traits": [] }
   ],
@@ -31,9 +92,9 @@
       "prerequisites": [],
       "effects": []
     },
-    { "id": "alert", "name": "Alert", "category": "origin", "repeatable": false, "prerequisites": [], "effects": [] },
-    { "id": "magic-initiate-cleric", "name": "Magic Initiate (Cleric)", "category": "origin", "repeatable": true, "prerequisites": [], "effects": [] },
-    { "id": "magic-initiate-wizard", "name": "Magic Initiate (Wizard)", "category": "origin", "repeatable": true, "prerequisites": [], "effects": [] },
+    { "id": "alert", "name": "Alert", "category": "origin", "repeatable": false, "prerequisites": [], "effects": [{ "kind": "AddModifier", "target": "initiative", "value": { "kind": "profBonus" } }] },
+    { "id": "magic-initiate-cleric", "name": "Magic Initiate (Cleric)", "category": "origin", "repeatable": true, "prerequisites": [], "effects": [{"kind":"OfferChoice","choiceId":"magic-initiate-cleric-cantrips","prompt":"Choose two Cleric cantrips for Magic Initiate (Cleric).","oneOf":2,"when":"onAcquire","options":[{"id":"sacred-flame","label":"Sacred Flame","effects":[{"kind":"GrantSpell","spellId":"sacred-flame","preparation":"always-prepared","spellcastingAbility":"WIS"}]},{"id":"guidance","label":"Guidance","effects":[{"kind":"GrantSpell","spellId":"guidance","preparation":"always-prepared","spellcastingAbility":"WIS"}]},{"id":"light","label":"Light","effects":[{"kind":"GrantSpell","spellId":"light","preparation":"always-prepared","spellcastingAbility":"WIS"}]},{"id":"mending","label":"Mending","effects":[{"kind":"GrantSpell","spellId":"mending","preparation":"always-prepared","spellcastingAbility":"WIS"}]},{"id":"resistance","label":"Resistance","effects":[{"kind":"GrantSpell","spellId":"resistance","preparation":"always-prepared","spellcastingAbility":"WIS"}]},{"id":"spare-the-dying","label":"Spare the Dying","effects":[{"kind":"GrantSpell","spellId":"spare-the-dying","preparation":"always-prepared","spellcastingAbility":"WIS"}]},{"id":"thaumaturgy","label":"Thaumaturgy","effects":[{"kind":"GrantSpell","spellId":"thaumaturgy","preparation":"always-prepared","spellcastingAbility":"WIS"}]}]},{"kind":"OfferChoice","choiceId":"magic-initiate-cleric-l1","prompt":"Choose one Cleric level-1 spell for Magic Initiate (Cleric).","oneOf":1,"when":"onAcquire","options":[{"id":"detect-magic","label":"Detect Magic","effects":[{"kind":"GrantSpell","spellId":"detect-magic","preparation":"oncePerLongRest","spellcastingAbility":"WIS"}]},{"id":"cure-wounds","label":"Cure Wounds","effects":[{"kind":"GrantSpell","spellId":"cure-wounds","preparation":"oncePerLongRest","spellcastingAbility":"WIS"}]},{"id":"bless","label":"Bless","effects":[{"kind":"GrantSpell","spellId":"bless","preparation":"oncePerLongRest","spellcastingAbility":"WIS"}]},{"id":"healing-word","label":"Healing Word","effects":[{"kind":"GrantSpell","spellId":"healing-word","preparation":"oncePerLongRest","spellcastingAbility":"WIS"}]},{"id":"bane","label":"Bane","effects":[{"kind":"GrantSpell","spellId":"bane","preparation":"oncePerLongRest","spellcastingAbility":"WIS"}]},{"id":"guiding-bolt","label":"Guiding Bolt","effects":[{"kind":"GrantSpell","spellId":"guiding-bolt","preparation":"oncePerLongRest","spellcastingAbility":"WIS"}]},{"id":"inflict-wounds","label":"Inflict Wounds","effects":[{"kind":"GrantSpell","spellId":"inflict-wounds","preparation":"oncePerLongRest","spellcastingAbility":"WIS"}]},{"id":"command","label":"Command","effects":[{"kind":"GrantSpell","spellId":"command","preparation":"oncePerLongRest","spellcastingAbility":"WIS"}]},{"id":"create-or-destroy-water","label":"Create or Destroy Water","effects":[{"kind":"GrantSpell","spellId":"create-or-destroy-water","preparation":"oncePerLongRest","spellcastingAbility":"WIS"}]},{"id":"detect-evil-and-good","label":"Detect Evil and Good","effects":[{"kind":"GrantSpell","spellId":"detect-evil-and-good","preparation":"oncePerLongRest","spellcastingAbility":"WIS"}]},{"id":"detect-poison-and-disease","label":"Detect Poison and Disease","effects":[{"kind":"GrantSpell","spellId":"detect-poison-and-disease","preparation":"oncePerLongRest","spellcastingAbility":"WIS"}]},{"id":"protection-from-evil-and-good","label":"Protection from Evil and Good","effects":[{"kind":"GrantSpell","spellId":"protection-from-evil-and-good","preparation":"oncePerLongRest","spellcastingAbility":"WIS"}]},{"id":"purify-food-and-drink","label":"Purify Food and Drink","effects":[{"kind":"GrantSpell","spellId":"purify-food-and-drink","preparation":"oncePerLongRest","spellcastingAbility":"WIS"}]},{"id":"sanctuary","label":"Sanctuary","effects":[{"kind":"GrantSpell","spellId":"sanctuary","preparation":"oncePerLongRest","spellcastingAbility":"WIS"}]},{"id":"shield-of-faith","label":"Shield of Faith","effects":[{"kind":"GrantSpell","spellId":"shield-of-faith","preparation":"oncePerLongRest","spellcastingAbility":"WIS"}]}]}] },
+    { "id": "magic-initiate-wizard", "name": "Magic Initiate (Wizard)", "category": "origin", "repeatable": true, "prerequisites": [], "effects": [{"kind":"OfferChoice","choiceId":"magic-initiate-wizard-cantrips","prompt":"Choose two Wizard cantrips for Magic Initiate (Wizard).","oneOf":2,"when":"onAcquire","options":[{"id":"fire-bolt","label":"Fire Bolt","effects":[{"kind":"GrantSpell","spellId":"fire-bolt","preparation":"always-prepared","spellcastingAbility":"INT"}]},{"id":"ray-of-frost","label":"Ray of Frost","effects":[{"kind":"GrantSpell","spellId":"ray-of-frost","preparation":"always-prepared","spellcastingAbility":"INT"}]},{"id":"shocking-grasp","label":"Shocking Grasp","effects":[{"kind":"GrantSpell","spellId":"shocking-grasp","preparation":"always-prepared","spellcastingAbility":"INT"}]},{"id":"light","label":"Light","effects":[{"kind":"GrantSpell","spellId":"light","preparation":"always-prepared","spellcastingAbility":"INT"}]},{"id":"mage-hand","label":"Mage Hand","effects":[{"kind":"GrantSpell","spellId":"mage-hand","preparation":"always-prepared","spellcastingAbility":"INT"}]},{"id":"prestidigitation","label":"Prestidigitation","effects":[{"kind":"GrantSpell","spellId":"prestidigitation","preparation":"always-prepared","spellcastingAbility":"INT"}]},{"id":"acid-splash","label":"Acid Splash","effects":[{"kind":"GrantSpell","spellId":"acid-splash","preparation":"always-prepared","spellcastingAbility":"INT"}]},{"id":"chill-touch","label":"Chill Touch","effects":[{"kind":"GrantSpell","spellId":"chill-touch","preparation":"always-prepared","spellcastingAbility":"INT"}]},{"id":"dancing-lights","label":"Dancing Lights","effects":[{"kind":"GrantSpell","spellId":"dancing-lights","preparation":"always-prepared","spellcastingAbility":"INT"}]},{"id":"mending","label":"Mending","effects":[{"kind":"GrantSpell","spellId":"mending","preparation":"always-prepared","spellcastingAbility":"INT"}]},{"id":"message","label":"Message","effects":[{"kind":"GrantSpell","spellId":"message","preparation":"always-prepared","spellcastingAbility":"INT"}]},{"id":"minor-illusion","label":"Minor Illusion","effects":[{"kind":"GrantSpell","spellId":"minor-illusion","preparation":"always-prepared","spellcastingAbility":"INT"}]},{"id":"poison-spray","label":"Poison Spray","effects":[{"kind":"GrantSpell","spellId":"poison-spray","preparation":"always-prepared","spellcastingAbility":"INT"}]},{"id":"true-strike","label":"True Strike","effects":[{"kind":"GrantSpell","spellId":"true-strike","preparation":"always-prepared","spellcastingAbility":"INT"}]},{"id":"elementalism","label":"Elementalism","effects":[{"kind":"GrantSpell","spellId":"elementalism","preparation":"always-prepared","spellcastingAbility":"INT"}]}]},{"kind":"OfferChoice","choiceId":"magic-initiate-wizard-l1","prompt":"Choose one Wizard level-1 spell for Magic Initiate (Wizard).","oneOf":1,"when":"onAcquire","options":[{"id":"magic-missile","label":"Magic Missile","effects":[{"kind":"GrantSpell","spellId":"magic-missile","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]},{"id":"detect-magic","label":"Detect Magic","effects":[{"kind":"GrantSpell","spellId":"detect-magic","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]},{"id":"shield","label":"Shield","effects":[{"kind":"GrantSpell","spellId":"shield","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]},{"id":"burning-hands","label":"Burning Hands","effects":[{"kind":"GrantSpell","spellId":"burning-hands","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]},{"id":"thunderwave","label":"Thunderwave","effects":[{"kind":"GrantSpell","spellId":"thunderwave","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]},{"id":"mage-armor","label":"Mage Armor","effects":[{"kind":"GrantSpell","spellId":"mage-armor","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]},{"id":"sleep","label":"Sleep","effects":[{"kind":"GrantSpell","spellId":"sleep","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]},{"id":"identify","label":"Identify","effects":[{"kind":"GrantSpell","spellId":"identify","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]},{"id":"charm-person","label":"Charm Person","effects":[{"kind":"GrantSpell","spellId":"charm-person","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]},{"id":"color-spray","label":"Color Spray","effects":[{"kind":"GrantSpell","spellId":"color-spray","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]},{"id":"ray-of-sickness","label":"Ray of Sickness","effects":[{"kind":"GrantSpell","spellId":"ray-of-sickness","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]},{"id":"hideous-laughter","label":"Hideous Laughter","effects":[{"kind":"GrantSpell","spellId":"hideous-laughter","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]},{"id":"alarm","label":"Alarm","effects":[{"kind":"GrantSpell","spellId":"alarm","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]},{"id":"chromatic-orb","label":"Chromatic Orb","effects":[{"kind":"GrantSpell","spellId":"chromatic-orb","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]},{"id":"comprehend-languages","label":"Comprehend Languages","effects":[{"kind":"GrantSpell","spellId":"comprehend-languages","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]},{"id":"disguise-self","label":"Disguise Self","effects":[{"kind":"GrantSpell","spellId":"disguise-self","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]},{"id":"expeditious-retreat","label":"Expeditious Retreat","effects":[{"kind":"GrantSpell","spellId":"expeditious-retreat","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]},{"id":"false-life","label":"False Life","effects":[{"kind":"GrantSpell","spellId":"false-life","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]},{"id":"feather-fall","label":"Feather Fall","effects":[{"kind":"GrantSpell","spellId":"feather-fall","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]},{"id":"find-familiar","label":"Find Familiar","effects":[{"kind":"GrantSpell","spellId":"find-familiar","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]},{"id":"fog-cloud","label":"Fog Cloud","effects":[{"kind":"GrantSpell","spellId":"fog-cloud","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]},{"id":"grease","label":"Grease","effects":[{"kind":"GrantSpell","spellId":"grease","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]},{"id":"jump","label":"Jump","effects":[{"kind":"GrantSpell","spellId":"jump","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]},{"id":"longstrider","label":"Longstrider","effects":[{"kind":"GrantSpell","spellId":"longstrider","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]},{"id":"protection-from-evil-and-good","label":"Protection from Evil and Good","effects":[{"kind":"GrantSpell","spellId":"protection-from-evil-and-good","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]},{"id":"silent-image","label":"Silent Image","effects":[{"kind":"GrantSpell","spellId":"silent-image","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]},{"id":"unseen-servant","label":"Unseen Servant","effects":[{"kind":"GrantSpell","spellId":"unseen-servant","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]},{"id":"floating-disk","label":"Floating Disk","effects":[{"kind":"GrantSpell","spellId":"floating-disk","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]},{"id":"ice-knife","label":"Ice Knife","effects":[{"kind":"GrantSpell","spellId":"ice-knife","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]},{"id":"illusory-script","label":"Illusory Script","effects":[{"kind":"GrantSpell","spellId":"illusory-script","preparation":"oncePerLongRest","spellcastingAbility":"INT"}]}]}] },
     { "id": "magic-initiate-druid", "name": "Magic Initiate (Druid)", "category": "origin", "repeatable": true, "prerequisites": [], "effects": [] },
     { "id": "skilled", "name": "Skilled", "category": "origin", "repeatable": true, "prerequisites": [], "effects": [] },
     { "id": "fighting-style-archery", "name": "Fighting Style: Archery", "category": "fighting-style", "repeatable": false, "prerequisites": [], "effects": [{ "kind": "AddModifier", "target": "attack", "value": 2, "condition": { "kind": "eq", "path": "event.attackKind", "value": "ranged" } }] },
@@ -179,7 +240,7 @@
       "skillChoices": { "choices": 2, "from": ["arcana", "history", "investigation", "medicine", "nature", "religion"] },
       "subclassLevel": 3,
       "levelTable": {
-        "1": { "proficiencyBonus": 2, "features": [{ "id": "arcane-recovery", "name": "Arcane Recovery", "effects": [{ "kind": "GrantResource", "resourceId": "arcane-recovery-points", "max": { "kind": "ceil", "term": { "kind": "multiply", "terms": [{ "kind": "level", "classId": "wizard" }, { "kind": "const", "value": 0.5 }] } }, "recharge": "longRest" }] }, { "id": "ritual-adept", "name": "Ritual Adept", "effects": [] }], "columns": {} },
+        "1": { "proficiencyBonus": 2, "features": [{ "id": "arcane-recovery", "name": "Arcane Recovery", "effects": [{ "kind": "GrantResource", "resourceId": "arcane-recovery-points", "max": { "kind": "ceil", "term": { "kind": "multiply", "terms": [{ "kind": "level", "classId": "wizard" }, { "kind": "const", "value": 0.5 }] } }, "recharge": "longRest" }] }, { "id": "ritual-adept", "name": "Ritual Adept", "effects": [{ "kind": "Custom", "handlerId": "ritual-adept" }] }], "columns": {} },
         "2": { "proficiencyBonus": 2, "features": [{ "id": "scholar", "name": "Scholar", "effects": [{ "kind": "OfferChoice", "choiceId": "wizard-scholar", "prompt": "Choose two academic skills to gain proficiency in.", "oneOf": 2, "when": "onAcquire", "options": [{ "id": "arcana", "label": "Arcana", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "arcana", "level": "proficient" }] }, { "id": "history", "label": "History", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "history", "level": "proficient" }] }, { "id": "investigation", "label": "Investigation", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "investigation", "level": "proficient" }] }, { "id": "medicine", "label": "Medicine", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "medicine", "level": "proficient" }] }, { "id": "nature", "label": "Nature", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "nature", "level": "proficient" }] }, { "id": "religion", "label": "Religion", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "religion", "level": "proficient" }] }] }] }], "columns": {} },
         "3": { "proficiencyBonus": 2, "features": [], "columns": {} },
         "4": { "proficiencyBonus": 2, "features": [], "columns": {} },
@@ -244,7 +305,7 @@
             },
             { "id": "expertise-rogue", "name": "Expertise", "effects": [{ "kind": "OfferChoice", "choiceId": "rogue-expertise-l1", "prompt": "Choose two skills you are proficient in to gain Expertise.", "oneOf": 2, "when": "onAcquire", "options": [{ "id": "acrobatics", "label": "Acrobatics", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "acrobatics", "level": "expertise" }] }, { "id": "athletics", "label": "Athletics", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "athletics", "level": "expertise" }] }, { "id": "deception", "label": "Deception", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "deception", "level": "expertise" }] }, { "id": "insight", "label": "Insight", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "insight", "level": "expertise" }] }, { "id": "intimidation", "label": "Intimidation", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "intimidation", "level": "expertise" }] }, { "id": "investigation", "label": "Investigation", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "investigation", "level": "expertise" }] }, { "id": "perception", "label": "Perception", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "perception", "level": "expertise" }] }, { "id": "performance", "label": "Performance", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "performance", "level": "expertise" }] }, { "id": "persuasion", "label": "Persuasion", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "persuasion", "level": "expertise" }] }, { "id": "sleight-of-hand", "label": "Sleight of Hand", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "sleight-of-hand", "level": "expertise" }] }, { "id": "stealth", "label": "Stealth", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "stealth", "level": "expertise" }] }] }] },
             { "id": "weapon-mastery-rogue", "name": "Weapon Mastery", "effects": [{ "kind": "GrantWeaponMastery", "masteries": ["Sap", "Vex", "Topple", "Push", "Slow", "Cleave", "Nick", "Graze"], "slots": 2 }] },
-            { "id": "thieves-cant", "name": "Thieves' Cant", "effects": [] }
+            { "id": "thieves-cant", "name": "Thieves' Cant", "effects": [{ "kind": "GrantProficiency", "target": "language", "id": "thieves-cant", "level": "proficient" }] }
           ],
           "columns": {}
         },
@@ -432,7 +493,7 @@
       "subclassLevel": 3,
       "levelTable": {
         "1": { "proficiencyBonus": 2, "features": [{ "id": "divine-order", "name": "Divine Order", "effects": [{ "kind": "OfferChoice", "choiceId": "divine-order", "prompt": "Choose your divine order: Protector (martial weapon proficiency + heavy armor training) or Thaumaturge (extra cantrip + WIS-mod bonus on Arcana / Religion checks).", "oneOf": 1, "when": "onAcquire", "options": [{ "id": "protector", "label": "Protector", "effects": [{ "kind": "GrantProficiency", "target": "weapon", "id": "martial", "level": "proficient" }, { "kind": "GrantProficiency", "target": "armor", "id": "heavy", "level": "proficient" }] }, { "id": "thaumaturge", "label": "Thaumaturge", "effects": [{ "kind": "GrantSpell", "spellId": "guidance", "preparation": "always-prepared" }, { "kind": "AddModifier", "target": { "kind": "skill", "skill": "arcana" }, "value": { "kind": "max", "terms": [{ "kind": "const", "value": 1 }, { "kind": "abilityMod", "ability": "WIS" }] } }, { "kind": "AddModifier", "target": { "kind": "skill", "skill": "religion" }, "value": { "kind": "max", "terms": [{ "kind": "const", "value": 1 }, { "kind": "abilityMod", "ability": "WIS" }] } }] }] }] }], "columns": {} },
-        "2": { "proficiencyBonus": 2, "features": [{ "id": "channel-divinity", "name": "Channel Divinity", "effects": [{ "kind": "GrantResource", "resourceId": "channel-divinity", "max": 2, "recharge": "shortRest" }] }, { "id": "divine-spark", "name": "Channel Divinity: Divine Spark", "effects": [] }], "columns": {} },
+        "2": { "proficiencyBonus": 2, "features": [{ "id": "channel-divinity", "name": "Channel Divinity", "effects": [{ "kind": "GrantResource", "resourceId": "channel-divinity", "max": 2, "recharge": "shortRest" }] }, { "id": "divine-spark", "name": "Channel Divinity: Divine Spark", "effects": [] }, { "id": "turn-undead", "name": "Channel Divinity: Turn Undead", "effects": [{ "kind": "Custom", "handlerId": "turn-undead" }] }], "columns": {} },
         "3": { "proficiencyBonus": 2, "features": [], "columns": {} },
         "4": { "proficiencyBonus": 2, "features": [], "columns": {} },
         "5": { "proficiencyBonus": 3, "features": [{ "id": "sear-undead", "name": "Sear Undead", "effects": [] }], "columns": {} },
@@ -2204,7 +2265,7 @@
     { "id": "antilife-shell", "name": "Antilife Shell", "level": 5, "school": "abjuration", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 hour", "concentration": true, "ritual": false, "classes": ["druid"], "mechanicalEffects": [] },
     { "id": "befuddlement", "name": "Befuddlement", "level": 8, "school": "enchantment", "castingTime": "Action", "range": "150 feet", "components": { "verbal": true, "somatic": true, "material": "a key ring with no keys" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["bard", "druid", "warlock", "wizard"], "mechanicalEffects": [{ "kind": "save", "ability": "INT", "damageDice": "10d12", "damageType": "psychic", "halfOnSuccess": true }] },
     { "id": "blink", "name": "Blink", "level": 3, "school": "transmutation", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true }, "duration": "1 minute", "concentration": false, "ritual": false, "classes": ["sorcerer", "wizard"], "mechanicalEffects": [] },
-    { "id": "divine-smite", "name": "Divine Smite", "level": 1, "school": "evocation", "castingTime": "Bonus Action", "range": "Self", "components": { "verbal": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["paladin"], "mechanicalEffects": [] },
+    { "id": "divine-smite", "name": "Divine Smite", "level": 1, "school": "evocation", "castingTime": "Bonus Action", "range": "Self", "components": { "verbal": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["paladin"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "divine-smite-active" }] },
     { "id": "elementalism", "name": "Elementalism", "level": 0, "school": "transmutation", "castingTime": "Action", "range": "30 feet", "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["druid", "sorcerer", "wizard"], "mechanicalEffects": [] },
     { "id": "floating-disk", "name": "Floating Disk", "level": 1, "school": "conjuration", "castingTime": "Action", "range": "30 feet", "components": { "verbal": true, "somatic": true, "material": "a drop of mercury" }, "duration": "1 hour", "concentration": false, "ritual": true, "classes": ["wizard"], "mechanicalEffects": [] },
     { "id": "freezing-sphere", "name": "Freezing Sphere", "level": 6, "school": "evocation", "castingTime": "Action", "range": "300 feet", "components": { "verbal": true, "somatic": true, "material": "a miniature crystal sphere" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["sorcerer", "wizard"], "targeting": { "shape": "sphere", "size": 60 }, "mechanicalEffects": [{ "kind": "save", "ability": "CON", "damageDice": "10d6", "damageType": "cold", "halfOnSuccess": true }] },
@@ -2955,7 +3016,14 @@
     {"id": "mace-of-disruption", "itemKind": "weapon", "name": "Mace of Disruption", "category": "simple", "attackKind": "melee", "damageType": "bludgeoning", "damageDice": "1d6", "properties": [], "mastery": "Sap", "rarity": "rare", "requiresAttunement": true, "onHit": [{ "dice": "2d6", "damageType": "radiant", "condition": { "kind": "any", "terms": [{ "kind": "eq", "path": "target.creatureType", "value": "Fiend" }, { "kind": "eq", "path": "target.creatureType", "value": "Undead" }] }, "save": { "ability": "WIS", "dc": 15, "hpThreshold": 25, "destroyOnFail": true, "conditionOnSuccess": "frightened", "sourceIsMagical": true } }], "description": "Base: Mace. RAW (SRD 5.2.1): 'When you hit a Fiend or an Undead with this magic weapon, that creature takes an extra 2d6 Radiant damage. If the target has 25 Hit Points or fewer after taking this damage, it must succeed on a DC 15 Wisdom saving throw or be destroyed. On a successful save, the creature has the Frightened condition until the end of your next turn.' Slice 318 wired the conditional vs-Fiend/Undead radiant rider; slice 323 wired the destroy-or-Frighten save (hpThreshold 25 post-damage, destroyOnFail, conditionOnSuccess frightened) on the same rider. Deferred (consumer-managed): the 'until end of your next turn' duration on the Frightened condition, and the Light emanation."},
     {"id": "mace-of-smiting", "itemKind": "weapon", "name": "Mace of Smiting", "category": "simple", "attackKind": "melee", "damageType": "bludgeoning", "damageDice": "1d6", "properties": [], "mastery": "Sap", "rarity": "rare", "requiresAttunement": false, "attackBonus": 1, "damageBonus": 1, "onHit": [{ "dice": "0d6+7", "damageType": "bludgeoning", "requiresCritical": true, "condition": { "kind": "not", "term": { "kind": "eq", "path": "target.creatureType", "value": "Construct" } } }, { "dice": "0d6+14", "damageType": "bludgeoning", "requiresCritical": true, "condition": { "kind": "eq", "path": "target.creatureType", "value": "Construct" }, "destroy": { "hpThreshold": 25 } }], "description": "Base: Mace. RAW (SRD 5.2.1): '+1 bonus to attack and damage rolls (increases to +3 vs a Construct). When you roll a 20 on an attack roll, the target takes an extra 7 Bludgeoning damage, or 14 Bludgeoning damage if it's a Construct. If a Construct has 25 Hit Points or fewer after taking this damage, it is destroyed.' Slice 316 wired the unconditional +1; slice 324/325 wired the crit riders (+7 vs non-Construct, +14 vs Construct via the 0d6+N flat-damage shape) and the Construct <=25-HP auto-destroy (slice-325 unconditional destroy arm, no save). Deferred: the +3-vs-Construct conditional attack/damage bonus (a predicate-gated base-enhancement primitive, distinct from the onHit riders)."},
     {"id": "ghoul-claws", "itemKind": "weapon", "name": "Ghoul's Claw", "category": "simple", "attackKind": "melee", "damageType": "slashing", "damageDice": "1d4", "properties": [], "onHit": [{ "save": { "ability": "CON", "dc": 10, "conditionOnFail": "paralyzed" }, "condition": { "kind": "not", "term": { "kind": "any", "terms": [{ "kind": "eq", "path": "target.creatureType", "value": "Undead" }, { "kind": "eq", "path": "target.speciesId", "value": "elf" }] } } }], "description": "Ghoul natural weapon. RAW (SRD 5.2.1) Ghoul Claw: 'Hit: 4 (1d4 + 2) Slashing damage. If the target is a creature that isn't an Undead or elf ... Constitution Saving Throw: DC 10. Failure: The target has the Paralyzed condition until the end of its next turn.' Canonical user of the slice-319 on-hit-save rider; the target-gate reuses slice 318's rider condition (not(Undead or elf)). The +2 damage / +4 attack come from the wielder's STR + proficiency, not the weapon. Deferred (consumer-managed, mirror of slice 286): the 'until end of its next turn' duration on the applied Paralyzed condition."},
+    {"id": "ghoul-bite", "itemKind": "weapon", "name": "Ghoul Bite", "category": "simple", "attackKind": "melee", "damageType": "piercing", "damageDice": "1d6", "properties": [], "onHit": [{ "dice": "1d6", "damageType": "necrotic" }], "description": "Ghoul natural weapon (Bite). RAW (SRD 5.2.1) Ghoul Bite: 'Hit: 5 (1d6 + 2) Piercing damage plus 3 (1d6) Necrotic damage.' Slice 462: piercing primary + slice-316 unconditional onHit extra-damage rider for the necrotic arm (same shape as wyvern-sting's poison rider). The +2 damage / +4 attack come from the wielder's STR + PB, not the weapon. Ghoul Multiattack (two Bites per Attack action) stays deferred until the monster-Multiattack primitive ships; consumers can still simulate it by making two ghoul-bite attacks in the same turn."},
     {"id": "couatl-bite", "itemKind": "weapon", "name": "Couatl's Bite", "category": "simple", "attackKind": "melee", "damageType": "piercing", "damageDice": "1d12", "properties": [], "onHit": [{ "applyConditionId": "poisoned" }], "description": "Couatl natural weapon. RAW (SRD 5.2.1) Couatl Bite: 'Hit: 11 (1d12 + 5) Piercing damage, and the target has the Poisoned condition until the end of the couatl's next turn.' Canonical user of the slice-321 unconditional on-hit condition rider (no save). The +5 damage / +7 attack come from the wielder's ability + proficiency, not the weapon. Deferred (consumer-managed, mirror of slice 286): the 'until end of the couatl's next turn' duration on the applied Poisoned condition."},
+    {"id": "wolf-bite", "itemKind": "weapon", "name": "Wolf Bite", "category": "simple", "attackKind": "melee", "damageType": "piercing", "damageDice": "1d6", "properties": [], "onHit": [{ "applyConditionId": "prone", "condition": { "kind": "any", "terms": [{ "kind": "eq", "path": "target.creatureSize", "value": "Tiny" }, { "kind": "eq", "path": "target.creatureSize", "value": "Small" }, { "kind": "eq", "path": "target.creatureSize", "value": "Medium" }] } }], "description": "Wolf natural weapon. RAW (SRD 5.2.1) Wolf Bite: 'Hit: 5 (1d6 + 2) Piercing damage. If the target is a Medium or smaller creature, it has the Prone condition.' Canonical user of the slice-446 `target.creatureSize` predicate fact paired with the slice-321 unconditional onHit `applyConditionId` rider. The +2 damage / +4 attack come from the wielder's STR + proficiency, not the weapon. Deferred (consumer-managed): the Prone condition's duration (RAW doesn't specify; the engine emits Prone without an auto-expiry stamp, mirror of slice 286)."},
+    {"id": "dire-wolf-bite", "itemKind": "weapon", "name": "Dire Wolf Bite", "category": "simple", "attackKind": "melee", "damageType": "piercing", "damageDice": "1d10", "properties": [], "onHit": [{ "applyConditionId": "prone", "condition": { "kind": "any", "terms": [{ "kind": "eq", "path": "target.creatureSize", "value": "Tiny" }, { "kind": "eq", "path": "target.creatureSize", "value": "Small" }, { "kind": "eq", "path": "target.creatureSize", "value": "Medium" }, { "kind": "eq", "path": "target.creatureSize", "value": "Large" }] } }], "description": "Dire Wolf natural weapon. RAW (SRD 5.2.1) Dire Wolf Bite: 'Hit: 8 (1d10 + 3) Piercing damage. If the target is a Large or smaller creature, it has the Prone condition.' Same slice-446 size-gated onHit Prone shape as Wolf Bite, gate widened to include Large. The +3 damage / +5 attack come from the wielder's STR + proficiency, not the weapon."},
+    {"id": "brown-bear-claw", "itemKind": "weapon", "name": "Brown Bear Claw", "category": "simple", "attackKind": "melee", "damageType": "slashing", "damageDice": "1d4", "properties": [], "onHit": [{ "applyConditionId": "prone", "condition": { "kind": "any", "terms": [{ "kind": "eq", "path": "target.creatureSize", "value": "Tiny" }, { "kind": "eq", "path": "target.creatureSize", "value": "Small" }, { "kind": "eq", "path": "target.creatureSize", "value": "Medium" }, { "kind": "eq", "path": "target.creatureSize", "value": "Large" }] } }], "description": "Brown Bear natural weapon (Claw). RAW (SRD 5.2.1) Brown Bear Claw: 'Hit: 5 (1d4 + 3) Slashing damage. If the target is a Large or smaller creature, it has the Prone condition.' Slice 454: same slice-446 size-gated onHit Prone shape as Dire Wolf Bite (Large-or-smaller gate). Brown Bear also has Bite (separate natural weapon with no special trait, modeled by a generic 1d8 piercing claim or via Multiattack once that primitive ships). +3 damage / +5 attack come from wielder STR 17 + PB 2."},
+    {"id": "mastiff-bite", "itemKind": "weapon", "name": "Mastiff Bite", "category": "simple", "attackKind": "melee", "damageType": "piercing", "damageDice": "1d6", "properties": [], "onHit": [{ "applyConditionId": "prone", "condition": { "kind": "any", "terms": [{ "kind": "eq", "path": "target.creatureSize", "value": "Tiny" }, { "kind": "eq", "path": "target.creatureSize", "value": "Small" }, { "kind": "eq", "path": "target.creatureSize", "value": "Medium" }] } }], "description": "Mastiff natural weapon. RAW (SRD 5.2.1) Mastiff Bite: 'Hit: 4 (1d6 + 1) Piercing damage. If the target is a Medium or smaller creature, it has the Prone condition.' Slice 454: same slice-446 size-gated onHit Prone shape as Wolf Bite (Medium-or-smaller gate). +1 damage / +3 attack come from wielder STR 13 + PB 2."},
+    {"id": "sprite-needle-sword", "itemKind": "weapon", "name": "Sprite Needle Sword", "category": "simple", "attackKind": "melee", "damageType": "piercing", "damageDice": "1d4", "properties": [], "description": "Sprite natural weapon. RAW (SRD 5.2.1) Needle Sword: 'Hit: 6 (1d4 + 4) Piercing damage.' Plain damage-only rider; the +4 damage / +6 attack come from the wielder's DEX + proficiency, not the weapon."},
+    {"id": "sprite-enchanting-bow", "itemKind": "weapon", "name": "Sprite Enchanting Bow", "category": "simple", "attackKind": "ranged", "damageType": "piercing", "damageDice": "0d4+1", "properties": ["ammunition"], "rangeNormal": 40, "rangeLong": 160, "noAbilityModifierDamage": true, "onHit": [{ "applyConditionId": "charmed" }], "description": "Sprite ranged natural weapon. RAW (SRD 5.2.1) Enchanting Bow: 'Hit: 1 Piercing damage, and the target has the Charmed condition until the start of the sprite's next turn.' Slice 449 wired the slice-321 unconditional applyConditionId Charmed rider; slice 450 added the `noAbilityModifierDamage: true` flag so the wielder's DEX mod doesn't inflate the flat 1-damage base. Together they deliver exactly RAW: 1 piercing + Charmed on hit. The 'until the start of the sprite's next turn' Charmed duration is consumer-managed (mirror of slice 286)."},
     {"id": "wyvern-sting", "itemKind": "weapon", "name": "Wyvern's Sting", "category": "simple", "attackKind": "melee", "damageType": "piercing", "damageDice": "2d6", "properties": ["reach"], "onHit": [{ "dice": "7d6", "damageType": "poison", "applyConditionId": "poisoned" }], "description": "Wyvern natural weapon. RAW (SRD 5.2.1) Wyvern Sting: 'Hit: 11 (2d6 + 4) Piercing damage plus 24 (7d6) Poison damage, and the target has the Poisoned condition until the start of the wyvern's next turn.' Slice 322: one onHit rider carrying both extra poison damage (slice 316 dice) and an unconditional Poisoned (slice 321 applyConditionId). The +4 / +7 come from the wielder; the reach 10 ft is the `reach` property. Deferred (consumer-managed): the condition duration."},
     {"id": "ettercap-bite", "itemKind": "weapon", "name": "Ettercap's Bite", "category": "simple", "attackKind": "melee", "damageType": "piercing", "damageDice": "1d6", "properties": [], "onHit": [{ "dice": "1d4", "damageType": "poison", "applyConditionId": "poisoned" }], "description": "Ettercap natural weapon. RAW (SRD 5.2.1) Ettercap Bite: 'Hit: 5 (1d6 + 2) Piercing damage plus 2 (1d4) Poison damage, and the target has the Poisoned condition until the start of the ettercap's next turn.' Slice 322: combined extra-poison-damage + unconditional-Poisoned rider. Deferred (consumer-managed): the condition duration."},
     {"id": "merrow-bite", "itemKind": "weapon", "name": "Merrow's Bite", "category": "simple", "attackKind": "melee", "damageType": "piercing", "damageDice": "1d4", "properties": [], "onHit": [{ "applyConditionId": "poisoned" }], "description": "Merrow natural weapon. RAW (SRD 5.2.1) Merrow Bite: 'Hit: 6 (1d4 + 4) Piercing damage, and the target has the Poisoned condition until the end of the merrow's next turn.' Slice 322: unconditional on-hit Poisoned (slice 321), no extra damage die. Deferred (consumer-managed): the condition duration."},
@@ -3080,7 +3148,10 @@
       "cr": 0.25,
       "xp": 50,
       "proficiencyBonus": 2,
-      "languages": ["common", "goblin"]
+      "languages": ["common", "goblin"],
+      "traits": [
+        { "kind": "Custom", "handlerId": "nimble-escape" }
+      ]
     },
     {
       "id": "wolf",
@@ -3097,7 +3168,10 @@
       "xp": 50,
       "proficiencyBonus": 2,
       "senses": { "darkvision": 60, "passivePerceptionOverride": 15 },
-      "languages": []
+      "languages": [],
+      "traits": [
+        { "kind": "SetAdvantage", "on": "attack", "mode": "advantage", "condition": { "kind": "eq", "path": "event.attackerHasAllyAdjacentToTarget", "value": true } }
+      ]
     },
     {
       "id": "skeleton",
@@ -3425,7 +3499,10 @@
       "cr": 0.25,
       "xp": 50,
       "proficiencyBonus": 2,
-      "languages": []
+      "languages": [],
+      "traits": [
+        { "kind": "PreventFatalDamageOnSave", "ability": "CON", "baseDC": 5, "exemptDamageTypes": ["radiant"], "exemptOnCrit": true }
+      ]
     },
     {
       "id": "ghoul",
@@ -3443,7 +3520,8 @@
       "cr": 1,
       "xp": 200,
       "proficiencyBonus": 2,
-      "languages": ["common"]
+      "languages": ["common"],
+      "multiattack": { "name": "Ghoul Multiattack", "attacks": [{ "weaponId": "ghoul-bite", "count": 2 }] }
     },
     {
       "id": "giant-rat",
@@ -3461,7 +3539,10 @@
       "cr": 0.125,
       "xp": 25,
       "proficiencyBonus": 2,
-      "languages": []
+      "languages": [],
+      "traits": [
+        { "kind": "SetAdvantage", "on": "attack", "mode": "advantage", "condition": { "kind": "eq", "path": "event.attackerHasAllyAdjacentToTarget", "value": true } }
+      ]
     },
     {
       "id": "giant-spider",
@@ -3529,7 +3610,10 @@
       "cr": 1,
       "xp": 200,
       "proficiencyBonus": 2,
-      "languages": []
+      "languages": [],
+      "traits": [
+        { "kind": "SetAdvantage", "on": "attack", "mode": "advantage", "condition": { "kind": "eq", "path": "event.attackerHasAllyAdjacentToTarget", "value": true } }
+      ]
     },
     {
       "id": "stirge",
@@ -3720,7 +3804,10 @@
       "xp": 100,
       "proficiencyBonus": 2,
       "languages": [],
-      "traits": []
+      "traits": [
+        { "kind": "SetAdvantage", "on": "attack", "mode": "disadvantage", "condition": { "kind": "eq", "path": "bearer.lightLevel", "value": "bright" } },
+        { "kind": "SetAdvantage", "on": { "kind": "check" }, "mode": "disadvantage", "condition": { "kind": "eq", "path": "bearer.lightLevel", "value": "bright" } }
+      ]
     },
     {
       "id": "specter",
@@ -3740,7 +3827,10 @@
       "xp": 200,
       "proficiencyBonus": 2,
       "languages": [],
-      "traits": []
+      "traits": [
+        { "kind": "SetAdvantage", "on": "attack", "mode": "disadvantage", "condition": { "kind": "eq", "path": "bearer.lightLevel", "value": "bright" } },
+        { "kind": "SetAdvantage", "on": { "kind": "check" }, "mode": "disadvantage", "condition": { "kind": "eq", "path": "bearer.lightLevel", "value": "bright" } }
+      ]
     },
     {
       "id": "wight",
@@ -3761,7 +3851,10 @@
       "xp": 700,
       "proficiencyBonus": 2,
       "languages": ["common"],
-      "traits": []
+      "traits": [
+        { "kind": "SetAdvantage", "on": "attack", "mode": "disadvantage", "condition": { "kind": "eq", "path": "bearer.lightLevel", "value": "bright" } },
+        { "kind": "SetAdvantage", "on": { "kind": "check" }, "mode": "disadvantage", "condition": { "kind": "eq", "path": "bearer.lightLevel", "value": "bright" } }
+      ]
     },
     {
       "id": "ghost",
@@ -3801,7 +3894,10 @@
       "xp": 1800,
       "proficiencyBonus": 3,
       "languages": ["common"],
-      "traits": []
+      "traits": [
+        { "kind": "SetAdvantage", "on": "attack", "mode": "disadvantage", "condition": { "kind": "eq", "path": "bearer.lightLevel", "value": "bright" } },
+        { "kind": "SetAdvantage", "on": { "kind": "check" }, "mode": "disadvantage", "condition": { "kind": "eq", "path": "bearer.lightLevel", "value": "bright" } }
+      ]
     },
     {
       "id": "lemure",
@@ -6878,7 +6974,10 @@
       "cr": 0.125,
       "xp": 25,
       "proficiencyBonus": 2,
-      "languages": ["common", "goblin"]
+      "languages": ["common", "goblin"],
+      "traits": [
+        { "kind": "Custom", "handlerId": "nimble-escape" }
+      ]
     },
     {
       "id": "goblin-boss",
@@ -6896,7 +6995,10 @@
       "cr": 1,
       "xp": 200,
       "proficiencyBonus": 2,
-      "languages": ["common", "goblin"]
+      "languages": ["common", "goblin"],
+      "traits": [
+        { "kind": "Custom", "handlerId": "nimble-escape" }
+      ]
     },
     {
       "id": "hobgoblin-warrior",
@@ -7206,7 +7308,12 @@
       "cr": 0.125,
       "xp": 25,
       "proficiencyBonus": 2,
-      "languages": ["common", "draconic"]
+      "languages": ["common", "draconic"],
+      "traits": [
+        { "kind": "SetAdvantage", "on": "attack", "mode": "advantage", "condition": { "kind": "eq", "path": "event.attackerHasAllyAdjacentToTarget", "value": true } },
+        { "kind": "SetAdvantage", "on": "attack", "mode": "disadvantage", "condition": { "kind": "eq", "path": "bearer.lightLevel", "value": "bright" } },
+        { "kind": "SetAdvantage", "on": { "kind": "check" }, "mode": "disadvantage", "condition": { "kind": "eq", "path": "bearer.lightLevel", "value": "bright" } }
+      ]
     },
     {
       "id": "merfolk-skirmisher",
@@ -8239,6 +8346,47 @@
             "filter": { "kind": "all", "terms": [{ "kind": "eq", "path": "event.attackerIsSelf", "value": true }, { "kind": "eq", "path": "event.hit", "value": true }] }
           },
           "actions": [{ "kind": "AddDamage", "dice": "1d6", "damageType": "fire" }],
+          "consumeOnTrigger": true
+        }
+      ]
+    },
+    {
+      "id": "divine-smite-active",
+      "name": "Divine Smite Active",
+      "description": "Caster's next melee weapon (or Unarmed Strike) hit deals +2d8 radiant; +1d8 more if the target is a Fiend or Undead. The spell ends after that hit. Slice 444: base form only (no upcast scaling); the +1d8/slot above L1 upcast arm stays deferred pending slot-level-aware buff variants.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        {
+          "kind": "OnEvent",
+          "id": "divine-smite-base-rider",
+          "trigger": {
+            "eventType": "AttackRolled",
+            "filter": { "kind": "all", "terms": [
+              { "kind": "eq", "path": "event.attackerIsSelf", "value": true },
+              { "kind": "eq", "path": "event.hit", "value": true },
+              { "kind": "eq", "path": "event.attackKind", "value": "melee" }
+            ] }
+          },
+          "actions": [{ "kind": "AddDamage", "dice": "2d8", "damageType": "radiant" }],
+          "consumeOnTrigger": true
+        },
+        {
+          "kind": "OnEvent",
+          "id": "divine-smite-celestial-rider",
+          "trigger": {
+            "eventType": "AttackRolled",
+            "filter": { "kind": "all", "terms": [
+              { "kind": "eq", "path": "event.attackerIsSelf", "value": true },
+              { "kind": "eq", "path": "event.hit", "value": true },
+              { "kind": "eq", "path": "event.attackKind", "value": "melee" },
+              { "kind": "any", "terms": [
+                { "kind": "eq", "path": "event.targetCreatureType", "value": "Fiend" },
+                { "kind": "eq", "path": "event.targetCreatureType", "value": "Undead" }
+              ] }
+            ] }
+          },
+          "actions": [{ "kind": "AddDamage", "dice": "1d8", "damageType": "radiant" }],
           "consumeOnTrigger": true
         }
       ]

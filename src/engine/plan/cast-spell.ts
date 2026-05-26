@@ -437,6 +437,7 @@ const planAttackMechanic = (
       mitigatedComponents: mitigated,
       causedByEventId: damageRolled.id,
       at,
+      rng,
     });
     const damageApplied: DamageAppliedEvent = {
       id: newEventId() as ULID,
@@ -648,6 +649,7 @@ const planSaveMechanic = (
           mitigatedComponents: mitigated,
           causedByEventId: saveEvent.id,
           at,
+          rng,
         });
         const damageApplied: DamageAppliedEvent = {
           id: newEventId() as ULID,
@@ -999,6 +1001,7 @@ const planAutoHitMechanic = (
       mitigatedComponents: mitigated,
       causedByEventId: declaredEventId,
       at,
+      rng,
     });
     const damageApplied: DamageAppliedEvent = {
       id: newEventId() as ULID,
@@ -1172,6 +1175,7 @@ const planHpThresholdMechanic = (
       mitigatedComponents: mitigated,
       causedByEventId: declaredEventId,
       at,
+      rng,
     });
     const damageApplied: DamageAppliedEvent = {
       id: newEventId() as ULID,

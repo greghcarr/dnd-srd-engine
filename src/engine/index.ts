@@ -27,6 +27,7 @@ import {
   planCleave,
   planCreateEncounter,
   planRollInitiative,
+  planSwapInitiative,
   planStartEncounter,
   planBeginFirstTurn,
   planAdvanceTurn,
@@ -65,6 +66,9 @@ import {
   planFlurryOfBlows,
   planPatientDefense,
   planStepOfTheWind,
+  planAdrenalineRush,
+  planNimbleEscape,
+  planTurnUndead,
   planIntimidatingPresence,
   planDragonWings,
   planPreserveLife,
@@ -194,6 +198,9 @@ import {
   type FlurryOfBlowsIntent,
   type PatientDefenseIntent,
   type StepOfTheWindIntent,
+  type AdrenalineRushIntent,
+  type NimbleEscapeIntent,
+  type TurnUndeadIntent,
   type IntimidatingPresenceIntent,
   type DragonWingsIntent,
   type PreserveLifeIntent,
@@ -212,6 +219,7 @@ import {
   type FallingIntent,
   type CreateEncounterIntent,
   type RollInitiativeIntent,
+  type SwapInitiativeIntent,
   type StartEncounterIntent,
   type AdvanceTurnIntent,
   type BeginFirstTurnIntent,
@@ -299,6 +307,7 @@ export interface Engine {
       intent: Omit<CreateEncounterIntent, 'type'>,
     ): { events: ReadonlyArray<Event>; encounterId: string };
     rollInitiative(state: CampaignState, intent: Omit<RollInitiativeIntent, 'type'>): PlanResult;
+    swapInitiative(state: CampaignState, intent: Omit<SwapInitiativeIntent, 'type'>): PlanResult;
     startEncounter(state: CampaignState, intent: Omit<StartEncounterIntent, 'type'>): PlanResult;
     beginFirstTurn(state: CampaignState, intent: Omit<BeginFirstTurnIntent, 'type'>): PlanResult;
     advanceTurn(state: CampaignState, intent: Omit<AdvanceTurnIntent, 'type'>): PlanResult;
@@ -342,6 +351,9 @@ export interface Engine {
     flurryOfBlows(state: CampaignState, intent: Omit<FlurryOfBlowsIntent, 'type'>): PlanResult;
     patientDefense(state: CampaignState, intent: Omit<PatientDefenseIntent, 'type'>): PlanResult;
     stepOfTheWind(state: CampaignState, intent: Omit<StepOfTheWindIntent, 'type'>): PlanResult;
+    adrenalineRush(state: CampaignState, intent: Omit<AdrenalineRushIntent, 'type'>): PlanResult;
+    nimbleEscape(state: CampaignState, intent: Omit<NimbleEscapeIntent, 'type'>): PlanResult;
+    turnUndead(state: CampaignState, intent: Omit<TurnUndeadIntent, 'type'>): PlanResult;
     intimidatingPresence(state: CampaignState, intent: Omit<IntimidatingPresenceIntent, 'type'>): PlanResult;
     dragonWings(state: CampaignState, intent: Omit<DragonWingsIntent, 'type'>): PlanResult;
     preserveLife(state: CampaignState, intent: Omit<PreserveLifeIntent, 'type'>): PlanResult;
@@ -516,6 +528,11 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
         events: planRollInitiative(state, content, rng, { type: 'RollInitiative', ...intent }),
       };
     },
+    swapInitiative(state, intent) {
+      return {
+        events: planSwapInitiative(state, content, { type: 'SwapInitiative', ...intent }),
+      };
+    },
     startEncounter(state, intent) {
       return { events: planStartEncounter(state, content, { type: 'StartEncounter', ...intent }) };
     },
@@ -658,6 +675,15 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     stepOfTheWind(state, intent) {
       return { events: planStepOfTheWind(state, content, { type: 'StepOfTheWind', ...intent }) };
+    },
+    adrenalineRush(state, intent) {
+      return { events: planAdrenalineRush(state, content, { type: 'AdrenalineRush', ...intent }) };
+    },
+    nimbleEscape(state, intent) {
+      return { events: planNimbleEscape(state, content, rng, { type: 'NimbleEscape', ...intent }) };
+    },
+    turnUndead(state, intent) {
+      return { events: planTurnUndead(state, content, rng, { type: 'TurnUndead', ...intent }) };
     },
     intimidatingPresence(state, intent) {
       return { events: planIntimidatingPresence(state, content, rng, { type: 'IntimidatingPresence', ...intent }) };

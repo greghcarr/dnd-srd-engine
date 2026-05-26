@@ -20,9 +20,10 @@ import { rollDie, parseDiceExpression } from '../../rng/dice.js';
 import { newEventId, newAppliedConditionId } from '../../ids.js';
 import { computeAttackBonus } from '../../derive/attack.js';
 import { computeAC } from '../../derive/ac.js';
-import { buildEffectStack, collectEffectsFromCharacter } from '../../derive/effect-stack.js';
+import { buildEffectStack, collectEffectsFromCharacter, getEffectiveFeatIds } from '../../derive/effect-stack.js';
 import { cunningStrikeForgoDice, cunningStrikeMinLevel, type CunningStrikeOption } from './cunning-strike.js';
 import { getCreatureType } from '../../derive/creature-type.js';
+import { creatureSize } from '../../derive/creature-size.js';
 import { abilityModifier, effectiveAbilityScore } from '../../derive/ability.js';
 import { computeActionEconomyBudget } from '../../derive/action-economy.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
@@ -256,6 +257,38 @@ export interface AttackIntent {
   //   undefined -> consumer didn't specify; default-apply (same as
   //                true). Predicate is `not eq value:false`.
   readonly targetCanSeeAttacker?: boolean;
+  // Slice 445: consumer-supplied per-attack fact for monster Pack
+  // Tactics. RAW (SRD 5.2.1, every Pack Tactics user): "The wolf has
+  // Advantage on an attack roll against a creature if at least one of
+  // the wolf's allies is within 5 feet of the creature and the ally
+  // doesn't have the Incapacitated condition." The engine doesn't
+  // model positions, so the consumer signals the combined predicate
+  // (an ally within 5 ft of the target AND that ally is not
+  // Incapacitated) as one boolean. Opt-in semantic (mirror of slice
+  // 279's `lightLevel`): `undefined` produces no advantage; the
+  // bearer must explicitly receive `true` to gain the benefit.
+  // Strict-RAW: never grants more advantage than the consumer signals.
+  readonly attackerHasAllyAdjacentToTarget?: boolean;
+  // Slice 451: consumer-supplied ambient light at the attacker's tile,
+  // for monster traits that gate on light (Kobold Warrior's Sunlight
+  // Sensitivity: "While in sunlight, the kobold has Disadvantage on
+  // ability checks and attack rolls"). Same 3-value enum and opt-in
+  // semantic as slice 279's check-side `lightLevel` field on
+  // ComputeAbilityCheckInput; this is the attack-side mirror so the
+  // disadvantage on attack rolls arm has its own fact source. Surfaces
+  // as `bearer.lightLevel` in the attacker-side SetAdvantage facts.
+  readonly lightLevel?: 'bright' | 'dim' | 'darkness';
+  // Slice 467: Savage Attacker (Origin Feat). RAW (SRD 5.2.1): "Once
+  // per turn when you hit a target with a weapon, you can roll the
+  // weapon's damage dice twice and use either roll against the target."
+  // Opt-in per-attack: the consumer signals true to spend the per-turn
+  // use on this attack. The planner validates the attacker has
+  // savage-attacker on its effective feat list (via getEffectiveFeatIds,
+  // which auto-projects the background's originFeatId since slice 466)
+  // and, in an active encounter, that the turn-usage flag is unset.
+  // The reroll only fires on a hit; a miss with this flag set does NOT
+  // consume the per-turn use (RAW: "when you hit").
+  readonly useSavageAttacker?: boolean;
 }
 
 const chooseDamageAbility = (
@@ -325,13 +358,23 @@ export interface ResolveAttackInput {
   // Slice 278: consumer-supplied LoS fact for Dodge. See doc comment
   // on AttackIntent.targetCanSeeAttacker above.
   readonly targetCanSeeAttacker?: boolean;
+  // Slice 445: consumer-supplied fact for monster Pack Tactics. See
+  // doc comment on AttackIntent.attackerHasAllyAdjacentToTarget above.
+  readonly attackerHasAllyAdjacentToTarget?: boolean;
+  // Slice 451: consumer-supplied ambient light for Sunlight Sensitivity.
+  // See doc comment on AttackIntent.lightLevel above.
+  readonly lightLevel?: 'bright' | 'dim' | 'darkness';
   // Rogue Cunning Strike (L5+): effects the attacker adds to this attack's
   // Sneak Attack, each forgoing 1d6 of Sneak Attack damage. See AttackIntent.
   readonly cunningStrike?: ReadonlyArray<CunningStrikeOption>;
+  // Slice 467: see AttackIntent.useSavageAttacker doc comment above.
+  readonly useSavageAttacker?: boolean;
 }
 
 const CUNNING_STRIKE_LEVEL = 5;
 const IMPROVED_CUNNING_STRIKE_LEVEL = 11;
+// Slice 467: feat id read by resolveAttack to gate the per-attack reroll.
+const SAVAGE_ATTACKER_FEAT_ID = 'savage-attacker';
 
 // The attacker's Sneak Attack die count, read from the `cunningStrikeEligible`
 // AddDamage rider so it tracks the pack's per-level wiring rather than a
@@ -421,6 +464,27 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   const weaponDef = content.items.get(weaponInstance.definitionId);
   if (!weaponDef || weaponDef.itemKind !== 'weapon') {
     throw new Error(`Item ${weaponInstance.definitionId} is not a weapon`);
+  }
+  // Slice 467: Savage Attacker validation. The reroll itself fires
+  // below at the damage-roll site (only when the attack actually hits,
+  // matching RAW "when you hit"); the validation here rejects malformed
+  // intents up front so the consumer sees the error before any d20 is
+  // committed.
+  if (input.useSavageAttacker === true) {
+    if (!getEffectiveFeatIds(attacker, content).includes(SAVAGE_ATTACKER_FEAT_ID)) {
+      throw new Error(`${attacker.name} does not have the Savage Attacker feat`);
+    }
+    const encounterForSA = state.activeEncounterId
+      ? state.encounters[state.activeEncounterId]
+      : undefined;
+    const attackerCbForSA = encounterForSA?.combatants.find(
+      (c) => c.combatantId === input.attackerId,
+    );
+    if (attackerCbForSA?.turnUsage.savageAttackerUsedThisTurn === true) {
+      throw new Error(
+        `${attacker.name} has already used Savage Attacker this turn`,
+      );
+    }
   }
 
   const attackBonusResult = computeAttackBonus({
@@ -562,6 +626,35 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     || effects.hasSense('truesight');
   const targetCanLocateInvisible = canLocateInvisible(targetEffects);
   const attackerCanLocateInvisible = canLocateInvisible(attackerEffects);
+  // Slice 445: derive the "ally adjacent to target" fact once, here,
+  // so it's available to both the pre-roll Pack Tactics SetAdvantage
+  // gate (via `attackerSelfAdvantageFacts` below) AND the post-roll
+  // AttackRolledEvent (so the existing Rogue Sneak Attack flank arm
+  // keeps working). The position-derived path requires an active
+  // encounter and a positioned target; the consumer-supplied
+  // `input.attackerHasAllyAdjacentToTarget` overrides when set, so
+  // position-less consumers can still signal the RAW condition. Opt-in:
+  // undefined produces no Pack Tactics advantage (predicate is
+  // `eq value:true`).
+  const positionDerivedAllyAdjacent = ((): boolean | undefined => {
+    if (!state.activeEncounterId) return undefined;
+    const enc = state.encounters[state.activeEncounterId];
+    if (!enc) return undefined;
+    const targetCb = enc.combatants.find((c) => c.combatantId === input.targetId);
+    if (!targetCb?.position) return undefined;
+    const targetPos = targetCb.position;
+    return enc.combatants.some((other) => {
+      if (other.combatantId === input.attackerId) return false;
+      if (other.combatantId === input.targetId) return false;
+      if (!other.position) return false;
+      const ch = state.characters[other.combatantId];
+      if (!ch) return false;
+      if (findActorBlockingCondition(ch) !== undefined) return false;
+      return chebyshevDistance(other.position, targetPos) <= 5;
+    });
+  })();
+  const attackerHasAllyAdjacentToTarget =
+    input.attackerHasAllyAdjacentToTarget ?? positionDerivedAllyAdjacent;
   // Generic attacker-side advantage on attacks (e.g. Invisible) and
   // disadvantage on attacks (e.g. Blinded, Frightened, Poisoned,
   // Prone, Restrained). Folded alongside target-side contributions
@@ -575,6 +668,16 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   const attackerSelfAdvantageFacts = new Map<string, unknown>([
     ['target.canLocateInvisible', targetCanLocateInvisible],
     ['bearer.canSeeFearSource', input.bearerCanSeeFearSource],
+    // Slice 445: monster Pack Tactics. Uses the same fact name as the
+    // existing post-roll trigger fact (consumed by Rogue Sneak Attack's
+    // flank arm) so content gates on one canonical name.
+    ['event.attackerHasAllyAdjacentToTarget', attackerHasAllyAdjacentToTarget],
+    // Slice 451: attack-side mirror of slice 279's check-side
+    // `bearer.lightLevel`. Same opt-in semantic (undefined produces
+    // no Sunlight Sensitivity disadvantage); Kobold Warrior gates
+    // both its check-disadvantage and its attack-disadvantage on the
+    // same fact name so a consumer populates it once per intent.
+    ['bearer.lightLevel', input.lightLevel],
   ]);
   const attackerSelfAdvantage = attackerEffects.advantageFor('attack', attackerSelfAdvantageFacts);
   // Build a small facts map for type-conditional ImposeDisadvantage
@@ -728,28 +831,11 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
 
   // RAW Rogue Sneak Attack (and equivalent content triggers): the
   // ally-adjacent path requires *another* positioned, non-incapacitated
-  // combatant within 5 ft of the target. The engine has no team
-  // model, so any third party counts (content can layer hostility on
-  // top via additional predicates). Excludes the attacker, the
-  // target, and any combatant whose action-blocking conditions would
-  // prevent them from "threatening" the target.
-  const attackerHasAllyAdjacentToTarget = ((): boolean | undefined => {
-    if (!state.activeEncounterId) return undefined;
-    const enc = state.encounters[state.activeEncounterId];
-    if (!enc) return undefined;
-    const targetCb = enc.combatants.find((c) => c.combatantId === input.targetId);
-    if (!targetCb?.position) return undefined;
-    const targetPos = targetCb.position;
-    return enc.combatants.some((other) => {
-      if (other.combatantId === input.attackerId) return false;
-      if (other.combatantId === input.targetId) return false;
-      if (!other.position) return false;
-      const ch = state.characters[other.combatantId];
-      if (!ch) return false;
-      if (findActorBlockingCondition(ch) !== undefined) return false;
-      return chebyshevDistance(other.position, targetPos) <= 5;
-    });
-  })();
+  // combatant within 5 ft of the target. Computed once earlier in this
+  // function (slice 445) so the value flows into both the pre-roll
+  // SetAdvantage facts (Pack Tactics) and this event field (Rogue
+  // Sneak Attack flank arm). See the earlier `positionDerivedAllyAdjacent`
+  // + `attackerHasAllyAdjacentToTarget` block.
 
   const attackRolled: AttackRolledEvent = {
     id: newEventId() as ULID,
@@ -803,7 +889,14 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   const damageBaseScore = attacker.abilityScores[damageAbility];
   const damageScoreFloor = attackerEffects.effectiveAbilityScoreFloor(damageAbility)?.value;
   const damageScoreIncrease = attackerEffects.effectiveAbilityScoreIncrease(damageAbility);
-  const damageAbilityMod = abilityModifier(effectiveAbilityScore(damageBaseScore, damageScoreFloor, damageScoreIncrease));
+  // Slice 450: a weapon flagged `noAbilityModifierDamage` is one whose
+  // RAW damage line is a flat number rather than a die + ability mod
+  // (Sprite Enchanting Bow's "Hit: 1"). Zero the ability fold so the
+  // engine's damage matches RAW exactly. Cleave secondary attacks
+  // honor the same flag below.
+  const damageAbilityMod = weaponDef.noAbilityModifierDamage === true
+    ? 0
+    : abilityModifier(effectiveAbilityScore(damageBaseScore, damageScoreFloor, damageScoreIncrease));
   // Flex mastery: a versatile weapon wielded two-handed (off-hand empty)
   // uses the larger versatileDice instead of damageDice. RAW 2024.
   const wieldedTwoHanded =
@@ -820,9 +913,35 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   const damageExpression = applyMartialArtsDieScaling(attacker, weaponDef.id, baseDamageExpression);
   const parsed = parseDiceExpression(damageExpression);
   const totalRolls = critical ? parsed.count * 2 : parsed.count;
-  const damageRolls: number[] = [];
-  for (let i = 0; i < totalRolls; i++) {
-    damageRolls.push(rollDie(parsed.die, rng));
+  // Slice 467: Savage Attacker reroll. RAW (SRD 5.2.1): "you can roll
+  // the weapon's damage dice twice and use either roll against the
+  // target." Roll two sets, keep the higher-sum set, surface the
+  // discarded set on the per-attack SavageAttackerUsed event below.
+  // Modifiers, riders, and extra-damage dice are not rerolled (RAW
+  // scopes the reroll to "the weapon's damage dice").
+  let damageRolls: number[];
+  let savageAttackerDiscarded: number[] | undefined;
+  if (input.useSavageAttacker === true) {
+    const setA: number[] = [];
+    const setB: number[] = [];
+    for (let i = 0; i < totalRolls; i++) {
+      setA.push(rollDie(parsed.die, rng));
+      setB.push(rollDie(parsed.die, rng));
+    }
+    const sumA = setA.reduce((s, v) => s + v, 0);
+    const sumB = setB.reduce((s, v) => s + v, 0);
+    if (sumA >= sumB) {
+      damageRolls = setA;
+      savageAttackerDiscarded = setB;
+    } else {
+      damageRolls = setB;
+      savageAttackerDiscarded = setA;
+    }
+  } else {
+    damageRolls = [];
+    for (let i = 0; i < totalRolls; i++) {
+      damageRolls.push(rollDie(parsed.die, rng));
+    }
   }
   // Slice 121: Great Weapon Fighting reroll-to-3 rule. Triggers on a
   // melee attack with a two-handed wield (Two-Handed property, or
@@ -915,9 +1034,14 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   // Slice 319: `target.speciesId` lets a rider gate on lineage (the
   // Ghoul's Claw fires "if the target isn't an Undead or elf"); the
   // creatureType fact alone can't express the elf exclusion.
+  // Slice 446: `target.creatureSize` for size-gated riders (Wolf's
+  // Bite "If the target is a Medium or smaller creature, it has the
+  // Prone condition"; Dire Wolf's Bite for Large-or-smaller). Uses the
+  // shared `creatureSize` derive so the source-of-truth is one place.
   const riderFacts = new Map<string, unknown>([
     ['target.creatureType', getCreatureType(target, content)],
     ['target.speciesId', target.speciesId],
+    ['target.creatureSize', creatureSize(target, content)],
   ]);
   // Slice 324: a rider gated `requiresCritical` fires only on a crit.
   const applicableRiders = [...(weaponDef.onHit ?? []), ...(enchantment?.onHit ?? [])].filter(
@@ -946,6 +1070,31 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     critical,
     causedByEventId: attackRolled.id,
   };
+
+  // Slice 467: emit a SavageAttackerUsed marker when the reroll actually
+  // fired (the attack hit AND the consumer opted in). RAW (SRD 5.2.1):
+  // "Once per turn when you hit a target with a weapon" — gating on hit
+  // means a missed swing with useSavageAttacker=true does NOT consume
+  // the per-turn use. The reducer for this event sets the turnUsage
+  // flag; subsequent attempts this turn fail validation above.
+  const savageAttackerEvent: ReadonlyArray<Event> = savageAttackerDiscarded !== undefined
+    ? [{
+        id: newEventId() as ULID,
+        at,
+        type: 'SavageAttackerUsed',
+        attackerId: input.attackerId as ULID,
+        targetId: input.targetId as ULID,
+        weaponInstanceId: input.weaponInstanceId as ULID,
+        ...(state.activeEncounterId !== undefined
+          ? {
+              encounterId: state.activeEncounterId,
+              combatantId: input.attackerId as ULID,
+            }
+          : {}),
+        discardedRolls: savageAttackerDiscarded,
+        causedByEventId: damageRolled.id,
+      }]
+    : [];
 
   const damageTotal = damageRolls.reduce((s, v) => s + v, 0) + damageRollPayload.modifier;
   const rawComponents: { amount: number; type: typeof weaponDef.damageType }[] = [
@@ -984,6 +1133,8 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     mitigatedComponents,
     causedByEventId: damageRolled.id,
     at,
+    rng,
+    critical,
   });
   const damageApplied: DamageAppliedEvent = {
     id: newEventId() as ULID,
@@ -1091,6 +1242,7 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     ...consumed,
     ...attackTriggers,
     damageRolled,
+    ...savageAttackerEvent,
     damageApplied,
     ...damageTriggers,
     ...onHitRiderEvents,
@@ -1223,7 +1375,12 @@ export const planAttack = (
     ...(intent.targetCanSeeAttacker !== undefined
       ? { targetCanSeeAttacker: intent.targetCanSeeAttacker }
       : {}),
+    ...(intent.attackerHasAllyAdjacentToTarget !== undefined
+      ? { attackerHasAllyAdjacentToTarget: intent.attackerHasAllyAdjacentToTarget }
+      : {}),
+    ...(intent.lightLevel !== undefined ? { lightLevel: intent.lightLevel } : {}),
     ...(intent.cunningStrike !== undefined ? { cunningStrike: intent.cunningStrike } : {}),
+    ...(intent.useSavageAttacker === true ? { useSavageAttacker: true } : {}),
     at,
   });
   // If we fired a Loading weapon, append a WeaponLoaded event so the
@@ -1324,7 +1481,12 @@ export const planCleave = (
   const cleaveScoreFloor = cleaveAttackerEffects.effectiveAbilityScoreFloor(damageAbility)?.value;
   const cleaveScoreIncrease = cleaveAttackerEffects.effectiveAbilityScoreIncrease(damageAbility);
   const abilityMod = abilityModifier(effectiveAbilityScore(cleaveBaseScore, cleaveScoreFloor, cleaveScoreIncrease));
-  const abilityModToStrip = abilityMod > 0 ? abilityMod : 0;
+  // Slice 450: if the weapon already suppresses the ability fold on
+  // its base damage, there's nothing to strip on the cleave (otherwise
+  // we'd over-subtract and drive damage negative).
+  const abilityModToStrip = weaponDef.noAbilityModifierDamage === true
+    ? 0
+    : abilityMod > 0 ? abilityMod : 0;
 
   for (const evt of resolution) {
     if (evt.type === 'DamageRolled' && abilityModToStrip > 0) {

@@ -4,6 +4,7 @@ import type {
   ActionEconomyConsumedEvent,
   RecklessAttackActivatedEvent,
   StunningStrikeAttemptedEvent,
+  SavageAttackerUsedEvent,
 } from '../../schemas/events/action-economy.js';
 import type { ResourceSpentEvent } from '../../schemas/events/resources.js';
 import { invariant } from '../../internal/invariants.js';
@@ -85,4 +86,20 @@ export const applyStunningStrikeAttempted = (
   const combatant = encounter.combatants.find((c) => c.combatantId === event.combatantId);
   invariant(combatant !== undefined, `Combatant ${event.combatantId} not in encounter`);
   combatant.turnUsage.stunningStrikeUsedThisTurn = true;
+};
+
+// Slice 467: a SavageAttackerUsed event tagged with both encounterId
+// and combatantId marks the attacker's per-turn reroll as consumed.
+// Out-of-encounter calls omit both fields and skip the state update
+// (no per-turn structure outside an active encounter).
+export const applySavageAttackerUsed = (
+  state: Draft<CampaignState>,
+  event: SavageAttackerUsedEvent,
+): void => {
+  if (event.encounterId === undefined || event.combatantId === undefined) return;
+  const encounter = state.encounters[event.encounterId];
+  invariant(encounter !== undefined, `Encounter ${event.encounterId} not found`);
+  const combatant = encounter.combatants.find((c) => c.combatantId === event.combatantId);
+  invariant(combatant !== undefined, `Combatant ${event.combatantId} not in encounter`);
+  combatant.turnUsage.savageAttackerUsedThisTurn = true;
 };

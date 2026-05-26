@@ -18,7 +18,7 @@ A prior version of this doc tracked the **full PHB 2024 spell list** as its deno
 
 ## Totals
 
-**339 in pack**: **182 wired** (147 cast-time, 11 zone-tick, 24 dedicated planner), **70 narrative**, **87 deferred** (genuine mechanical gap, grouped by needed primitive per level below).
+**339 in pack**: **183 wired** (148 cast-time, 11 zone-tick, 24 dedicated planner), **70 narrative**, **86 deferred** (genuine mechanical gap, grouped by needed primitive per level below).
 
 ## Biggest deferred clusters (the priority queue)
 
@@ -30,7 +30,7 @@ The remaining mechanical gap fragments across ~20 small primitives; there is no 
 - **Beyond-image illusion** (~5): seeming, mislead, project-image, programmed-illusion, mirage-arcane.
 - **Multi-damage AoE** (3 remaining): prismatic-spray, meteor-swarm, prismatic-wall. The save mechanic gained an `additionalDamage` array in slice 341 (flame-strike: fire + radiant); the remaining three also need multi-AoE / RNG-damage-table shapes on top of multi-type.
 - **Terrain shaping** (~5): hallucinatory-terrain, passwall, wall-of-stone, move-earth, mirage-arcane (mostly consumer-side; the engine models no positions).
-- **On-hit smite rider via `castSpell`** (3): divine-smite, shining-smite, ensnaring-strike (the always-on smites already wire as one-shot buff conditions; these three need the cast-spell on-hit-rider path).
+- **On-hit smite rider via `castSpell`** (2 remaining): shining-smite, ensnaring-strike. The unconditional-AddDamage path landed in slice 444 via the existing `buff` mechanic + `OnEvent`/`consumeOnTrigger` infrastructure (canonical user: **divine-smite** at L1, with a base 2d8 radiant rider and a Fiend/Undead-gated +1d8 rider on the same condition). The two remaining spells need primitives the slice-444 path doesn't cover: **shining-smite** needs a concurrent concentration buff (the "always-illuminate-target" aura that runs in parallel to the on-hit rider); **ensnaring-strike** needs a save-via-OnEvent TriggerAction (fires a STR save on hit and conditionally applies Restrained with recurring per-turn damage). Both are small, distinct next slices in the smite-rider family. Divine Smite's upcast (+1d8 per slot above L1) stays deferred until the buff mechanic gains slot-level-aware variant selection — L1 Paladins only have L1 slots, so the deviation only matters from L3+ paladin onward.
 - **Multi-target movement-restriction / force cage** (3): resilient-sphere, forcecage, wall-of-force.
 - **Advanced / cross-plane summon** (~5): summon-dragon (needs the Draconic Spirit statblock), conjure-fey, planar-binding, planar-ally, create-undead.
 - **Controllable spell-construct (action menu)** (3): arcane-hand, arcane-sword, animate-objects.
@@ -49,16 +49,16 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 **Narrative (11):** dancing-lights, druidcraft, elementalism, light, mage-hand, mending, message, minor-illusion, prestidigitation, spare-the-dying, thaumaturgy.
 
-## Level 1 (57 in pack): 38 wired, 13 narrative, 6 deferred
+## Level 1 (57 in pack): 39 wired, 13 narrative, 5 deferred
 
-**Wired, cast-time (32):** bane, bless, burning-hands, charm-person, chromatic-orb, color-spray, command, cure-wounds, dissonant-whispers, divine-favor, faerie-fire, false-life, feather-fall, find-familiar, guiding-bolt, healing-word, hellish-rebuke, heroism, hex, hideous-laughter, inflict-wounds, longstrider, mage-armor, magic-missile, protection-from-evil-and-good, ray-of-sickness, sanctuary, searing-smite, shield-of-faith, sleep, thunderwave, unseen-servant.
+**Wired, cast-time (33):** bane, bless, burning-hands, charm-person, chromatic-orb, color-spray, command, cure-wounds, dissonant-whispers, divine-favor, divine-smite (`buff` -> `divine-smite-active` with two melee-hit OnEvent riders: unconditional 2d8 radiant + a Fiend/Undead-gated +1d8 radiant, both `consumeOnTrigger`; slice 444), faerie-fire, false-life, feather-fall, find-familiar, guiding-bolt, healing-word, hellish-rebuke, heroism, hex, hideous-laughter, inflict-wounds, longstrider, mage-armor, magic-missile, protection-from-evil-and-good, ray-of-sickness, sanctuary, searing-smite, shield-of-faith, sleep, thunderwave, unseen-servant.
 
 **Wired, zone-tick (2):** entangle, grease (STR / DEX save to restrained / prone on enter; `aura-damage` condition-only variant, fires via `tickAura`).
 
 **Wired, planner (4):** hunters-mark, identify, shield, silent-image.
 
-**Deferred (6):**
-- **on-hit trigger system (smite via `castSpell`):** divine-smite, ensnaring-strike.
+**Deferred (5):**
+- **on-hit trigger system (save-via-OnEvent variant):** ensnaring-strike (needs a TriggerAction that fires a save chain on hit and conditionally applies Restrained; the always-on smite path used for divine-smite in slice 444 only supports unconditional `AddDamage`).
 - **carry-capacity entity:** floating-disk.
 - **condition target restriction (beast-only Charm):** animal-friendship.
 - **item-creation mechanic for spells:** goodberry.

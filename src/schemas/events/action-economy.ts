@@ -34,3 +34,23 @@ export const StunningStrikeAttemptedEventSchema = EventEnvelopeSchema.extend({
   targetId: ULIDSchema,
 });
 export type StunningStrikeAttemptedEvent = z.infer<typeof StunningStrikeAttemptedEventSchema>;
+
+// Slice 467: Savage Attacker (Origin Feat) marker. Records the
+// attacker used their once-per-turn weapon-damage-dice reroll; the
+// reducer sets the turnUsage.savageAttackerUsedThisTurn flag. Emitted
+// only when the reroll actually fired (the attack hit and the
+// alternate set was rolled), so a missed swing with useSavageAttacker
+// true does NOT consume the per-turn use. `discardedRolls` carries
+// the rejected set for transcript visibility; the kept set lives on
+// the sibling DamageRolled event.
+export const SavageAttackerUsedEventSchema = EventEnvelopeSchema.extend({
+  type: z.literal('SavageAttackerUsed'),
+  attackerId: ULIDSchema,
+  targetId: ULIDSchema,
+  weaponInstanceId: ULIDSchema,
+  encounterId: ULIDSchema.optional(),
+  combatantId: ULIDSchema.optional(),
+  discardedRolls: z.array(z.number().int().min(1)),
+  causedByEventId: ULIDSchema.optional(),
+});
+export type SavageAttackerUsedEvent = z.infer<typeof SavageAttackerUsedEventSchema>;

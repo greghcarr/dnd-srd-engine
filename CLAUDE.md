@@ -33,8 +33,8 @@ If anything in the working norms below conflicts with how you would normally ope
 
 - `main`: stable, releasable. Tagged versions live here. Never commit slice work directly to main.
 - `dev`: daily slice work. All slice commits land here first.
-- The user (Greg) merges `dev` into `main` on his cadence, typically when a coherent group of slices is ready to surface.
-- Branch off `dev` (it has the latest slice work). Commit to `dev`. Do not push or merge to main yourself; surface the work and let the user decide. Branching off `main` would lose recent dev commits.
+- **`dev` integrates into `main` through a CI-gated pull request, never a local merge** (adopted slice 440; see [DEVELOPMENT.md](DEVELOPMENT.md) "Branches" for the full flow and why). When the user decides a batch is ready: push `dev`, open the PR (`gh pr create --base main --head dev`), and merge it once CI is green. A push to `dev` runs only the fast cross-Node test matrix; the full coverage + build gate runs at the PR (slice 442).
+- Branch off `dev` (it has the latest slice work). Commit to `dev`. Do not push, open a PR, or merge to `main` yourself without explicit instruction; surface the work and let the user decide. Branching off `main` would lose recent dev commits.
 - For multi-track parallel work (engine slices + content authoring), see [docs/parallel-authoring.md](docs/parallel-authoring.md). Worktrees still commit to `dev` (or to per-worktree feature branches that merge to `dev`).
 
 ### Commit, don't push
@@ -325,7 +325,7 @@ Defers to the global house style in `~/.claude/CLAUDE.md` (not a repo file, so n
 
 ## Parallel sessions
 
-When engine-slice work and content authoring (monsters, magic items) can both make useful progress, run them in parallel via two git worktrees: engine on `main` in the primary worktree, content on a sibling branch in `../dnd-srd-engine-content`. Both worktrees share `.git` history but hold independent working files. See [docs/parallel-authoring.md](docs/parallel-authoring.md) for setup commands, the file-footprint rules each session must respect, the starter prompt for the content-session Claude chat, and merge/cleanup steps.
+When engine-slice work and content authoring (monsters, magic items) can both make useful progress, run them in parallel via two git worktrees: engine on `dev` in the primary worktree, content on a sibling branch in `../dnd-srd-engine-content`. Both worktrees share `.git` history but hold independent working files. See [docs/parallel-authoring.md](docs/parallel-authoring.md) for setup commands, the file-footprint rules each session must respect, the starter prompt for the content-session Claude chat, and merge/cleanup steps.
 
 ## Slice workflow
 

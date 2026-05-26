@@ -5,6 +5,7 @@ import type {
   EncounterEndedEvent,
   EncounterStartedEvent,
   InitiativeRolledEvent,
+  InitiativeSwappedEvent,
   RoundEndedEvent,
   TurnEndedEvent,
   TurnStartedEvent,
@@ -43,6 +44,7 @@ export const applyEncounterCreated = (
         loadedWeaponsFiredThisTurn: [],
         recklessAttackActive: false,
         stunningStrikeUsedThisTurn: false,
+        savageAttackerUsedThisTurn: false,
         noProvokeMovementUpToFeet: 0,
       },
     })),
@@ -66,6 +68,38 @@ export const applyInitiativeRolled = (
     const total = totalsById.get(combatant.combatantId);
     invariant(total !== undefined, `Combatant ${combatant.combatantId} missing initiative roll`);
     combatant.initiative = total;
+    combatant.initiativeOrder = orderById.get(combatant.combatantId) ?? 0;
+  }
+  encounter.combatants.sort((a, b) => a.initiativeOrder - b.initiativeOrder);
+};
+
+// Slice 468: Alert Initiative Swap. Exchanges the two combatants'
+// initiative values and recomputes initiativeOrder across the whole
+// list (the same descending sort applyInitiativeRolled runs), so a
+// subsequent swap or EncounterStarted reads a consistent order.
+// Constraints (encounter status == 'planning'; both combatants
+// present; non-Incapacitated; swapper has Alert) are enforced by
+// the planner before the event is emitted; the reducer trusts the
+// event.
+export const applyInitiativeSwapped = (
+  state: Draft<CampaignState>,
+  event: InitiativeSwappedEvent,
+): void => {
+  const encounter = state.encounters[event.encounterId];
+  invariant(encounter !== undefined, `Encounter ${event.encounterId} not found`);
+  invariant(encounter.status === 'planning', 'Initiative swap requires planning status');
+  const swapper = encounter.combatants.find((c) => c.combatantId === event.swapperId);
+  const ally = encounter.combatants.find((c) => c.combatantId === event.allyId);
+  invariant(swapper !== undefined, `Swapper ${event.swapperId} not in encounter`);
+  invariant(ally !== undefined, `Ally ${event.allyId} not in encounter`);
+  const swapperInitiative = swapper.initiative;
+  swapper.initiative = ally.initiative;
+  ally.initiative = swapperInitiative;
+  // Recompute initiativeOrder across all combatants (descending by
+  // initiative, ties broken by current order to keep determinism).
+  const sorted = [...encounter.combatants].sort((a, b) => b.initiative - a.initiative);
+  const orderById = new Map(sorted.map((c, i) => [c.combatantId, i]));
+  for (const combatant of encounter.combatants) {
     combatant.initiativeOrder = orderById.get(combatant.combatantId) ?? 0;
   }
   encounter.combatants.sort((a, b) => a.initiativeOrder - b.initiativeOrder);
@@ -122,6 +156,7 @@ export const applyTurnStarted = (
   active.turnUsage.loadedWeaponsFiredThisTurn = [];
   active.turnUsage.recklessAttackActive = false;
   active.turnUsage.stunningStrikeUsedThisTurn = false;
+  active.turnUsage.savageAttackerUsedThisTurn = false;
   active.turnUsage.noProvokeMovementUpToFeet = 0;
 };
 

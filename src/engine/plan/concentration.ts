@@ -337,6 +337,7 @@ export const planTickAura = (
           mitigatedComponents: mitigated,
           causedByEventId: damageId,
           at,
+          rng,
         });
         events.push({
           id: damageId,
@@ -454,6 +455,7 @@ export const planTickMovementDamage = (
     mitigatedComponents: mitigated,
     causedByEventId: damageId,
     at,
+    rng,
   });
   return [
     {
@@ -582,6 +584,7 @@ export const planTickRecurring = (
     mitigatedComponents: mitigated,
     causedByEventId: damageId,
     at,
+    rng,
   });
   return [
     {

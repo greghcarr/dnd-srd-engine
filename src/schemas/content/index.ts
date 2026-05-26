@@ -37,4 +37,9 @@ export {
   GearSchema,
   type Gear,
 } from './item.js';
-export { MonsterStatblockSchema, type MonsterStatblock } from './monster.js';
+export {
+  MonsterStatblockSchema,
+  type MonsterStatblock,
+  MonsterMultiattackSchema,
+  type MonsterMultiattack,
+} from './monster.js';

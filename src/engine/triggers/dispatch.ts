@@ -243,6 +243,8 @@ const fireAddDamage = (
     mitigatedComponents,
     causedByEventId: damageAppliedId,
     at: event.at,
+    rng,
+    critical: event.critical,
   });
   const damageApplied: DamageAppliedEvent = {
     id: damageAppliedId,
@@ -301,6 +303,11 @@ const fireAddDamageToAttacker = (
     mitigatedComponents,
     causedByEventId: damageAppliedId,
     at: event.at,
+    rng,
+    // Retaliation damage to the original attacker isn't itself a crit
+    // (it's a counter-strike, not an attack-roll); the crit-exempt arm
+    // of Undead Fortitude doesn't apply here.
+    critical: false,
   });
   const damageApplied: DamageAppliedEvent = {
     id: damageAppliedId,

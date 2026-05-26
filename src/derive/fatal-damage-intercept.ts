@@ -4,8 +4,15 @@ import type {
   DamageComponent,
   ConditionRemovedEvent,
 } from '../schemas/events/combat.js';
+import type { SaveRolledEvent } from '../schemas/events/checks.js';
+import type { ResourceSpentEvent } from '../schemas/events/resources.js';
 import { newEventId } from '../ids.js';
 import type { ULID } from '../engine/ids-utils.js';
+import type { RNG } from '../rng/index.js';
+import { rollDie } from '../rng/dice.js';
+import { D20_SIDES } from '../internal/constants.js';
+import { abilityModifier } from './ability.js';
+import { collectEffectsFromCharacter } from './effect-stack.js';
 
 // Slice 111. Planner-side intercept that runs at every damage emitter
 // (between `mitigateDamage` and the DamageApplied construction) and emits
@@ -31,11 +38,23 @@ export interface FatalDamageInterceptInput {
   readonly mitigatedComponents: ReadonlyArray<DamageComponent>;
   readonly causedByEventId: string;
   readonly at: string;
+  // Slice 456: optional RNG for save-gated intercepts
+  // (PreventFatalDamageOnSave / Undead Fortitude). Required when the
+  // target carries any save-gated fatal-damage intercept; if omitted in
+  // that case the save can't roll and the bearer takes full damage
+  // (documented limitation for callers that genuinely have no RNG path).
+  readonly rng?: RNG;
+  // Slice 456: true when the triggering attack was a critical hit. The
+  // RAW exemption for crit-bypass (Undead Fortitude) reads this. Non-
+  // attack callers (falling, traps, cast-spell saves, aura ticks) pass
+  // false (or omit, defaulting to false) since crit doesn't apply to
+  // non-attack damage.
+  readonly critical?: boolean;
 }
 
 export interface FatalDamageInterceptOutcome {
   readonly components: DamageComponent[];
-  readonly extraEvents: ConditionRemovedEvent[];
+  readonly extraEvents: Array<ConditionRemovedEvent | SaveRolledEvent | ResourceSpentEvent>;
 }
 
 const sumAmounts = (components: ReadonlyArray<DamageComponent>): number =>
@@ -43,7 +62,7 @@ const sumAmounts = (components: ReadonlyArray<DamageComponent>): number =>
 
 const passthrough = (
   components: ReadonlyArray<DamageComponent>,
-  extraEvents: ConditionRemovedEvent[] = [],
+  extraEvents: Array<ConditionRemovedEvent | SaveRolledEvent | ResourceSpentEvent> = [],
 ): FatalDamageInterceptOutcome => ({
   components: components.map((c) => ({ ...c })),
   extraEvents,
@@ -89,7 +108,7 @@ export const interceptFatalDamage = (
   // Any positive (post-mitigation) damage removes the bearer's
   // `endsOnDamage` conditions. Computed up front so it applies on every
   // return path, independent of the fatal-damage intercept below.
-  const endsOnDamageRemovals: ConditionRemovedEvent[] =
+  const endsOnDamageRemovals: Array<ConditionRemovedEvent | SaveRolledEvent | ResourceSpentEvent> =
     totalDamage > 0
       ? target.appliedConditions
           .filter((applied) => applied.endsOnDamage === true)
@@ -109,6 +128,14 @@ export const interceptFatalDamage = (
   const projectedHp = target.hp.current - damageAfterTemp;
   if (projectedHp > 0) return passthrough(input.mitigatedComponents, endsOnDamageRemovals);
 
+  // Damage-budget that lands HP exactly at 1, used by every survive path.
+  const scaleToOne = (): DamageComponent[] => {
+    const targetTotal = Math.max(0, (target.hp.current - 1) + target.hp.temp);
+    return scaleComponents(input.mitigatedComponents, totalDamage, targetTotal);
+  };
+
+  // Slice 111 (always-on, condition-removing): scan applied conditions
+  // for PreventFatalDamage. Death Ward shape.
   let bearerConditionId: string | undefined;
   for (const applied of target.appliedConditions) {
     const def = input.content.conditions.get(applied.conditionId);
@@ -117,21 +144,112 @@ export const interceptFatalDamage = (
       break;
     }
   }
-  if (bearerConditionId === undefined) return passthrough(input.mitigatedComponents, endsOnDamageRemovals);
+  if (bearerConditionId !== undefined) {
+    const conditionRemoved: ConditionRemovedEvent = {
+      id: newEventId() as ULID,
+      at: input.at,
+      type: 'ConditionRemoved',
+      targetId: input.targetId as ULID,
+      conditionId: bearerConditionId,
+      causedByEventId: input.causedByEventId as ULID,
+    };
+    return { components: scaleToOne(), extraEvents: [...endsOnDamageRemovals, conditionRemoved] };
+  }
 
-  // Compute the damage budget that lands HP exactly at 1. The reducer
-  // absorbs temp HP first, so the total damage we emit must equal
-  // (current - 1) plus whatever temp HP is currently held.
-  const targetTotal = Math.max(0, (target.hp.current - 1) + target.hp.temp);
-  const components = scaleComponents(input.mitigatedComponents, totalDamage, targetTotal);
+  // Slice 458 (resource-gated, no save): scan the full effect stack for
+  // PreventFatalDamageConsumingResource. If found AND the bearer has at
+  // least 1 of the named resource, scale to HP=1 and emit ResourceSpent.
+  // The bearing effect persists (Orc Relentless Endurance is species-
+  // built-in; per-long-rest semantics come from the resource's recharge).
+  const stackForResource = collectEffectsFromCharacter({
+    character: target,
+    content: input.content,
+    itemInstances: input.state.itemInstances,
+    pendingChoices: input.state.pendingChoices,
+  });
+  const resourceGated = stackForResource.find(
+    (e) => e.kind === 'PreventFatalDamageConsumingResource',
+  );
+  if (resourceGated !== undefined && resourceGated.kind === 'PreventFatalDamageConsumingResource') {
+    const resource = target.resources.find((r) => r.resourceId === resourceGated.resourceId);
+    if (resource !== undefined && resource.current > 0) {
+      const resourceSpent: ResourceSpentEvent = {
+        id: newEventId() as ULID,
+        at: input.at,
+        type: 'ResourceSpent',
+        characterId: input.targetId as ULID,
+        resourceId: resourceGated.resourceId,
+        amount: 1,
+      };
+      return {
+        components: scaleToOne(),
+        extraEvents: [...endsOnDamageRemovals, resourceSpent],
+      };
+    }
+  }
 
-  const conditionRemoved: ConditionRemovedEvent = {
+  // Slice 456 (save-gated, condition-NOT-removed): scan the full effect
+  // stack (so monster traits like Zombie Undead Fortitude qualify, not
+  // only applied conditions). Roll a save; on success, scale to HP=1.
+  // The bearing effect persists (Undead Fortitude is always-on, not
+  // one-shot).
+  const allEffects = collectEffectsFromCharacter({
+    character: target,
+    content: input.content,
+    itemInstances: input.state.itemInstances,
+    pendingChoices: input.state.pendingChoices,
+  });
+  const saveGated = allEffects.find((e) => e.kind === 'PreventFatalDamageOnSave');
+  if (saveGated === undefined || saveGated.kind !== 'PreventFatalDamageOnSave') {
+    return passthrough(input.mitigatedComponents, endsOnDamageRemovals);
+  }
+
+  // RAW exemptions skip the save entirely. Both arms: passthrough (full
+  // damage, target drops normally).
+  if (saveGated.exemptOnCrit === true && input.critical === true) {
+    return passthrough(input.mitigatedComponents, endsOnDamageRemovals);
+  }
+  if (saveGated.exemptDamageTypes !== undefined) {
+    const exempt = new Set(saveGated.exemptDamageTypes);
+    if (input.mitigatedComponents.some((c) => exempt.has(c.type))) {
+      return passthrough(input.mitigatedComponents, endsOnDamageRemovals);
+    }
+  }
+
+  // Without an RNG, the save can't roll; document the limitation by
+  // taking the passthrough (full damage). Every caller that genuinely
+  // emits damage to a creature with this trait must thread RNG; the
+  // optional shape exists only for caller convenience.
+  if (input.rng === undefined) return passthrough(input.mitigatedComponents, endsOnDamageRemovals);
+
+  // Roll the save: d20 + targetAbilityMod >= baseDC + totalDamage.
+  // Statblock save bonuses don't fold here (this is a per-trait save,
+  // not the canonical computeSavingThrow path); RAW uses the raw
+  // ability mod. Bake the roll into the emitted SaveRolled so replay
+  // stays RNG-free.
+  const d20 = rollDie(D20_SIDES, input.rng);
+  const bonus = abilityModifier(target.abilityScores[saveGated.ability]);
+  const dc = saveGated.baseDC + totalDamage;
+  const total = d20 + bonus;
+  const success = total >= dc;
+  const saveRolled: SaveRolledEvent = {
     id: newEventId() as ULID,
     at: input.at,
-    type: 'ConditionRemoved',
+    type: 'SaveRolled',
     targetId: input.targetId as ULID,
-    conditionId: bearerConditionId,
-    causedByEventId: input.causedByEventId as ULID,
+    ability: saveGated.ability,
+    dc,
+    d20: [d20],
+    used: 'none',
+    bonus,
+    total,
+    success,
   };
-  return { components, extraEvents: [...endsOnDamageRemovals, conditionRemoved] };
+  if (!success) {
+    return passthrough(input.mitigatedComponents, [...endsOnDamageRemovals, saveRolled]);
+  }
+  return {
+    components: scaleToOne(),
+    extraEvents: [...endsOnDamageRemovals, saveRolled],
+  };
 };

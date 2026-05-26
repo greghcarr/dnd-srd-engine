@@ -170,6 +170,14 @@ export const WeaponSchema = ItemBaseSchema.extend({
   mastery: WeaponMasterySchema.optional(),
   rangeNormal: z.number().int().optional(),
   rangeLong: z.number().int().optional(),
+  // Slice 450: when true, the attacker's ability modifier is NOT folded
+  // into the base damage roll. Canonical user: Sprite Enchanting Bow
+  // (RAW "Hit: 1 Piercing damage" — a flat amount the wielder's DEX
+  // mod should NOT inflate). Future users: any monster natural weapon
+  // whose SRD damage line is a flat number rather than a die plus mod.
+  // Default (omitted/false) preserves the normal RAW path of adding
+  // STR / DEX to damage.
+  noAbilityModifierDamage: z.boolean().optional(),
   // Slice 316: optional magic-weapon fields. A magic weapon with a
   // single base (Sun Blade = Longsword) ships as itemKind 'weapon' with
   // the base stats + these fields, so the attack planner wields it and

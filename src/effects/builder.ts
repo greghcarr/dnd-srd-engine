@@ -1120,6 +1120,8 @@ export const applyEffectToBuilder = (
     case 'GrantAura':
     case 'GrantFallingProtection':
     case 'PreventFatalDamage':
+    case 'PreventFatalDamageOnSave':
+    case 'PreventFatalDamageConsumingResource':
     case 'Custom':
       return;
     default: {
