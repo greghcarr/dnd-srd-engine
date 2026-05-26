@@ -68,6 +68,7 @@ import {
   planStepOfTheWind,
   planAdrenalineRush,
   planNimbleEscape,
+  planCunningAction,
   planTurnUndead,
   planIntimidatingPresence,
   planDragonWings,
@@ -200,6 +201,7 @@ import {
   type StepOfTheWindIntent,
   type AdrenalineRushIntent,
   type NimbleEscapeIntent,
+  type CunningActionIntent,
   type TurnUndeadIntent,
   type IntimidatingPresenceIntent,
   type DragonWingsIntent,
@@ -353,6 +355,7 @@ export interface Engine {
     stepOfTheWind(state: CampaignState, intent: Omit<StepOfTheWindIntent, 'type'>): PlanResult;
     adrenalineRush(state: CampaignState, intent: Omit<AdrenalineRushIntent, 'type'>): PlanResult;
     nimbleEscape(state: CampaignState, intent: Omit<NimbleEscapeIntent, 'type'>): PlanResult;
+    cunningAction(state: CampaignState, intent: Omit<CunningActionIntent, 'type'>): PlanResult;
     turnUndead(state: CampaignState, intent: Omit<TurnUndeadIntent, 'type'>): PlanResult;
     intimidatingPresence(state: CampaignState, intent: Omit<IntimidatingPresenceIntent, 'type'>): PlanResult;
     dragonWings(state: CampaignState, intent: Omit<DragonWingsIntent, 'type'>): PlanResult;
@@ -681,6 +684,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     nimbleEscape(state, intent) {
       return { events: planNimbleEscape(state, content, rng, { type: 'NimbleEscape', ...intent }) };
+    },
+    cunningAction(state, intent) {
+      return { events: planCunningAction(state, content, rng, { type: 'CunningAction', ...intent }) };
     },
     turnUndead(state, intent) {
       return { events: planTurnUndead(state, content, rng, { type: 'TurnUndead', ...intent }) };

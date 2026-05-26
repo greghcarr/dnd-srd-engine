@@ -100,6 +100,7 @@ export { planPatientDefense, type PatientDefenseIntent } from './patient-defense
 export { planStepOfTheWind, type StepOfTheWindIntent } from './step-of-the-wind.js';
 export { planAdrenalineRush, type AdrenalineRushIntent } from './adrenaline-rush.js';
 export { planNimbleEscape, type NimbleEscapeIntent, type NimbleEscapeMode } from './nimble-escape.js';
+export { planCunningAction, type CunningActionIntent, type CunningActionMode } from './cunning-action.js';
 export { planTurnUndead, type TurnUndeadIntent } from './turn-undead.js';
 export { planIntimidatingPresence, type IntimidatingPresenceIntent } from './intimidating-presence.js';
 export { planDragonWings, type DragonWingsIntent } from './dragon-wings.js';

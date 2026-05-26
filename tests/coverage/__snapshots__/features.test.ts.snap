@@ -91,6 +91,7 @@ exports[`feature-coverage matrix: class features > wired class features catalog 
   "rogue L1 sneak-attack",
   "rogue L1 thieves-cant",
   "rogue L1 weapon-mastery-rogue",
+  "rogue L2 cunning-action",
   "rogue L3 sneak-attack",
   "rogue L5 cunning-strike",
   "rogue L5 sneak-attack",
@@ -445,6 +446,7 @@ exports[`feature-coverage matrix: weapon masteries > mastery → weapon mapping 
     "dagger",
     "dagger-of-venom",
     "light-hammer",
+    "ritual-sickle",
     "scimitar",
     "scimitar-of-speed",
     "sickle",
@@ -494,6 +496,8 @@ exports[`feature-coverage matrix: weapon masteries > mastery → weapon mapping 
     "rapier",
     "shortbow",
     "shortsword",
+    "spy-hand-crossbow",
+    "spy-shortsword",
   ],
 }
 `;

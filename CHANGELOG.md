@@ -4,6 +4,44 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 475): Cunning Action - closes the Spy statblock + wires the Rogue L2 feature**
+
+Fourth and final L1-encounter content slice in the low-CR sweep. RAW (SRD 5.2.1):
+- Rogue L2: "You can take the Dash, Disengage, or Hide action as a Bonus Action."
+- Spy (CR 1): "Cunning Action. The spy takes the Dash, Disengage, or Hide action [as a Bonus Action]."
+
+Pre-slice, both Rogue L2 `cunning-action` and the Spy statblock shipped with empty effects / traits — the mechanic was unimplemented. This slice ships a new planner that handles both paths via a dual eligibility gate.
+
+**New planner** [planCunningAction](src/engine/plan/cunning-action.ts) ships as `engine.plan.cunningAction({ actorId, mode, dc? })`. Three modes: `'dash'` / `'disengage'` / `'hide'`. Mirrors the slice-455 `planNimbleEscape` body with the addition of a Dash mode. Eligibility gate accepts EITHER:
+- A Rogue L2+ character (any character whose `classes` includes `{ classId: 'rogue', level: >= 2 }`), OR
+- A monster whose `statblockId` is on the `CUNNING_ACTION_STATBLOCKS` allowlist (currently `{'spy'}`; add ids here when a new monster carries Cunning Action).
+
+Same active-encounter + active-combatant + bonus-action-available + mode-specific-already-spent validation as Nimble Escape. Emits `ActionEconomyConsumed(bonusAction)` + the mode-specific event (`Dashed` / `Disengaged` for the movement modes; `AbilityCheckRolled` + optional `ConditionApplied(invisible)` on a successful Hide check).
+
+**Wired across the 4 standard sites** (plan/index.ts export, engine/index.ts import + intent type + Engine.plan method + impl, conveniences.ts `performIntent` dispatch). The slice-364 planner-wiring audit is green.
+
+**Content wires**:
+- Rogue L2 `cunning-action` feature: `effects: []` -> `effects: [{ kind: 'Custom', handlerId: 'cunning-action' }]`. The handlerId string is referenced via the `'./cunning-action.js'` import path in [src/engine/plan/index.ts](src/engine/plan/index.ts), so the slice-303 pack-integrity audit recognizes it as backed (same mechanism that satisfies `nimble-escape`).
+- Spy statblock: `traits` field added carrying the same Custom marker.
+
+**Tests** at [tests/unit/engine/slice-475-cunning-action.test.ts](tests/unit/engine/slice-475-cunning-action.test.ts) - 12 cases: Spy paths (Dash / Disengage / Hide success / Hide failure); Rogue L2+ paths (L2 succeeds, L5 succeeds, L1 rejected); rejection paths (Fighter no Cunning Action, out-of-encounter, double bonus-action use); content wires (Spy traits + Rogue L2 feature effects).
+
+**Coverage snapshot updated** intentionally for `rogue L2 cunning-action` (now wired).
+
+**Audit (engine + content slice):**
+- *RAW match*: Rogue L2 Cunning Action + Spy Cunning Action exactly. Three modes match RAW's "Dash, Disengage, or Hide". Bonus-action consumption + active-combatant gate match the existing slice-455 / slice-294 (planDash) shape.
+- *Names*: `planCunningAction` / `CunningActionIntent` / `CunningActionMode` mirror the `planNimbleEscape` family. The handlerId string `cunning-action` matches the feature id used in the pack.
+- *DRY*: planner body is structurally identical to `planNimbleEscape` with one extra mode (dash) and a different eligibility predicate. Considered factoring a shared `applyBonusActionMovement(mode, ...)` helper but declined: two callers, ~15 lines of shared shape, below the abstraction threshold.
+- *SRP*: planner validates eligibility + emits events; reducers already handle Dashed / Disengaged / ConditionApplied; the feature trait is just the discoverable surface.
+- *Magic numbers*: `CUNNING_ACTION_MIN_CLASS_LEVEL = 2` + `HIDE_DEFAULT_DC = 15` extracted as named constants (the DC default mirrors planHide).
+- *Mechanical outcomes asserted*: all three modes emit the expected event chain; the Rogue gate (L2 ok, L1 reject); the statblock gate (Spy ok, Fighter reject); out-of-encounter + double-bonus-action rejection; pack content wires.
+
+**Closes the Spy statblock's RAW gap entirely.** The Spy now ships full 2024 SRD behavior: ability scores + skills + senses + poison-rider weapons (slice 474) + Cunning Action (slice 475).
+
+**Closes the Rogue L2 Cunning Action gap.** Pre-slice, a Rogue character couldn't actually take Dash / Disengage / Hide as a Bonus Action; the feature was descriptive only. Now `engine.plan.cunningAction(...)` works for any Rogue L2+ character.
+
+**Closes the low-CR humanoid encounter sweep.** Bandit, Skeleton, Cultist, Guard are RAW-correct as-is (per the 2024 SRD simplification). Scout has Multiattack (slice 472). Cultist has Ritual Sickle (slice 473). Spy has poison weapons (slice 474) + Cunning Action (slice 475). The four canonical "first encounter" L1 foes are now mechanically complete.
+
 **Content (slice 474): Spy poison-coated weapons (Shortsword + Hand Crossbow) - low-CR encounter sweep**
 
 Third L1-encounter content slice in the low-CR sweep. RAW (SRD 5.2.1 Spy, CR 1):

@@ -309,7 +309,7 @@
           ],
           "columns": {}
         },
-        "2": { "proficiencyBonus": 2, "features": [{ "id": "cunning-action", "name": "Cunning Action", "effects": [] }], "columns": {} },
+        "2": { "proficiencyBonus": 2, "features": [{ "id": "cunning-action", "name": "Cunning Action", "effects": [{ "kind": "Custom", "handlerId": "cunning-action" }] }], "columns": {} },
         "3": { "proficiencyBonus": 2, "features": [{ "id": "sneak-attack", "name": "Sneak Attack (2d6)", "effects": [{ "kind": "OnEvent", "id": "sneak-attack", "trigger": { "eventType": "AttackRolled", "filter": { "kind": "all", "terms": [ { "kind": "eq", "path": "event.attackerIsSelf", "value": true }, { "kind": "eq", "path": "event.hit", "value": true }, { "kind": "any", "terms": [ { "kind": "eq", "path": "event.used", "value": "advantage" }, { "kind": "all", "terms": [ { "kind": "not", "term": { "kind": "eq", "path": "event.used", "value": "disadvantage" } }, { "kind": "eq", "path": "event.attackerHasAllyAdjacentToTarget", "value": true } ] } ] } ] } }, "actions": [{ "kind": "AddDamage", "dice": "2d6", "damageType": "piercing", "cunningStrikeEligible": true }], "oncePer": "turn" }] }, { "id": "steady-aim", "name": "Steady Aim", "effects": [] }], "columns": {} },
         "4": { "proficiencyBonus": 2, "features": [], "columns": {} },
         "5": { "proficiencyBonus": 3, "features": [{ "id": "sneak-attack", "name": "Sneak Attack (3d6)", "effects": [{ "kind": "OnEvent", "id": "sneak-attack", "trigger": { "eventType": "AttackRolled", "filter": { "kind": "all", "terms": [ { "kind": "eq", "path": "event.attackerIsSelf", "value": true }, { "kind": "eq", "path": "event.hit", "value": true }, { "kind": "any", "terms": [ { "kind": "eq", "path": "event.used", "value": "advantage" }, { "kind": "all", "terms": [ { "kind": "not", "term": { "kind": "eq", "path": "event.used", "value": "disadvantage" } }, { "kind": "eq", "path": "event.attackerHasAllyAdjacentToTarget", "value": true } ] } ] } ] } }, "actions": [{ "kind": "AddDamage", "dice": "3d6", "damageType": "piercing", "cunningStrikeEligible": true }], "oncePer": "turn" }] }, { "id": "cunning-strike", "name": "Cunning Strike", "effects": [{ "kind": "Custom", "handlerId": "cunning-strike" }] }, { "id": "uncanny-dodge", "name": "Uncanny Dodge", "effects": [{ "kind": "GrantUncannyDodge" }] }], "columns": {} },
@@ -3401,7 +3401,8 @@
       "cr": 1,
       "xp": 200,
       "proficiencyBonus": 2,
-      "languages": ["common"]
+      "languages": ["common"],
+      "traits": [{ "kind": "Custom", "handlerId": "cunning-action" }]
     },
     {
       "id": "warrior-infantry",
