@@ -4,6 +4,16 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 481): Pirate Multiattack (two Daggers)**
+
+Sixth user of the slice-464 `MonsterMultiattack` content field. RAW (SRD 5.2.1 Pirate, CR 1): "Multiattack. The pirate makes two Dagger attacks. It can replace one attack with a use of Enthralling Panache." The Pirate uses the existing pack `dagger`, so the slice is statblock-only - no new weapon needed.
+
+- Pirate statblock gains `multiattack: { name: 'Pirate Multiattack', attacks: [{ weaponId: 'dagger', count: 2 }] }`.
+
+**Deferred** (per the slice-464 follow-up family for Dragon-style "X attacks OR a Spellcasting" Multiattacks): the "replace one attack with Enthralling Panache" arm. Enthralling Panache itself (WIS save vs DC 12, Charmed on fail, ranged 30 ft) needs a stand-alone forced-save planner and stays deferred.
+
+**Tests** at [tests/unit/engine/slice-481-pirate-multiattack.test.ts](tests/unit/engine/slice-481-pirate-multiattack.test.ts) - 2 cases: statblock pattern; 2 AttackRolled events via `engine.plan.multiattack`.
+
 **Content (slice 480): Black Bear Multiattack (two Rends)**
 
 Fifth user of the slice-464 `MonsterMultiattack` content field. RAW (SRD 5.2.1 Black Bear, CR 1/2): "Multiattack. The bear makes two Rend attacks. Rend: 1d6 slashing." Same single-weapon two-swing shape as Hippogriff Multiattack (slice 478).
