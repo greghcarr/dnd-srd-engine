@@ -4,6 +4,23 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 462): Ghoul Bite natural weapon - L1 playability arc**
+
+The Ghoul's Claw (paralysis-on-CON-fail) was already wired in slice 319, but the Ghoul also has a Bite attack in 2024 RAW that wasn't in the pack. RAW (SRD 5.2.1 Ghoul): "Bite. Hit: 5 (1d6 + 2) Piercing damage plus 3 (1d6) Necrotic damage." New `ghoul-bite` natural-weapon item: primary 1d6 piercing + slice-316 unconditional onHit extra-damage rider for the 1d6 necrotic arm (same shape as wyvern-sting's poison rider). The +2 damage / +4 attack come from the wielder's STR + PB, not the weapon.
+
+The Ghoul's signature paralysis mechanic (Claw -> CON DC 10 save -> Paralyzed, gated `not(Undead or elf)`) already works via the slice-319 `ghoul-claws` item, so the Ghoul monster's most distinctive RAW behavior is wired end-to-end. **Multiattack** (two Bites per Attack action) stays deferred until the monster-Multiattack primitive ships; consumers can still simulate it by making two ghoul-bite attacks in the same turn.
+
+**Test** at [tests/unit/engine/slice-462-ghoul-bite.test.ts](tests/unit/engine/slice-462-ghoul-bite.test.ts) — 1 case (seed-searched for a hit): on a hit, the DamageRolled event carries both a piercing primary roll and a necrotic rider roll.
+
+**Doc updates:** weapons 60 -> 61 in [docs/getting-started.md](docs/getting-started.md) and [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md).
+
+**Audit (content slice):**
+- *RAW match*: SRD 5.2.1 Ghoul Bite text exactly. Same onHit-rider pattern as the slice-322 poison-natural-weapons sweep.
+- *DRY*: identical shape to wyvern-sting; no new primitive.
+
+**Open follow-ups:**
+- **Monster Multiattack primitive**: same deferred shape that blocks dozens of other monster statblocks (Brown Bear, Wolf, Bandit Captain, etc.). When it lands, the Ghoul gets its 2-Bite Multiattack and most CR ≤ 1 monsters with Multiattack become fully RAW. *Still open.*
+
 **Content (slice 461): Human Skillful species trait - L1 playability arc**
 
 Wires the simplest of the Human species's three traits. RAW (SRD 5.2.1 Human): "Skillful. You gain proficiency in one skill of your choice." Modeled as `OfferChoice oneOf:1 when:'onAcquire'` over the 18 skills (each option grants the matching `GrantProficiency target:'skill' level:'proficient'`), mirroring slice-447's Elf Keen Senses pattern. Pure content slice; no engine work.
