@@ -4,6 +4,31 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 463): Cleric Channel Divinity - Turn Undead (L2 caster playability)**
+
+The iconic Cleric action. RAW (SRD 5.2.1 Cleric L2): "As a Magic action, you present your Holy Symbol and censure Undead creatures. Each Undead of your choice within 30 feet of you must make a Wisdom saving throw. If the creature fails its save, it has the Frightened and Incapacitated conditions for 1 minute. ... This effect ends early on the creature if it takes any damage, if you have the Incapacitated condition, or if you die."
+
+Scope note: Channel Divinity arrives at Cleric L2 (not L1), but Turn Undead is the foundational Cleric mechanic for low-level play — and a clean retro-fit against Zombie's slice-456 Undead Fortitude / the slice-452 Sunlight Sweep undead.
+
+**New planner** [src/engine/plan/turn-undead.ts](src/engine/plan/turn-undead.ts) modeled on `planIntimidatingPresence`: validates Cleric L2+ + Channel Divinity resource ≥ 1 + (if in encounter as active combatant) action available. Computes spell save DC via the existing `computeSpellSaveDC` derive (8 + WIS + PB for clerics). Emits `ActionEconomyConsumed(action)` (when in encounter) + `ResourceSpent(channel-divinity, 1)`, then per-target: `SaveRolled(WIS vs DC)` and on failure two `ConditionApplied` events (`frightened` + `incapacitated`, both with `endsOnDamage: true` so the slice-391 chokepoint scrubs both arms on any damage). Non-Undead targets are silently skipped (RAW limits the censure to Undead; mixed lists shouldn't fail the whole action). Wired across the 4 standard sites; slice-364 planner-wiring audit verified green.
+
+**Content:** Cleric L2 gains a new `turn-undead` feature row with `Custom { handlerId: 'turn-undead' }` marker, sibling to the existing `channel-divinity` (GrantResource) + `divine-spark` (still stub) features.
+
+**Test** at [tests/unit/engine/slice-463-turn-undead.test.ts](tests/unit/engine/slice-463-turn-undead.test.ts) — 5 cases: L2 Cleric vs Zombie rolls WIS save at DC 13 (8 + WIS 16 +3 + PB 2), on failure applies Frightened + Incapacitated both with `endsOnDamage: true`; L1 cleric rejected; depleted Channel Divinity rejected; non-Undead target silently skipped (no SaveRolled for them, resource still consumed); non-Cleric rejected.
+
+**Audit (engine + content slice):**
+- *RAW match*: SRD 5.2.1 Cleric L2 Channel Divinity / Turn Undead text exactly for the engine-modelable arms. Both Frightened + Incapacitated arms applied; `endsOnDamage` flag covers the "ends early on damage" RAW arm. The "Cleric incapacitated / dying ends the effect" and 30-ft range stay consumer-managed (source-state-dependent / positional).
+- *Names*: `planTurnUndead` / `TurnUndeadIntent` mirror existing planner conventions. Resource id `channel-divinity` matches the existing L2 GrantResource grant.
+- *DRY*: per-target shape mirrors `planIntimidatingPresence` exactly (both are "AoE save → frightened-on-fail" planners). Declined to extract a shared `applySaveAoEFrightener` helper — second caller of the same shape, still below the abstraction threshold.
+- *SRP*: a single planner handles the full Turn Undead chain (validate → spend → save-per-target → apply-conditions). Sear Undead (L5 radiant-damage add-on) stays its own future slice; it'd extend this planner with a per-failed-save damage roll.
+- *at-threading*: single `nowIso()` resolution shared across all emitted events.
+- *Mechanical outcomes asserted*: DC computed from cleric's WIS + PB; save rolled per target; conditions applied with endsOnDamage; non-Undead silently skipped; resource gating; class-level gating.
+
+**Open follow-ups:**
+- **Cleric L5 Sear Undead** (`sear-undead` still ships `effects: []`): adds NdN d8 radiant damage (N = WIS mod, min 1d8) per Undead that fails the save. Extends this planner. *Still open.*
+- **Cleric L2 Divine Spark** (`divine-spark` still ships `effects: []`): the other Channel Divinity option — heal-or-deal-damage-as-Bonus-Action. Separate Channel Divinity option planner. *Still open.*
+- **Channel Divinity option dispatch**: the engine doesn't yet model "Channel Divinity → choose-an-option-at-activation-time" first-class; consumers route to the specific planner (`turnUndead`, future `divineSpark`). A future `planChannelDivinity({ option: ... })` dispatcher could unify them. *Still open.*
+
 **Content (slice 462): Ghoul Bite natural weapon - L1 playability arc**
 
 The Ghoul's Claw (paralysis-on-CON-fail) was already wired in slice 319, but the Ghoul also has a Bite attack in 2024 RAW that wasn't in the pack. RAW (SRD 5.2.1 Ghoul): "Bite. Hit: 5 (1d6 + 2) Piercing damage plus 3 (1d6) Necrotic damage." New `ghoul-bite` natural-weapon item: primary 1d6 piercing + slice-316 unconditional onHit extra-damage rider for the 1d6 necrotic arm (same shape as wyvern-sting's poison rider). The +2 damage / +4 attack come from the wielder's STR + PB, not the weapon.

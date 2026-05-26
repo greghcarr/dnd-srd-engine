@@ -25,6 +25,7 @@ exports[`feature-coverage matrix: class features > wired class features catalog 
   "bard L20 words-of-creation",
   "cleric L1 divine-order",
   "cleric L2 channel-divinity",
+  "cleric L2 turn-undead",
   "cleric L6 channel-divinity-cleric-2",
   "cleric L7 blessed-strikes",
   "cleric L10 divine-intervention",
