@@ -4,6 +4,36 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 477): iconic L1-dungeon beast bites - Giant Spider + Giant Centipede**
+
+Sixth content slice in the L1-encounter sweep, pivoting from humanoids to beasts. Both bites are pure content using existing primitives.
+
+RAW (SRD 5.2.1):
+- **Giant Spider (CR 1) Bite**: "Melee Attack Roll: +5, reach 5 ft. Hit: 7 (1d8 + 3) Piercing damage plus 7 (2d6) Poison damage."
+- **Giant Centipede (CR 1/4) Bite**: "Melee Attack Roll: +4, reach 5 ft. Hit: 4 (1d4 + 2) Piercing damage, and the target has the Poisoned condition until the start of the centipede's next turn."
+
+Two new pack items ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+
+- `giant-spider-bite`: 1d8 piercing primary + slice-316 unconditional onHit `2d6 poison` rider (same shape as `spy-shortsword`).
+- `giant-centipede-bite`: 1d4 piercing primary + slice-321 unconditional `applyConditionId: 'poisoned'` rider (same shape as `couatl-bite`).
+
+The +3 damage / +5 attack (spider) and +2 damage / +4 attack (centipede) come from the wielder's STR/DEX + PB, not the weapons. Climb 30 ft speeds were already in the pack for both. The "until start of the centipede's next turn" Poisoned duration is consumer-managed (slice-286 mirror, same as Couatl).
+
+**Doc-count update**: weapons 64 -> 66 in [docs/getting-started.md](docs/getting-started.md) (items-by-kind line) and [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md) (Items row); 527 -> 529 total items in starter-pack-gaps.
+
+**Tests** at [tests/unit/engine/slice-477-iconic-beast-bites.test.ts](tests/unit/engine/slice-477-iconic-beast-bites.test.ts) - 4 cases: pack shape for both bites; Giant Spider hit emits piercing + poison; Giant Centipede hit emits ConditionApplied(poisoned).
+
+**Audit (content slice):**
+- *RAW match*: both bites exactly per SRD. Climb speeds preserved.
+- *DRY*: same onHit rider shapes as the slice-316 damage rider (Ghoul Bite / Spy weapons) and slice-321 condition rider (Couatl Bite). No new primitive.
+- *Mechanical outcomes asserted*: pack shape; hit paths emit the expected riders.
+
+**Deferred (need new primitives, listed for the next slices):**
+- **Giant Spider Web Walker**: needs an immunity to "Restrained from webs" specifically (distinct from Restrained from any source). A new gating predicate on movement-restriction sources. *Still open.*
+- **Boar Bloodied Fury** (Advantage on attacks while HP <= max/2): needs a `bearer.bloodied` predicate fact. *Still open.*
+- **Boar Gore movement-conditional rider** (extra damage + Prone if moved 20+ ft straight at the target): needs a movement-direction fact and a "moved straight N feet" tracker; bigger shape, deferred. *Still open.*
+- **Stirge Blood Drain attach** (attaches on hit, drains HP each turn while attached): needs a stateful attached-condition + periodic damage primitive; bigger. *Still open.*
+
 **Content (slice 476): Pack Tactics sweep - Hobgoblin Warrior + Tough + Warrior Infantry**
 
 Fifth content slice in the L1-encounter low-CR sweep. The 2024 SRD Pack Tactics list includes three CR <= 0.5 humanoid pack-fighters whose pack entries shipped with `traits: []`:
