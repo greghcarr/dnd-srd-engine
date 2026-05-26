@@ -31,6 +31,7 @@ import {
   applyEncounterEnded,
   applyEncounterStarted,
   applyInitiativeRolled,
+  applyInitiativeSwapped,
   applyRoundEnded,
   applyTurnEnded,
   applyTurnStarted,
@@ -254,6 +255,9 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
         break;
       case 'InitiativeRolled':
         applyInitiativeRolled(draft, event);
+        break;
+      case 'InitiativeSwapped':
+        applyInitiativeSwapped(draft, event);
         break;
       case 'TurnStarted':
         applyTurnStarted(draft, event);

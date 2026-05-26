@@ -7,6 +7,7 @@ import type {
   EncounterStartedEvent,
   InitiativeRolledEvent,
   InitiativeRoll,
+  InitiativeSwappedEvent,
   RoundEndedEvent,
   TurnEndedEvent,
   TurnStartedEvent,
@@ -19,7 +20,7 @@ import type { RNG } from '../../rng/index.js';
 import { rollDie } from '../../rng/dice.js';
 import { newEventId, newEncounterId } from '../../ids.js';
 import { abilityModifier } from '../../derive/ability.js';
-import { buildEffectStack } from '../../derive/effect-stack.js';
+import { buildEffectStack, getEffectiveFeatIds } from '../../derive/effect-stack.js';
 import { D20_SIDES, NAT_20 } from '../../internal/constants.js';
 import { nowIso } from '../../internal/clock.js';
 import type { ULID } from '../ids-utils.js';
@@ -184,8 +185,11 @@ export const planRollInitiative = (
     const character = state.characters[c.combatantId];
     const dexMod = character ? abilityModifier(character.abilityScores.DEX) : 0;
     // Barbarian Feral Instinct (and similar): advantage on initiative.
-    // Read from the character's effect stack.
+    // Slice 468: also fold the effect stack's 'initiative' AddModifier
+    // sum into the roll (Alert's "+PB to initiative" arm; future
+    // initiative-bonus content plugs in the same way).
     let d20: number;
+    let effectModifier = 0;
     if (character !== undefined) {
       const effects = buildEffectStack({
         character,
@@ -201,14 +205,16 @@ export const planRollInitiative = (
       } else {
         d20 = rollDie(D20_SIDES, rng);
       }
+      effectModifier = effects.modifierSum('initiative', new Map());
     } else {
       d20 = rollDie(D20_SIDES, rng);
     }
+    const modifier = dexMod + effectModifier;
     return {
       combatantId: c.combatantId,
       d20,
-      modifier: dexMod,
-      total: d20 + dexMod,
+      modifier,
+      total: d20 + modifier,
     };
   });
   const event: InitiativeRolledEvent = {
@@ -217,6 +223,72 @@ export const planRollInitiative = (
     type: 'InitiativeRolled',
     encounterId: intent.encounterId,
     rolls,
+  };
+  return [event];
+};
+
+// Slice 468: Alert (Origin Feat) Initiative Swap. RAW (SRD 5.2.1):
+// "Immediately after you roll Initiative, you can swap your Initiative
+// with the Initiative of one willing ally in the same combat. You can't
+// make this swap if you or the ally has the Incapacitated condition."
+// Consumer-driven (the player chooses to invoke the swap), so this
+// ships as a separate planner rather than a planRollInitiative side
+// effect. The "willing ally" predicate is consumer-modeled (the engine
+// has no party / allegiance graph); the planner trusts the consumer's
+// designation. Encounter status must still be 'planning' (RAW
+// "immediately after you roll Initiative" — before combat starts).
+const ALERT_FEAT_ID = 'alert';
+const INCAPACITATED_CONDITION_ID = 'incapacitated';
+
+export interface SwapInitiativeIntent {
+  readonly type: 'SwapInitiative';
+  readonly encounterId: string;
+  readonly swapperId: string;
+  readonly allyId: string;
+  readonly at?: string;
+}
+
+export const planSwapInitiative = (
+  state: CampaignState,
+  content: ResolvedContent,
+  intent: SwapInitiativeIntent,
+): ReadonlyArray<Event> => {
+  const encounter = state.encounters[intent.encounterId];
+  if (!encounter) throw new Error(`Unknown encounter ${intent.encounterId}`);
+  if (encounter.status !== 'planning') {
+    throw new Error('Initiative swap requires planning status (use immediately after rolling)');
+  }
+  const swapper = state.characters[intent.swapperId];
+  if (!swapper) throw new Error(`Unknown swapper ${intent.swapperId}`);
+  const ally = state.characters[intent.allyId];
+  if (!ally) throw new Error(`Unknown ally ${intent.allyId}`);
+  if (intent.swapperId === intent.allyId) {
+    throw new Error('Cannot swap initiative with self');
+  }
+  if (!getEffectiveFeatIds(swapper, content).includes(ALERT_FEAT_ID)) {
+    throw new Error(`${swapper.name} does not have the Alert feat`);
+  }
+  const swapperCb = encounter.combatants.find((c) => c.combatantId === intent.swapperId);
+  if (!swapperCb) throw new Error(`${swapper.name} is not in encounter ${intent.encounterId}`);
+  const allyCb = encounter.combatants.find((c) => c.combatantId === intent.allyId);
+  if (!allyCb) throw new Error(`${ally.name} is not in encounter ${intent.encounterId}`);
+  const hasIncapacitated = (c: Character): boolean =>
+    c.appliedConditions.some((ac) => ac.conditionId === INCAPACITATED_CONDITION_ID);
+  if (hasIncapacitated(swapper)) {
+    throw new Error(`${swapper.name} cannot swap initiative while Incapacitated`);
+  }
+  if (hasIncapacitated(ally)) {
+    throw new Error(`${ally.name} cannot swap initiative while Incapacitated`);
+  }
+  const event: InitiativeSwappedEvent = {
+    id: newEventId() as ULID,
+    at: intent.at ?? nowIso(),
+    type: 'InitiativeSwapped',
+    encounterId: intent.encounterId,
+    swapperId: intent.swapperId as ULID,
+    allyId: intent.allyId as ULID,
+    swapperPreviousTotal: swapperCb.initiative,
+    allyPreviousTotal: allyCb.initiative,
   };
   return [event];
 };

@@ -160,6 +160,8 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       );
       return `Initiative: ${order.join(', ')}.`;
     }
+    case 'InitiativeSwapped':
+      return `**${characterName(stateBefore, event.swapperId)}** swaps initiative with **${characterName(stateBefore, event.allyId)}** (Alert: ${event.swapperPreviousTotal} <-> ${event.allyPreviousTotal}).`;
     case 'EncounterStarted':
       return `Encounter ${encounterLabel(stateBefore, event.encounterId)} begins.`;
     case 'TurnStarted':

@@ -27,6 +27,7 @@ import {
   planCleave,
   planCreateEncounter,
   planRollInitiative,
+  planSwapInitiative,
   planStartEncounter,
   planBeginFirstTurn,
   planAdvanceTurn,
@@ -218,6 +219,7 @@ import {
   type FallingIntent,
   type CreateEncounterIntent,
   type RollInitiativeIntent,
+  type SwapInitiativeIntent,
   type StartEncounterIntent,
   type AdvanceTurnIntent,
   type BeginFirstTurnIntent,
@@ -305,6 +307,7 @@ export interface Engine {
       intent: Omit<CreateEncounterIntent, 'type'>,
     ): { events: ReadonlyArray<Event>; encounterId: string };
     rollInitiative(state: CampaignState, intent: Omit<RollInitiativeIntent, 'type'>): PlanResult;
+    swapInitiative(state: CampaignState, intent: Omit<SwapInitiativeIntent, 'type'>): PlanResult;
     startEncounter(state: CampaignState, intent: Omit<StartEncounterIntent, 'type'>): PlanResult;
     beginFirstTurn(state: CampaignState, intent: Omit<BeginFirstTurnIntent, 'type'>): PlanResult;
     advanceTurn(state: CampaignState, intent: Omit<AdvanceTurnIntent, 'type'>): PlanResult;
@@ -523,6 +526,11 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     rollInitiative(state, intent) {
       return {
         events: planRollInitiative(state, content, rng, { type: 'RollInitiative', ...intent }),
+      };
+    },
+    swapInitiative(state, intent) {
+      return {
+        events: planSwapInitiative(state, content, { type: 'SwapInitiative', ...intent }),
       };
     },
     startEncounter(state, intent) {

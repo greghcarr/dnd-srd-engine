@@ -4,6 +4,35 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 468): Alert (Origin Feat) - the Criminal background lights up end-to-end**
+
+Second Origin Feat shipped on the Soldier-pattern from slice 467. RAW (SRD 5.2.1 Alert) has two arms; both are wired in this slice.
+
+**Initiative Proficiency arm** (RAW: "When you roll Initiative, you can add your Proficiency Bonus to the roll"): the existing `planRollInitiative` ([src/engine/plan/encounter.ts](src/engine/plan/encounter.ts)) now folds the effect-stack `modifierSum('initiative')` into `InitiativeRoll.modifier`, alongside the DEX modifier that was already there. The `alert` feat ships `effects: [{ kind: 'AddModifier', target: 'initiative', value: { kind: 'profBonus' } }]`. Auto-projects through the slice-466 background pipeline: every Criminal gets `+ PB` to initiative automatically.
+
+**Initiative Swap arm** (RAW: "Immediately after you roll Initiative, you can swap your Initiative with the Initiative of one willing ally in the same combat. You can't make this swap if you or the ally has the Incapacitated condition"): new planner + event + reducer.
+
+- New planner [planSwapInitiative](src/engine/plan/encounter.ts) ships as `engine.plan.swapInitiative({ encounterId, swapperId, allyId })`. Validates: encounter status is 'planning' (RAW "immediately after you roll Initiative" — before combat starts), both combatants are in the encounter, neither has the Incapacitated condition, swapper has `alert` on their effective feat list, and swapperId !== allyId. The "willing ally" predicate is consumer-modeled (the engine has no party / allegiance graph); the planner trusts the consumer's designation.
+- New event `InitiativeSwapped` ([src/schemas/events/encounter.ts](src/schemas/events/encounter.ts)) carries the swap pair plus both pre-swap initiative totals (for transcript / replay clarity). Wired into `EventSchema`, `EVENT_TYPES`, the typed exports, `apply.ts` switch, and the transcript formatter.
+- New reducer [applyInitiativeSwapped](src/engine/reducers/encounter.ts) exchanges the two combatants' `initiative` values and recomputes `initiativeOrder` across all combatants (the same descending sort `applyInitiativeRolled` runs) so a subsequent swap or EncounterStarted reads a consistent order.
+
+**Planner-wiring**: `swapInitiative` joins `rollInitiative` in the encounter-lifecycle allowlist on [tests/audit/planner-wiring.test.ts](tests/audit/planner-wiring.test.ts) — both are sequenced explicitly by the consumer at initiative time, not invoked through the `performIntent` dispatch (same shape as `createEncounter`, `startEncounter`, `beginFirstTurn`).
+
+**Tests** at [tests/unit/engine/slice-468-alert.test.ts](tests/unit/engine/slice-468-alert.test.ts) — 9 cases: Criminal initiative folds +2 (DEX) + +2 (PB) = +4 modifier; Soldier (no alert) gets only +2; happy-path swap exchanges initiative values + new event carries pre-swap totals; reject swap by featless attacker; reject when swapper or ally is Incapacitated (two cases); reject self-swap; reject swap after EncounterStarted; reject reorders combatants array by post-swap initiatives across a three-combatant encounter.
+
+**Audit (engine + content slice):**
+- *RAW match*: SRD 5.2.1 Alert exactly. Initiative Proficiency = `AddModifier target:'initiative' value: profBonus`. Initiative Swap = planning-status gate + Incapacitated check on both sides + Alert-feat gate, mirroring the RAW preconditions one-for-one.
+- *Names*: `planSwapInitiative` / `SwapInitiativeIntent` / `InitiativeSwapped` mirror `planRollInitiative` / `RollInitiativeIntent` / `InitiativeRolled`. `ALERT_FEAT_ID = 'alert'` extracted as a named constant.
+- *DRY*: the modifier-consumption pattern matches the existing attack / save / check planners (call `effects.modifierSum(target, facts)`, fold into the roll). Initiative Swap is the third caller of `getEffectiveFeatIds` (Savage Attacker, the upcoming Magic Initiate pair, and now Alert) — that's the right slice-466 entry point for any feat-gated planner.
+- *SRP*: planner validates and emits; reducer applies the state change; transcript renders it. Three concerns, three sites.
+- *Magic numbers*: only the constants `ALERT_FEAT_ID` and `INCAPACITATED_CONDITION_ID`, both descriptive.
+- *at-threading*: `at` propagates through to the new event.
+- *Mechanical outcomes asserted*: PB folded into roll modifier for Alert holder; not folded for non-holder; swap mutates initiative + order; six different rejection paths.
+
+**Open follow-ups:**
+- **Wire Magic Initiate (Cleric / Wizard)** (Sage / Acolyte background origin feats): grants 2 cantrips + 1 L1 spell + 1 free cast per long rest. Sibling of Tiefling Fiendish Legacy spell grants. With this slice, only Magic Initiate × 2 stands between the L1 character-builder layer and "every background ships end-to-end-functional out of the box." *Still open.*
+- **Soldier + Criminal in golden transcripts**: a one-line addition to an existing initiative scenario would now produce a visibly-different + 2 modifier line for a Criminal vs. equivalent Soldier, plus the new "swaps initiative" transcript line if exercised. *Still open.*
+
 **Engine (slice 467): Savage Attacker (Origin Feat) - the Soldier background lights up end-to-end**
 
 Slice 466 made every Soldier background auto-project the `savage-attacker` feat through the effect stack; the feat itself shipped `effects: []`. This slice wires the mechanic.

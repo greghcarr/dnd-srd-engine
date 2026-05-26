@@ -92,7 +92,7 @@
       "prerequisites": [],
       "effects": []
     },
-    { "id": "alert", "name": "Alert", "category": "origin", "repeatable": false, "prerequisites": [], "effects": [] },
+    { "id": "alert", "name": "Alert", "category": "origin", "repeatable": false, "prerequisites": [], "effects": [{ "kind": "AddModifier", "target": "initiative", "value": { "kind": "profBonus" } }] },
     { "id": "magic-initiate-cleric", "name": "Magic Initiate (Cleric)", "category": "origin", "repeatable": true, "prerequisites": [], "effects": [] },
     { "id": "magic-initiate-wizard", "name": "Magic Initiate (Wizard)", "category": "origin", "repeatable": true, "prerequisites": [], "effects": [] },
     { "id": "magic-initiate-druid", "name": "Magic Initiate (Druid)", "category": "origin", "repeatable": true, "prerequisites": [], "effects": [] },

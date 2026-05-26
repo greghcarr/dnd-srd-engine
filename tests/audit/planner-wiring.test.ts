@@ -67,7 +67,7 @@ const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
   // handler by id; not a fixed intent type). See docs/plugin-api-design.md.
   'custom',
   // Encounter lifecycle (sequenced by the consumer, not a single intent):
-  'createEncounter', 'rollInitiative', 'startEncounter', 'beginFirstTurn', 'advanceTurn', 'endEncounter',
+  'createEncounter', 'rollInitiative', 'swapInitiative', 'startEncounter', 'beginFirstTurn', 'advanceTurn', 'endEncounter',
   // Reactions / triggered planners (called after observing a trigger event;
   // several return a derived outcome the consumer branches on):
   'dodge', 'shield', 'sanctuaryWardSave', 'protection', 'consumeGuidance',

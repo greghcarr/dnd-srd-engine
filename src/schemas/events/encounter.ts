@@ -25,6 +25,24 @@ export const InitiativeRolledEventSchema = EventEnvelopeSchema.extend({
 });
 export type InitiativeRolledEvent = z.infer<typeof InitiativeRolledEventSchema>;
 
+// Slice 468: Alert (Origin Feat) Initiative Swap arm. RAW (SRD 5.2.1):
+// "Immediately after you roll Initiative, you can swap your Initiative
+// with the Initiative of one willing ally in the same combat. You can't
+// make this swap if you or the ally has the Incapacitated condition."
+// The reducer exchanges initiative values + recomputes initiativeOrder
+// across the whole combatant list (the same sort the InitiativeRolled
+// reducer runs). Only legal while encounter.status === 'planning',
+// matching the InitiativeRolled gate.
+export const InitiativeSwappedEventSchema = EventEnvelopeSchema.extend({
+  type: z.literal('InitiativeSwapped'),
+  encounterId: ULIDSchema,
+  swapperId: ULIDSchema,
+  allyId: ULIDSchema,
+  swapperPreviousTotal: z.number().int(),
+  allyPreviousTotal: z.number().int(),
+});
+export type InitiativeSwappedEvent = z.infer<typeof InitiativeSwappedEventSchema>;
+
 export const EncounterStartedEventSchema = EventEnvelopeSchema.extend({
   type: z.literal('EncounterStarted'),
   encounterId: ULIDSchema,
