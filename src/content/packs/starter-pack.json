@@ -3418,7 +3418,10 @@
       "cr": 0.125,
       "xp": 25,
       "proficiencyBonus": 2,
-      "languages": ["common"]
+      "languages": ["common"],
+      "traits": [
+        { "kind": "SetAdvantage", "on": "attack", "mode": "advantage", "condition": { "kind": "eq", "path": "event.attackerHasAllyAdjacentToTarget", "value": true } }
+      ]
     },
     {
       "id": "tough",
@@ -3434,7 +3437,10 @@
       "cr": 0.5,
       "xp": 100,
       "proficiencyBonus": 2,
-      "languages": ["common"]
+      "languages": ["common"],
+      "traits": [
+        { "kind": "SetAdvantage", "on": "attack", "mode": "advantage", "condition": { "kind": "eq", "path": "event.attackerHasAllyAdjacentToTarget", "value": true } }
+      ]
     },
     {
       "id": "berserker",
@@ -7020,7 +7026,10 @@
       "cr": 0.5,
       "xp": 100,
       "proficiencyBonus": 2,
-      "languages": ["common", "goblin"]
+      "languages": ["common", "goblin"],
+      "traits": [
+        { "kind": "SetAdvantage", "on": "attack", "mode": "advantage", "condition": { "kind": "eq", "path": "event.attackerHasAllyAdjacentToTarget", "value": true } }
+      ]
     },
     {
       "id": "hobgoblin-captain",

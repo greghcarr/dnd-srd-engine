@@ -4,6 +4,27 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 476): Pack Tactics sweep - Hobgoblin Warrior + Tough + Warrior Infantry**
+
+Fifth content slice in the L1-encounter low-CR sweep. The 2024 SRD Pack Tactics list includes three CR <= 0.5 humanoid pack-fighters whose pack entries shipped with `traits: []`:
+- **Hobgoblin Warrior (CR 1/2)** - RAW: "Pack Tactics. The hobgoblin has Advantage on an attack roll against a creature if at least one of the hobgoblin's allies is within 5 feet of the creature and the ally doesn't have the Incapacitated condition."
+- **Tough (CR 1/2)** - same text scoped to "the tough"
+- **Warrior Infantry (CR 1/8)** - same text scoped to "the warrior"
+
+Pure content slice. Each statblock gains the same `SetAdvantage on:'attack' mode:'advantage'` trait gated on the slice-445 `event.attackerHasAllyAdjacentToTarget` consumer-coordinated fact - identical shape to the already-wired wolf / dire-wolf / giant-rat / kobold-warrior. No engine work.
+
+**Tests** at [tests/unit/engine/slice-476-pack-tactics-sweep.test.ts](tests/unit/engine/slice-476-pack-tactics-sweep.test.ts) - 9 cases (3 per monster x 3 monsters via `it.each`): (1) the Pack Tactics trait is present on the statblock; (2) attacks with `attackerHasAllyAdjacentToTarget: true` roll with Advantage; (3) attacks without the fact roll normally.
+
+**Audit (content slice):**
+- *RAW match*: SRD 5.2.1 Pack Tactics text matches verbatim across all three. The pack-derived `not Incapacitated` arm is the consumer's responsibility (the predicate is opaque to the engine), same as the existing wired Pack Tactics users.
+- *Names*: trait shape mirrors the slice-445 wolf / kobold-warrior wires exactly.
+- *DRY*: identical `SetAdvantage` shape across all three statblocks; same shape as the four already-wired Pack Tactics users.
+- *Mechanical outcomes asserted*: trait presence; advantage applies with the fact; no advantage without it.
+
+**Open follow-ups (per the broader sweep):**
+- **Worg Bite "next attack vs target gets advantage" rider** (RAW: "the next attack roll made against the target before the start of the worg's next turn has Advantage"): novel primitive. The Worg in 2024 SRD does NOT have Pack Tactics - the trait was replaced with this stronger, more positional shape. Needs an onHit-applied-condition that grants advantage to attackers, plus an "until end of source's next turn" lifetime. *Still open.*
+- **Iconic beast/monstrosity traits**: Giant Spider's Spider Climb + Web Walker + Web (action), Stirge's Blood Drain attach, Giant Centipede's poison rider, Cockatrice's petrifying bite, Bugbear's Brute. Each is a small content (or content + small-primitive) slice. *Still open.*
+
 **Engine + content (slice 475): Cunning Action - closes the Spy statblock + wires the Rogue L2 feature**
 
 Fourth and final L1-encounter content slice in the low-CR sweep. RAW (SRD 5.2.1):
