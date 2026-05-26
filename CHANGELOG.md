@@ -4,6 +4,22 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 482): Animated Armor + Death Dog Multiattacks**
+
+Seventh and eighth users of the slice-464 `MonsterMultiattack` content field. Both CR 1; both "two of same weapon" shapes.
+
+RAW (SRD 5.2.1):
+- **Animated Armor (CR 1)**: "Multiattack. The armor makes two Slam attacks. Slam: 1d6 bludgeoning."
+- **Death Dog (CR 1)**: "Multiattack. The death dog makes two Bite attacks. Bite: 1d4 piercing + CON DC 12 disease arm (Poisoned + HP-max decay on repeated fails)."
+
+Pure-content slice. Two new natural weapons (`animated-armor-slam`, `death-dog-bite`) + multiattack declarations on both statblocks.
+
+**Deferred**: Death Dog's disease arm (CON save -> Poisoned + HP-max-decay on subsequent fails). Needs (a) repeating long-rest saves and (b) HP-max-decay accumulator. The base bite ships; the disease rider stays open.
+
+**Doc-count update**: weapons 69 -> 71, items 532 -> 534.
+
+**Tests** at [tests/unit/engine/slice-482-armor-deathdog-multiattack.test.ts](tests/unit/engine/slice-482-armor-deathdog-multiattack.test.ts) - 6 cases via `it.each` (weapon shape + statblock pattern + 2-AttackRolled chain, x 2 monsters).
+
 **Content (slice 481): Pirate Multiattack (two Daggers)**
 
 Sixth user of the slice-464 `MonsterMultiattack` content field. RAW (SRD 5.2.1 Pirate, CR 1): "Multiattack. The pirate makes two Dagger attacks. It can replace one attack with a use of Enthralling Panache." The Pirate uses the existing pack `dagger`, so the slice is statblock-only - no new weapon needed.
