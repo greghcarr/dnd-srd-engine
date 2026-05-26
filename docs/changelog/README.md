@@ -41,4 +41,8 @@ Per-cohort slice-detail archives, split out of the live [CHANGELOG.md](../../CHA
 - *[archive-rollup-narrative-A.md](archive-rollup-narrative-A.md) (slices 48-171 rollup, first half)*
 - *[archive-rollup-narrative-B.md](archive-rollup-narrative-B.md) (slices 48-150 rollup, second half + tail of Unreleased)*
 
-*Released versions (alpha.0 through alpha.5) of the pre-rename package were moved to [docs/changelog/released-versions.md](released-versions.md).*
+*Released versions archives, split by version range as they grow (per the slice-437 active-cycle invariant):*
+
+- *[released-versions-alpha-14.md](released-versions-alpha-14.md) - tagged release `0.1.0-alpha.14` (2026-05-22), evicted in slice 471 (the alpha.15 release).*
+- *[released-versions-alpha-6-13.md](released-versions-alpha-6-13.md) - tagged releases `0.1.0-alpha.6` through `0.1.0-alpha.13`.*
+- *[released-versions.md](released-versions.md) - tagged releases `0.1.0-alpha.0` through `0.1.0-alpha.5` (the pre-rename `ttrpg-engine-dnd` package, unpublished from npm in May 2026 on IP-cleanup grounds).*
