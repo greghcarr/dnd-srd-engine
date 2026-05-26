@@ -3380,7 +3380,8 @@
       "cr": 0.5,
       "xp": 100,
       "proficiencyBonus": 2,
-      "languages": ["common"]
+      "languages": ["common"],
+      "multiattack": { "name": "Scout Multiattack", "attacks": [{ "weaponId": "shortsword", "count": 1 }, { "weaponId": "longbow", "count": 1 }] }
     },
     {
       "id": "spy",

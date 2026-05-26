@@ -4,6 +4,39 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 472): Scout Multiattack - second monster-Multiattack content user (opens the low-CR encounter sweep)**
+
+Slice 464 shipped the `MonsterMultiattack` content field with Ghoul (two Bites) as the canonical user. This slice opens the next-arc encounter sweep with the second user: Scout (CR 1/2). RAW (SRD 5.2.1 Scout): "Multiattack. The scout makes two attacks, using Shortsword and Longbow in any combination."
+
+Pure-content slice. Both `shortsword` and `longbow` are existing pack items, so no engine work or new weapons needed. Wired as:
+
+```json
+"multiattack": {
+  "name": "Scout Multiattack",
+  "attacks": [
+    { "weaponId": "shortsword", "count": 1 },
+    { "weaponId": "longbow", "count": 1 }
+  ]
+}
+```
+
+The schema declares a concrete pattern; "any combination" maps to the canonical mixed-loadout interpretation (1 melee + 1 ranged). A consumer who wants pure shortsword or pure longbow builds the runtime pattern directly instead of via `runtimeMultiattackFromStatblock`. The slice-392 state-threading already runs across both swings, so a prone-on-first-bite (no rider on these weapons today, but the pattern composes) would apply to the second swing's resolution.
+
+**Pre-survey of the CR <= 1 cohort against the SRD multiattack list**: most "empty traits" low-CR monsters in the pack are RAW-correct as-is — the 2024 SRD simplified Bandit / Skeleton / Cultist / Guard / Spy to single-attack actions. Of the CR <= 1 humanoid/undead combatants the engine ships, only **Scout** has Multiattack RAW (the "Bandit makes two attacks" line lives on the CR 2 Bandit Captain). The bigger CR <= 1 trait gaps are unique-weapon riders (Cultist Ritual Sickle's +1 necrotic, Spy's +2d6 poison on Shortsword + Hand Crossbow) and the Spy's Cunning Action bonus-action — separate small slices to follow.
+
+**Tests** at [tests/unit/engine/slice-472-scout-multiattack.test.ts](tests/unit/engine/slice-472-scout-multiattack.test.ts) — 3 cases: Scout statblock declares the expected pattern; `runtimeMultiattackFromStatblock` produces a 2-attack runtime pattern with two distinct weapon instances; end-to-end `engine.plan.multiattack` emits exactly 2 `AttackRolled` events that target the two different weapon instances.
+
+**Audit (content slice):**
+- *RAW match*: SRD 5.2.1 Scout Multiattack exactly, mapping the "any combination" RAW to the canonical mixed loadout. Pure shortsword / pure longbow are still reachable by building the runtime pattern directly.
+- *Names*: choice of mixed loadout matches the most-distinctive Scout encounter (the scout draws back as the party closes — bow at range, shortsword in melee).
+- *DRY*: no helper changes; same slice-464 primitive consuming an existing weapon-id pair.
+- *Mechanical outcomes asserted*: pattern shape on the pack; runtime helper output; two distinct AttackRolled events with the right weaponInstanceIds.
+
+**Open follow-ups:**
+- **Cultist Ritual Sickle** (RAW: "Hit: 3 (1d4 + 1) Slashing damage plus 1 Necrotic damage"): needs a new `ritual-sickle` weapon (sickle base + flat necrotic onHit rider). Tiny content slice; the onHit primitive (slice 316) already supports flat-damage riders. *Still open.*
+- **Spy poison weapons** (RAW: Shortsword + Hand Crossbow each deal +2d6 poison damage on hit): two new pack items (`spy-shortsword` + `spy-hand-crossbow`) following the slice-322 poison-natural-weapon pattern. *Still open.*
+- **Spy Cunning Action** (RAW: takes the Dash, Disengage, or Hide action as a Bonus Action): needs the Rogue L2 Cunning Action mechanic to apply to non-Rogue creatures via a feature marker. *Still open.*
+
 ## 0.1.0-alpha.15 - 2026-05-26
 
 **Release (slice 471): bump to 0.1.0-alpha.15**
