@@ -4,6 +4,22 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 478): Hippogriff Multiattack - third monster-Multiattack user**
+
+Third user of the slice-464 `MonsterMultiattack` content field after Ghoul (slice 464) and Scout (slice 472). RAW (SRD 5.2.1 Hippogriff, CR 1): "Multiattack. The hippogriff makes two Rend attacks. Rend. Melee Attack Roll: +5, reach 5 ft. Hit: 7 (1d8 + 3) Slashing damage."
+
+Two-step content slice:
+- New `hippogriff-rend` natural weapon (1d8 slashing, no rider). The +3 damage / +5 attack come from the wielder's STR + PB, not the weapon.
+- Hippogriff statblock declares `multiattack: { name: 'Hippogriff Multiattack', attacks: [{ weaponId: 'hippogriff-rend', count: 2 }] }`.
+
+**Doc-count update**: weapons 66 -> 67, total items 529 -> 530.
+
+**Tests** at [tests/unit/engine/slice-478-hippogriff-multiattack.test.ts](tests/unit/engine/slice-478-hippogriff-multiattack.test.ts) - 3 cases: weapon shape; statblock pattern; end-to-end `engine.plan.multiattack` emits exactly 2 `AttackRolled` events both targeting the same Rend instance (RAW: "two Rend attacks," same weapon).
+
+**Audit (content slice):** RAW match exact. DRY: same multiattack-declaration pattern as Ghoul/Scout, same plain-natural-weapon pattern as Wolf Bite. Mechanical outcomes asserted: pattern shape on both pack entries; 2-AttackRolled event chain.
+
+**Open follow-up:** Hippogriff Flyby (no Opportunity Attack provoked when flying out of an enemy's reach) - needs a new "movement-modality-gated OA suppression" primitive. Sibling to the Mobile feat's no-OA-vs-attacked-target arm but movement-mode-keyed. *Still open.*
+
 **Content (slice 477): iconic L1-dungeon beast bites - Giant Spider + Giant Centipede**
 
 Sixth content slice in the L1-encounter sweep, pivoting from humanoids to beasts. Both bites are pure content using existing primitives.
