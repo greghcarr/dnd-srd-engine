@@ -4,6 +4,35 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 474): Spy poison-coated weapons (Shortsword + Hand Crossbow) - low-CR encounter sweep**
+
+Third L1-encounter content slice in the low-CR sweep. RAW (SRD 5.2.1 Spy, CR 1):
+
+- "Shortsword. Melee Attack Roll: +4, reach 5 ft. Hit: 5 (1d6 + 2) Piercing damage plus 7 (2d6) Poison damage."
+- "Hand Crossbow. Ranged Attack Roll: +4, range 30/120 ft. Hit: 5 (1d6 + 2) Piercing damage plus 7 (2d6) Poison damage."
+
+Two new pack items ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+
+- `spy-shortsword`: martial melee, 1d6 piercing, `finesse` + `light`, Vex mastery, plus a slice-316 unconditional onHit `2d6 poison` rider.
+- `spy-hand-crossbow`: martial ranged, 1d6 piercing, `ammunition` + `light` + `loading`, Vex mastery, 30/120 ft range, plus the same `2d6 poison` rider.
+
+Same rider shape as Ghoul Bite's `1d6 necrotic` (slice 462) and Wyvern's Sting / Ettercap's Bite / Merrow's Bite (slice 322). Distinct from the generic `shortsword` and `crossbow-hand` items so adventurer-wielded versions don't inherit the poison rider. The +2 damage / +4 attack come from the wielder's DEX + PB, not the weapon.
+
+**Doc-count update**: weapons 62 -> 64 in [docs/getting-started.md](docs/getting-started.md) (items-by-kind line) and [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md) (Items row); 525 -> 527 total items in starter-pack-gaps.
+
+**Tests** at [tests/unit/engine/slice-474-spy-poison-weapons.test.ts](tests/unit/engine/slice-474-spy-poison-weapons.test.ts) - 5 cases: pack declares the right shape for both weapons; spy-shortsword hits emit piercing + poison with the poison total in the 2d6 range (or 4d6 on a crit); spy-hand-crossbow hits emit piercing + poison; generic shortsword / crossbow-hand still carry no onHit rider.
+
+**Audit (content slice):**
+- *RAW match*: SRD 5.2.1 Spy weapons exactly. Both weapons keep their base type's properties + mastery; poison is purely a rider.
+- *Names*: `spy-shortsword` / `spy-hand-crossbow` mirror the slice-462 `ghoul-bite` / `ghoul-claws` naming convention for natural-weapon variants.
+- *DRY*: identical onHit shape on both weapons (the rider is the same per RAW). No new primitive.
+- *Mechanical outcomes asserted*: pack shape on both weapons; both hit paths emit the poison rider; generic versions untouched.
+
+**Closes most of the Spy statblock's RAW gap.** Only Cunning Action (Bonus Action: Dash / Disengage / Hide) remains - the same Rogue L2 feature applied to a non-Rogue creature, which needs a Custom-marker feature trait the engine routes to the existing Cunning Action mechanic.
+
+**Open follow-ups:**
+- **Spy Cunning Action** (RAW: "The spy takes the Dash, Disengage, or Hide action."): closes the Spy statblock. The Rogue L2 Cunning Action mechanic is already wired; this needs a way to extend it to non-Rogue creatures via a content marker. *Still open.*
+
 **Content (slice 473): Cultist Ritual Sickle natural weapon (low-CR encounter sweep)**
 
 Second L1-encounter content slice in the low-CR sweep. RAW (SRD 5.2.1 Cultist, CR 1/8): "Ritual Sickle. Melee Attack Roll: +3, reach 5 ft. Hit: 3 (1d4 + 1) Slashing damage plus 1 Necrotic damage."
