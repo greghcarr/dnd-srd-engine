@@ -4,6 +4,44 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 488): Cockatrice Petrifying Bite + recurring-save `fixedDC` + `escalateToCondition` arm**
+
+Closes the Cockatrice slot on the slice-477 "iconic beast/monstrosity traits" deferred list (archived to [docs/changelog/archive-slices-472-481.md](docs/changelog/archive-slices-472-481.md) with this slice).
+
+RAW (SRD 5.2.1 Cockatrice, CR 1/2): "Petrifying Bite. Melee Attack Roll: +3, reach 5 ft. Hit: 3 (1d4 + 1) Piercing damage. If the target is a creature, it is subjected to the following effect. Constitution Saving Throw: DC 11. First Failure: The target has the Restrained condition. The target repeats the save at the end of its next turn if it is still Restrained, ending the effect on itself on a success. Second Failure: The target has the Petrified condition, instead of the Restrained condition, for 24 hours."
+
+Two coordinated extensions to the recurring-save machinery, plus one canonical content user.
+
+**Engine** ([src/schemas/content/condition.ts](src/schemas/content/condition.ts), [src/engine/plan/recurring-save.ts](src/engine/plan/recurring-save.ts)):
+- New `RecurringSaveSchema.fixedDC?: number`. When set, the recurring-save planner uses that DC and skips caster + spellcasting-class resolution. Lets monster-driven recurring saves (Cockatrice CON DC 11) repeat against a printed DC instead of a caster's spell DC. Existing condition definitions without `fixedDC` keep the spell-DC fallback.
+- New `RecurringSaveSchema.onFail = 'escalateToCondition'` + companion `escalateToConditionId: string`. On a failed save, the planner emits `ConditionRemoved(currentCondition)` + `ConditionApplied(escalateTarget)` so the bearer transitions from the lighter condition to the harsher one. `sourceCharacterId` carries through from the original applied condition so the escalated condition still names the bite source. The reducer enforces immunity (statblock + effect-stack) — emission is unconditional. A refine() on the schema requires `escalateToConditionId` when `onFail === 'escalateToCondition'`.
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- New `cockatrice-restrained-active` condition: carries Restrained's four effects directly (ModifySpeed walk 0, SetAdvantage attack disadvantage, SetAdvantage DEX-save disadvantage, GrantAdvantageToAttackers) + `recurringSave: { ability: 'CON', fixedDC: 11, trigger: 'turnEnd', onSuccess: 'removeCondition', onFail: 'escalateToCondition', escalateToConditionId: 'petrified' }`. Engine doesn't have a "condition extends condition" mechanism, so the Restrained effects are duplicated; rejecting the condition (success) removes them, escalating (fail) replaces them with Petrified.
+- New `cockatrice-bite` natural weapon (1d4 piercing) with slice-319 onHit save rider: CON DC 11 → conditionOnFail `cockatrice-restrained-active`. Same shape as the Ghoul's Claw paralyzing-claw save rider.
+
+**Doc-count update**: weapons 72 -> 73, items 535 -> 536, conditions 126 -> 127 (15 RAW + 111 -> 112 rider; effect-bearing 110 -> 111).
+
+**Documented RAW deviation (consumer-managed)**: the 24-hour Petrified duration. The engine doesn't track hours; consumers managing extended downtime apply expiration themselves.
+
+**Tests** at [tests/unit/engine/slice-488-cockatrice-petrification.test.ts](tests/unit/engine/slice-488-cockatrice-petrification.test.ts) - 5 cases:
+1. `cockatrice-bite` weapon shape (1d4 piercing + the onHit save rider).
+2. `cockatrice-restrained-active` condition shape (the four Restrained effects + the new recurringSave fields).
+3. End-to-end bite: find a seed where the attack hits + target fails the save; verify `SaveRolled (CON, DC 11, success: false)` + `ConditionApplied('cockatrice-restrained-active')`.
+4. `engine.plan.tickRecurringSave` on the active condition: find a fail-save seed; verify `ConditionRemoved('cockatrice-restrained-active')` + `ConditionApplied('petrified')` with `sourceCharacterId` carried through.
+5. Same tick with a CON-20 hero + a pass-save seed: verify `ConditionRemoved` only, no `ConditionApplied('petrified')`.
+
+**Audit:**
+- *RAW match*: bite DC + onHit shape match the SRD entry; first-failure Restrained + second-failure Petrified arms both wired. The "ending the effect on itself on a success" clause maps to `onSuccess: 'removeCondition'`. The 24-hour duration is documented as consumer-managed.
+- *Names*: `fixedDC` mirrors the existing per-instance `recurringSaveDC` shape (slice 388) and the onHit-save rider's `dc` field. `escalateToCondition` + `escalateToConditionId` follow the existing `onFail` enum + companion-string idiom (mirroring `applyConditionId` + the `condition` predicate).
+- *DRY*: the new escalation arm reuses the existing `ConditionApplied` event + `sourceCharacterId` plumbing the reducer already canonicalizes. The Restrained effects are duplicated on the condition (intentional, as the engine has no "extends" mechanism for conditions); the duplication is the load-bearing reason the condition can independently track its own recurring-save metadata.
+- *SRP*: the planner's fixedDC branch + escalation branch are distinct from the existing consumeAction / dodge / removeCondition arms; each handles one save-outcome case.
+- *Magic numbers*: the CON DC 11 + the 1d4 damage cite the SRD entry directly in the weapon's description string.
+- *Mechanical outcomes asserted*: 5 cases pin (a) weapon shape, (b) condition shape, (c) the apply-on-hit path, (d) the escalation arm, (e) the cure arm.
+- *Tests*: would fail before the schema field + the planner extension + the content additions (each is load-bearing).
+
+**Pattern-check**: swept the bestiary for other "two-failure-stage save" mechanics that could reuse the new `escalateToCondition` arm. The 2024 MM has several similar shapes (Medusa Petrifying Gaze, Catoblepas Stench-of-Death, Basilisk Petrifying Gaze, mummy-rot Bestow Curse arm) — all currently deferred from the pack but will reuse this mechanism when authored. The `fixedDC` extension also unlocks monster-source recurring saves more broadly: any future condition whose recurring-save DC is printed on the source monster (rather than derived from a caster's spell DC) can populate `fixedDC` and skip the caster-resolution path. No regression risk: existing recurring-save users (Hold Person / Hold Monster / Hideous Laughter / Confusion / Bestow Curse inactive-turn) don't set `fixedDC` and continue to use the spell-DC path.
+
 **Engine + docs (slice 487): non-spellcaster Magic Initiate cast path + CHANGELOG archive split**
 
 Closes the engineering gap documented at slice 486 ("planCastSpell still requires a spellcasting class — a Magic Initiate Fighter / Rogue / Barbarian carries the oncePerLongRest grant but cannot reach the planner today"). Plus a routine CHANGELOG archive split (slices 472-481 evicted to a new cohort archive to keep the live file under the 60 KB single-Read ceiling).

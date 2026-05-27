@@ -26,24 +26,44 @@ export const RecurringSaveSchema = z
     // when to fire the tick.
     trigger: z.enum(['turnStart', 'turnEnd']).default('turnStart'),
     // What happens on a failed save:
-    //   'consumeAction' = ActionEconomyConsumed (action) for the bearer
-    //                     (only emitted when the bearer is a combatant
-    //                     in the active encounter).
-    //   'dodge'         = forced to take the Dodge action: consumes the
-    //                     action AND applies the `dodged` condition (so
-    //                     the bearer also gains Dodge's defensive
-    //                     benefit), the SRD 5.2.1 Bestow Curse
-    //                     inactive-turn arm. Active-encounter-gated like
-    //                     'consumeAction'.
-    onFail: z.enum(['consumeAction', 'dodge']).optional(),
+    //   'consumeAction'        = ActionEconomyConsumed (action) for the bearer
+    //                            (only emitted when the bearer is a combatant
+    //                            in the active encounter).
+    //   'dodge'                = forced to take the Dodge action: consumes
+    //                            the action AND applies the `dodged`
+    //                            condition (so the bearer also gains
+    //                            Dodge's defensive benefit), the SRD 5.2.1
+    //                            Bestow Curse inactive-turn arm.
+    //                            Active-encounter-gated like 'consumeAction'.
+    //   'escalateToCondition'  = (slice 488) removes THIS condition and
+    //                            applies `escalateToConditionId` instead.
+    //                            Canonical user: Cockatrice's Petrifying
+    //                            Bite (Restrained on the first failed save,
+    //                            escalates to Petrified on the second).
+    //                            `escalateToConditionId` is required when
+    //                            this variant is set (enforced by the
+    //                            refine() below).
+    onFail: z.enum(['consumeAction', 'dodge', 'escalateToCondition']).optional(),
+    escalateToConditionId: z.string().optional(),
     // What happens on a successful save:
     //   'removeCondition' = ConditionRemoved for this condition on the
     //                       bearer (the spell ends on the target).
     onSuccess: z.enum(['removeCondition']).optional(),
+    // Slice 488: fixed DC for the recurring save (no caster spell-DC
+    // resolution). Canonical user: Cockatrice's CON DC 11. When set, the
+    // planner uses this DC and skips the caster / spellcasting-class
+    // resolution entirely; the source caster need not have a spellcasting
+    // class. When unset, the planner falls back to the source caster's
+    // spell DC (Hold Person, etc.).
+    fixedDC: z.number().int().min(1).optional(),
   })
   .refine(
     (rs) => rs.onFail !== undefined || rs.onSuccess !== undefined,
     { message: 'recurringSave requires at least one of onFail / onSuccess' },
+  )
+  .refine(
+    (rs) => rs.onFail !== 'escalateToCondition' || rs.escalateToConditionId !== undefined,
+    { message: "recurringSave.onFail 'escalateToCondition' requires escalateToConditionId" },
   );
 export type RecurringSave = z.infer<typeof RecurringSaveSchema>;
 
