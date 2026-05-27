@@ -4,6 +4,37 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 489): Hippogriff Flyby + movement-modality on MoveIntent**
+
+Closes the Hippogriff Flyby slot on the slice-478 deferred follow-up. First user of a new movement-modality marker on `MoveIntent`; future "movement-mode-keyed" mechanics (e.g. swim-only, climb-only, fly-only) reuse the same field.
+
+RAW (SRD 5.2.1 Hippogriff, CR 1): "Flyby. The hippogriff doesn't provoke an Opportunity Attack when it flies out of an enemy's reach."
+
+**Engine** ([src/engine/plan/movement.ts](src/engine/plan/movement.ts)):
+- New optional `movementMode?: 'walk' | 'fly' | 'climb' | 'swim'` field on `MoveIntent`. Default 'walk' preserves pre-489 behavior; the field is currently load-bearing only for Flyby OA suppression. Other modes (`'climb'`, `'swim'`) are accepted for future-proofing but don't yet drive distinct behavior.
+- New `FLYBY_STATBLOCKS = {'hippogriff'}` allowlist + `moverHasFlyby(character)` helper. Mirrors the slice-475 `CUNNING_ACTION_STATBLOCKS` shape. In the OA-emission loop, skip the per-reactor `OpportunityAvailable` emission when the mover has Flyby AND `intent.movementMode === 'fly'`. The disengage / Withdraw / reach-checking logic is untouched; this is a single additive gate.
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- Hippogriff statblock gains `traits: [{ kind: 'Custom', handlerId: 'flyby' }]`. The handlerId string is mentioned in `src/engine/plan/movement.ts` (in the `FLYBY_STATBLOCKS` comment + the slice-489 doc), so the pack-integrity audit accepts the marker as backed.
+
+**Tests** at [tests/unit/engine/slice-489-hippogriff-flyby.test.ts](tests/unit/engine/slice-489-hippogriff-flyby.test.ts) - 5 cases:
+1. Hippogriff statblock declares the Custom marker trait.
+2. Hippogriff flying out of the hero's reach: no `OpportunityAvailable` emitted.
+3. Hippogriff walking (explicit `movementMode: 'walk'`) out of reach: `OpportunityAvailable` emitted.
+4. Hippogriff with default (no `movementMode`) move: `OpportunityAvailable` emitted (default is walk).
+5. Pack-side structural check: only the Hippogriff in the pack carries the Flyby marker (no other monsters with fly speeds are flagged).
+
+**Audit:**
+- *RAW match*: Flyby applies only to flying movement (not walking), and only to the Hippogriff (not generic fly-speed creatures). Both pin tests reflect that. The "out of an enemy's reach" arm is unchanged from the existing OA-emission logic — Flyby just suppresses the eventual emit.
+- *Names*: `FLYBY_STATBLOCKS` mirrors `CUNNING_ACTION_STATBLOCKS` (slice 475). `MovementMode` type + the `'flyby'` handlerId are intention-revealing.
+- *DRY*: the allowlist + marker-trait pattern is identical to slice 475 / slice-486's once-per-long-rest plumbing.
+- *SRP*: one new field on `MoveIntent`; one new gate in the OA-emission loop; one new marker on one statblock.
+- *Magic numbers*: none added (the 5-foot MELEE_REACH constant in the loop is unchanged).
+- *Mechanical outcomes asserted*: 5 cases pin the suppression gate, the negative cases (walking + no mode + non-Hippogriff), and the structural marker.
+- *Tests*: would fail without the engine change (the OA-emit would always fire) AND without the content change (the FLYBY_STATBLOCKS allowlist would have no live user).
+
+**Pattern-check**: the `MovementMode` enum is forward-compatible with future movement-mode-gated mechanics: Climb Speed creatures that bypass certain difficult-terrain costs (a future "spider-climb"-style trait), Water Breathing creatures that don't drown only during 'swim' moves, etc. The `OpportunityAvailable` emission is the only existing gate keyed on movement; adding more would follow the same shape (check mover trait + movementMode, skip the emit). The Hippogriff is currently the only Flyby-trait user in the 2024 SRD pack — the wider 2024 MM has Couatl Flyby and Pegasus Flyby (not yet in the pack); they'll add their `statblockId` to `FLYBY_STATBLOCKS` when authored.
+
 **Engine + content (slice 488): Cockatrice Petrifying Bite + recurring-save `fixedDC` + `escalateToCondition` arm**
 
 Closes the Cockatrice slot on the slice-477 "iconic beast/monstrosity traits" deferred list (archived to [docs/changelog/archive-slices-472-481.md](docs/changelog/archive-slices-472-481.md) with this slice).

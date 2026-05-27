@@ -32,12 +32,32 @@ import { assertActorCanAct, getEffectiveSpeed, findActorBlockingCondition } from
 import { bresenhamCells, movementCostAt } from '../../derive/terrain.js';
 import { DEFAULT_CELL_SIZE_FEET } from '../../schemas/runtime/location.js';
 
+// Slice 489: per-move movement-modality marker. Default 'walk' preserves
+// pre-489 behavior. Currently load-bearing only for Flyby OA suppression
+// (Hippogriff): when the mover is flying out of an enemy's reach, the
+// trait skips the Opportunity Attack provocation. Other modes ('climb',
+// 'swim') are accepted for future-proofing but don't yet drive behavior.
+export type MovementMode = 'walk' | 'fly' | 'climb' | 'swim';
+
 export interface MoveIntent {
   readonly type: 'Move';
   readonly combatantId: string;
   readonly to: Position;
+  readonly movementMode?: MovementMode;
   readonly at?: string;
 }
+
+// Slice 489: Flyby allowlist. RAW: "The hippogriff doesn't provoke an
+// Opportunity Attack when it flies out of an enemy's reach." When the
+// mover's statblockId is in this set AND `intent.movementMode === 'fly'`,
+// the OA-emission loop below skips. Statblock-id allowlist mirrors the
+// slice-475 CUNNING_ACTION_STATBLOCKS shape; the Hippogriff carries a
+// `{ kind: 'Custom', handlerId: 'flyby' }` marker trait so pack-integrity
+// can verify the wiring exists.
+const FLYBY_STATBLOCKS: ReadonlySet<string> = new Set(['hippogriff']);
+
+const moverHasFlyby = (character: Character): boolean =>
+  character.statblockId !== undefined && FLYBY_STATBLOCKS.has(character.statblockId);
 
 export interface DashIntent {
   readonly type: 'Dash';
@@ -251,7 +271,15 @@ export const planMove = (
   const withinNoProvokeBudget =
     combatant.turnUsage.feetMovedThisTurn + distance <=
     combatant.turnUsage.noProvokeMovementUpToFeet;
-  if (!combatant.turnUsage.disengaged && !withinNoProvokeBudget) {
+  // Slice 489: Flyby (Hippogriff) suppresses OA emission when the move
+  // is a flying movement. Outside an active encounter (or for non-flying
+  // moves), the existing OA-emission path runs unchanged.
+  const moverCharacter = state.characters[intent.combatantId];
+  const suppressOpportunityForFlyby =
+    intent.movementMode === 'fly'
+    && moverCharacter !== undefined
+    && moverHasFlyby(moverCharacter);
+  if (!combatant.turnUsage.disengaged && !withinNoProvokeBudget && !suppressOpportunityForFlyby) {
     const fromPos = combatant.position;
     const toPos = intent.to;
     const MELEE_REACH = 5;
