@@ -302,6 +302,14 @@ export interface AttackIntent {
   // `event.attackerChargedThisTarget` in the onHit rider's condition
   // predicate facts.
   readonly chargedAtTarget?: boolean;
+  // Slice 494: override which ability mod drives the attack + damage
+  // roll. Default (undefined) uses chooseDamageAbility (STR / DEX
+  // depending on weapon properties). Canonical user: True Strike RAW
+  // ("The attack uses your spellcasting ability for the attack and
+  // damage rolls instead of using Strength or Dexterity"). The
+  // planWeaponAttackMechanic resolves the caster's spellcasting ability
+  // and passes it here.
+  readonly abilityOverride?: 'STR' | 'DEX' | 'CON' | 'INT' | 'WIS' | 'CHA';
 }
 
 const chooseDamageAbility = (
@@ -384,6 +392,8 @@ export interface ResolveAttackInput {
   readonly useSavageAttacker?: boolean;
   // Slice 491: see AttackIntent.chargedAtTarget doc comment above.
   readonly chargedAtTarget?: boolean;
+  // Slice 494: see AttackIntent.abilityOverride doc comment above.
+  readonly abilityOverride?: 'STR' | 'DEX' | 'CON' | 'INT' | 'WIS' | 'CHA';
 }
 
 const CUNNING_STRIKE_LEVEL = 5;
@@ -553,6 +563,7 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     content,
     weaponInstanceId: input.weaponInstanceId,
     characters: state.characters,
+    ...(input.abilityOverride !== undefined ? { abilityOverride: input.abilityOverride } : {}),
   });
 
   const cover = input.cover ?? 'none';
@@ -956,7 +967,12 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     return [attackRolled, ...consumed, ...targetConsumed, ...attackTriggers];
   }
 
-  const damageAbility = chooseDamageAbility(attacker, weaponDef);
+  // Slice 494: when input.abilityOverride is set (True Strike), the damage
+  // roll uses that ability instead of STR/DEX. Otherwise fall back to
+  // the weapon-property-driven default.
+  const damageAbility = input.abilityOverride !== undefined
+    ? input.abilityOverride
+    : chooseDamageAbility(attacker, weaponDef);
   const damageBaseScore = attacker.abilityScores[damageAbility];
   const damageScoreFloor = attackerEffects.effectiveAbilityScoreFloor(damageAbility)?.value;
   const damageScoreIncrease = attackerEffects.effectiveAbilityScoreIncrease(damageAbility);
@@ -1480,6 +1496,7 @@ export const planAttack = (
     ...(intent.cunningStrike !== undefined ? { cunningStrike: intent.cunningStrike } : {}),
     ...(intent.useSavageAttacker === true ? { useSavageAttacker: true } : {}),
     ...(intent.chargedAtTarget === true ? { chargedAtTarget: true } : {}),
+    ...(intent.abilityOverride !== undefined ? { abilityOverride: intent.abilityOverride } : {}),
     at,
   });
   // If we fired a Loading weapon, append a WeaponLoaded event so the

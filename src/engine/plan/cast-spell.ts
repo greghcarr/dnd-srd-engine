@@ -50,6 +50,7 @@ import { computeAC } from '../../derive/ac.js';
 import { computeSavingThrow } from '../../derive/save.js';
 import { rollSaveBonusDice } from './_bonus-dice.js';
 import { abilityModifier } from '../../derive/ability.js';
+import { resolveAttack } from './attack.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { applyAll } from '../apply.js';
@@ -120,6 +121,13 @@ export interface CastSpellIntent {
   // still cast the spell normally via an owned slot (RAW: "You can
   // also cast the spell using any spell slots you have").
   readonly useFreeCast?: boolean;
+  // Slice 494: required by spells whose mechanicalEffects include a
+  // `weaponAttack` mechanic (True Strike). Names the weapon instance
+  // the caster uses to make the attack. The planner reads this and
+  // delegates to resolveAttack with the caster's spellcasting ability
+  // as the abilityOverride. Throws if a weaponAttack-mechanic spell is
+  // cast without this field set.
+  readonly weaponInstanceId?: string;
   readonly at?: string;
 }
 
@@ -1372,6 +1380,54 @@ const resolveTrapDamageType = (
   return mechanic.damageType;
 };
 
+// Slice 494: weapon-attack-via-spell mechanic dispatch. Canonical user:
+// True Strike RAW (2024 cantrip): "you make one attack with the weapon
+// used in the spell's casting. The attack uses your spellcasting
+// ability for the attack and damage rolls instead of using Strength or
+// Dexterity." Resolves to a normal resolveAttack call with the
+// caster's spellcasting ability passed as the abilityOverride.
+// Requires `intent.weaponInstanceId` (the weapon used in the spell's
+// casting); throws if absent. Targets the first entry in
+// `intent.targetIds` (single-target attack per RAW).
+//
+// Deferred RAW arms (still consumer-managed / partial):
+//   - Damage-type choice (radiant-or-normal). For now the attack
+//     deals the weapon's printed damage type; the caster cannot
+//     pick Radiant via the engine yet.
+//   - Cantrip-scaling extra Radiant at character levels 5 / 11 / 17
+//     (+1d6 / +2d6 / +3d6). Needs a follow-up that runs the cantrip
+//     scaling against a flat radiant rider; documented as deferred.
+const planWeaponAttackMechanic = (
+  state: CampaignState,
+  content: ResolvedContent,
+  rng: RNG,
+  intent: CastSpellIntent,
+  spell: Spell,
+  castingAbility: 'INT' | 'WIS' | 'CHA',
+  declaredEventId: string,
+  at: string,
+): Event[] => {
+  if (intent.weaponInstanceId === undefined) {
+    throw new Error(
+      `Spell ${spell.id} is a weaponAttack mechanic and requires intent.weaponInstanceId`,
+    );
+  }
+  if (intent.targetIds.length === 0) {
+    throw new Error(`Spell ${spell.id} weaponAttack requires a targetId`);
+  }
+  const targetId = intent.targetIds[0]!;
+  return [...resolveAttack({
+    state,
+    content,
+    rng,
+    attackerId: intent.characterId,
+    targetId,
+    weaponInstanceId: intent.weaponInstanceId,
+    abilityOverride: castingAbility,
+    at,
+  })].map((e, i) => i === 0 ? { ...e, causedByEventId: declaredEventId as ULID } as Event : e);
+};
+
 export const planCastSpell = (
   state: CampaignState,
   content: ResolvedContent,
@@ -1632,6 +1688,10 @@ export const planCastSpell = (
     } else if (mechanic.kind === 'hp-threshold') {
       events.push(
         ...planHpThresholdMechanic(state, content, rng, intent, spell, mechanic, declared.id, at),
+      );
+    } else if (mechanic.kind === 'weaponAttack') {
+      events.push(
+        ...planWeaponAttackMechanic(state, content, rng, intent, spell, castingAbility, declared.id, at),
       );
     } else {
       events.push(...planHealMechanic(state, content, rng, intent, spell, mechanic, declared.id, at));

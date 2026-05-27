@@ -29,6 +29,13 @@ export interface ComputeAttackInput {
   // on condition effects that touch attack bonuses. Callers without
   // source-relative attack content can omit (formulas drop to 0).
   readonly characters?: Readonly<Record<string, Character>>;
+  // Slice 494: explicit ability override. When set, the attack bonus
+  // uses this ability mod instead of chooseAttackAbility's
+  // weapon-property-driven default. Canonical user: True Strike RAW
+  // ("uses your spellcasting ability for the attack and damage rolls
+  // instead of using Strength or Dexterity"). Callers without an
+  // override pass undefined and the existing class-derived path applies.
+  readonly abilityOverride?: 'STR' | 'DEX' | 'CON' | 'INT' | 'WIS' | 'CHA';
 }
 
 const chooseAttackAbility = (character: Character, weapon: Weapon): 'STR' | 'DEX' => {
@@ -82,8 +89,10 @@ const attackAbility = (
   character: Character,
   weapon: Weapon,
   effects: EffectAccumulator,
-): { ability: 'STR' | 'DEX'; mod: number } => {
-  const ability = chooseAttackAbility(character, weapon);
+  override?: 'STR' | 'DEX' | 'CON' | 'INT' | 'WIS' | 'CHA',
+): { ability: 'STR' | 'DEX' | 'CON' | 'INT' | 'WIS' | 'CHA'; mod: number } => {
+  // Slice 494: override (True Strike) bypasses chooseAttackAbility.
+  const ability = override ?? chooseAttackAbility(character, weapon);
   const baseScore = character.abilityScores[ability];
   const floor = effects.effectiveAbilityScoreFloor(ability)?.value;
   const increase = effects.effectiveAbilityScoreIncrease(ability);
@@ -93,7 +102,7 @@ const attackAbility = (
 export const computeAttackBonus = (input: ComputeAttackInput): AttackResult => {
   const { instance, weapon } = resolveWeapon(input);
   const effects = buildEffectStack(input);
-  const { ability, mod } = attackAbility(input.character, weapon, effects);
+  const { ability, mod } = attackAbility(input.character, weapon, effects, input.abilityOverride);
   const breakdown: AttackBreakdownEntry[] = [{ source: `${ability}-mod`, value: mod }];
 
   if (isWeaponProficient(input.character, weapon, input.content)) {

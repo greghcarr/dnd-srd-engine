@@ -378,6 +378,22 @@ const SpellHpThresholdMechanicSchema = z.object({
   above: HpThresholdArmSchema.optional(),
 });
 
+// Slice 494: weapon-attack-via-spell. Canonical user: True Strike RAW
+// (2024 cantrip): "you make one attack with the weapon used in the
+// spell's casting. The attack uses your spellcasting ability for the
+// attack and damage rolls instead of using Strength or Dexterity."
+// The weapon is named on the cast intent (weaponInstanceId); the
+// mechanic flag drives the cast-spell planner to call resolveAttack
+// with the abilityOverride set to the caster's spellcasting ability.
+// Damage-type choice (radiant-or-normal) and cantrip-scaling extra
+// radiant are deferred — the first ship leaves damage at the weapon's
+// printed type and skips the L5/L11/L17 bonus.
+const SpellWeaponAttackMechanicSchema = z
+  .object({
+    kind: z.literal('weaponAttack'),
+  })
+  .strict();
+
 export const SpellMechanicSchema = z.discriminatedUnion('kind', [
   SpellAttackMechanicSchema,
   SpellSaveMechanicSchema,
@@ -393,6 +409,7 @@ export const SpellMechanicSchema = z.discriminatedUnion('kind', [
   SpellSummonMechanicSchema,
   SpellTrapMechanicSchema,
   SpellHpThresholdMechanicSchema,
+  SpellWeaponAttackMechanicSchema,
 ]);
 export type SpellMechanic = z.infer<typeof SpellMechanicSchema>;
 
