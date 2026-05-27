@@ -375,6 +375,11 @@ const CUNNING_STRIKE_LEVEL = 5;
 const IMPROVED_CUNNING_STRIKE_LEVEL = 11;
 // Slice 467: feat id read by resolveAttack to gate the per-attack reroll.
 const SAVAGE_ATTACKER_FEAT_ID = 'savage-attacker';
+// Slice 490: weapon + condition ids used by the attached-stirge gate.
+// While a stirge is attached to a target, it cannot make Proboscis
+// attacks; the resolver rejects the attempt up front.
+const STIRGE_PROBOSCIS_WEAPON_ID = 'stirge-proboscis';
+const STIRGE_ATTACHED_CONDITION_ID = 'stirge-attached';
 
 // The attacker's Sneak Attack die count, read from the `cunningStrikeEligible`
 // AddDamage rider so it tracks the pack's per-level wiring rather than a
@@ -486,6 +491,24 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   const weaponDef = content.items.get(weaponInstance.definitionId);
   if (!weaponDef || weaponDef.itemKind !== 'weapon') {
     throw new Error(`Item ${weaponInstance.definitionId} is not a weapon`);
+  }
+  // Slice 490: a stirge that has attached to a target cannot make
+  // Proboscis attacks until it detaches. Look for any character carrying
+  // the slice-490 `stirge-attached` condition sourced by this attacker;
+  // if one exists AND the chosen weapon is the Stirge Proboscis, reject
+  // the attack. Other weapons (none currently shipped on the stirge)
+  // are unrestricted.
+  if (weaponDef.id === STIRGE_PROBOSCIS_WEAPON_ID) {
+    const stirgeIsAttached = Object.values(state.characters).some((c) =>
+      c.appliedConditions.some(
+        (ac) => ac.conditionId === STIRGE_ATTACHED_CONDITION_ID && ac.sourceCharacterId === input.attackerId,
+      ),
+    );
+    if (stirgeIsAttached) {
+      throw new Error(
+        `${attacker.name} cannot make Proboscis attacks while attached to a target`,
+      );
+    }
   }
   // Slice 467: Savage Attacker validation. The reroll itself fires
   // below at the damage-roll site (only when the attack actually hits,

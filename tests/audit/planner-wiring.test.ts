@@ -74,6 +74,11 @@ const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
   'consumeResistance', 'cuttingWords', 'uncannyDodge', 'superiorDefense', 'paladinsSmite', 'breathWeapon',
   // Per-moment ticks / duration sweeps (called at turn boundaries / on movement):
   'expireSpellDurations', 'tickAura', 'tickMovementDamage', 'tickRecurring', 'tickRecurringSave', 'triggerTrap',
+  // Stirge Blood Drain (slice 490): drain fires at the stirge's turn-start
+  // (consumer-driven, mirrors tickRecurringSave); detachStirge is an
+  // action invoked by the target or an adjacent ally to remove the
+  // attachment.
+  'stirgeDrain', 'detachStirge',
   // Special-cast / placed-entity / multi-arg spell planners:
   'magicWeapon', 'removeCurse', 'mistyStep', 'thunderStep', 'dimensionDoor',
   'silentImage', 'majorImage', 'clairvoyance', 'scrying', 'arcaneEye', 'divineIntervention',
