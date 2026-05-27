@@ -32,6 +32,9 @@ export const applyConcentrationStarted = (
       : {}),
     ...(event.slotLevel !== undefined ? { slotLevel: event.slotLevel } : {}),
     startedAtEventId: event.id,
+    // Slice 495: persist zone metadata so consumers can read the
+    // positioned AOE from state, not just from the event log.
+    ...(event.zone !== undefined ? { zone: event.zone } : {}),
   };
   caster.concentrationEffectId = event.effectInstanceId;
 };

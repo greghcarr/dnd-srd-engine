@@ -378,6 +378,23 @@ const SpellHpThresholdMechanicSchema = z.object({
   above: HpThresholdArmSchema.optional(),
 });
 
+// Slice 495: positioned AOE-zone spell (Fog Cloud, Darkness, Silent
+// Image, Stinking Cloud, Silence, etc.). The mechanic is a pure marker
+// — when present, the cast-spell planner reads the spell's `targeting`
+// (shape + size) and the intent's `targetPosition` and stamps a `zone`
+// field on the emitted ConcentrationStarted event. The reducer
+// persists the zone on the EffectInstance, so consumers can read the
+// positioned AOE from live state. Concentration drop removes the
+// EffectInstance, removing the zone naturally. The engine doesn't
+// auto-apply the zone's RAW effect (heavy obscurement, magical
+// darkness, illusion render, etc.) — that stays consumer-managed since
+// position-aware enforcement requires the consumer's scene model.
+const SpellZoneMechanicSchema = z
+  .object({
+    kind: z.literal('zone'),
+  })
+  .strict();
+
 // Slice 494: weapon-attack-via-spell. Canonical user: True Strike RAW
 // (2024 cantrip): "you make one attack with the weapon used in the
 // spell's casting. The attack uses your spellcasting ability for the
@@ -410,6 +427,7 @@ export const SpellMechanicSchema = z.discriminatedUnion('kind', [
   SpellTrapMechanicSchema,
   SpellHpThresholdMechanicSchema,
   SpellWeaponAttackMechanicSchema,
+  SpellZoneMechanicSchema,
 ]);
 export type SpellMechanic = z.infer<typeof SpellMechanicSchema>;
 

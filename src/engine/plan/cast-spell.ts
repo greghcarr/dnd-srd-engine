@@ -128,6 +128,13 @@ export interface CastSpellIntent {
   // as the abilityOverride. Throws if a weaponAttack-mechanic spell is
   // cast without this field set.
   readonly weaponInstanceId?: string;
+  // Slice 495: required by spells whose mechanicalEffects include a
+  // `zone` mechanic (Fog Cloud, Darkness, Silent Image, etc.). Names
+  // the center of the AOE. The planner reads this + the spell's
+  // `targeting` shape/size and stamps a `zone` field on the emitted
+  // ConcentrationStarted event. Throws if a zone-mechanic spell is
+  // cast without this field set.
+  readonly targetPosition?: { readonly x: number; readonly y: number };
   readonly at?: string;
 }
 
@@ -1693,6 +1700,11 @@ export const planCastSpell = (
       events.push(
         ...planWeaponAttackMechanic(state, content, rng, intent, spell, castingAbility, declared.id, at),
       );
+    } else if (mechanic.kind === 'zone') {
+      // Slice 495: handled inline at the ConcentrationStarted construction
+      // below. No events emitted by the dispatch case itself — the zone
+      // metadata is stamped on the ConcentrationStarted event so the
+      // reducer can persist it on the EffectInstance in one shot.
     } else {
       events.push(...planHealMechanic(state, content, rng, intent, spell, mechanic, declared.id, at));
     }
@@ -1712,6 +1724,26 @@ export const planCastSpell = (
       events.push(priorBroken);
     }
     const durationMinutes = parseSpellDurationMinutes(spell.duration);
+    // Slice 495: when the spell's mechanicalEffects include a `zone`
+    // entry, read the spell's targeting shape/size + intent.targetPosition
+    // and stamp them on the event so the reducer persists the zone on
+    // the EffectInstance. Validates at plan time so misuse surfaces
+    // before any event commits.
+    const hasZoneMechanic = spell.mechanicalEffects.some((m) => m.kind === 'zone');
+    let zoneField: { shape: 'sphere' | 'cube' | 'cylinder' | 'line' | 'cone'; size: number; center: { x: number; y: number } } | undefined;
+    if (hasZoneMechanic) {
+      if (spell.targeting === undefined) {
+        throw new Error(`Spell ${spell.id} has a zone mechanic but no targeting (shape/size) declared`);
+      }
+      if (intent.targetPosition === undefined) {
+        throw new Error(`Spell ${spell.id} has a zone mechanic and requires intent.targetPosition`);
+      }
+      zoneField = {
+        shape: spell.targeting.shape,
+        size: spell.targeting.size,
+        center: { x: intent.targetPosition.x, y: intent.targetPosition.y },
+      };
+    }
     const started: ConcentrationStartedEvent = {
       id: newEventId() as ULID,
       at,
@@ -1724,6 +1756,7 @@ export const planCastSpell = (
       ...(durationMinutes !== undefined ? { durationMinutes } : {}),
       slotLevel: intent.slotLevel,
       causedByEventId: declared.id,
+      ...(zoneField !== undefined ? { zone: zoneField } : {}),
     };
     events.push(started);
   }

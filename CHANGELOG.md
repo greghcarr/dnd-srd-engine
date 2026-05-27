@@ -4,6 +4,42 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 495): positioned AOE-zone primitive + Fog Cloud / Silent Image / Darkness**
+
+First wired users of a new zone primitive that lets concentration spells declare a positioned AOE (Fog Cloud's 20-ft fog sphere, Silent Image's 15-ft cube illusion, Darkness's 15-ft magical-darkness sphere). The engine now tracks where the zone is and its shape/size on the parent EffectInstance; consumers read the zone from state and apply the spell's RAW effect to creatures inside (heavy obscurement, illusion render, magical darkness — these stay consumer-managed since position-aware enforcement needs the consumer's scene model).
+
+**Engine** ([src/schemas/runtime/effect-instance.ts](src/schemas/runtime/effect-instance.ts), [src/schemas/events/concentration.ts](src/schemas/events/concentration.ts), [src/schemas/content/spell.ts](src/schemas/content/spell.ts), [src/engine/plan/cast-spell.ts](src/engine/plan/cast-spell.ts), [src/engine/reducers/concentration.ts](src/engine/reducers/concentration.ts)):
+- New `ZoneShape` enum (`'sphere' | 'cube' | 'cylinder' | 'line' | 'cone'`) + `Zone` schema (shape + size + center).
+- New optional `zone` field on `EffectInstance` — persists the zone on the parent concentration effect. Concentration drop deletes the EffectInstance, removing the zone naturally (no separate state field, no separate cleanup).
+- New optional `zone` field on `ConcentrationStartedEvent` — carries the same metadata on the event log so transcripts trace zone creation alongside the concentration start.
+- New SpellMechanic kind `zone` (16th in the discriminated union). Pure marker — the cast-spell planner reads the spell's existing `targeting` (shape + size) and the intent's `targetPosition` and stamps the zone on ConcentrationStarted. The dispatch case is a no-op since the zone is constructed inline at the ConcentrationStarted construction site.
+- New optional `targetPosition?: { x, y }` field on `CastSpellIntent`. Required by zone-mechanic spells; throws if absent.
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- Fog Cloud (L1, sphere 20), Silent Image (L1, cube 15), Darkness (L2, sphere 15): `mechanicalEffects: []` -> `[{ kind: 'zone' }]`. Each spell's existing `targeting` metadata supplies the shape + size.
+
+**Tests** at [tests/unit/engine/slice-495-zone-spells.test.ts](tests/unit/engine/slice-495-zone-spells.test.ts) - 8 cases:
+1-3. (it.each) Each of Fog Cloud / Silent Image / Darkness ships with a `zone` mechanic + the expected targeting shape/size.
+4. Casting Fog Cloud with `targetPosition: { x: 25, y: 10 }` emits ConcentrationStarted with `zone: { shape: 'sphere', size: 20, center: { x: 25, y: 10 } }`.
+5. The reducer persists the zone on `state.effectInstances[eid].zone`.
+6. Casting a zone spell without `targetPosition` throws.
+7. Silent Image uses cube 15 targeting.
+8. Concentration drop (caster starts a second concentration spell) removes the first effect instance + its zone, and the new effect instance carries its own zone.
+
+**Audit:**
+- *Names*: `Zone` / `ZoneShape` mirror the existing `Targeting` / `TargetingShape` shape on the spell side. `targetPosition` follows the existing `targetIds` / `casterChoice` per-cast field naming.
+- *DRY*: zone metadata folds into the existing EffectInstance + ConcentrationStarted plumbing; no separate `zoneInstances` state field, no separate ZoneCreated / ZoneRemoved event pair. Concentration cleanup already deletes the effect instance.
+- *SRP*: one new schema, one new optional field per surface, one new mechanic kind. The dispatch case is intentionally a no-op (the zone is built inline at the ConcentrationStarted site so the metadata + the event commit together).
+- *Magic numbers*: none added; zone size/shape come from each spell's existing `targeting` block.
+- *Mechanical outcomes asserted*: 8 cases pin the three canonical spell wires, the event-side zone, the state-side zone, the no-position guard, and the concentration-drop teardown.
+
+**Deferred RAW arms (consumer-managed for now, documented)**:
+- Heavy obscurement enforcement (Fog Cloud / Darkness) — the engine knows where the zone is but doesn't auto-apply a Blinded-style condition to creatures inside it. The consumer reads `effectInstance.zone` + its own scene positions and applies obscurement effects via the existing `bearer.canSeeAttacker` / `targetCanSeeAttacker` consumer-coordinated facts (slice 278). The engine isn't the source of truth for "who is inside which zone" because zone-occupancy depends on the consumer's positional model.
+- Silent Image's illusion-render mechanic (Investigation save to disbelieve) — consumer-managed.
+- Darkness's "creatures with Darkvision can't see through it" arm — consumer's Darkvision logic checks for any active Darkness zone overlapping the line of sight.
+
+**Pattern-check**: the zone primitive is reusable for any concentration spell with positioned AOE. 13 schema-only zone-style concentration spells in the pack today (aura-of-life L4 sphere 30; globe-of-invulnerability L6 sphere 10; move-earth L6 cube 40; reverse-gravity L7 cylinder 100; antimagic-field L8 sphere 10; earthquake L8 cylinder 100; dragons-breath L2 cone 15; phantasmal-force L2 cube 10; silence L2 sphere 20; slow L3 cube 40; plus the 3 wired here). Each of those can opt into the zone primitive by adding `{ kind: 'zone' }` to its `mechanicalEffects`; their existing `targeting` metadata already declares shape + size. No engine change needed for the remaining 10 — pure content sweep.
+
 **Engine + content (slice 494): True Strike (2024) + `weaponAttack` spell mechanic + `abilityOverride` on attacks**
 
 Closes True Strike from the L1 schema-only spell tail. New SpellMechanic kind `weaponAttack` that delegates to a real weapon attack with the caster's spellcasting ability driving the attack + damage rolls. The mechanic is the canonical user but is intentionally a pure marker so future "cast spell, make weapon attack" shapes (Booming Blade, Green-Flame Blade) reuse the same shape.
