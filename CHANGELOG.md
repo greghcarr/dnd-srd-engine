@@ -4,6 +4,36 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 492): Web Walker (Giant Spider / Drider / Ettercap) + `restrained-by-web` source-tagged condition**
+
+Closes the Giant Spider Web Walker slot on the slice-477 deferred follow-up. Pure content slice — no engine change. The existing `conditionImmunities` array on MonsterStatblock auto-projects to `GrantConditionImmunity` effects (effect-stack.ts), and the existing `isImmuneToCondition` gate enforces the immunity at apply time.
+
+RAW (SRD 5.2.1 Web Walker — Giant Spider, Drider, Ettercap): "The spider ignores movement restrictions caused by webs, and the spider knows the location of any other creature in contact with the same web."
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- New `restrained-by-web` condition: a direct copy of `restrained`'s effects (ModifySpeed walk 0, Disadvantage on attacks, Disadvantage on DEX saves, GrantAdvantageToAttackers). The distinct id lets Web Walker creatures carry an immunity to it without being immune to Restrained from other sources (Entangle, grapple, Ensnaring Strike). A web-source application uses this id; a plant- / grapple- / spell-source application keeps the generic `restrained` id and bypasses the immunity.
+- Web spell ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)): `conditionOnFail` changed from `restrained` to `restrained-by-web`. Future web-source applications (Giant Spider's Web action, Ettercap's Web action when authored) will use the same id.
+- Giant Spider / Drider / Ettercap statblocks: gain `traits: [{ kind: 'GrantConditionImmunity', conditionId: 'restrained-by-web' }]`. The trait array (not the `conditionImmunities` literal) is the right place because Web Walker is a body-text trait in the SRD, not an entry on the `**Immunities**` line that srd-drift mirrors literally.
+
+**Deferred (RAW arm not wired)**: the "knows the location of any other creature in contact with the same web" arm. The engine has no web-occupancy tracker and no per-creature web-membership graph. Documented as consumer-managed (the consumer's scene model is the source of truth for web positions).
+
+**Doc-count update**: conditions 128 -> 129 (15 RAW + 113 -> 114 rider; effect-bearing 111 -> 112).
+
+**Tests** at [tests/unit/engine/slice-492-web-walker.test.ts](tests/unit/engine/slice-492-web-walker.test.ts) - 9 cases (3 monsters x 2 it.each tables + 3 standalone):
+1. `restrained-by-web` carries the same effects as `restrained` (direct copy).
+2. Web spell's `conditionOnFail` is now `restrained-by-web`.
+3-5. (it.each) Each of Giant Spider / Drider / Ettercap carries the Web Walker trait (GrantConditionImmunity restrained-by-web).
+6-8. (it.each) `isImmuneToCondition` returns true for `restrained-by-web` AND false for generic `restrained` on each Web Walker monster (the source-tag distinction holds).
+9. A hero (no Web Walker trait) is NOT immune to `restrained-by-web`.
+
+**Audit (content slice):**
+- *RAW match*: the immunity targets web-source restraints only; non-web Restrained (Entangle, grapple) still applies. Three Web Walker users wired (the complete SRD 5.2.1 set).
+- *Names*: `restrained-by-web` follows the existing `*-active` / `*-targeted` convention for source-tagged variants.
+- *DRY*: effects are a direct copy from `restrained`; the source-tag distinction is the only difference. No effect-stack code change.
+- *Mechanical outcomes asserted*: the spell-side redirect + the three statblock immunities + the isImmuneToCondition source-distinction.
+
+**Pattern-check**: the `restrained-by-web` source-tag pattern is reusable for any future source-keyed condition immunity (e.g., a "frightened-by-divine" immunity for unholy creatures vs. paladin auras, or a "charmed-by-fey" immunity). The current pack has no other source-keyed immunities — the pattern is canonical for "immune to X from a specific source family without breaking X from other sources."
+
 **Engine + content (slice 491): Boar Gore (charge rider) + `event.attackerChargedThisTarget` fact**
 
 Closes the Boar Gore slot on the slice-477 deferred follow-up. The Boar's signature charge-and-knockdown shape now ships as content via a consumer-coordinated fact, matching the established pattern for predicates the engine can't observe (movement direction + "immediately before the hit" timing).

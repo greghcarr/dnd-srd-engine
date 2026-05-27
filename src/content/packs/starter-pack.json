@@ -2017,7 +2017,7 @@
       "classes": ["sorcerer", "wizard"],
       "targeting": { "shape": "cube", "size": 20 },
       "mechanicalEffects": [
-        { "kind": "save", "ability": "DEX", "conditionOnFail": "restrained" }
+        { "kind": "save", "ability": "DEX", "conditionOnFail": "restrained-by-web" }
       ]
     },
     {
@@ -3581,7 +3581,8 @@
       "cr": 1,
       "xp": 200,
       "proficiencyBonus": 2,
-      "languages": []
+      "languages": [],
+      "traits": [{ "kind": "GrantConditionImmunity", "conditionId": "restrained-by-web" }]
     },
     {
       "id": "giant-wolf-spider",
@@ -6609,7 +6610,8 @@
       "cr": 6,
       "xp": 2300,
       "proficiencyBonus": 3,
-      "languages": ["elvish", "undercommon"]
+      "languages": ["elvish", "undercommon"],
+      "traits": [{ "kind": "GrantConditionImmunity", "conditionId": "restrained-by-web" }]
     },
     {
       "id": "medusa",
@@ -7592,7 +7594,8 @@
       "cr": 2,
       "xp": 450,
       "proficiencyBonus": 2,
-      "languages": []
+      "languages": [],
+      "traits": [{ "kind": "GrantConditionImmunity", "conditionId": "restrained-by-web" }]
     },
     {
       "id": "centaur-trooper",
@@ -8143,6 +8146,19 @@
       "stackable": false,
       "endsOn": [],
       "effects": [
+        { "kind": "GrantAdvantageToAttackers" }
+      ]
+    },
+    {
+      "id": "restrained-by-web",
+      "name": "Restrained (by web)",
+      "description": "Restrained from a web-source effect (Web spell, Giant Spider's Web action when authored, Ettercap webs, etc.). RAW (SRD 5.2.1 Web Walker trait — Giant Spider, Drider, Ettercap): 'The spider ignores movement restrictions caused by webs.' Slice 492 introduces this source-tagged variant of Restrained so creatures with Web Walker can carry an immunity to it (via the statblock's `conditionImmunities` array) without being immune to Restrained from other sources (Entangle, grapple, Ensnaring Strike). Effects are a direct copy of the base Restrained condition (ModifySpeed walk 0, Disadvantage on attacks, Disadvantage on DEX saves, GrantAdvantageToAttackers). The Web spell's `conditionOnFail` now points here; future web-source applications (Giant Spider Web action, etc.) use the same id.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "ModifySpeed", "mode": "walk", "op": "set", "value": 0 },
+        { "kind": "SetAdvantage", "on": "attack", "mode": "disadvantage" },
+        { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "DEX" }, "mode": "disadvantage" },
         { "kind": "GrantAdvantageToAttackers" }
       ]
     },

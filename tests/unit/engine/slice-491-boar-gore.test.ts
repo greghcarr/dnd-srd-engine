@@ -30,10 +30,8 @@ import { CharacterSchema, type Character } from '../../../src/schemas/runtime/ch
 import { newCharacterId } from '../../../src/ids.js';
 import { eventId, isoTimestamp, makeItemInstance } from '../../fixtures/index.js';
 import type { CharacterCreatedEvent } from '../../../src/schemas/events/progression.js';
-import type {
-  ConditionAppliedEvent,
-  DamageRolledEvent,
-} from '../../../src/schemas/events/combat.js';
+import type { ConditionAppliedEvent } from '../../../src/schemas/events/combat.js';
+import type { DamageRolledEvent } from '../../../src/schemas/events/attack.js';
 
 const PACK = loadStarterPack();
 
