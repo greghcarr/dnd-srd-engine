@@ -123,17 +123,54 @@ export interface CastSpellIntent {
   readonly at?: string;
 }
 
+// Slice 487: returns undefined when the character has no spellcasting
+// class (Magic Initiate Fighter / Rogue / Barbarian). The caller falls
+// back to the GrantSpell entry's `spellcastingAbility` via
+// `resolveCastingAbility` below to compute DC / attack. Pre-487 this
+// threw at this point, blocking non-spellcasters from casting their
+// granted spells through the planner.
 const findCastingClass = (
   character: Character,
   content: ResolvedContent,
   preferred?: string,
-): string => {
+): string | undefined => {
   if (preferred !== undefined) return preferred;
   for (const enrollment of character.classes) {
     const cls = content.classes.get(enrollment.classId);
     if (cls?.spellcasting !== undefined) return enrollment.classId;
   }
-  throw new Error(`Character has no spellcasting class`);
+  return undefined;
+};
+
+// Slice 487: resolves the spellcasting ability the cast should use.
+// Class first (preserves existing behavior for spellcasters); falls back
+// to the GrantSpell entry's `spellcastingAbility` for the spell being
+// cast. Returns undefined when the bearer can't cast the spell via any
+// recognized path; the caller throws an intent-revealing error.
+const resolveCastingAbility = (
+  character: Character,
+  content: ResolvedContent,
+  state: CampaignState,
+  classId: string | undefined,
+  spellId: string,
+): 'INT' | 'WIS' | 'CHA' | undefined => {
+  if (classId !== undefined) {
+    const cls = content.classes.get(classId);
+    const ability = cls?.spellcasting?.ability;
+    if (ability === 'INT' || ability === 'WIS' || ability === 'CHA') return ability;
+  }
+  const effects = buildEffectStack({
+    character,
+    content,
+    itemInstances: state.itemInstances,
+    pendingChoices: state.pendingChoices,
+  });
+  const grant = effects.grantedSpells().find((g) => g.spellId === spellId);
+  const grantAbility = grant?.spellcastingAbility;
+  if (grantAbility === 'INT' || grantAbility === 'WIS' || grantAbility === 'CHA') {
+    return grantAbility;
+  }
+  return undefined;
 };
 
 const characterKnowsSpell = (
@@ -329,7 +366,8 @@ const planAttackMechanic = (
   mechanic: Extract<SpellMechanic, { kind: 'attack' }>,
   declaredEventId: string,
   at: string,
-  castingClassId: string,
+  castingClassId: string | undefined,
+  castingAbility: 'INT' | 'WIS' | 'CHA',
 ): Event[] => {
   const character = state.characters[intent.characterId];
   if (!character) throw new Error(`Unknown character ${intent.characterId}`);
@@ -337,8 +375,9 @@ const planAttackMechanic = (
     character,
     itemInstances: state.itemInstances,
     content,
-    classId: castingClassId,
+    classId: castingClassId ?? '',
     characters: state.characters,
+    castingAbility,
   });
   const bonusDice = (mechanic.extraDicePerSlotLevel ?? 0) * Math.max(0, intent.slotLevel - spell.level);
   const cantripSteps = spell.level === CANTRIP_LEVEL ? cantripExtraDice(computeTotalLevel(character)) : 0;
@@ -482,7 +521,8 @@ const planSaveMechanic = (
   mechanic: Extract<SpellMechanic, { kind: 'save' }>,
   declaredEventId: string,
   at: string,
-  castingClassId: string,
+  castingClassId: string | undefined,
+  castingAbility: 'INT' | 'WIS' | 'CHA',
 ): SaveMechanicOutcome => {
   const character = state.characters[intent.characterId];
   if (!character) throw new Error(`Unknown character ${intent.characterId}`);
@@ -490,8 +530,9 @@ const planSaveMechanic = (
     character,
     itemInstances: state.itemInstances,
     content,
-    classId: castingClassId,
+    classId: castingClassId ?? '',
     characters: state.characters,
+    castingAbility,
   });
   const bonusDice = (mechanic.extraDicePerSlotLevel ?? 0) * Math.max(0, intent.slotLevel - spell.level);
   const cantripSteps = spell.level === CANTRIP_LEVEL ? cantripExtraDice(computeTotalLevel(character)) : 0;
@@ -1257,7 +1298,8 @@ const planTrapMechanic = (
   mechanic: Extract<SpellMechanic, { kind: 'trap' }>,
   declaredEventId: string,
   at: string,
-  castingClassId: string,
+  castingClassId: string | undefined,
+  castingAbility: 'INT' | 'WIS' | 'CHA',
 ): Event[] => {
   const damageType = resolveTrapDamageType(mechanic, intent, spell.id);
 
@@ -1269,8 +1311,9 @@ const planTrapMechanic = (
       character,
       itemInstances: state.itemInstances,
       content,
-      classId: castingClassId,
+      classId: castingClassId ?? '',
       characters: state.characters,
+      castingAbility,
     });
     dc = dcResult.total;
   }
@@ -1350,6 +1393,16 @@ export const planCastSpell = (
   }
 
   const castingClassId = findCastingClass(character, content, intent.castingClassId);
+  // Slice 487: resolve the spellcasting ability used for DC / attack
+  // computations. Class first, GrantSpell fallback. A character with no
+  // spellcasting class and no GrantSpell entry for this spell cannot
+  // cast it via the planner.
+  const castingAbility = resolveCastingAbility(character, content, state, castingClassId, intent.spellId);
+  if (castingAbility === undefined) {
+    throw new Error(
+      `${character.name} cannot cast ${spell.name}: no spellcasting class and no GrantSpell entry for this spell`,
+    );
+  }
   const slotSource = chooseSlotSource(spell, intent, state, content);
 
   const castAsRitual = intent.asRitual === true;
@@ -1528,11 +1581,11 @@ export const planCastSpell = (
   for (const mechanic of spell.mechanicalEffects) {
     if (mechanic.kind === 'attack') {
       events.push(
-        ...planAttackMechanic(state, content, rng, intent, spell, mechanic, declared.id, at, castingClassId),
+        ...planAttackMechanic(state, content, rng, intent, spell, mechanic, declared.id, at, castingClassId, castingAbility),
       );
     } else if (mechanic.kind === 'save') {
       const outcome = planSaveMechanic(
-        state, content, rng, intent, spell, mechanic, declared.id, at, castingClassId,
+        state, content, rng, intent, spell, mechanic, declared.id, at, castingClassId, castingAbility,
       );
       events.push(...outcome.events);
       conditionsApplied.push(...outcome.conditionsApplied);
@@ -1574,7 +1627,7 @@ export const planCastSpell = (
       events.push(...planTempHPMechanic(rng, intent, spell, mechanic, declared.id, at));
     } else if (mechanic.kind === 'trap') {
       events.push(
-        ...planTrapMechanic(state, content, intent, spell, mechanic, declared.id, at, castingClassId),
+        ...planTrapMechanic(state, content, intent, spell, mechanic, declared.id, at, castingClassId, castingAbility),
       );
     } else if (mechanic.kind === 'hp-threshold') {
       events.push(
