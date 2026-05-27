@@ -289,6 +289,19 @@ export interface AttackIntent {
   // The reroll only fires on a hit; a miss with this flag set does NOT
   // consume the per-turn use (RAW: "when you hit").
   readonly useSavageAttacker?: boolean;
+  // Slice 491: consumer-supplied per-attack fact for "the attacker
+  // moved 20+ feet straight toward this target immediately before the
+  // hit." Canonical user: Boar Gore ("If the target is a Medium or
+  // smaller creature and the boar moved 20+ feet straight toward it
+  // immediately before the hit, the target takes an extra 1d6 piercing
+  // and has the Prone condition"). The engine doesn't track movement
+  // direction or "movement immediately before the hit" — same shape as
+  // bearer.lightLevel / attackerHasAllyAdjacentToTarget: the consumer
+  // signals the combined predicate as one boolean. Opt-in: undefined
+  // produces no charge bonus. Surfaces as
+  // `event.attackerChargedThisTarget` in the onHit rider's condition
+  // predicate facts.
+  readonly chargedAtTarget?: boolean;
 }
 
 const chooseDamageAbility = (
@@ -369,6 +382,8 @@ export interface ResolveAttackInput {
   readonly cunningStrike?: ReadonlyArray<CunningStrikeOption>;
   // Slice 467: see AttackIntent.useSavageAttacker doc comment above.
   readonly useSavageAttacker?: boolean;
+  // Slice 491: see AttackIntent.chargedAtTarget doc comment above.
+  readonly chargedAtTarget?: boolean;
 }
 
 const CUNNING_STRIKE_LEVEL = 5;
@@ -1098,6 +1113,11 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     ['target.creatureType', getCreatureType(target, content)],
     ['target.speciesId', target.speciesId],
     ['target.creatureSize', creatureSize(target, content)],
+    // Slice 491: consumer-supplied "did the attacker charge this target"
+    // fact (Boar Gore "moved 20+ ft straight toward it immediately
+    // before the hit"). Opt-in: undefined evaluates to false in the
+    // predicate, so unconditional onHit riders are unaffected.
+    ['event.attackerChargedThisTarget', input.chargedAtTarget === true],
   ]);
   // Slice 324: a rider gated `requiresCritical` fires only on a crit.
   const applicableRiders = [...(weaponDef.onHit ?? []), ...(enchantment?.onHit ?? [])].filter(
@@ -1459,6 +1479,7 @@ export const planAttack = (
     ...(intent.lightLevel !== undefined ? { lightLevel: intent.lightLevel } : {}),
     ...(intent.cunningStrike !== undefined ? { cunningStrike: intent.cunningStrike } : {}),
     ...(intent.useSavageAttacker === true ? { useSavageAttacker: true } : {}),
+    ...(intent.chargedAtTarget === true ? { chargedAtTarget: true } : {}),
     at,
   });
   // If we fired a Loading weapon, append a WeaponLoaded event so the

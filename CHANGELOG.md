@@ -4,6 +4,38 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 491): Boar Gore (charge rider) + `event.attackerChargedThisTarget` fact**
+
+Closes the Boar Gore slot on the slice-477 deferred follow-up. The Boar's signature charge-and-knockdown shape now ships as content via a consumer-coordinated fact, matching the established pattern for predicates the engine can't observe (movement direction + "immediately before the hit" timing).
+
+RAW (SRD 5.2.1 Boar, CR 1/4): "Gore. Melee Attack Roll: +3, reach 5 ft. Hit: 4 (1d6 + 1) Piercing damage. If the target is a Medium or smaller creature and the boar moved 20+ feet straight toward it immediately before the hit, the target takes an extra 3 (1d6) Piercing damage and has the Prone condition."
+
+**Engine** ([src/engine/plan/attack.ts](src/engine/plan/attack.ts)):
+- New optional `chargedAtTarget?: boolean` field on AttackIntent + ResolveAttackInput. Same opt-in shape as `bearer.lightLevel` (slice 451) / `attackerHasAllyAdjacentToTarget` (slice 445): the engine doesn't track movement direction or "movement immediately before the hit," so the consumer signals the combined predicate (≥20 ft + straight + toward this target + immediately-prior) as one boolean. Undefined evaluates to false, preserving pre-491 onHit-rider behavior.
+- The fact surfaces as `event.attackerChargedThisTarget` in the riderFacts map at the onHit-rider predicate site, alongside the existing slice-446 `target.creatureSize` and slice-318/319 type facts.
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- New `boar-gore` natural weapon (1d6 piercing) with a single onHit rider carrying BOTH extra 1d6 piercing AND `applyConditionId: 'prone'`, gated on a compound `all` predicate: (a) `target.creatureSize ∈ {Tiny, Small, Medium}` AND (b) `event.attackerChargedThisTarget === true`. The +1 damage / +3 attack come from the wielder's STR + PB.
+- Boar statblock unchanged (the slice-483 Bloodied Fury trait stays; Gore is a natural weapon consumers instantiate).
+
+**Doc-count update**: weapons 74 -> 75, items 537 -> 538.
+
+**Tests** at [tests/unit/engine/slice-491-boar-gore.test.ts](tests/unit/engine/slice-491-boar-gore.test.ts) - 4 cases:
+1. `boar-gore` ships with the compound size+charge rider shape.
+2. Non-charged Gore on a Medium target: 1d6 piercing only, no Prone.
+3. Charged Gore on a Medium target: 1d6 primary + extra 1d6 + Prone.
+4. Charged Gore on a Large target (Hippogriff statblock): rider blocked by size gate, primary only.
+
+**Audit:**
+- *RAW match*: the compound predicate captures both halves of the RAW gate (size + charge). The "20+ feet straight" + "immediately before the hit" portions are documented as consumer-coordinated since the engine has no movement-direction model.
+- *Names*: `chargedAtTarget` mirrors the existing `attackerHasAllyAdjacentToTarget` / `bearerCanSeeFearSource` / `lightLevel` naming on the consumer-coordinated fact family.
+- *DRY*: same `kind: 'all'` / `kind: 'any'` predicate combinators that wired Wolf / Dire Wolf / Brown Bear / Mastiff knock-prone (slices 446 / 454 / 479). No new effect kind.
+- *SRP*: one new field, one new fact entry, one new weapon, one new predicate.
+- *Magic numbers*: none added (the "20 ft" threshold lives in the consumer's signal, not in engine code).
+- *Mechanical outcomes asserted*: 4 cases pin the wire shape + both rider arms (extra damage + Prone) + the size gate.
+
+**Pattern-check**: the `event.attackerChargedThisTarget` fact unlocks any future "charge"-style rider with the same shape (Allosaurus Pounce, Triceratops Trampling Charge, Rhinoceros Charge, Centaur Charge — all 2024 MM creatures with the "moved 20+ ft straight" trigger, not yet in the pack). Each future user adds a similarly-gated onHit rider on its natural weapon. No regression risk: the fact is additive; unconditional onHit riders that don't reference it are unaffected.
+
 **Engine + content (slice 490): Stirge Blood Drain (attach + drain + detach)**
 
 Closes the Stirge Blood Drain slot on the slice-477 "iconic beast/monstrosity traits" deferred list. The most-iconic CR 1/8 monster in the 2024 SRD now ships its full Proboscis mechanic end-to-end, modulo one documented RAW deviation (consumer-managed "spend 5 ft of movement to detach" arm).
