@@ -21,10 +21,12 @@ export const RecurringSaveSchema = z
   .object({
     ability: AbilityScoreSchema,
     // 'turnStart' fires when the consumer ticks at the bearer's start
-    // of turn; 'turnEnd' at the end. Engine doesn't track turn moments
+    // of turn; 'turnEnd' at the end; 'longRest' on a 24-hour cadence
+    // outside of combat (Death Dog disease "repeats the save every 24
+    // hours that elapse"). Engine doesn't track turn moments or hours
     // directly — this field is metadata that the consumer reads to know
     // when to fire the tick.
-    trigger: z.enum(['turnStart', 'turnEnd']).default('turnStart'),
+    trigger: z.enum(['turnStart', 'turnEnd', 'longRest']).default('turnStart'),
     // What happens on a failed save:
     //   'consumeAction'        = ActionEconomyConsumed (action) for the bearer
     //                            (only emitted when the bearer is a combatant

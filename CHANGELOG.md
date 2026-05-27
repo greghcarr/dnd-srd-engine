@@ -4,6 +4,38 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 493): Death Dog disease (onHit + 24h cure save) + RecurringSave `'longRest'` trigger**
+
+Closes the last remaining slot in the slice-477 iconic beast/monstrosity traits queue. The Death Dog's disease arm now applies the immediate Poisoned + the 24-hour cure-save loop; two documented RAW arms (HP-max-doesn't-restore-on-long-rest, HP-max-decreases-on-subsequent-failures) stay deferred until the engine grows an HP-max-decay accumulator.
+
+RAW (SRD 5.2.1 Death Dog, CR 1): "Bite. Hit: 1d4 piercing. CON DC 12. First Failure: The target has the Poisoned condition. While Poisoned, the target's Hit Point maximum doesn't return to normal when finishing a Long Rest, and it repeats the save every 24 hours that elapse, ending the effect on itself on a success. Subsequent Failures: HP max decreases by 1d10."
+
+**Engine** ([src/schemas/content/condition.ts](src/schemas/content/condition.ts)):
+- `RecurringSave.trigger` enum gains `'longRest'`. Purely declarative metadata — the consumer drives ticks at their chosen cadence; the engine doesn't track hours. Existing `'turnStart'` / `'turnEnd'` semantics unchanged.
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- New `death-dog-disease-active` condition: carries Poisoned's effects directly (Disadvantage on attacks + ability checks) + `recurringSave: { ability: 'CON', fixedDC: 12, trigger: 'longRest', onSuccess: 'removeCondition' }` + `category: 'disease'` (slice-134 removal-taxonomy tag so Lesser Restoration / Greater Restoration can strip it).
+- `death-dog-bite` weapon gains the slice-319 onHit save rider: `{ save: { ability: 'CON', dc: 12, conditionOnFail: 'death-dog-disease-active' } }`. Same shape as Ghoul's Claw and Cockatrice's Petrifying Bite.
+
+**Deferred RAW arms (still consumer-managed, documented in the condition's description)**:
+- "HP max doesn't return on long rest" — engine doesn't model HP-max-restore semantics; the long-rest reducer leaves max untouched anyway (no HP-max-decay mechanism shipping yet).
+- "Subsequent Failures: HP max decreases by 1d10" — needs an HP-max-decay accumulator + a new onFail variant (similar shape to slice 488's `escalateToCondition`). Tracked for a future slice.
+
+**Doc-count update**: conditions 129 -> 130 (15 RAW + 114 -> 115 rider; effect-bearing 112 -> 113).
+
+**Tests** at [tests/unit/engine/slice-493-death-dog-disease.test.ts](tests/unit/engine/slice-493-death-dog-disease.test.ts) - 5 cases: bite weapon shape with the save rider; condition shape (Poisoned effects + recurringSave fields + category); end-to-end bite path (hit + failed save -> condition applied); cure-save tick (passed save -> ConditionRemoved); category tag for removal-spell coverage.
+
+**Audit:**
+- *RAW match*: the immediate Poisoned arm + 24-hour cure-save are both wired exactly per SRD. The deferred arms (HP-max behaviors) are documented in the condition description with the specific RAW text + the primitive each needs.
+- *Names*: `death-dog-disease-active` follows the `*-active` source-tag convention; the `'longRest'` trigger value mirrors the existing `'turnStart'` / `'turnEnd'` enum.
+- *DRY*: the condition copies Poisoned's effects directly (same pattern as slice-488 Cockatrice Restrained + slice-492 restrained-by-web). The save rider shape mirrors Ghoul's Claw / Cockatrice's Petrifying Bite.
+- *SRP*: one new enum value, one new condition, one new save rider on an existing weapon.
+- *Magic numbers*: DC 12 + 1d4 base + 1d10 deferred-decay all cite the SRD entry inline.
+
+**Pattern-check**: the `'longRest'` trigger value unlocks any future "lingering disease" or "curse with periodic cure save" mechanic on a non-encounter cadence (Mummy Rot, Werewolf Lycanthropy curse, future affliction-style spells). Each future user populates `trigger: 'longRest'` and the consumer ticks at long-rest time. The HP-max-decay accumulator + `onFail: 'decreaseHPMax'` (or similar) variant remains the natural next primitive for the Death Dog's "subsequent failures" arm + Mummy Rot's "max HP can't be restored" arm + similar.
+
+**Cohort summary**: with this slice, the **slice-477 "iconic beast/monstrosity traits" deferred list is empty**. All five iconic CR ≤ 1 monster traits that were tracked there — Boar Bloodied Fury (483), Worg Bite (484), Cockatrice Petrification (488), Hippogriff Flyby (489), Stirge Blood Drain (490), Boar Gore (491), Spider Web Walker (492), Death Dog disease (493) — have wired arms or carry tracked RAW deviations with their next-primitive cited.
+
 **Content (slice 492): Web Walker (Giant Spider / Drider / Ettercap) + `restrained-by-web` source-tagged condition**
 
 Closes the Giant Spider Web Walker slot on the slice-477 deferred follow-up. Pure content slice — no engine change. The existing `conditionImmunities` array on MonsterStatblock auto-projects to `GrantConditionImmunity` effects (effect-stack.ts), and the existing `isImmuneToCondition` gate enforces the immunity at apply time.
