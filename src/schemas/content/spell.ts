@@ -29,6 +29,16 @@ const SpellAttackMechanicSchema = z
       .optional(),
     extraDicePerSlotLevel: z.number().int().min(0).optional(),
     cantripScalingDice: DiceExpressionSchema.optional(),
+    // Slice 498: exploding ("aceing" / open-die) damage. When true, each
+    // damage die (base + cantrip-scaling) that rolls its maximum face
+    // spawns an extra die of the same size, chained (an extra die that
+    // also maxes spawns another), capped at a total number of extra dice
+    // equal to the caster's spellcasting ability modifier. Canonical
+    // user: Sorcerous Burst ("If you roll an 8 on a d8 for this spell,
+    // you can roll another d8... the maximum number of these d8s you can
+    // add equals your spellcasting ability modifier"). The die size is
+    // read from `damageDice`.
+    explodeOnMaxDie: z.boolean().optional(),
     // Slice 497: which targets this attack mechanic resolves against when
     // the cast carries multiple targetIds. `'all'` (default) attacks each
     // target (the historical behavior). `'first'` attacks only

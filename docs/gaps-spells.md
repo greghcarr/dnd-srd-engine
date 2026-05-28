@@ -20,7 +20,7 @@ A prior version of this doc tracked the **full PHB 2024 spell list** as its deno
 
 ## Totals
 
-**339 in pack**: **191 wired** (149 cast-time, 11 zone-tick, 24 dedicated planner, 6 zone-area, 1 weapon-attack), **69 narrative**, **79 deferred** (genuine mechanical gap, grouped by needed primitive per level below). The zone-area + weapon-attack rows landed in slices 494-496 (True Strike; Fog Cloud / Darkness / Silence / Move Earth / Reverse Gravity / Earthquake); slice 497 wired Ice Knife (the multi-mechanic attack + AOE-save shape via the new `targetScope: 'first'` attack field). Note: this catalog's per-spell split has accumulated drift since the slice-337 full reconcile — the per-level `inPack` totals are CI-guarded ([gaps-spells-counts.test.ts](../tests/audit/gaps-spells-counts.test.ts)) but the wired/narrative/deferred split is hand-maintained and a future slice-337-style full reconcile against [spell-coverage.test.ts](../tests/unit/engine/spell-coverage.test.ts) would catch any spells wired in slices 338-444 whose rows weren't moved.
+**339 in pack**: **192 wired** (150 cast-time, 11 zone-tick, 24 dedicated planner, 6 zone-area, 1 weapon-attack), **69 narrative**, **78 deferred** (genuine mechanical gap, grouped by needed primitive per level below). The zone-area + weapon-attack rows landed in slices 494-496 (True Strike; Fog Cloud / Darkness / Silence / Move Earth / Reverse Gravity / Earthquake); slice 497 wired Ice Knife (multi-mechanic attack + AOE-save via the new `targetScope: 'first'` attack field); slice 498 wired Sorcerous Burst (exploding dice via the new `explodeOnMaxDie` attack field). Note: this catalog's per-spell split has accumulated drift since the slice-337 full reconcile — the per-level `inPack` totals are CI-guarded ([gaps-spells-counts.test.ts](../tests/audit/gaps-spells-counts.test.ts)) but the wired/narrative/deferred split is hand-maintained and a future slice-337-style full reconcile against [spell-coverage.test.ts](../tests/unit/engine/spell-coverage.test.ts) would catch any spells wired in slices 338-444 whose rows weren't moved.
 
 ## Biggest deferred clusters (the priority queue)
 
@@ -41,14 +41,13 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 ---
 
-## Level 0 (27 in pack): 14 wired, 11 narrative, 2 deferred
+## Level 0 (27 in pack): 15 wired, 11 narrative, 1 deferred
 
-**Wired, cast-time (13):** acid-splash, chill-touch, eldritch-blast, fire-bolt, guidance, poison-spray, produce-flame, ray-of-frost, resistance, sacred-flame, shocking-grasp, starry-wisp, vicious-mockery.
+**Wired, cast-time (14):** acid-splash, chill-touch, eldritch-blast, fire-bolt, guidance, poison-spray, produce-flame, ray-of-frost, resistance, sacred-flame, shocking-grasp, sorcerous-burst (slice 498: exploding ranged spell attack — 1d8 of a caster-chosen type, each 8 spawns another d8 chained, capped at the caster's spellcasting mod, via the new `explodeOnMaxDie` attack field), starry-wisp, vicious-mockery.
 
 **Wired, weapon-attack (1):** true-strike (slice 494: `weaponAttack` mechanic — makes a weapon attack with the caster's spellcasting ability; cast via `engine.plan.castSpell` with a `weaponInstanceId`).
 
-**Deferred (2):**
-- **open-die scaling:** sorcerous-burst.
+**Deferred (1):**
 - **weapon-enhancement cantrip, not wired through `castSpell`:** shillelagh.
 
 **Narrative (11):** dancing-lights, druidcraft, elementalism, light, mage-hand, mending, message, minor-illusion, prestidigitation, spare-the-dying, thaumaturgy.

@@ -4,6 +4,33 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 498): Sorcerous Burst + exploding-dice (`explodeOnMaxDie`) attack field**
+
+Wires Sorcerous Burst, the sorcerer's L0 exploding-damage cantrip — the canonical "open-die" spell the gaps catalog tracked as deferred. New primitive is a one-field addition (`explodeOnMaxDie`) on the existing attack mechanic + a small chained-roll helper.
+
+RAW (SRD 5.2.1 Sorcerous Burst, Sorcerer cantrip): "Make a ranged spell attack. On a hit, the target takes 1d8 damage of a type you choose: Acid, Cold, Fire, Lightning, Poison, Psychic, or Thunder. If you roll an 8 on a d8 for this spell, you can roll another d8, and add it to the damage... the maximum number of these d8s you can add to the spell's damage equals your spellcasting ability modifier. Cantrip Upgrade: The damage increases by 1d8 at levels 5 (2d8), 11 (3d8), 17 (4d8)."
+
+**Engine** ([src/schemas/content/spell.ts](src/schemas/content/spell.ts), [src/engine/plan/cast-spell.ts](src/engine/plan/cast-spell.ts)):
+- New optional `explodeOnMaxDie?: boolean` on the `attack` spell mechanic. When true, each base + cantrip-scaling die that rolls its maximum face spawns one extra die of the same size (read from `damageDice`), chained (an extra die that also maxes spawns another), capped at a total number of extra dice equal to the caster's spellcasting ability modifier.
+- New `rollExplodingExtras(initialRolls, dieSize, extraCap, rng)` helper: counts max-rolls as pending explosions, rolls extras while budget + pending remain, re-arms on each extra that maxes. `extraCap <= 0` produces no extras. Folded into `planAttackMechanic`'s damage-roll site after the base + scaling rolls; `extraCap = max(0, abilityModifier(caster's spellcasting ability score))`.
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- sorcerous-burst: `mechanicalEffects: []` -> `[{ attack, damageDice: '1d8', attackKind: 'ranged', cantripScalingDice: '1d8', explodeOnMaxDie: true, casterChoosesDamageType: { allowed: [acid, cold, fire, lightning, poison, psychic, thunder] } }]`. The cantrip base-die scaling (1d8 -> 2d8/3d8/4d8) rides the existing `cantripScalingDice`; the caster-chosen type rides the existing `casterChoosesDamageType`; only the explosion is new.
+
+**Doc-count update**: spell totals 191 -> 192 wired (149 -> 150 cast-time), 79 -> 78 deferred; L0 15 wired / 1 deferred (shillelagh the lone L0 holdout). Aligned across gaps-spells / getting-started / starter-pack-gaps / status.
+
+**Tests** at [tests/unit/engine/slice-498-sorcerous-burst.test.ts](tests/unit/engine/slice-498-sorcerous-burst.test.ts) - 5 cases: the mechanic shape; caster-chosen fire damage on a hit; L1 (1 base die + <=4 CHA-mod extras, all d8 faces, explosion implies a rolled 8); L5 cantrip upgrade (2 base dice + <=4 extras); the CHA-mod cap (a CHA +0 sorcerer adds zero extras even when it rolls 8s). spell-coverage flips sorcerous-burst skip -> attack with a damageType casterChoice.
+
+**Audit:**
+- *RAW match*: 1d8 chosen-type on hit, exploding on 8, capped at spellcasting mod, cantrip-scaled base. All arms present. The minimum-die / negative-mod edge resolves to "no extras" (cap clamped to >= 0).
+- *Names*: `explodeOnMaxDie` mirrors per-mechanic field naming; `rollExplodingExtras` follows the `rollDamage` / `rollCantripScaling` helper convention.
+- *DRY*: no new mechanic kind; composes with the existing cantrip-scaling + caster-chosen-type fields. The helper is the only new logic.
+- *SRP*: the attack mechanic gains one optional behavior, isolated to one helper call at the damage-roll site.
+- *Magic numbers*: die size derived from `damageDice` (not hard-coded); cap derived from the caster's ability mod.
+- *Mechanical outcomes asserted*: chosen-type, base-die count by level, extra-die cap (both generous-CHA and zero-CHA), die-face bounds.
+
+**Pattern-check**: `explodeOnMaxDie` is reusable for any future open-die spell or feature (no other SRD spell uses it today, but the 2024 MM / DMG have exploding-damage shapes). The cap is generic (spellcasting mod); a future content item wanting a fixed cap would extend the field to accept a number. No regression: the flag is opt-in; the 17 existing attack-mechanic spells don't set it and roll exactly as before.
+
 **Engine + content (slice 497): Ice Knife + `targetScope` on the attack mechanic**
 
 Wires Ice Knife, the L1 "ranged spell attack + hit-or-miss AOE save" shape — the canonical multi-mechanic spell that the gaps catalog tracked as deferred. The new primitive is a one-field addition (`targetScope`) on the existing attack mechanic; no new mechanic kind.

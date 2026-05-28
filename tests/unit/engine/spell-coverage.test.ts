@@ -267,7 +267,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'illusory-script': { kind: 'skip', reason: 'imbues parchment with illusory writing for 10 days; narrative utility ritual' },
   'mind-spike': { kind: 'save' },
   'shining-smite': { kind: 'skip', reason: 'paladin smite + always-illuminate-target concentration buff; on-hit rider mechanic not yet wired through planCastSpell' },
-  'sorcerous-burst': { kind: 'skip', reason: 'open-die ranged spell attack with caster-chosen damage type; open-die scaling not modeled' },
+  'sorcerous-burst': { kind: 'attack', casterChoice: { kind: 'damageType', value: 'fire' } },
   'summon-dragon': { kind: 'skip', reason: 'summons a Draconic Spirit; the Draconic Spirit statblock is not in the monster catalog yet' },
   'transport-via-plants': { kind: 'skip', reason: 'magical plant-to-plant link for movement; teleport-corridor primitive not modeled' },
   'vitriolic-sphere': { kind: 'save' },

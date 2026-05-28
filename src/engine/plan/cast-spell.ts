@@ -265,6 +265,30 @@ const rollCantripScaling = (
 
 const halveDamage = (totalDamage: number): number => Math.floor(totalDamage / 2);
 
+// Slice 498: exploding ("aceing") damage. Each die in `initialRolls`
+// that already rolled the max face spawns one extra die of `dieSize`;
+// an extra die that also maxes spawns another (chained), with the total
+// number of extra dice capped at `extraCap`. Returns only the extra
+// rolls (the caller appends them to the base rolls). Cap <= 0 -> no
+// extras. Canonical user: Sorcerous Burst (cap = spellcasting mod).
+const rollExplodingExtras = (
+  initialRolls: ReadonlyArray<number>,
+  dieSize: number,
+  extraCap: number,
+  rng: RNG,
+): number[] => {
+  const extras: number[] = [];
+  if (extraCap <= 0) return extras;
+  let pendingExplosions = initialRolls.filter((r) => r === dieSize).length;
+  while (pendingExplosions > 0 && extras.length < extraCap) {
+    pendingExplosions -= 1;
+    const roll = rollDie(dieSize, rng);
+    extras.push(roll);
+    if (roll === dieSize) pendingExplosions += 1;
+  }
+  return extras;
+};
+
 // Shared variant-resolution for buff and save mechanics. The two
 // mechanic kinds share the same `casterChoosesVariant` shape (a
 // list of { key, conditionId } pairs); when present, the caster must
@@ -471,7 +495,18 @@ const planAttackMechanic = (
 
     const { rolls: baseRolls, modifier } = rollDamage(mechanic.damageDice, bonusDice, rng, isCrit);
     const scalingRolls = rollCantripScaling(mechanic.cantripScalingDice, cantripSteps, rng, isCrit);
-    const rolls = [...baseRolls, ...scalingRolls];
+    // Slice 498: exploding damage (Sorcerous Burst). Each base/scaling die
+    // that maxed spawns an extra die (chained), capped at the caster's
+    // spellcasting ability modifier.
+    const explodeRolls = mechanic.explodeOnMaxDie === true
+      ? rollExplodingExtras(
+          [...baseRolls, ...scalingRolls],
+          parseDiceExpression(mechanic.damageDice).die,
+          Math.max(0, abilityModifier(character.abilityScores[castingAbility])),
+          rng,
+        )
+      : [];
+    const rolls = [...baseRolls, ...scalingRolls, ...explodeRolls];
     const fullDamage = rolls.reduce((s, v) => s + v, 0) + modifier + damageModifierBonus;
     const damageTotal = potentHalfOnMiss ? halveDamage(Math.max(0, fullDamage)) : fullDamage;
     const damageRolled: DamageRolledEvent = {
