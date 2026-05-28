@@ -4,6 +4,35 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 497): Ice Knife + `targetScope` on the attack mechanic**
+
+Wires Ice Knife, the L1 "ranged spell attack + hit-or-miss AOE save" shape — the canonical multi-mechanic spell that the gaps catalog tracked as deferred. The new primitive is a one-field addition (`targetScope`) on the existing attack mechanic; no new mechanic kind.
+
+RAW (SRD 5.2.1 Ice Knife, Druid/Sorcerer/Wizard): "Make a ranged spell attack against the target. On a hit, the target takes 1d10 Piercing damage. Hit or miss, the shard then explodes. The target and each creature within 5 feet of it must succeed on a Dexterity saving throw or take 2d6 Cold damage. Using a Higher-Level Spell Slot: The Cold damage increases by 1d6 for each spell slot level above 1."
+
+**Engine** ([src/schemas/content/spell.ts](src/schemas/content/spell.ts), [src/engine/plan/cast-spell.ts](src/engine/plan/cast-spell.ts)):
+- New optional `targetScope?: 'first' | 'all'` on the `attack` spell mechanic. `'first'` makes the attack resolve against only `targetIds[0]`; `'all'` (default / unset) attacks every target (the historical behavior, unchanged). This lets a spell make ONE attack against the primary target while a sibling `save` mechanic resolves an AOE against the primary + splash creatures, all from one `intent.targetIds` list (the consumer passes `[primary, ...within5ft]`).
+- `planAttackMechanic` slices `intent.targetIds` to the first entry when `targetScope === 'first'`.
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- ice-knife: `mechanicalEffects: []` -> `[{ attack 1d10 piercing, targetScope: 'first' }, { save DEX 2d6 cold, halfOnSuccess: false, extraDicePerSlotLevel: 1 }]`. The two existing mechanic kinds compose: the attack hits the primary, the save (hit or miss, since the planner dispatches each mechanic independently) covers the burst, and the upcast +1d6/slot rides the save's `extraDicePerSlotLevel`.
+
+**Tests** at [tests/unit/engine/slice-497-ice-knife.test.ts](tests/unit/engine/slice-497-ice-knife.test.ts) - 4 cases: the two-mechanic shape; exactly ONE AttackRolled (the primary) + a SaveRolled per target when cast at `[primary, splash]`; the AOE save fires hit-or-miss (swept across hit + miss seeds); upcast at slot 2 still emits the DEX save chain. Plus spell-coverage flips ice-knife from `skip` to `{ kind: 'attack' }`.
+
+**Doc-count update**: spell totals 190 -> 191 wired (148 -> 149 cast-time), 80 -> 79 deferred; L1 41 wired / 4 deferred. Aligned across gaps-spells.md + getting-started + starter-pack-gaps + status.
+
+**Audit:**
+- *RAW match*: 1d10 piercing on a hit vs the primary; 2d6 cold DEX save (no half) vs the primary + 5-ft splash, hit or miss; +1d6 per slot above L1. All four arms present.
+- *Names*: `targetScope` mirrors the existing per-mechanic field naming (`damageType`, `attackKind`, `extraDicePerSlotLevel`).
+- *DRY*: no new mechanic kind — composes the existing `attack` + `save` mechanics, adding only the scope discriminator. The planner change is a one-line slice of targetIds.
+- *SRP*: the attack mechanic gains one optional behavior; the save mechanic is untouched.
+- *Magic numbers*: none added.
+- *Mechanical outcomes asserted*: single-attack scope, per-target save, hit-or-miss invariant, upcast scaling.
+
+**Pattern-check**: `targetScope: 'first'` is reusable for any "one attack + splash save" spell. None other in the current pack (Ice Knife is the only SRD spell with this exact shape at any level), but the field generalizes cleanly. Verified no existing attack-mechanic spell relies on multi-target attack behavior that `'all'` (the default) would change: the default path is byte-identical to pre-497, so the 30+ existing attack-mechanic spells are unaffected.
+
+**Audit hardening**: Ice Knife is the first pack spell with TWO damage mechanics (1d10 piercing attack + 2d6 cold save), which surfaced a too-narrow assertion in [tests/audit/srd-drift.test.ts](tests/audit/srd-drift.test.ts): the damage-dice check compared every pack damage mechanic to only the FIRST "Nd M <type> damage" die in the SRD body, so the cold component (2d6) was wrongly flagged against the piercing die (1d10). Fixed the audit to collect EVERY damage die in the SRD body (global regex -> set) and assert each pack die is a member — the correct invariant for multi-damage spells. Also added the explicit `attackKind: 'ranged'` to Ice Knife's attack mechanic to match the convention every other ranged-attack spell follows (16/17 wrote it explicitly; the drift audit's attackKind-presence check expects it).
+
 **Content + fix (slice 496): zone-cohort sweep (Silence / Move Earth / Reverse Gravity / Earthquake) + slice-495 silent-image fix + spell-catalog reconcile**
 
 Continues the slice-495 zone primitive across the rest of the genuine positioned-AOE concentration spells, fixes a slice-495 mis-wire, and reconciles the spell-coverage classification + gaps catalog for the whole zone + True-Strike cohort.

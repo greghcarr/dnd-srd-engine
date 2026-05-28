@@ -29,6 +29,16 @@ const SpellAttackMechanicSchema = z
       .optional(),
     extraDicePerSlotLevel: z.number().int().min(0).optional(),
     cantripScalingDice: DiceExpressionSchema.optional(),
+    // Slice 497: which targets this attack mechanic resolves against when
+    // the cast carries multiple targetIds. `'all'` (default) attacks each
+    // target (the historical behavior). `'first'` attacks only
+    // `targetIds[0]` — used by spells that make ONE attack against a
+    // primary target and then resolve a separate AOE save mechanic
+    // against the primary + splash creatures (Ice Knife: ranged spell
+    // attack vs the primary for 1d10 piercing, then a DEX-save cold
+    // burst vs the primary + everyone within 5 ft). The save mechanic
+    // keeps `'all'` so it covers the whole burst.
+    targetScope: z.enum(['first', 'all']).optional(),
     // Whether the spell attack is a Melee or Ranged Spell Attack. Stamped
     // on the AttackRolled event so the `event.attackKind` predicate fact
     // is correct (melee-gated riders, the ranged-in-melee disadvantage,

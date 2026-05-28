@@ -415,7 +415,14 @@ const planAttackMechanic = (
   ]);
   const damageModifierBonus = casterEffects.modifierSum('damage', damageFacts);
   const events: Event[] = [];
-  for (const targetId of intent.targetIds) {
+  // Slice 497: `targetScope: 'first'` makes the attack resolve against
+  // only the primary target (targetIds[0]); a sibling save mechanic
+  // covers the rest of the AOE. Default ('all' / unset) attacks every
+  // target, the historical behavior.
+  const attackTargetIds = mechanic.targetScope === 'first'
+    ? intent.targetIds.slice(0, 1)
+    : intent.targetIds;
+  for (const targetId of attackTargetIds) {
     const target = state.characters[targetId];
     if (!target) continue;
     const targetAC = computeAC({

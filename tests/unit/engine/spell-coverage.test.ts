@@ -263,7 +263,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'elementalism': { kind: 'skip', reason: '5-variant cosmetic utility cantrip (Beckon Air/Earth/Fire/Water + Sculpt Element); no mechanical effect' },
   'floating-disk': { kind: 'skip', reason: 'creates a 500-lb-capacity force disk; carry-capacity entity not modeled' },
   'freezing-sphere': { kind: 'save' },
-  'ice-knife': { kind: 'skip', reason: 'two-mechanic spell (ranged spell attack 1d10 piercing + 5-ft AoE DEX save 2d6 cold on hit-or-miss); multi-mechanic shape not modeled' },
+  'ice-knife': { kind: 'attack' },
   'illusory-script': { kind: 'skip', reason: 'imbues parchment with illusory writing for 10 days; narrative utility ritual' },
   'mind-spike': { kind: 'save' },
   'shining-smite': { kind: 'skip', reason: 'paladin smite + always-illuminate-target concentration buff; on-hit rider mechanic not yet wired through planCastSpell' },
