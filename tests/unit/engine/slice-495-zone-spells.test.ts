@@ -49,7 +49,13 @@ const buildWizard = (level: number): Character =>
   });
 
 describe('Zone spells (slice 495)', () => {
-  it.each(['fog-cloud', 'silent-image', 'darkness'] as const)(
+  // Slice 496 correction: fog-cloud + darkness are the L1/L2 zone-mechanic
+  // users with NO dedicated planner. silent-image was briefly given a zone
+  // mechanic in slice 495 but reverted in slice 496 — it routes through the
+  // dedicated planSilentImage (which tracks the illusion's position +
+  // concentration itself), so a zone mechanic would create a conflicting
+  // second cast path.
+  it.each(['fog-cloud', 'darkness'] as const)(
     '%s ships with a zone mechanic and pre-existing targeting shape/size',
     (spellId) => {
       const s = PACK.spells.find((sp) => sp.id === spellId);
@@ -59,6 +65,11 @@ describe('Zone spells (slice 495)', () => {
       expect(s?.targeting?.size).toBeGreaterThan(0);
     },
   );
+
+  it('silent-image does NOT carry a zone mechanic (it routes through planSilentImage)', () => {
+    const s = PACK.spells.find((sp) => sp.id === 'silent-image');
+    expect(s?.mechanicalEffects).toEqual([]);
+  });
 
   it('casting Fog Cloud with a targetPosition emits ConcentrationStarted carrying the zone', () => {
     const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(1) });
@@ -115,25 +126,6 @@ describe('Zone spells (slice 495)', () => {
         targetIds: [],
       }),
     ).toThrow(/zone mechanic and requires intent.targetPosition/i);
-  });
-
-  it('casting Silent Image: the zone uses the spell\'s cube 15 targeting', () => {
-    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(4) });
-    const wizard = buildWizard(2);
-    let campaign: Campaign = engine.createCampaign({ name: 'illusion' });
-    campaign = commit(campaign, [
-      { id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: wizard } satisfies CharacterCreatedEvent,
-    ]);
-    campaign = commit(campaign, engine.plan.castSpell(campaign.state, {
-      characterId: wizard.id,
-      spellId: 'silent-image',
-      slotLevel: 1,
-      targetIds: [],
-      targetPosition: { x: 0, y: 0 },
-    }).events);
-    const eid = campaign.state.characters[wizard.id]?.concentrationEffectId;
-    const effect = campaign.state.effectInstances[eid!];
-    expect(effect?.zone).toEqual({ shape: 'cube', size: 15, center: { x: 0, y: 0 } });
   });
 
   it('concentration drop removes the EffectInstance and its zone metadata', () => {

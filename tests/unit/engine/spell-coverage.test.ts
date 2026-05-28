@@ -41,6 +41,7 @@ type Expectation =
   | { kind: 'temp-hp' }
   | { kind: 'trap'; casterChoice?: CasterChoice }
   | { kind: 'destroy' }
+  | { kind: 'zone' }
   | { kind: 'skip'; reason: string };
 
 const SPELL_EXPECTATIONS: Record<string, Expectation> = {
@@ -136,7 +137,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'false-life': { kind: 'temp-hp' },
   'feather-fall': { kind: 'buff', conditionId: 'feather-falling-active' },
   'find-familiar': { kind: 'summon' },
-  'fog-cloud': { kind: 'skip', reason: 'area obscurement, narrative only' },
+  'fog-cloud': { kind: 'zone' },
   'goodberry': { kind: 'skip', reason: 'creates consumable items; item-creation mechanic not wired for spells' },
   'grease': { kind: 'skip', reason: 'aura-damage mechanic (DEX save → prone, no damage); fires via engine.plan.tickAura on enter, not on cast. RAW difficult-terrain side-effect isn\'t expressed.' },
   'heroism': { kind: 'buff', conditionId: 'heroic-active' },
@@ -176,7 +177,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'cloud-of-daggers': { kind: 'skip', reason: 'aura-damage mechanic (no save, 4d4 slashing auto-damage); fires via engine.plan.tickAura per-turn / on-enter, not on cast' },
   'continual-flame': { kind: 'skip', reason: 'utility (creates flame); no combat-event side' },
   'cordon-of-arrows': { kind: 'trap' },
-  'darkness': { kind: 'skip', reason: 'area obscurement, concentration; area mechanic + visibility-condition not modeled' },
+  'darkness': { kind: 'zone' },
   'darkvision': { kind: 'buff', conditionId: 'darkvision-active' },
   'detect-thoughts': { kind: 'skip', reason: 'divination utility; detection mechanic not modeled' },
   'dragons-breath': { kind: 'skip', reason: 'grants ally a breath-weapon reaction-style; on-action rider not modeled' },
@@ -201,7 +202,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'ray-of-enfeeblement': { kind: 'skip', reason: 'ranged attack with on-hit weapon-damage halving; on-hit rider primitive not modeled' },
   'rope-trick': { kind: 'skip', reason: 'utility (extradimensional space), narrative only' },
   'see-invisibility': { kind: 'skip', reason: 'utility (see invisible), narrative only' },
-  'silence': { kind: 'skip', reason: 'area zone of silence; area-effect mechanic not modeled' },
+  'silence': { kind: 'zone' },
   'spider-climb': { kind: 'buff', conditionId: 'spider-climbing-active' },
   'spike-growth': { kind: 'skip', reason: 'movement-damage mechanic (2d4 piercing per 5 ft moved through zone, no save); fires via engine.plan.tickMovementDamage, not on cast. RAW difficult-terrain side-effect isn\'t expressed.' },
   'summon-beast': { kind: 'summon' },
@@ -364,7 +365,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'guards-and-wards': { kind: 'skip', reason: 'multi-effect building ward (illusion + lock + obscure + restrain); composite ward primitive not modeled' },
   'heroes-feast': { kind: 'buff', conditionId: 'heroes-feasted-active' },
   'magic-jar': { kind: 'skip', reason: 'soul transfer between caster and target; possession primitive not modeled' },
-  'move-earth': { kind: 'skip', reason: 'terrain reshaping; terrain primitive not modeled' },
+  'move-earth': { kind: 'zone' },
   'irresistible-dance': { kind: 'skip', reason: 'target dances and has disadvantage on rolls; dancing condition + recurring save not modeled' },
   'planar-ally': { kind: 'skip', reason: 'requests aid from an other-planar entity; DM-resolution + cross-plane summon not modeled' },
   'programmed-illusion': { kind: 'skip', reason: 'long-duration triggered illusion; illusion + trigger primitive not modeled' },
@@ -390,7 +391,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'prismatic-spray': { kind: 'skip', reason: 'random-damage-type cone with 8 effect rolls; multi-damage AoE + RNG-table primitive not modeled' },
   'project-image': { kind: 'skip', reason: 'long-range illusion duplicate; illusion + sensor primitive not modeled' },
   'resurrection': { kind: 'skip', reason: 'has dedicated engine.plan.resurrect (not planCastSpell)' },
-  'reverse-gravity': { kind: 'skip', reason: 'inverts gravity in 50-ft cylinder; physics primitive not modeled' },
+  'reverse-gravity': { kind: 'zone' },
   'sequester': { kind: 'skip', reason: 'time-stop / invisibility on target until trigger; trigger-resume primitive not modeled' },
   'simulacrum': { kind: 'skip', reason: 'has dedicated engine.plan.simulacrum (not planCastSpell)' },
   'symbol': { kind: 'skip', reason: 'placed glyph with caster-chosen trigger and effect; trap mechanic + choice not modeled' },
@@ -407,7 +408,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'clone': { kind: 'skip', reason: 'soul-transferring backup; resurrection-on-death primitive not modeled' },
   'control-weather': { kind: 'skip', reason: 'large-scale weather shaping; environment primitive not modeled' },
   'demiplane': { kind: 'skip', reason: 'extradimensional room; extradimensional space primitive not modeled' },
-  'earthquake': { kind: 'skip', reason: 'large-area save + terrain destruction + collapses; area-effect with multi-stage rider not modeled' },
+  'earthquake': { kind: 'zone' },
   'glibness': { kind: 'skip', reason: 'utility (auto-success on CHA checks + lie detection immunity); narrative buff' },
   'holy-aura': { kind: 'buff', conditionId: 'holy-aura-active' },
   'maze': { kind: 'skip', reason: 'banishes a target to a demiplane labyrinth; cross-plane single-target primitive not modeled' },
@@ -543,6 +544,8 @@ describe('spell coverage: each shipped spell emits the expected event kinds when
         slotLevel: spell.level,
         targetIds,
         ...(casterChoice !== undefined ? { casterChoice } : {}),
+        // Slice 495: zone spells require a target position (the AOE center).
+        ...(expectation.kind === 'zone' ? { targetPosition: { x: 10, y: 10 } } : {}),
       }).events as ReadonlyArray<Event>;
       const types = events.map((e) => e.type);
 
@@ -594,6 +597,17 @@ describe('spell coverage: each shipped spell emits the expected event kinds when
           // hp-threshold mechanic: the 50-HP dummy target is at or below
           // Power Word Kill's 100-HP threshold, so the destroy arm fires.
           expect(types, 'expected CreatureDestroyed').toContain('CreatureDestroyed');
+          break;
+        }
+        case 'zone': {
+          // Slice 495: a zone spell emits ConcentrationStarted carrying the
+          // positioned-AOE metadata (shape + size + center).
+          expect(types, 'expected ConcentrationStarted').toContain('ConcentrationStarted');
+          const conc = events.find(
+            (e): e is Extract<Event, { type: 'ConcentrationStarted' }> => e.type === 'ConcentrationStarted',
+          );
+          expect(conc?.zone, 'expected a zone on ConcentrationStarted').toBeDefined();
+          expect(conc?.zone?.center).toEqual({ x: 10, y: 10 });
           break;
         }
         case 'hp-pool-knockout': {

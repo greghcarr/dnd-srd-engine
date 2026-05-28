@@ -4,6 +4,41 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content + fix (slice 496): zone-cohort sweep (Silence / Move Earth / Reverse Gravity / Earthquake) + slice-495 silent-image fix + spell-catalog reconcile**
+
+Continues the slice-495 zone primitive across the rest of the genuine positioned-AOE concentration spells, fixes a slice-495 mis-wire, and reconciles the spell-coverage classification + gaps catalog for the whole zone + True-Strike cohort.
+
+**RAW classification (the careful part).** The slice-495 pattern-check listed "~10 remaining zone spells," but that filter (`targeting + concentration + empty mechanicalEffects`) was too broad. Checked each against the SRD and wired only the 4 that are genuine caster-chosen-point persistent zones (the Fog Cloud shape):
+- **Silence** (L2 sphere 20) — "centered on a point you choose within range."
+- **Move Earth** (L6 cube 40) — "Choose an area of terrain... within range."
+- **Reverse Gravity** (L7 cylinder 100) — "centered on a point within range."
+- **Earthquake** (L8 cylinder 100) — "centered on that point."
+
+Excluded 6 with documented reasons: **Aura of Life / Globe of Invulnerability / Antimagic Field** are caster-relative Emanations ("radiates from you" / "around you" / "surrounds you"), not point-zones — they'd need the aura system or a caster-anchor convention, not the fixed-`center` zone primitive; **Slow** is a save-on-cast applied to creatures in the cube at cast (a `save` mechanic, not a persistent zone); **Phantasmal Force** is a single-target mind illusion; **Dragon's Breath** is a buff on a willing creature. This is the "filter shape determines what a sweep can find" discipline (CLAUDE.md) — the starting filter's shape was a clue, not the boundary.
+
+**Slice-495 bug fix.** Slice 495 added a `zone` mechanic to **silent-image**, but silent-image routes through the dedicated `planSilentImage` planner (which already tracks the illusion's position + concentration + the Investigation-to-disbelieve arm). The zone mechanic created a conflicting second cast path (`planCastSpell` vs `planSilentImage`). Reverted silent-image's `mechanicalEffects` to `[]`; it stays "wired, planner." The slice-495 test's silent-image cases were corrected (one dropped, one flipped to assert silent-image carries NO zone mechanic).
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- Silence / Move Earth / Reverse Gravity / Earthquake: `mechanicalEffects: []` -> `[{ kind: 'zone' }]`. Each spell's existing `targeting` block supplies shape + size.
+- silent-image: `[{ kind: 'zone' }]` -> `[]` (slice-495 revert).
+
+**Test reconcile** ([tests/unit/engine/spell-coverage.test.ts](tests/unit/engine/spell-coverage.test.ts)):
+- New `{ kind: 'zone' }` expectation kind: casts with a `targetPosition` and asserts ConcentrationStarted carries a `zone` with the right center.
+- fog-cloud + darkness flipped from `skip` to `zone` (slice 495 wired them in the pack but left them `skip` in coverage — they were never actually exercised). silence / move-earth / reverse-gravity / earthquake flipped from `skip` to `zone`.
+- silent-image stays `skip` (planner-routed); true-strike's `skip` reason updated to reflect it's now wired via the slice-494 `weaponAttack` mechanic (the generic harness can't supply the required weaponInstanceId).
+
+**Doc reconcile** ([docs/gaps-spells.md](docs/gaps-spells.md), [docs/getting-started.md](docs/getting-started.md), [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md), [docs/status.md](docs/status.md)):
+- New `zone-area` + `weapon-attack` status-legend entries.
+- Moved 7 spells deferred/narrative -> wired across L0 (true-strike, slice 494), L1 (fog-cloud, slice 495), L2 (darkness slice 495 + silence), L6 (move-earth), L7 (reverse-gravity), L8 (earthquake). Each level's `wired + narrative + deferred === inPack` invariant preserved (verified by [tests/audit/gaps-spells-counts.test.ts](tests/audit/gaps-spells-counts.test.ts)).
+- Spell totals: **183 -> 190 wired** (148 cast-time, 11 zone-tick, 24 planner, 6 zone-area, 1 weapon-attack), **70 -> 69 narrative**, **86 -> 80 deferred**. Aligned the three prose citations (getting-started / starter-pack-gaps / status), which had pre-existing drift (status.md said 182/87 vs the others' 183/86).
+- Flagged in the gaps-spells.md totals that the wired/narrative/deferred split has accumulated additional drift since the slice-337 full reconcile (spells wired in slices 338-444 whose catalog rows may not have moved); a future slice-337-style full reconcile would close it. This slice fixed the cohort it touched, not the whole backlog.
+
+**Audit:**
+- *RAW match*: each wired spell is a genuine caster-chosen-point zone; the 6 exclusions are documented with their RAW reason. The in-zone effects (silence/obscurement/gravity/terrain) stay consumer-managed against the positioned record, consistent with slice 495.
+- *DRY*: no new engine code — pure content + classification, reusing slice 495's `zone` mechanic + the existing ConcentrationStarted/EffectInstance plumbing.
+- *Pattern-check*: surfaced + fixed the slice-495 silent-image mis-wire AND the slice-495 fog-cloud/darkness coverage-staleness AND the slice-494 true-strike coverage-staleness — all the same "wired-in-pack-but-classified-skip / mis-routed" shape. Fixed every instance in the cohort; flagged the broader pre-337 split-drift as a tracked follow-up rather than leaving it silent.
+- *Mechanical outcomes asserted*: spell-coverage's new `zone` case verifies each wired zone spell emits ConcentrationStarted with the positioned zone; the slice-495 test pins the silent-image revert.
+
 **Engine + content (slice 495): positioned AOE-zone primitive + Fog Cloud / Silent Image / Darkness**
 
 First wired users of a new zone primitive that lets concentration spells declare a positioned AOE (Fog Cloud's 20-ft fog sphere, Silent Image's 15-ft cube illusion, Darkness's 15-ft magical-darkness sphere). The engine now tracks where the zone is and its shape/size on the parent EffectInstance; consumers read the zone from state and apply the spell's RAW effect to creatures inside (heavy obscurement, illusion render, magical darkness — these stay consumer-managed since position-aware enforcement needs the consumer's scene model).
