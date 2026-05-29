@@ -521,8 +521,13 @@ export const planTickRecurring = (
   let rolled = 0;
   if (mechanic.amountDice !== undefined) {
     const parsed = parseDiceExpression(mechanic.amountDice);
+    // Slice 503: per-tick upcast scaling. Each slot above the spell's
+    // base level adds `extraDicePerSlotLevel` of the same die to every
+    // tick (Ensnaring Strike: +1d6 per slot above 1).
+    const slotsAbove = Math.max(0, (effect.slotLevel ?? spell.level) - spell.level);
+    const bonusDiceCount = (mechanic.extraDicePerSlotLevel ?? 0) * slotsAbove;
     let sum = parsed.modifier;
-    for (let i = 0; i < parsed.count; i += 1) {
+    for (let i = 0; i < parsed.count + bonusDiceCount; i += 1) {
       sum += rollDie(parsed.die, rng);
     }
     rolled = sum;

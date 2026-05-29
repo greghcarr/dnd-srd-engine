@@ -51,6 +51,7 @@ import { computeAvailableSpellSlots } from '../../derive/spell-slots.js';
 import { computeAC } from '../../derive/ac.js';
 import { computeSavingThrow } from '../../derive/save.js';
 import { getCreatureType } from '../../derive/creature-type.js';
+import { creatureSize, isLargeOrLarger } from '../../derive/creature-size.js';
 import { rollSaveBonusDice } from './_bonus-dice.js';
 import { abilityModifier } from '../../derive/ability.js';
 import { resolveAttack } from './attack.js';
@@ -674,6 +675,12 @@ const planSaveMechanic = (
       // undefined and per-condition gates evaluate false.
       ...(conditionOnFail !== undefined ? { savePreventsCondition: conditionOnFail } : {}),
     });
+    // Slice 503: Ensnaring Strike's "Large or larger creature has
+    // Advantage on this save" — folded into hasAdvantage per-target.
+    const sizeGrantsAdvantage =
+      mechanic.largeCreatureAdvantage === true &&
+      isLargeOrLarger(creatureSize(target, content));
+    const hasAdvantage = saveDerivation.hasAdvantage || sizeGrantsAdvantage;
     // Slice 131: honor save advantage / disadvantage. Pre-slice 131
     // this path always rolled a single d20, silently ignoring effect-
     // stack save-advantage signals (Magic Resistance, Holy Aura,
@@ -681,15 +688,15 @@ const planSaveMechanic = (
     // SaveResult flags. Single d20 still wires when neither advantage
     // nor disadvantage applies (common case).
     const rolls: number[] = [rollDie(D20_SIDES, rng)];
-    if (saveDerivation.hasAdvantage || saveDerivation.hasDisadvantage) {
+    if (hasAdvantage || saveDerivation.hasDisadvantage) {
       rolls.push(rollDie(D20_SIDES, rng));
     }
-    const used = saveDerivation.hasAdvantage
+    const used = hasAdvantage
       ? 'advantage'
       : saveDerivation.hasDisadvantage
         ? 'disadvantage'
         : 'none';
-    const usedD20 = saveDerivation.hasAdvantage
+    const usedD20 = hasAdvantage
       ? Math.max(...rolls)
       : saveDerivation.hasDisadvantage
         ? Math.min(...rolls)

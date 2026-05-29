@@ -130,6 +130,11 @@ const SpellSaveMechanicSchema = z.object({
   // spell ends"). Documented RAW deviation: the engine's endsOnDamage
   // fires on ANY positive damage, not just caster-side damage.
   conditionEndsOnDamage: z.boolean().optional(),
+  // Slice 503: targets of size Large or larger gain Advantage on the save
+  // (RAW Ensnaring Strike: "A Large or larger creature has Advantage on
+  // this save"). Read per-target in the save planner; ORs into any
+  // existing advantage from the target's effect stack.
+  largeCreatureAdvantage: z.boolean().optional(),
 })
   // Slice 370: `.strict()` so an authored field the engine doesn't
   // support (e.g. the `onFailure` / `onSuccess` shape that Sacred Flame /
@@ -289,6 +294,12 @@ const SpellRecurringMechanicSchema = z.object({
   flatAmount: z.number().int().min(0).optional(),
   addCasterAbilityMod: AbilityScoreSchema.optional(),
   damageType: DamageTypeSchema.optional(),
+  // Slice 503: per-tick upcast scaling. Each slot level above the spell's
+  // base level adds this many dice of `amountDice` to every tick. Canonical
+  // user: Ensnaring Strike ("The damage increases by 1d6 for each spell
+  // slot level above 1"). The recurring planner reads the cast slot level
+  // from the bound EffectInstance.
+  extraDicePerSlotLevel: z.number().int().min(0).optional(),
 });
 
 // Per-foot-moved damage zone. The classic Spike Growth shape:

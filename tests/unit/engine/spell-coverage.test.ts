@@ -132,7 +132,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'detect-poison-and-disease': { kind: 'skip', reason: 'detection ritual, narrative only' },
   'disguise-self': { kind: 'skip', reason: 'illusion utility, narrative only' },
   'divine-favor': { kind: 'buff', conditionId: 'divine-favor-active' },
-  'ensnaring-strike': { kind: 'skip', reason: 'ranger smite with on-hit save rider; on-hit trigger system not modeled' },
+  'ensnaring-strike': { kind: 'save' },
   'entangle': { kind: 'skip', reason: 'aura-damage mechanic (STR save → restrained, no damage); fires via engine.plan.tickAura on enter / per-turn, not on cast. RAW difficult-terrain side-effect isn\'t expressed.' },
   'expeditious-retreat': { kind: 'skip', reason: 'bonus-action speed buff, narrative only' },
   'false-life': { kind: 'temp-hp' },

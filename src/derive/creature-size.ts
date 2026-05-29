@@ -6,6 +6,9 @@ const DEFAULT_SIZE: Size = 'Medium';
 // "Large or smaller" in RAW size-gate clauses (weapon-mastery Push,
 // Cunning Strike Trip): everything up to and including Large.
 const LARGE_OR_SMALLER: ReadonlySet<Size> = new Set<Size>(['Tiny', 'Small', 'Medium', 'Large']);
+// "Large or larger" in RAW save-advantage clauses (Ensnaring Strike: "A
+// Large or larger creature has Advantage on this save").
+const LARGE_OR_LARGER: ReadonlySet<Size> = new Set<Size>(['Large', 'Huge', 'Gargantuan']);
 
 // A character's creature size: the monster statblock's size when the
 // character is a monster instance, else the species size, else Medium
@@ -19,3 +22,4 @@ export const creatureSize = (character: Character, content: ResolvedContent): Si
 };
 
 export const isLargeOrSmaller = (size: Size): boolean => LARGE_OR_SMALLER.has(size);
+export const isLargeOrLarger = (size: Size): boolean => LARGE_OR_LARGER.has(size);
