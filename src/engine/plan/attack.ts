@@ -968,11 +968,12 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   }
 
   // Slice 494: when input.abilityOverride is set (True Strike), the damage
-  // roll uses that ability instead of STR/DEX. Otherwise fall back to
-  // the weapon-property-driven default.
-  const damageAbility = input.abilityOverride !== undefined
-    ? input.abilityOverride
-    : chooseDamageAbility(attacker, weaponDef);
+  // roll uses that ability instead of STR/DEX. Slice 501: a Shillelagh-
+  // style weapon buff supplies the same override via the instance's
+  // temporaryBuff (precedence: per-attack input > weapon buff > default).
+  const damageAbility = input.abilityOverride
+    ?? weaponInstance.temporaryBuff?.abilityOverride
+    ?? chooseDamageAbility(attacker, weaponDef);
   const damageBaseScore = attacker.abilityScores[damageAbility];
   const damageScoreFloor = attackerEffects.effectiveAbilityScoreFloor(damageAbility)?.value;
   const damageScoreIncrease = attackerEffects.effectiveAbilityScoreIncrease(damageAbility);
@@ -994,9 +995,14 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     weaponDef.properties.includes('versatile') &&
     weaponDef.versatileDice !== undefined &&
     wieldedTwoHanded;
-  const baseDamageExpression = useFlex && weaponDef.versatileDice !== undefined
-    ? weaponDef.versatileDice
-    : weaponDef.damageDice;
+  // Slice 501: a Shillelagh-style weapon buff overrides the damage die
+  // (Shillelagh: `1d8`), taking precedence over the weapon's printed /
+  // versatile dice.
+  const buffDamageDieOverride = weaponInstance.temporaryBuff?.damageDieOverride;
+  const baseDamageExpression = buffDamageDieOverride
+    ?? (useFlex && weaponDef.versatileDice !== undefined
+      ? weaponDef.versatileDice
+      : weaponDef.damageDice);
   const damageExpression = applyMartialArtsDieScaling(attacker, weaponDef.id, baseDamageExpression);
   const parsed = parseDiceExpression(damageExpression);
   const totalRolls = critical ? parsed.count * 2 : parsed.count;
@@ -1067,7 +1073,13 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   // enchantment like Frost Brand / Flame Tongue).
   const enchantment = resolveEnchantment(weaponInstance, content);
   const enchantmentDamageBonus = enchantment?.damageBonus ?? 0;
-  const effectiveDamageType = enchantment?.weaponDamageType ?? weaponDef.damageType;
+  // Slice 501: a Shillelagh-style weapon buff can override the damage type
+  // (Shillelagh's "can be Force damage" choice), taking precedence over an
+  // enchantment's type and the weapon's printed type.
+  const effectiveDamageType =
+    weaponInstance.temporaryBuff?.damageTypeOverride
+    ?? enchantment?.weaponDamageType
+    ?? weaponDef.damageType;
   // Slice 117: consume the effect stack's 'damage' modifier sum.
   // Predicate-gated entries (Dueling: melee + off-hand-no-weapon;
   // Frenzy: melee) use the facts populated below. Predicate-less

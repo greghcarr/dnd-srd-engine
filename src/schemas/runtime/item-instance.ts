@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DamageTypeSchema, ULIDSchema } from '../primitives.js';
+import { AbilityScoreSchema, DamageTypeSchema, DiceExpressionSchema, ULIDSchema } from '../primitives.js';
 
 // Spell-applied temporary buff stamped onto a specific item instance.
 // Magic Weapon (+1 / +2 / +3 attack and damage) and similar effects
@@ -21,7 +21,22 @@ export const ItemTemporaryBuffSchema = z.object({
   damageBonus: z.number().int().default(0),
   extraDamageDice: z.string().optional(),
   extraDamageType: DamageTypeSchema.optional(),
-  sourceEffectInstanceId: ULIDSchema,
+  // Slice 501: Shillelagh-style weapon transformation. `abilityOverride`
+  // makes attack + damage rolls with this weapon use the named ability
+  // instead of the weapon-property default (Shillelagh: the caster's
+  // spellcasting ability instead of STR). `damageDieOverride` replaces
+  // the weapon's printed damage dice (Shillelagh: `1d8`).
+  // `damageTypeOverride` swaps the damage type (Shillelagh's "can be
+  // Force damage" choice). The attack resolver / attack-bonus derive
+  // read these when this weapon is used.
+  abilityOverride: AbilityScoreSchema.optional(),
+  damageDieOverride: DiceExpressionSchema.optional(),
+  damageTypeOverride: DamageTypeSchema.optional(),
+  // Slice 501: now optional. Concentration-bound buffs (Magic Weapon,
+  // Elemental Weapon) set it so `clearConcentrationEffect` can lift the
+  // buff on concentration drop. Non-concentration buffs (Shillelagh,
+  // 1-minute duration, consumer-managed expiry) omit it.
+  sourceEffectInstanceId: ULIDSchema.optional(),
   source: z.string().optional(),
 });
 export type ItemTemporaryBuff = z.infer<typeof ItemTemporaryBuffSchema>;

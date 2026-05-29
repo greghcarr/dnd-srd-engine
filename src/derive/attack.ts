@@ -102,7 +102,12 @@ const attackAbility = (
 export const computeAttackBonus = (input: ComputeAttackInput): AttackResult => {
   const { instance, weapon } = resolveWeapon(input);
   const effects = buildEffectStack(input);
-  const { ability, mod } = attackAbility(input.character, weapon, effects, input.abilityOverride);
+  // Ability override precedence: the per-attack input override (True
+  // Strike, slice 494) wins; otherwise a weapon-buff override (Shillelagh,
+  // slice 501) sourced from the instance's temporaryBuff; otherwise the
+  // weapon-property default.
+  const abilityOverride = input.abilityOverride ?? instance.temporaryBuff?.abilityOverride;
+  const { ability, mod } = attackAbility(input.character, weapon, effects, abilityOverride);
   const breakdown: AttackBreakdownEntry[] = [{ source: `${ability}-mod`, value: mod }];
 
   if (isWeaponProficient(input.character, weapon, input.content)) {

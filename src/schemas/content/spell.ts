@@ -463,6 +463,44 @@ const SpellWeaponAttackMechanicSchema = z
   })
   .strict();
 
+// Slice 501: weapon-transformation buff. Canonical user: Shillelagh
+// (2024 Druid cantrip): imbues a held Club or Quarterstaff so its
+// attack + damage rolls use the caster's spellcasting ability instead
+// of Strength, its damage die becomes a d8, and (caster's choice) its
+// damage can be Force. The weapon is named on the cast intent
+// (`weaponInstanceId`); the planner stamps an `ItemBuffApplied` (no
+// concentration link, since Shillelagh is a 1-minute non-concentration
+// effect with consumer-managed expiry) carrying the chosen overrides
+// onto the instance. The attack resolver + attack-bonus derive read
+// them back when the weapon is next used.
+//
+// - `useSpellcastingAbility`: when true, attack + damage use the caster's
+//   spellcasting ability (stamped as the buff's `abilityOverride`).
+// - `damageDieOverride`: replaces the weapon's printed damage die
+//   (Shillelagh: `1d8`).
+// - `damageTypeChoice`: the caster may pick one of `allowed` to override
+//   the weapon's damage type. The planner reads `intent.casterChoice`
+//   (kind 'damageType'); when the pick is in `allowed` it stamps a fixed
+//   `damageTypeOverride`, otherwise the weapon's normal type stands.
+//
+// Documented RAW deviation: Shillelagh's damage-type choice is per-hit
+// ("If the attack deals damage, it can be Force damage or the weapon's
+// normal damage type"). The engine collapses it to a single cast-time
+// choice. Force is universally at-least-as-good as bludgeoning, so the
+// collapse rarely changes outcomes.
+const SpellWeaponBuffMechanicSchema = z
+  .object({
+    kind: z.literal('weapon-buff'),
+    useSpellcastingAbility: z.boolean().optional(),
+    damageDieOverride: DiceExpressionSchema.optional(),
+    damageTypeChoice: z
+      .object({
+        allowed: z.array(DamageTypeSchema).min(1),
+      })
+      .optional(),
+  })
+  .strict();
+
 export const SpellMechanicSchema = z.discriminatedUnion('kind', [
   SpellAttackMechanicSchema,
   SpellSaveMechanicSchema,
@@ -479,6 +517,7 @@ export const SpellMechanicSchema = z.discriminatedUnion('kind', [
   SpellTrapMechanicSchema,
   SpellHpThresholdMechanicSchema,
   SpellWeaponAttackMechanicSchema,
+  SpellWeaponBuffMechanicSchema,
   SpellZoneMechanicSchema,
   SpellCreateItemMechanicSchema,
 ]);

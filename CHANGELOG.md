@@ -4,6 +4,39 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 501): Shillelagh + `weapon-buff` spell mechanic + item-buff weapon-transformation overrides**
+
+Wires Shillelagh, the L0 Druid weapon-imbue cantrip, closing the last deferred Level 0 spell (L0 is now 16 wired / 0 deferred). Generalizes the existing `temporaryBuff` (Magic Weapon / Elemental Weapon) with three transformation overrides the attack path reads back.
+
+RAW (SRD 5.2.1 Shillelagh, Transmutation cantrip, Druid): "A Club or Quarterstaff you are holding is imbued with nature's power. For the duration, you can use your spellcasting ability instead of Strength for the attack and damage rolls of melee attacks using that weapon, and the weapon's damage die becomes a d8. If the attack deals damage, it can be Force damage or the weapon's normal damage type (your choice)." 1 minute, NOT concentration.
+
+**Engine**:
+- [src/schemas/runtime/item-instance.ts](src/schemas/runtime/item-instance.ts): `ItemTemporaryBuff` gains `abilityOverride` / `damageDieOverride` / `damageTypeOverride`; `sourceEffectInstanceId` made optional (non-concentration buffs omit it).
+- [src/schemas/events/inventory.ts](src/schemas/events/inventory.ts) + [src/engine/reducers/inventory.ts](src/engine/reducers/inventory.ts): `ItemBuffApplied` carries the three overrides; the reducer conditionally spreads them.
+- [src/derive/attack.ts](src/derive/attack.ts): `computeAttackBonus` reads `temporaryBuff.abilityOverride` (precedence: per-attack input override > buff override > weapon default).
+- [src/engine/plan/attack.ts](src/engine/plan/attack.ts) `resolveAttack`: the damage path folds `temporaryBuff.abilityOverride` into the damage ability, `damageDieOverride` into the base damage expression (over the versatile/printed die), and `damageTypeOverride` into the effective damage type (over an enchantment's / weapon's type).
+- [src/schemas/content/spell.ts](src/schemas/content/spell.ts) + [src/engine/plan/cast-spell.ts](src/engine/plan/cast-spell.ts): new `weapon-buff` SpellMechanic (`useSpellcastingAbility` / `damageDieOverride` / `damageTypeChoice`) + `planWeaponBuffMechanic`, which resolves the caster's spellcasting ability and stamps one `ItemBuffApplied` (no concentration link) onto `intent.weaponInstanceId`.
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- shillelagh: `mechanicalEffects: [{ weapon-buff, useSpellcastingAbility: true, damageDieOverride: '1d8', damageTypeChoice: { allowed: ['force'] } }]`.
+
+**Deferred / RAW deviations (documented)**: Shillelagh's damage-type choice is per-hit ("can be Force or the weapon's normal type"); the engine collapses it to a single cast-time choice via `intent.casterChoice`. Force is universally at-least-as-good as bludgeoning, so the collapse rarely changes outcomes. The 1-minute duration and the "ends if you let go of the weapon" / "ends if recast" clauses are consumer-managed (the buff is non-concentration; the consumer removes it via `ItemBuffRemoved`). The Club / Quarterstaff weapon restriction is a targeting constraint left to the consumer (the mechanic is weapon-agnostic; it validates only that the target is a weapon).
+
+**Doc-count update**: spell totals 194 -> 195 wired (new `weapon-buff` row, 1), 76 -> 75 deferred (L0 16 wired / 0 deferred). Aligned across gaps-spells / getting-started / starter-pack-gaps / status.
+
+**Tests** at [tests/unit/engine/slice-501-shillelagh.test.ts](tests/unit/engine/slice-501-shillelagh.test.ts) - 7 cases: the mechanic shape; the cast stamps an `ItemBuffApplied` with WIS override + d8 die + chosen Force type and no concentration link; an imbued club attacks with the WIS mod (+6 vs the +1 a STR club would roll); damage on hit rolls a d8 with the WIS mod and Force type; without a damage-type choice the type stays bludgeoning (die still d8); a cast without `weaponInstanceId` throws; a cast targeting a non-weapon throws. spell-coverage keeps shillelagh `skip` with an updated reason (the generic harness sets up no held weapon; the dedicated test does).
+
+**Audit:**
+- *RAW match*: spellcasting-ability attack+damage, d8 die, optional Force type. The per-hit -> cast-time type choice, duration, let-go/recast end, and weapon restriction are documented deviations / consumer-side.
+- *Names*: `abilityOverride` / `damageDieOverride` / `damageTypeOverride` mirror the slice-494 `abilityOverride` and the existing buff-field naming; `weapon-buff` parallels the slice-494 `weaponAttack` mechanic.
+- *DRY*: reuses `temporaryBuff` + the attack resolver's existing override-precedence chains rather than a parallel buff path; `planWeaponBuffMechanic` mirrors `planWeaponAttackMechanic`'s weapon-instance validation.
+- *SRP*: each override field threads one value through one resolution point; the planner does one thing (stamp the buff).
+- *Magic numbers*: none (the `1d8` die is content, not code).
+- *at-threading*: the planner takes `at` from the cast and passes it to the single emitted event.
+- *Mechanical outcomes asserted*: buff-stamp shape, attack-bonus delta (override landed), damage die + mod + type, no-choice type fallback, two throw paths.
+
+**Pattern-check**: the override-precedence chains (`input ?? buff ?? default`) were added at all three attack read points (attack-bonus derive, damage ability, damage die, damage type) so no read point silently ignores a buff override. The three new buff fields are opt-in; the existing `temporaryBuff` users (Magic Weapon, Elemental Weapon) set none of them and resolve exactly as before. `sourceEffectInstanceId` going optional is backward-compatible: the concentration-cleanup walk skips buffs without it, which is correct for the non-concentration Shillelagh.
+
 **Engine + content (slice 500): Animal Friendship + save-mechanic `targetCreatureType` + `conditionEndsOnDamage`**
 
 Wires Animal Friendship, the L1 Beast-charming enchantment. Two small additive fields on the existing `save` mechanic: a target-creature-type filter + a condition-ends-on-damage stamp.

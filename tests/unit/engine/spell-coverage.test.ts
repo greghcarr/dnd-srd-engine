@@ -104,7 +104,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'message': { kind: 'skip', reason: 'utility communication, no mechanical effect' },
   'minor-illusion': { kind: 'skip', reason: 'illusion cantrip, no mechanical effect' },
   'resistance': { kind: 'buff', conditionId: 'resisted' },
-  'shillelagh': { kind: 'skip', reason: 'weapon-enhancement cantrip, not wired through planCastSpell' },
+  'shillelagh': { kind: 'skip', reason: 'weapon-buff mechanic: requires intent.weaponInstanceId (a held weapon this harness does not set up); exercised by slice-501-shillelagh.test.ts' },
   'spare-the-dying': { kind: 'skip', reason: 'stabilize-only cantrip, no mechanical event yet' },
   'thaumaturgy': { kind: 'skip', reason: 'narrative cantrip, no mechanical effect' },
   'true-strike': { kind: 'skip', reason: '2024 weapon-attack rebrand, not wired through planCastSpell' },

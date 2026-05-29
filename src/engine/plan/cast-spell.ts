@@ -44,6 +44,7 @@ import {
   newItemInstanceId,
   newTrapId,
 } from '../../ids.js';
+import type { ItemBuffAppliedEvent } from '../../schemas/events/inventory.js';
 import { computeSpellSaveDC, computeSpellAttackBonus } from '../../derive/spell-dc.js';
 import { effectiveSpellList } from '../../derive/effective-spell-list.js';
 import { computeAvailableSpellSlots } from '../../derive/spell-slots.js';
@@ -1490,6 +1491,62 @@ const planWeaponAttackMechanic = (
   })].map((e, i) => i === 0 ? { ...e, causedByEventId: declaredEventId as ULID } as Event : e);
 };
 
+// Slice 501: weapon-buff mechanic dispatch. Stamps a Shillelagh-style
+// transformation onto the named weapon instance via one ItemBuffApplied
+// (no concentration link: Shillelagh is a 1-minute non-concentration
+// effect, consumer-managed expiry). The damage-type choice (if any) is
+// resolved from intent.casterChoice; a pick outside the allowed list
+// leaves the weapon's normal type. Validates the instance exists and is
+// a weapon so misuse fails at plan time.
+const planWeaponBuffMechanic = (
+  state: CampaignState,
+  content: ResolvedContent,
+  intent: CastSpellIntent,
+  spell: Spell,
+  mechanic: Extract<SpellMechanic, { kind: 'weapon-buff' }>,
+  castingAbility: 'INT' | 'WIS' | 'CHA',
+  declaredEventId: string,
+  at: string,
+): Event[] => {
+  if (intent.weaponInstanceId === undefined) {
+    throw new Error(
+      `Spell ${spell.id} is a weapon-buff mechanic and requires intent.weaponInstanceId`,
+    );
+  }
+  const instance = state.itemInstances[intent.weaponInstanceId];
+  if (instance === undefined) {
+    throw new Error(
+      `Spell ${spell.id} weapon-buff references unknown weapon instance ${intent.weaponInstanceId}`,
+    );
+  }
+  const def = content.items.get(instance.definitionId);
+  if (def === undefined || def.itemKind !== 'weapon') {
+    throw new Error(
+      `Spell ${spell.id} weapon-buff target ${intent.weaponInstanceId} is not a weapon`,
+    );
+  }
+  const chosenType =
+    mechanic.damageTypeChoice !== undefined &&
+    intent.casterChoice?.kind === 'damageType' &&
+    mechanic.damageTypeChoice.allowed.includes(intent.casterChoice.value)
+      ? intent.casterChoice.value
+      : undefined;
+  const event: ItemBuffAppliedEvent = {
+    id: newEventId() as ULID,
+    at,
+    type: 'ItemBuffApplied',
+    instanceId: intent.weaponInstanceId as ULID,
+    attackBonus: 0,
+    damageBonus: 0,
+    ...(mechanic.useSpellcastingAbility === true ? { abilityOverride: castingAbility } : {}),
+    ...(mechanic.damageDieOverride !== undefined ? { damageDieOverride: mechanic.damageDieOverride } : {}),
+    ...(chosenType !== undefined ? { damageTypeOverride: chosenType } : {}),
+    source: spell.name,
+    causedByEventId: declaredEventId as ULID,
+  };
+  return [event];
+};
+
 // Slice 499: item-creation mechanic dispatch. Mints `quantity` fresh
 // instances of `mechanic.itemDefinitionId` straight into the caster's
 // inventory via one ItemAcquired-with-characterId event each. Canonical
@@ -1791,6 +1848,10 @@ export const planCastSpell = (
     } else if (mechanic.kind === 'weaponAttack') {
       events.push(
         ...planWeaponAttackMechanic(state, content, rng, intent, spell, castingAbility, declared.id, at),
+      );
+    } else if (mechanic.kind === 'weapon-buff') {
+      events.push(
+        ...planWeaponBuffMechanic(state, content, intent, spell, mechanic, castingAbility, declared.id, at),
       );
     } else if (mechanic.kind === 'zone') {
       // Slice 495: handled inline at the ConcentrationStarted construction

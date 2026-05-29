@@ -110,9 +110,13 @@ export const applyItemBuffApplied = (
   instance.temporaryBuff = {
     attackBonus: event.attackBonus,
     damageBonus: event.damageBonus,
-    sourceEffectInstanceId: event.sourceEffectInstanceId,
+    ...(event.sourceEffectInstanceId !== undefined ? { sourceEffectInstanceId: event.sourceEffectInstanceId } : {}),
     ...(event.extraDamageDice !== undefined ? { extraDamageDice: event.extraDamageDice } : {}),
     ...(event.extraDamageType !== undefined ? { extraDamageType: event.extraDamageType } : {}),
+    // Slice 501: Shillelagh weapon transformation.
+    ...(event.abilityOverride !== undefined ? { abilityOverride: event.abilityOverride } : {}),
+    ...(event.damageDieOverride !== undefined ? { damageDieOverride: event.damageDieOverride } : {}),
+    ...(event.damageTypeOverride !== undefined ? { damageTypeOverride: event.damageTypeOverride } : {}),
     ...(event.source !== undefined ? { source: event.source } : {}),
   };
 };
