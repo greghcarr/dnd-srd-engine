@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   AbilityScoreSchema,
+  CreatureTypeSchema,
   DamageTypeSchema,
   DiceExpressionSchema,
   SpellLevelSchema,
@@ -115,6 +116,20 @@ const SpellSaveMechanicSchema = z.object({
   pushedFeetOnFail: z.number().int().min(0).optional(),
   extraDicePerSlotLevel: z.number().int().min(0).optional(),
   cantripScalingDice: DiceExpressionSchema.optional(),
+  // Slice 500: restrict the save to targets of a specific creature type.
+  // When set, targets whose `getCreatureType` doesn't match are skipped
+  // entirely (no save rolled, no condition applied). Canonical user:
+  // Animal Friendship ("Target a Beast... must succeed on a Wisdom
+  // saving throw or have the Charmed condition"). Reusable for any
+  // type-gated save (beast / fiend / undead-only enchantments).
+  targetCreatureType: CreatureTypeSchema.optional(),
+  // Slice 500: stamp the slice-391 per-instance `endsOnDamage` flag on
+  // the `conditionOnFail` condition, so the damage chokepoint lifts it
+  // on the next positive damage. Canonical user: Animal Friendship
+  // ("If you or one of your allies deals damage to the target, the
+  // spell ends"). Documented RAW deviation: the engine's endsOnDamage
+  // fires on ANY positive damage, not just caster-side damage.
+  conditionEndsOnDamage: z.boolean().optional(),
 })
   // Slice 370: `.strict()` so an authored field the engine doesn't
   // support (e.g. the `onFailure` / `onSuccess` shape that Sacred Flame /

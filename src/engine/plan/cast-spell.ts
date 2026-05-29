@@ -49,6 +49,7 @@ import { effectiveSpellList } from '../../derive/effective-spell-list.js';
 import { computeAvailableSpellSlots } from '../../derive/spell-slots.js';
 import { computeAC } from '../../derive/ac.js';
 import { computeSavingThrow } from '../../derive/save.js';
+import { getCreatureType } from '../../derive/creature-type.js';
 import { rollSaveBonusDice } from './_bonus-dice.js';
 import { abilityModifier } from '../../derive/ability.js';
 import { resolveAttack } from './attack.js';
@@ -647,6 +648,15 @@ const planSaveMechanic = (
   for (const targetId of intent.targetIds) {
     const target = state.characters[targetId];
     if (!target) continue;
+    // Slice 500: type-gated save (Animal Friendship targets Beasts only).
+    // A target whose creature type doesn't match is skipped — no save,
+    // no condition.
+    if (
+      mechanic.targetCreatureType !== undefined &&
+      getCreatureType(target, content) !== mechanic.targetCreatureType
+    ) {
+      continue;
+    }
     const saveDerivation = computeSavingThrow({
       character: target,
       itemInstances: state.itemInstances,
@@ -796,6 +806,8 @@ const planSaveMechanic = (
           appliedConditionId,
           sourceCharacterId: intent.characterId as ULID,
           causedByEventId: saveEvent.id,
+          // Slice 500: Animal Friendship's "ends if damaged" arm.
+          ...(mechanic.conditionEndsOnDamage === true ? { endsOnDamage: true } : {}),
         };
         events.push(cond);
         conditionsApplied.push({

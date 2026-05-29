@@ -122,7 +122,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   // Each line records why it's deferred so the gap is auditable.
   'absorb-elements': { kind: 'skip', reason: 'has dedicated engine.plan.absorbElements (reaction to a DamageApplied event of the matching type, not planCastSpell)' },
   'alarm': { kind: 'skip', reason: 'ritual alarm zone; no combat-event side' },
-  'animal-friendship': { kind: 'skip', reason: 'charmed-beast-only variant; condition target restriction not modeled' },
+  'animal-friendship': { kind: 'skip', reason: 'wired (slice 500): WIS save -> charmed, gated to Beast targets via the save mechanic targetCreatureType filter. The generic harness targets are Humanoids (skipped by the Beast filter), so the dedicated slice-500 test exercises it with a real Beast.' },
   'armor-of-agathys': { kind: 'temp-hp' },
   'chromatic-orb': { kind: 'attack', casterChoice: { kind: 'damageType', value: 'fire' } },
   'command': { kind: 'save', casterChoice: { kind: 'variant', value: 'halt' } },

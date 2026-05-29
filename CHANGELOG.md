@@ -4,6 +4,35 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 500): Animal Friendship + save-mechanic `targetCreatureType` + `conditionEndsOnDamage`**
+
+Wires Animal Friendship, the L1 Beast-charming enchantment. Two small additive fields on the existing `save` mechanic: a target-creature-type filter + a condition-ends-on-damage stamp.
+
+RAW (SRD 5.2.1 Animal Friendship, Bard/Druid/Ranger): "Target a Beast that you can see within range. The target must succeed on a Wisdom saving throw or have the Charmed condition for the duration. If you or one of your allies deals damage to the target, the spell ends."
+
+**Engine** ([src/schemas/content/spell.ts](src/schemas/content/spell.ts), [src/engine/plan/cast-spell.ts](src/engine/plan/cast-spell.ts)):
+- New optional `targetCreatureType?: CreatureType` on the `save` mechanic. Targets whose `getCreatureType` doesn't match are skipped — no save rolled, no condition. Reusable for any type-gated save (beast / fiend / undead-only enchantments).
+- New optional `conditionEndsOnDamage?: boolean` on the `save` mechanic. Stamps the slice-391 per-instance `endsOnDamage` flag on the `conditionOnFail` condition so the damage chokepoint lifts it on the next positive damage.
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- animal-friendship: `mechanicalEffects: [{ save, ability: 'WIS', conditionOnFail: 'charmed', targetCreatureType: 'Beast', conditionEndsOnDamage: true }]`. Uses the base `charmed` condition (no new condition).
+
+**Deferred / RAW deviations (documented)**: the slice-391 `endsOnDamage` fires on ANY positive damage, not just caster-side ("you or one of your allies") damage; the 24-hour duration is consumer-managed (engine doesn't track hours). The higher-level "one additional Beast per slot above 1" rides the consumer passing more targetIds (the filter handles each).
+
+**Doc-count update**: spell totals 193 -> 194 wired (151 -> 152 cast-time), 77 -> 76 deferred (L1 43 wired / 2 deferred — only ensnaring-strike + floating-disk remain). Aligned across gaps-spells / getting-started / starter-pack-gaps / status.
+
+**Tests** at [tests/unit/engine/slice-500-animal-friendship.test.ts](tests/unit/engine/slice-500-animal-friendship.test.ts) - 4 cases: the mechanic shape; a Beast (wolf statblock) that fails the WIS save gets Charmed with `endsOnDamage` stamped; a Humanoid target is skipped entirely (no save, no charm); mixed [wolf, bandit] targets -> exactly ONE save (the wolf). spell-coverage keeps animal-friendship `skip` with an updated reason (the generic harness targets are Humanoids, filtered out; the dedicated test uses a real Beast).
+
+**Audit:**
+- *RAW match*: Beast-only WIS save -> Charmed, ends on damage. The "you/ally" damage narrowing + 24h duration are documented deviations.
+- *Names*: `targetCreatureType` mirrors the attack mechanic's target-fact naming; `conditionEndsOnDamage` mirrors the slice-391 `endsOnDamage` field it sets.
+- *DRY*: reuses the base `charmed` condition + the existing save-resolution loop + the slice-391 endsOnDamage chokepoint. The two new fields are a skip-guard + a stamp.
+- *SRP*: each field does one thing (filter / stamp); the save loop is otherwise unchanged.
+- *Magic numbers*: none.
+- *Mechanical outcomes asserted*: type-filter (beast affected, humanoid skipped, mixed = 1 save), charm-on-fail, endsOnDamage stamp.
+
+**Pattern-check**: `targetCreatureType` generalizes to any creature-type-gated save (Charm Monster's type variants, beast/fey/fiend-only enchantments, Protection-style type gates). No regression: both fields are opt-in; the 30+ existing save-mechanic spells set neither and resolve against all targets exactly as before.
+
 **Engine + content (slice 499): Goodberry + `create-item` spell mechanic + `ItemAcquired` inventory grant**
 
 Wires Goodberry, the L1 item-creation spell — a clericless L1 party's main out-of-combat healing. New primitives: a `create-item` spell mechanic + an optional inventory-grant on the `ItemAcquired` event.
