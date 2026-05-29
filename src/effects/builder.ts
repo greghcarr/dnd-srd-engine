@@ -207,6 +207,8 @@ export class EffectAccumulator {
   private healingBoostPerSpellLevel: number = 0;
   private evasionFlag: boolean = false;
   private potentCantripFlag: boolean = false;
+  // Slice 505: Wizard L1 Ritual Adept presence marker.
+  private ritualAdeptFlag: boolean = false;
   private uncannyDodgeFlag: boolean = false;
   private innateSorcerySpendAlternativeFlag: boolean = false;
   private selfRestorationFlag: boolean = false;
@@ -837,6 +839,17 @@ export class EffectAccumulator {
   hasPotentCantrip(): boolean {
     return this.potentCantripFlag;
   }
+  markRitualAdept(): void {
+    this.ritualAdeptFlag = true;
+  }
+  // Slice 505: Wizard L1 Ritual Adept. Currently observable only (the
+  // cast pathway already permits the underlying behavior — see the
+  // GrantRitualAdept schema comment). A future RAW-tightening slice
+  // that gates `intent.asRitual` strictly on a ritual-casting feature
+  // would consult this accessor.
+  hasRitualAdept(): boolean {
+    return this.ritualAdeptFlag;
+  }
   // Slice 200: marker that gates `planUncannyDodge`. Set by Rogue L5+
   // via the `GrantUncannyDodge` effect on the Uncanny Dodge feature.
   markUncannyDodge(): void {
@@ -1077,6 +1090,9 @@ export const applyEffectToBuilder = (
       return;
     case 'GrantPotentCantrip':
       acc.markPotentCantrip();
+      return;
+    case 'GrantRitualAdept':
+      acc.markRitualAdept();
       return;
     case 'GrantUncannyDodge':
       acc.markUncannyDodge();

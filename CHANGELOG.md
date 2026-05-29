@@ -4,6 +4,35 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 505): Wizard L1 Ritual Adept — new `GrantRitualAdept` marker + content cleanup**
+
+Closes the Wizard L1 Ritual Adept feature gap. The underlying behavior has been functional since the cast pathway shipped: `intent.asRitual: true` already requires the spell's `ritual` tag, skips slot consumption, and skips action-economy consumption; `characterKnowsSpell` accepts `knownSpells` (the wizard's spellbook) alone, so an unprepared spellbook ritual cast just works. The Wizard L1 feature was carrying a misleading `Custom { handlerId: 'ritual-adept' }` content stub whose handler was never registered.
+
+RAW (Wizard L1 Ritual Adept): "You can cast any spell as a Ritual if that spell has the Ritual tag and the spell is in your spellbook. You needn't have the spell prepared, but you must read from the book to cast a spell in this way."
+
+**Engine** ([src/schemas/effects.ts](src/schemas/effects.ts), [src/effects/builder.ts](src/effects/builder.ts)):
+- New `GrantRitualAdept` effect kind (marker — no fields), mirror of `GrantPotentCantrip` / `GrantEvasion`. Added to the discriminated union, the Zod schema, and `EFFECT_KINDS`.
+- `EffectAccumulator` gains `markRitualAdept()` + `hasRitualAdept(): boolean`, projected from the new effect kind in the builder switch.
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- Wizard L1 `ritual-adept` feature: `Custom { handlerId: 'ritual-adept' }` → `GrantRitualAdept`. No behavioral change at runtime; the wire is now observable in the effect stack.
+
+**Doc-count update** (CI-guarded): `EFFECT_KINDS` 55 → 56 (54 → 55 primitives + `Custom`). Updated [docs/authoring-content-packs.md](docs/authoring-content-packs.md) and [docs/concepts.md](docs/concepts.md). The stale Ritual Adept stub note in [docs/gaps-class-features.md](docs/gaps-class-features.md) is struck with a closed-by annotation.
+
+**Documented RAW deviation (deferred)**: the cast pathway does NOT yet gate `intent.asRitual` strictly on a ritual-casting class feature — any character with the spell in `knownSpells`/`preparedSpells` can ritually cast today. Tightening that (so non-wizards can't ritually cast wizard-only ritual spells without their own ritual-casting feature) is a separate RAW-enforcement slice with broader blast radius; the `hasRitualAdept()` accessor exists so that slice has a marker to consult.
+
+**Tests** at [tests/unit/engine/slice-505-ritual-adept.test.ts](tests/unit/engine/slice-505-ritual-adept.test.ts) - 4 cases: the Wizard L1 feature ships `GrantRitualAdept` (not the stale Custom); a Wizard's effect stack projects `hasRitualAdept === true`, a Fighter's does not; a Wizard ritually casts an unprepared spellbook ritual without consuming a slot; the ritual-tag gate still rejects non-ritual spells cast `asRitual`.
+
+**Audit:**
+- *RAW match*: the ritual-tag + spellbook-known requirement is enforced; slot + action are bypassed. The not-yet-gated "must have a ritual-casting feature" requirement is the documented deferral.
+- *Names*: `GrantRitualAdept` parallels `GrantPotentCantrip` / `GrantEvasion`. The accessor pair (`markRitualAdept` / `hasRitualAdept`) matches the file's marker convention.
+- *DRY*: no new cast-path code — the underlying behavior was already covered; this slice only makes the wire observable. Mirrors the marker-effect template wholesale.
+- *SRP*: the new effect kind / accessor does one thing — record presence.
+- *Magic numbers*: none.
+- *Mechanical outcomes asserted*: schema replacement, projection true/false per class, ritual-cast slot bypass, non-ritual rejection.
+
+**Pattern-check**: the "stale Custom-handler marker for a feature that's actually engine-supported" pattern surfaced two cases at L1 — `martial-arts` (Monk; routed in-engine via `applyMartialArtsDieScaling` in the attack planner — confirmed working, stays as a presence marker since Custom-as-flag is fine for in-attack-planner mechanics) and `ritual-adept` (Wizard; fixed in this slice with a real marker effect). A future sweep could promote `martial-arts` to a real marker too, but it's not a correctness issue today.
+
 **Docs + test (slice 504): close Rogue Thieves' Cant (stale "stub" — already wired) + sweep adjacent L1 feature gap notes**
 
 Resolves the Rogue Thieves' Cant L1-feature gap recorded in [docs/gaps-class-features.md](docs/gaps-class-features.md). The note claimed the feature was a stub "until the language ships," but the feature has shipped the `GrantProficiency target: 'language', id: 'thieves-cant'` wire since slice 60 — and the languages derivation ([src/derive/languages.ts](src/derive/languages.ts)) aggregates language ids from species + background + the GrantProficiency stream without validating against a registry (mirroring the Druidic flow), so the feature has been *behaviorally* wired the whole time. Adds a Rogue case to [tests/unit/derive/languages.test.ts](tests/unit/derive/languages.test.ts) that asserts a human criminal rogue's `computeKnownLanguages` returns `['common', 'thieves-cant']`, locking the projection.

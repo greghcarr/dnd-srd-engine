@@ -333,6 +333,17 @@ export type Effect =
   // save (and no additional effect). Read by `planCastSpell` from the
   // caster's effect stack.
   | { kind: 'GrantPotentCantrip' }
+  // Slice 505: Wizard L1 Ritual Adept. Presence marker for the wizard's
+  // "cast spellbook spells as Rituals without preparing them" capability.
+  // The cast pathway (`planCastSpell` with `intent.asRitual: true`) is
+  // already operationally permissive enough to cover this on its own —
+  // `characterKnowsSpell` accepts `knownSpells` (the wizard's spellbook)
+  // alone, and `asRitual` skips slot + action consumption. The marker
+  // exists so the wire is observable in the effect stack (replacing a
+  // misleading `Custom { handlerId: 'ritual-adept' }` content stub) and
+  // available to a future RAW-tightening slice that gates ritual casting
+  // strictly on a ritual-casting class feature.
+  | { kind: 'GrantRitualAdept' }
   // Cross-character effect: while this is active on a character, attacks
   // against that character are made with advantage. Used by Faerie Fire,
   // Hex (kind of), Hunter's Mark variants. The attack planner consults
@@ -708,6 +719,9 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       kind: z.literal('GrantPotentCantrip'),
     }),
     z.object({
+      kind: z.literal('GrantRitualAdept'),
+    }),
+    z.object({
       kind: z.literal('GrantAdvantageToAttackers'),
       condition: PredicateSchema.optional(),
     }),
@@ -832,6 +846,7 @@ export const EFFECT_KINDS = [
   'BoostHealing',
   'GrantEvasion',
   'GrantPotentCantrip',
+  'GrantRitualAdept',
   'GrantAdvantageToAttackers',
   'ImposeDisadvantageOnAttackers',
   'CancelAdvantageOnAttackers',
