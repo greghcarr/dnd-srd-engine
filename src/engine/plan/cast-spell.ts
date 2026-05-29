@@ -41,6 +41,7 @@ import {
   newCharacterId,
   newEffectInstanceId,
   newEventId,
+  newItemInstanceId,
   newTrapId,
 } from '../../ids.js';
 import { computeSpellSaveDC, computeSpellAttackBonus } from '../../derive/spell-dc.js';
@@ -1477,6 +1478,43 @@ const planWeaponAttackMechanic = (
   })].map((e, i) => i === 0 ? { ...e, causedByEventId: declaredEventId as ULID } as Event : e);
 };
 
+// Slice 499: item-creation mechanic dispatch. Mints `quantity` fresh
+// instances of `mechanic.itemDefinitionId` straight into the caster's
+// inventory via one ItemAcquired-with-characterId event each. Canonical
+// user: Goodberry (10 single-use `goodberry` consumables). Validates
+// the item definition exists so a typo fails at plan time.
+const planCreateItemMechanic = (
+  content: ResolvedContent,
+  intent: CastSpellIntent,
+  spell: Spell,
+  mechanic: Extract<SpellMechanic, { kind: 'create-item' }>,
+  declaredEventId: string,
+): Event[] => {
+  if (content.items.get(mechanic.itemDefinitionId) === undefined) {
+    throw new Error(
+      `Spell ${spell.id} create-item references unknown item '${mechanic.itemDefinitionId}'`,
+    );
+  }
+  const events: Event[] = [];
+  for (let i = 0; i < mechanic.quantity; i += 1) {
+    events.push({
+      id: newEventId() as ULID,
+      at: intent.at ?? nowIso(),
+      type: 'ItemAcquired',
+      instance: {
+        id: newItemInstanceId(),
+        definitionId: mechanic.itemDefinitionId,
+        quantity: 1,
+        attuned: false,
+        identifiedByCharacterIds: [],
+      },
+      characterId: intent.characterId as ULID,
+      causedByEventId: declaredEventId as ULID,
+    } as Event);
+  }
+  return events;
+};
+
 export const planCastSpell = (
   state: CampaignState,
   content: ResolvedContent,
@@ -1747,6 +1785,8 @@ export const planCastSpell = (
       // below. No events emitted by the dispatch case itself — the zone
       // metadata is stamped on the ConcentrationStarted event so the
       // reducer can persist it on the EffectInstance in one shot.
+    } else if (mechanic.kind === 'create-item') {
+      events.push(...planCreateItemMechanic(content, intent, spell, mechanic, declared.id));
     } else {
       events.push(...planHealMechanic(state, content, rng, intent, spell, mechanic, declared.id, at));
     }

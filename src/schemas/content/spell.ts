@@ -415,6 +415,23 @@ const SpellZoneMechanicSchema = z
   })
   .strict();
 
+// Slice 499: item-creation. Mints `quantity` fresh instances of
+// `itemDefinitionId` directly into the caster's inventory (the planner
+// emits one ItemAcquired-with-characterId per instance). Canonical
+// user: Goodberry ("Ten berries appear in your hand... eat one berry
+// restores 1 Hit Point"), modeled as 10 single-use `goodberry`
+// consumables (the engine's consume path removes a whole instance, so
+// each berry is its own instance rather than one qty-10 stack).
+// Consumers manage the spell's wall-clock expiry (Goodberry's berries
+// vanish after 24h); the engine doesn't time-expire created items.
+const SpellCreateItemMechanicSchema = z
+  .object({
+    kind: z.literal('create-item'),
+    itemDefinitionId: z.string(),
+    quantity: z.number().int().min(1),
+  })
+  .strict();
+
 // Slice 494: weapon-attack-via-spell. Canonical user: True Strike RAW
 // (2024 cantrip): "you make one attack with the weapon used in the
 // spell's casting. The attack uses your spellcasting ability for the
@@ -448,6 +465,7 @@ export const SpellMechanicSchema = z.discriminatedUnion('kind', [
   SpellHpThresholdMechanicSchema,
   SpellWeaponAttackMechanicSchema,
   SpellZoneMechanicSchema,
+  SpellCreateItemMechanicSchema,
 ]);
 export type SpellMechanic = z.infer<typeof SpellMechanicSchema>;
 

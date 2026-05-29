@@ -42,6 +42,7 @@ type Expectation =
   | { kind: 'trap'; casterChoice?: CasterChoice }
   | { kind: 'destroy' }
   | { kind: 'zone' }
+  | { kind: 'create-item'; minItems: number }
   | { kind: 'skip'; reason: string };
 
 const SPELL_EXPECTATIONS: Record<string, Expectation> = {
@@ -138,7 +139,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'feather-fall': { kind: 'buff', conditionId: 'feather-falling-active' },
   'find-familiar': { kind: 'summon' },
   'fog-cloud': { kind: 'zone' },
-  'goodberry': { kind: 'skip', reason: 'creates consumable items; item-creation mechanic not wired for spells' },
+  'goodberry': { kind: 'create-item', minItems: 10 },
   'grease': { kind: 'skip', reason: 'aura-damage mechanic (DEX save → prone, no damage); fires via engine.plan.tickAura on enter, not on cast. RAW difficult-terrain side-effect isn\'t expressed.' },
   'heroism': { kind: 'buff', conditionId: 'heroic-active' },
   'hex': { kind: 'buff', conditionId: 'hexed-active' },
@@ -608,6 +609,15 @@ describe('spell coverage: each shipped spell emits the expected event kinds when
           );
           expect(conc?.zone, 'expected a zone on ConcentrationStarted').toBeDefined();
           expect(conc?.zone?.center).toEqual({ x: 10, y: 10 });
+          break;
+        }
+        case 'create-item': {
+          // Slice 499: an item-creation spell mints N ItemAcquired events
+          // into the caster's inventory (Goodberry: 10 berries).
+          const acquired = events.filter(
+            (e): e is Extract<Event, { type: 'ItemAcquired' }> => e.type === 'ItemAcquired',
+          );
+          expect(acquired.length, `expected at least ${expectation.minItems} ItemAcquired`).toBeGreaterThanOrEqual(expectation.minItems);
           break;
         }
         case 'hp-pool-knockout': {

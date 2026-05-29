@@ -6,6 +6,14 @@ import { EventEnvelopeSchema } from './envelope.js';
 export const ItemAcquiredEventSchema = EventEnvelopeSchema.extend({
   type: z.literal('ItemAcquired'),
   instance: ItemInstanceSchema,
+  // Slice 499: when set, the reducer also pushes the new instance id
+  // onto this character's `inventory` (so it's reachable by
+  // `engine.plan.consumeItem` / `useItem`). Omitted for the historical
+  // "register the instance in the world, ownership tracked elsewhere"
+  // flow (weapons referenced by id in attacks, loot pools, etc.).
+  // Canonical user: Goodberry's `create-item` mechanic, which mints the
+  // berries straight into the caster's inventory.
+  characterId: ULIDSchema.optional(),
 });
 export type ItemAcquiredEvent = z.infer<typeof ItemAcquiredEventSchema>;
 

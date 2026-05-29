@@ -26,6 +26,14 @@ export const applyItemAcquired = (
     `Item instance ${event.instance.id} already exists`,
   );
   state.itemInstances[event.instance.id] = event.instance;
+  // Slice 499: optional inventory grant (Goodberry's create-item).
+  if (event.characterId !== undefined) {
+    const character = state.characters[event.characterId];
+    invariant(character !== undefined, `Character ${event.characterId} not found`);
+    if (!character.inventory.includes(event.instance.id)) {
+      character.inventory.push(event.instance.id);
+    }
+  }
 };
 
 export const applyItemEquipped = (

@@ -20,7 +20,7 @@ A prior version of this doc tracked the **full PHB 2024 spell list** as its deno
 
 ## Totals
 
-**339 in pack**: **192 wired** (150 cast-time, 11 zone-tick, 24 dedicated planner, 6 zone-area, 1 weapon-attack), **69 narrative**, **78 deferred** (genuine mechanical gap, grouped by needed primitive per level below). The zone-area + weapon-attack rows landed in slices 494-496 (True Strike; Fog Cloud / Darkness / Silence / Move Earth / Reverse Gravity / Earthquake); slice 497 wired Ice Knife (multi-mechanic attack + AOE-save via the new `targetScope: 'first'` attack field); slice 498 wired Sorcerous Burst (exploding dice via the new `explodeOnMaxDie` attack field). Note: this catalog's per-spell split has accumulated drift since the slice-337 full reconcile — the per-level `inPack` totals are CI-guarded ([gaps-spells-counts.test.ts](../tests/audit/gaps-spells-counts.test.ts)) but the wired/narrative/deferred split is hand-maintained and a future slice-337-style full reconcile against [spell-coverage.test.ts](../tests/unit/engine/spell-coverage.test.ts) would catch any spells wired in slices 338-444 whose rows weren't moved.
+**339 in pack**: **193 wired** (151 cast-time, 11 zone-tick, 24 dedicated planner, 6 zone-area, 1 weapon-attack), **69 narrative**, **77 deferred** (genuine mechanical gap, grouped by needed primitive per level below). The zone-area + weapon-attack rows landed in slices 494-496 (True Strike; Fog Cloud / Darkness / Silence / Move Earth / Reverse Gravity / Earthquake); slice 497 wired Ice Knife (multi-mechanic attack + AOE-save via the new `targetScope: 'first'` attack field); slice 498 wired Sorcerous Burst (exploding dice via the new `explodeOnMaxDie` attack field); slice 499 wired Goodberry (the new `create-item` mechanic minting consumables into inventory). Note: this catalog's per-spell split has accumulated drift since the slice-337 full reconcile — the per-level `inPack` totals are CI-guarded ([gaps-spells-counts.test.ts](../tests/audit/gaps-spells-counts.test.ts)) but the wired/narrative/deferred split is hand-maintained and a future slice-337-style full reconcile against [spell-coverage.test.ts](../tests/unit/engine/spell-coverage.test.ts) would catch any spells wired in slices 338-444 whose rows weren't moved.
 
 ## Biggest deferred clusters (the priority queue)
 
@@ -52,9 +52,9 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 **Narrative (11):** dancing-lights, druidcraft, elementalism, light, mage-hand, mending, message, minor-illusion, prestidigitation, spare-the-dying, thaumaturgy.
 
-## Level 1 (57 in pack): 41 wired, 12 narrative, 4 deferred
+## Level 1 (57 in pack): 42 wired, 12 narrative, 3 deferred
 
-**Wired, cast-time (34):** bane, bless, burning-hands, charm-person, chromatic-orb, color-spray, command, cure-wounds, dissonant-whispers, divine-favor, divine-smite (`buff` -> `divine-smite-active` with two melee-hit OnEvent riders: unconditional 2d8 radiant + a Fiend/Undead-gated +1d8 radiant, both `consumeOnTrigger`; slice 444), faerie-fire, false-life, feather-fall, find-familiar, guiding-bolt, healing-word, hellish-rebuke, heroism, hex, hideous-laughter, ice-knife (slice 497: two-mechanic — ranged spell attack 1d10 piercing vs the primary via `targetScope: 'first'`, then a DEX-save 2d6 cold burst, +1d6/slot, vs the primary + splash), inflict-wounds, longstrider, mage-armor, magic-missile, protection-from-evil-and-good, ray-of-sickness, sanctuary, searing-smite, shield-of-faith, sleep, thunderwave, unseen-servant.
+**Wired, cast-time (35):** bane, bless, burning-hands, charm-person, chromatic-orb, color-spray, command, cure-wounds, dissonant-whispers, divine-favor, divine-smite (`buff` -> `divine-smite-active` with two melee-hit OnEvent riders: unconditional 2d8 radiant + a Fiend/Undead-gated +1d8 radiant, both `consumeOnTrigger`; slice 444), faerie-fire, false-life, feather-fall, find-familiar, goodberry (slice 499: `create-item` mechanic — mints 10 single-use `goodberry` Heal-1 consumables into the caster's inventory), guiding-bolt, healing-word, hellish-rebuke, heroism, hex, hideous-laughter, ice-knife (slice 497: two-mechanic — ranged spell attack 1d10 piercing vs the primary via `targetScope: 'first'`, then a DEX-save 2d6 cold burst, +1d6/slot, vs the primary + splash), inflict-wounds, longstrider, mage-armor, magic-missile, protection-from-evil-and-good, ray-of-sickness, sanctuary, searing-smite, shield-of-faith, sleep, thunderwave, unseen-servant.
 
 **Wired, zone-tick (2):** entangle, grease (STR / DEX save to restrained / prone on enter; `aura-damage` condition-only variant, fires via `tickAura`).
 
@@ -62,11 +62,10 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 **Wired, zone-area (1):** fog-cloud (slice 495: `zone` mechanic — 20-ft obscurement sphere positioned at `targetPosition`; in-zone Blinded-equivalent obscurement is consumer-managed).
 
-**Deferred (4):**
+**Deferred (3):**
 - **on-hit trigger system (save-via-OnEvent variant):** ensnaring-strike (needs a TriggerAction that fires a save chain on hit and conditionally applies Restrained; the always-on smite path used for divine-smite in slice 444 only supports unconditional `AddDamage`).
 - **carry-capacity entity:** floating-disk.
 - **condition target restriction (beast-only Charm):** animal-friendship.
-- **item-creation mechanic for spells:** goodberry.
 
 **Narrative (12):** alarm, comprehend-languages, create-or-destroy-water, detect-evil-and-good, detect-magic, detect-poison-and-disease, disguise-self, expeditious-retreat, illusory-script, jump, purify-food-and-drink, speak-with-animals.
 
