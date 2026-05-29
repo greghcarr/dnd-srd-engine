@@ -167,6 +167,14 @@ export const CharacterSchema = z.object({
   // by `applyLongRestEnded`. Empty by default; pre-slice-486 saves load
   // clean.
   usedFreeCastSpellIds: z.array(z.string()).default([]),
+  // Slice 502: the weapon definition ids this character has chosen for
+  // the 2024 Weapon Mastery feature (Fighter 3, Barbarian / Paladin /
+  // Ranger / Rogue 2). A weapon's mastery property applies only when its
+  // id is in this list AND the character is proficient with it (see
+  // `canUseWeaponMastery`). Populated via `planChooseWeaponMasteries`,
+  // re-choosable on a Long Rest (consumer-managed timing). Empty by
+  // default; pre-slice-502 saves load clean.
+  weaponMasteries: z.array(z.string()).default([]),
   concentrationEffectId: ULIDSchema.optional(),
   triggerCounters: z
     .record(

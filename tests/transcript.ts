@@ -513,6 +513,13 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
         : '';
       return `Mastery: ${event.mastery}${targetLabel} (${who}).`;
     }
+    case 'WeaponMasteriesChosen': {
+      const who = characterName(stateBefore, event.characterId);
+      const list = event.weaponDefinitionIds.length > 0
+        ? event.weaponDefinitionIds.join(', ')
+        : 'none';
+      return `**${who}** masters: ${list}.`;
+    }
     case 'Mounted': {
       const rider = characterName(stateBefore, event.riderId);
       const mount = characterName(stateBefore, event.mountId);

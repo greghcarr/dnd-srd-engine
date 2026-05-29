@@ -127,7 +127,7 @@ import {
   GuidanceUsedEventSchema,
   UncannyDodgeUsedEventSchema,
 } from './reactive-spells.js';
-import { WeaponMasteryActivatedEventSchema } from './weapon-mastery.js';
+import { WeaponMasteryActivatedEventSchema, WeaponMasteriesChosenEventSchema } from './weapon-mastery.js';
 import {
   MountedEventSchema,
   DismountedEventSchema,
@@ -295,6 +295,7 @@ export const EventSchema = z.discriminatedUnion('type', [
   GuidanceUsedEventSchema,
   UncannyDodgeUsedEventSchema,
   WeaponMasteryActivatedEventSchema,
+  WeaponMasteriesChosenEventSchema,
   MountedEventSchema,
   DismountedEventSchema,
   VehicleAcquiredEventSchema,
@@ -438,6 +439,7 @@ export const EVENT_TYPES = [
   'GuidanceUsed',
   'UncannyDodgeUsed',
   'WeaponMasteryActivated',
+  'WeaponMasteriesChosen',
   'Mounted',
   'Dismounted',
   'VehicleAcquired',
@@ -767,6 +769,8 @@ export type {
 } from './reactive-spells.js';
 export { WeaponMasteryActivatedEventSchema } from './weapon-mastery.js';
 export type { WeaponMasteryActivatedEvent } from './weapon-mastery.js';
+export { WeaponMasteriesChosenEventSchema } from './weapon-mastery.js';
+export type { WeaponMasteriesChosenEvent } from './weapon-mastery.js';
 export {
   MountedEventSchema,
   DismountedEventSchema,

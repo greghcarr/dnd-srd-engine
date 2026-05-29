@@ -24,6 +24,7 @@ import { buildEffectStack, collectEffectsFromCharacter, getEffectiveFeatIds } fr
 import { cunningStrikeForgoDice, cunningStrikeMinLevel, type CunningStrikeOption } from './cunning-strike.js';
 import { getCreatureType } from '../../derive/creature-type.js';
 import { creatureSize } from '../../derive/creature-size.js';
+import { canUseWeaponMastery } from '../../derive/weapon-mastery.js';
 import { abilityModifier, effectiveAbilityScore } from '../../derive/ability.js';
 import { computeActionEconomyBudget } from '../../derive/action-economy.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
@@ -1572,6 +1573,11 @@ export const planCleave = (
   }
   if (weaponDef.mastery !== 'Cleave') {
     throw new Error(`Weapon ${weaponDef.name} does not have the Cleave mastery`);
+  }
+  // Slice 502: RAW gate — the attacker may use Cleave only if they chose
+  // this weapon kind for the Weapon Mastery feature and are proficient.
+  if (!canUseWeaponMastery(attacker, weaponDef, content)) {
+    throw new Error(`${attacker.name} has not mastered ${weaponDef.name} (Cleave)`);
   }
   if (weaponDef.attackKind !== 'melee') {
     throw new Error('Cleave requires a melee weapon');

@@ -85,6 +85,7 @@ export {
 } from './movement.js';
 export { planActionSurge, type ActionSurgeIntent } from './action-surge.js';
 export { planSacredWeapon, type SacredWeaponIntent } from './sacred-weapon.js';
+export { planChooseWeaponMasteries, type ChooseWeaponMasteriesIntent } from './choose-weapon-masteries.js';
 export { planInnateSorcery, type InnateSorceryIntent } from './innate-sorcery.js';
 export { planSelfRestoration, type SelfRestorationIntent } from './self-restoration.js';
 export { planSuperiorDefense, type SuperiorDefenseIntent } from './superior-defense.js';

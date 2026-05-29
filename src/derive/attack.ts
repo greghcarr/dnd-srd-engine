@@ -51,7 +51,7 @@ const chooseAttackAbility = (character: Character, weapon: Weapon): 'STR' | 'DEX
   return 'STR';
 };
 
-const isWeaponProficient = (
+export const isWeaponProficient = (
   character: Character,
   weapon: Weapon,
   content: ResolvedContent,

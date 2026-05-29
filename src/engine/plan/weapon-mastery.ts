@@ -20,6 +20,7 @@ import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { isMagicWeaponAttack } from '../../derive/magicality.js';
 import { creatureSize, isLargeOrSmaller } from '../../derive/creature-size.js';
+import { canUseWeaponMastery } from '../../derive/weapon-mastery.js';
 import { applyAll } from '../apply.js';
 
 const UNARMED_DC_BASE = 8;
@@ -95,6 +96,13 @@ export const planWeaponMastery = (
   invariant(
     weapon.mastery === intent.mastery,
     `Weapon ${weaponInst.definitionId} mastery is ${weapon.mastery ?? 'none'}, not ${intent.mastery}`,
+  );
+  // Slice 502: RAW gate — the attacker may use this weapon's mastery only
+  // if they chose its kind for the Weapon Mastery feature and are
+  // proficient with it.
+  invariant(
+    canUseWeaponMastery(attacker, weapon, content),
+    `${attacker.name} has not mastered ${weaponInst.definitionId} (${intent.mastery})`,
   );
 
   const at = intent.at ?? nowIso();

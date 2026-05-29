@@ -60,6 +60,10 @@ export interface BuildFighterOptions {
   // attunement-required items not in `equipped.attuned`).
   readonly inventory?: ReadonlyArray<string>;
   readonly attunedInstanceIds?: ReadonlyArray<string>;
+  // Slice 502: weapon definition ids this fighter has mastered for the
+  // 2024 Weapon Mastery feature. A weapon's mastery property only applies
+  // when its kind is here (and the fighter is proficient). Defaults empty.
+  readonly weaponMasteries?: ReadonlyArray<string>;
 }
 
 const FIGHTER_DEFAULT_HP_BY_LEVEL: Readonly<Record<number, number>> = {
@@ -101,6 +105,7 @@ export const buildFighter = (opts: BuildFighterOptions = {}): Character => {
     },
     exhaustion: opts.exhaustion ?? 0,
     featsTaken: ['savage-attacker'],
+    weaponMasteries: [...(opts.weaponMasteries ?? [])],
     inventory: [...(opts.inventory ?? [])],
     equipped: {
       ...(opts.armorInstanceId !== undefined ? { armor: opts.armorInstanceId } : {}),

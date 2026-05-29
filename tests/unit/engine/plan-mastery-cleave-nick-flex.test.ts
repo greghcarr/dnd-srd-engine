@@ -82,7 +82,7 @@ describe('Nick mastery', () => {
     const engine = createEngine({ contentPacks: [TEST_PACK], rng: seededRNG(1) });
     const mainDagger = makeItemInstance('dagger');
     const offDagger = makeItemInstance('dagger');
-    const attacker = buildFighter({ name: 'Nicker', STR: 14, DEX: 18 });
+    const attacker = buildFighter({ name: 'Nicker', STR: 14, DEX: 18, weaponMasteries: ['dagger'] });
     attacker.equipped.mainHand = mainDagger.id;
     attacker.equipped.offHand = offDagger.id;
     const target = buildFighter({ name: 'Pell', hpMax: 30, hpCurrent: 30 });
@@ -127,7 +127,7 @@ describe('Cleave mastery', () => {
     // Greataxe in test-pack: 1d12 slashing, Cleave mastery.
     const engine = createEngine({ contentPacks: [TEST_PACK], rng: seededRNG(5) });
     const weapon = makeItemInstance('greataxe');
-    const attacker = buildFighter({ name: 'Cleaver', STR: 18 });
+    const attacker = buildFighter({ name: 'Cleaver', STR: 18, weaponMasteries: ['greataxe'] });
     attacker.equipped.mainHand = weapon.id;
     const primary = buildFighter({ name: 'P', hpMax: 30, hpCurrent: 30 });
     const secondary = buildFighter({ name: 'S', hpMax: 30, hpCurrent: 30 });

@@ -131,7 +131,7 @@ import {
   applyBreathWeaponFired,
   applyBreathWeaponRecharged,
 } from './reducers/breath-weapon.js';
-import { applyWeaponMasteryActivated } from './reducers/weapon-mastery.js';
+import { applyWeaponMasteryActivated, applyWeaponMasteriesChosen } from './reducers/weapon-mastery.js';
 import {
   applyMounted,
   applyDismounted,
@@ -498,6 +498,9 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
         break;
       case 'WeaponMasteryActivated':
         applyWeaponMasteryActivated(draft, event);
+        break;
+      case 'WeaponMasteriesChosen':
+        applyWeaponMasteriesChosen(draft, event);
         break;
       case 'Mounted':
         applyMounted(draft, event);

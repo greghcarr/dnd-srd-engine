@@ -12,7 +12,7 @@ import type { ItemAcquiredEvent } from '../../src/schemas/events/inventory.js';
 describe('golden: weapon mastery (Slice 23)', () => {
   it('Sap on a longsword applies the sapped condition', async () => {
     const engine = createEngine({ contentPacks: [TEST_PACK], rng: seededRNG(23) });
-    const attacker = buildFighter({ name: 'Cassius', STR: 18, level: 5 });
+    const attacker = buildFighter({ name: 'Cassius', STR: 18, level: 5, weaponMasteries: ['longsword'] });
     const target = buildFighter({ name: 'Goblin' });
     const sword = makeItemInstance('longsword');
 
@@ -38,7 +38,7 @@ describe('golden: weapon mastery (Slice 23)', () => {
 
   it('Vex applies vexing-active to the attacker, keyed to the struck target', () => {
     const engine = createEngine({ contentPacks: [TEST_PACK], rng: seededRNG(23) });
-    const attacker = buildFighter({ name: 'A' });
+    const attacker = buildFighter({ name: 'A', weaponMasteries: ['rapier'] });
     const target = buildFighter({ name: 'T' });
     const rapier = makeItemInstance('rapier');
     let campaign = engine.createCampaign({ name: 's23-vex' });
@@ -71,7 +71,7 @@ describe('golden: weapon mastery (Slice 23)', () => {
 
   it('Slow on a longbow applies slowed-10ft', async () => {
     const engine = createEngine({ contentPacks: [TEST_PACK], rng: seededRNG(23) });
-    const attacker = buildFighter({ name: 'Archer', DEX: 18, level: 5 });
+    const attacker = buildFighter({ name: 'Archer', DEX: 18, level: 5, weaponMasteries: ['longbow'] });
     const target = buildFighter({ name: 'Runner' });
     const bow = makeItemInstance('longbow');
     let campaign = engine.createCampaign({ name: 's23-slow' });
@@ -124,7 +124,7 @@ describe('golden: weapon mastery (Slice 23)', () => {
     // property). Demonstrate Graze via a manual weapon via planner unit
     // test; here we just verify the Sap mastery activation event records.
     const engine = createEngine({ contentPacks: [TEST_PACK], rng: seededRNG(7) });
-    const a = buildFighter({ name: 'A', STR: 16 });
+    const a = buildFighter({ name: 'A', STR: 16, weaponMasteries: ['longsword'] });
     const t = buildFighter({ name: 'T' });
     const sword = makeItemInstance('longsword');
     let campaign = engine.createCampaign({ name: 's23-graze-na' });

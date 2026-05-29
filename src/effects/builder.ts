@@ -1,5 +1,5 @@
 import type { Effect, ModifierTarget, RollTarget } from '../schemas/effects.js';
-import type { AbilityScore, DamageType, Sense, Skill } from '../schemas/primitives.js';
+import type { AbilityScore, DamageType, Sense, Skill, WeaponMastery } from '../schemas/primitives.js';
 import type { Predicate } from '../schemas/predicate.js';
 import { evaluatePredicate } from './predicate.js';
 import { evaluateFormula, type FormulaContext } from './formula.js';
@@ -174,6 +174,15 @@ export class EffectAccumulator {
   private readonly abilityScoreIncreases = new Map<AbilityScore, { amount: number; max: number }[]>();
   private readonly regenerationEntries: Array<{ perTurn: number; suppressedBy: DamageType[] }> = [];
   private readonly resourceGrants: ResourceGrant[] = [];
+  // Slice 502: 2024 Weapon Mastery grants. `weaponMasterySlotMax` is the
+  // largest slot count any grant confers (the number of weapon kinds the
+  // character may choose; single-class case = that class's count).
+  // `grantedMasteries` is the union of mastery properties the grants make
+  // available (every martial class grants all 8 today, but a future
+  // restricted-pool grant would narrow it). The selection planner reads
+  // both to validate a choice; the gate keys on the chosen weapon ids.
+  private weaponMasterySlotMax = 0;
+  private readonly grantedMasteries = new Set<WeaponMastery>();
   // Slice 127: granted senses (darkvision / blindsight / tremorsense /
   // truesight). Stored as sense -> max-range (feet) where multiple
   // grants of the same sense take the larger range (RAW: a dwarf
@@ -387,6 +396,10 @@ export class EffectAccumulator {
   }
   addResourceGrant(grant: ResourceGrant): void {
     this.resourceGrants.push(grant);
+  }
+  addWeaponMasteryGrant(slots: number, masteries: ReadonlyArray<WeaponMastery>): void {
+    if (slots > this.weaponMasterySlotMax) this.weaponMasterySlotMax = slots;
+    for (const mastery of masteries) this.grantedMasteries.add(mastery);
   }
   addProficiency(
     target: 'skill' | 'tool' | 'weapon' | 'armor' | 'save' | 'language',
@@ -729,6 +742,15 @@ export class EffectAccumulator {
   }
   resources(): ReadonlyArray<ResourceGrant> {
     return this.resourceGrants;
+  }
+  // Slice 502: number of weapon kinds this character may choose for
+  // Weapon Mastery (0 = no Weapon Mastery feature). The set of mastery
+  // properties those weapons may carry.
+  weaponMasterySlots(): number {
+    return this.weaponMasterySlotMax;
+  }
+  grantedWeaponMasteryProperties(): ReadonlySet<WeaponMastery> {
+    return this.grantedMasteries;
   }
   proficiencyLevel(target: string, id: string): 'none' | 'half' | 'proficient' | 'expertise' {
     return this.proficiencies.get(`${target}:${id}`) ?? 'none';
@@ -1108,12 +1130,18 @@ export const applyEffectToBuilder = (
           : {}),
       });
       return;
+    case 'GrantWeaponMastery':
+      // Slice 502: project the Weapon Mastery grant so the selection
+      // planner + the per-attack gate can read the budget and the
+      // available mastery pool. Multiple grants take the largest slot
+      // count (Fighter's L4/L10/L16 bumps) and union their property pools.
+      acc.addWeaponMasteryGrant(effect.slots, effect.masteries);
+      return;
     case 'ModifySpeed':
     case 'GrantSpellSlots':
     case 'OnEvent':
     case 'RecoverResource':
     case 'GrantAction':
-    case 'GrantWeaponMastery':
     case 'ExpandSpellList':
     case 'SetHPMaxFormula':
     case 'OfferChoice':

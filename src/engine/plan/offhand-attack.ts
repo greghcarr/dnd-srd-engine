@@ -20,6 +20,7 @@ import { abilityModifier } from '../../derive/ability.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { isMagicWeaponAttack } from '../../derive/magicality.js';
+import { canUseWeaponMastery } from '../../derive/weapon-mastery.js';
 import { buildEffectStack } from '../../derive/effect-stack.js';
 import { applyAll } from '../apply.js';
 import { planConcentrationBreakOnDrop } from './concentration.js';
@@ -76,8 +77,12 @@ export const planOffHandAttack = (
   // Nick mastery: the off-hand attack becomes part of the Attack action
   // instead of a Bonus Action, once per turn. RAW 2024.
   const NICK_TRIGGER_ID = 'mastery:nick';
+  // Slice 502: Nick applies only if the attacker mastered this weapon
+  // kind (and is proficient). Without it the off-hand attack still
+  // happens but costs the Bonus Action as normal (graceful, not a throw).
   const nickAvailable =
     weaponDef.mastery === 'Nick' &&
+    canUseWeaponMastery(attacker, weaponDef, content) &&
     (attacker.triggerCounters[NICK_TRIGGER_ID]?.firedThisTurn !== true);
   if (!nickAvailable && active.bonusActionUsed) {
     throw new Error('Bonus action already used this turn');

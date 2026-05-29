@@ -4,6 +4,34 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 502): Weapon Mastery enforcement (full RAW — chosen weapon kinds)**
+
+Closes the long-standing over-grant where any character got any weapon's Mastery property for free (a Wizard's quarterstaff dealt Topple; a Fighter benefited on every weapon, not just the kinds they chose). `GrantWeaponMastery` was previously inert.
+
+RAW (2024 Weapon Mastery, Fighter/Barbarian/Paladin/Ranger/Rogue): you choose a number of specific weapon kinds (Fighter 3, the others 2) and may use the mastery property of a weapon only if it is one of those chosen kinds AND you have proficiency with it. Re-choosable on a Long Rest.
+
+**Engine:**
+- [src/schemas/runtime/character.ts](src/schemas/runtime/character.ts): new persisted `weaponMasteries: string[]` (chosen weapon definition ids), defaulted `[]`. Additive defaulted field, so no `SCHEMA_VERSION` bump / migration (precedent: slice 486's `usedFreeCastSpellIds`).
+- [src/effects/builder.ts](src/effects/builder.ts): `GrantWeaponMastery` now projects into the effect stack — `weaponMasterySlots()` (max slot count across grants) + `grantedWeaponMasteryProperties()` (union of the granted property pool). Previously a no-op switch arm.
+- [src/derive/weapon-mastery.ts](src/derive/weapon-mastery.ts) (new): `canUseWeaponMastery(character, weapon, content)` — true iff the weapon's kind is in `character.weaponMasteries` and the character is proficient; `Flex` is exempt (engine versatile-toggle extension, not a learned RAW mastery). Reuses the now-exported `isWeaponProficient` from [src/derive/attack.ts](src/derive/attack.ts).
+- [src/engine/plan/choose-weapon-masteries.ts](src/engine/plan/choose-weapon-masteries.ts) (new) + `WeaponMasteriesChosen` event/reducer: `planChooseWeaponMasteries` validates a selection (within the slot budget, each weapon a proficient, mastery-bearing weapon whose property is in the granted pool) and emits the selection; the reducer replaces `character.weaponMasteries`.
+- Gated all four mastery read sites (pattern-check): `planWeaponMastery` and `planCleave` throw if the weapon isn't mastered; `planOffHandAttack`'s Nick branch degrades gracefully (no throw; the off-hand attack still costs a Bonus Action); the Flex read in `resolveAttack` is intentionally left ungated.
+
+**Documented RAW deviations:** per-level slot growth (Fighter L4/L10/L16) unwired; "re-choose only on a Long Rest" timing is consumer-managed (re-invoke the planner); multiclass mastery-count stacking not modeled (budget = the largest single grant). Flex is exempt by design.
+
+**Tests** at [tests/unit/engine/slice-502-weapon-mastery-enforcement.test.ts](tests/unit/engine/slice-502-weapon-mastery-enforcement.test.ts) - 17 cases: budget by class (Fighter 3 / Rogue 2 / Wizard 0); the gate (chosen+proficient true, not-chosen false, chosen-but-not-proficient false, Flex exempt); planner validation (within budget stores it, over-budget / non-proficient / no-mastery / no-feature throw; replay-equivalence); and the gate firing in `planWeaponMastery` (Topple) + `planCleave`. Seeded `weaponMasteries` on the five affected martial fixtures (slice-381, slice-386 Push, plan-mastery-cleave-nick-flex Nick/Cleave, s23 golden, showcase golden) so their existing mastery behavior and transcripts are unchanged; added an optional `weaponMasteries` to the shared `buildFighter` fixture.
+
+**Audit:**
+- *RAW match*: chosen-kind + proficiency gate; non-martial classes now get no mastery. Per-level growth / long-rest timing / multiclass stacking are documented deviations.
+- *Names*: `weaponMasteries` (chosen kinds) mirrors `knownSpells` / `featsTaken`; `canUseWeaponMastery` / `planChooseWeaponMasteries` are intention-revealing; `WeaponMasteriesChosen` parallels the existing `WeaponMasteryActivated`.
+- *DRY*: one `canUseWeaponMastery` helper gates all four read sites; the planner reuses `isWeaponProficient` + `buildEffectStack`.
+- *SRP*: the helper answers one question (may this character use this weapon's mastery); the planner validates + emits; the reducer stores.
+- *Magic numbers*: none (slot counts are content on `GrantWeaponMastery`).
+- *at-threading*: the planner resolves `at` once and stamps the single event.
+- *Mechanical outcomes asserted*: budget per class, the four gate branches, planner validation throws, replay-equivalence, gate firing through the two planners.
+
+**Pattern-check**: gated every mastery read site, not just the surfaced one — `planWeaponMastery` (Sap/Vex/Slow/Topple/Push/Graze), `planCleave` (Cleave), `planOffHandAttack` (Nick), with Flex intentionally exempt and documented. The five pre-existing tests that exercised mastery on martial characters were all found (via the slice's blast-radius sweep) and seeded so no behavior silently changed.
+
 **Engine + content (slice 501): Shillelagh + `weapon-buff` spell mechanic + item-buff weapon-transformation overrides**
 
 Wires Shillelagh, the L0 Druid weapon-imbue cantrip, closing the last deferred Level 0 spell (L0 is now 16 wired / 0 deferred). Generalizes the existing `temporaryBuff` (Magic Weapon / Elemental Weapon) with three transformation overrides the attack path reads back.

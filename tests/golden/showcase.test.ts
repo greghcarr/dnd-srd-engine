@@ -158,6 +158,9 @@ const buildRogue = (name: string, hp: number): Character =>
     hp: { current: hp, max: hp, temp: 0 },
     featsTaken: ['savage-attacker'],
     preparedSpells: [],
+    // Slice 502: Vex masters the dagger so the Nick mastery applies to her
+    // off-hand attack (keeps the showcase's action-economy behavior).
+    weaponMasteries: ['dagger'],
   });
 
 const buildOgre = (name: string, hp: number, weaponInstanceId: string): Character =>
@@ -186,6 +189,7 @@ describe('golden: showcase party adventure (the Stoneheart Saga)', () => {
     // ---------- Cast ----------
     const alyx = buildFighter({
       name: 'Alyx', level: 5, hpMax: 44, hpCurrent: 44, STR: 18, DEX: 14, CON: 14,
+      weaponMasteries: ['longsword'],
       resources: [
         { resourceId: 'second-wind', current: 2, max: 2 },
         { resourceId: 'action-surge', current: 1, max: 1 },

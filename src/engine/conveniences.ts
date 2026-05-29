@@ -33,6 +33,7 @@ export const performIntent = (
     Disengage: (i) => engine.plan.disengage(campaign.state, i),
     ActionSurge: (i) => engine.plan.actionSurge(campaign.state, i),
     SacredWeapon: (i) => engine.plan.sacredWeapon(campaign.state, i),
+    ChooseWeaponMasteries: (i) => engine.plan.chooseWeaponMasteries(campaign.state, i),
     RecklessAttack: (i) => engine.plan.recklessAttack(campaign.state, i),
     StunningStrike: (i) => engine.plan.stunningStrike(campaign.state, i),
     FlurryOfBlows: (i) => engine.plan.flurryOfBlows(campaign.state, i),

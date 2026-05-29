@@ -53,6 +53,7 @@ import {
   planDimensionDoor,
   planActionSurge,
   planSacredWeapon,
+  planChooseWeaponMasteries,
   planInnateSorcery,
   planSelfRestoration,
   planSuperiorDefense,
@@ -188,6 +189,7 @@ import {
   type DimensionDoorIntent,
   type ActionSurgeIntent,
   type SacredWeaponIntent,
+  type ChooseWeaponMasteriesIntent,
   type InnateSorceryIntent,
   type SelfRestorationIntent,
   type SuperiorDefenseIntent,
@@ -344,6 +346,7 @@ export interface Engine {
     dimensionDoor(state: CampaignState, intent: Omit<DimensionDoorIntent, 'type'>): PlanResult;
     actionSurge(state: CampaignState, intent: Omit<ActionSurgeIntent, 'type'>): PlanResult;
     sacredWeapon(state: CampaignState, intent: Omit<SacredWeaponIntent, 'type'>): PlanResult;
+    chooseWeaponMasteries(state: CampaignState, intent: Omit<ChooseWeaponMasteriesIntent, 'type'>): PlanResult;
     innateSorcery(state: CampaignState, intent: Omit<InnateSorceryIntent, 'type'>): PlanResult;
     selfRestoration(state: CampaignState, intent: Omit<SelfRestorationIntent, 'type'>): PlanResult;
     superiorDefense(state: CampaignState, intent: Omit<SuperiorDefenseIntent, 'type'>): PlanResult;
@@ -640,6 +643,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     sacredWeapon(state, intent) {
       return { events: planSacredWeapon(state, content, { type: 'SacredWeapon', ...intent }) };
+    },
+    chooseWeaponMasteries(state, intent) {
+      return { events: planChooseWeaponMasteries(state, content, { type: 'ChooseWeaponMasteries', ...intent }) };
     },
     innateSorcery(state, intent) {
       return { events: planInnateSorcery(state, content, { type: 'InnateSorcery', ...intent }) };
