@@ -4,6 +4,23 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Docs + test (slice 504): close Rogue Thieves' Cant (stale "stub" — already wired) + sweep adjacent L1 feature gap notes**
+
+Resolves the Rogue Thieves' Cant L1-feature gap recorded in [docs/gaps-class-features.md](docs/gaps-class-features.md). The note claimed the feature was a stub "until the language ships," but the feature has shipped the `GrantProficiency target: 'language', id: 'thieves-cant'` wire since slice 60 — and the languages derivation ([src/derive/languages.ts](src/derive/languages.ts)) aggregates language ids from species + background + the GrantProficiency stream without validating against a registry (mirroring the Druidic flow), so the feature has been *behaviorally* wired the whole time. Adds a Rogue case to [tests/unit/derive/languages.test.ts](tests/unit/derive/languages.test.ts) that asserts a human criminal rogue's `computeKnownLanguages` returns `['common', 'thieves-cant']`, locking the projection.
+
+**Pattern-check (Rogue → adjacent L1 feature stubs):**
+- **Cleric Divine Order (L1)** — same shape of stale note. Audit found the L1 features array DOES ship `divine-order` with a fully wired `OfferChoice` (Protector: martial-weapon + heavy-armor proficiency; Thaumaturge: guidance cantrip + max(1, WIS-mod) bonus on Arcana / Religion checks). Doc note struck with an open follow-up: lock both sub-features with PendingChoice-resolving tests (deferred — the `OfferChoice when: 'onAcquire'` resolution path needs the test-fixture template that an OfferChoice-resolving slice would establish).
+- **Wizard Ritual Adept (L1)** — genuine stub. The feature ships `Custom { handlerId: 'ritual-adept' }` but no handler is registered in [src/handlers/](src/handlers/), so the Custom effect resolves to a no-op. The cast-as-ritual-without-slot path is real engine work, not a doc-staleness fix.
+- **Warlock Eldritch Invocations (L1)** — genuine stub. The feature ships `effects: []`; needs the invocation content catalog (a multi-slice effort).
+
+**Tests** at [tests/unit/derive/languages.test.ts](tests/unit/derive/languages.test.ts): 1 new case (7 total in the file).
+
+**Audit (short — pure doc + test slice):**
+- *RAW match*: Rogue's L1 Thieves' Cant grants the Thieves' Cant language and one other of the player's choice. The engine projects Thieves' Cant; the "one other language of your choice" is content-author's discretion (not modeled — same as the Druidic-only Druid case the existing tests pin).
+- *Names*: test name mirrors the existing "Druid L1 knows Druidic via the wired Druidic feature" case.
+- *DRY*: no new code — reuses `createPC` + `computeKnownLanguages` as the existing language tests do.
+- *Mechanical outcomes asserted*: a Rogue's known-language set includes `thieves-cant`.
+
 **Engine + content (slice 503): Ensnaring Strike + save `largeCreatureAdvantage` + recurring `extraDicePerSlotLevel`**
 
 Wires Ensnaring Strike, the last L1 spell with a real mechanical gap (floating-disk remains as a niche carry-capacity deferral). L1 is now functionally complete for damage / control casting on the spell side. Two small additive fields compose to cover the spell, no new mechanic kind needed.
