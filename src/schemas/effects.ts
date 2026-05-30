@@ -366,6 +366,14 @@ export type Effect =
   // GrantFeat does NOT surface the feat in `getEffectiveFeatIds`; it
   // only projects the feat's effects into the effect stack.
   | { kind: 'GrantFeat'; featId: string }
+  // Slice 518: Warlock L1 Pact of the Blade invocation presence marker.
+  // Read by `planConjurePactWeapon` to gate the conjure action on the
+  // bearer having the invocation. The conjure planner takes the
+  // weapon-definition choice + optional damage-type override at intent
+  // time and stamps an `ItemBuffApplied` on the conjured weapon
+  // (abilityOverride 'CHA' + damageTypeOverride; reuses slice-501's
+  // `temporaryBuff` shape).
+  | { kind: 'GrantPactBlade' }
   // Cross-character effect: while this is active on a character, attacks
   // against that character are made with advantage. Used by Faerie Fire,
   // Hex (kind of), Hunter's Mark variants. The attack planner consults
@@ -748,6 +756,9 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       featId: z.string(),
     }),
     z.object({
+      kind: z.literal('GrantPactBlade'),
+    }),
+    z.object({
       kind: z.literal('GrantAdvantageToAttackers'),
       condition: PredicateSchema.optional(),
     }),
@@ -874,6 +885,7 @@ export const EFFECT_KINDS = [
   'GrantPotentCantrip',
   'GrantRitualAdept',
   'GrantFeat',
+  'GrantPactBlade',
   'GrantAdvantageToAttackers',
   'ImposeDisadvantageOnAttackers',
   'CancelAdvantageOnAttackers',

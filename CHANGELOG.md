@@ -4,6 +4,42 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 518): Pact of the Blade invocation + `GrantPactBlade` marker + `planConjurePactWeapon` planner**
+
+Wires the second L1 Pact boon. The bond reuses slice-501's `temporaryBuff` shape: at conjure time the planner stamps `abilityOverride: 'CHA'` (so attack + damage use CHA mod, not STR/DEX) and an optional `damageTypeOverride` (Necrotic / Psychic / Radiant) on the freshly-conjured weapon instance. The attack resolver reads the buff at next attack — no new attack-time code.
+
+RAW (Pact of the Blade): "As a Bonus Action, you can conjure a pact weapon in your hand — a Simple or Martial Melee weapon of your choice with which you bond... Whenever you attack with the bonded weapon, you can use your Charisma modifier for the attack and damage rolls instead of using Strength or Dexterity; and you can cause the weapon to deal Necrotic, Psychic, or Radiant damage or its normal damage type."
+
+**Engine:**
+- New `GrantPactBlade` marker effect kind ([src/schemas/effects.ts](src/schemas/effects.ts) — added to union, Zod, and `EFFECT_KINDS`; mirror of `GrantPactBlade` / `GrantRitualAdept` presence markers). Projected via `markPactBlade()` / `hasPactBlade()` accessor on the effect builder.
+- New planner `planConjurePactWeapon` ([src/engine/plan/conjure-pact-weapon.ts](src/engine/plan/conjure-pact-weapon.ts)). Intent shape: `{ characterId, weaponDefinitionId, damageTypeOverride? }`. Validates the bearer has `hasPactBlade()` + the weapon is a Simple or Martial Melee weapon + the damage-type override (if any) is Necrotic / Psychic / Radiant. Consumes Bonus Action when the caster is the active combatant in an active encounter. Emits `ItemAcquired` (new weapon instance) + `ItemEquipped(mainHand)` + `ItemBuffApplied` with the overrides.
+- Wired through `plan/index` + `engine/index` (Engine interface + `planNs` factory) + `conveniences.ts` (`ConjurePactWeapon` dispatch entry — picked up automatically by the planner-wiring audit).
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- New `pact-of-the-blade` Feat (category: 'invocation', repeatable: false). Single effect: `GrantPactBlade` marker.
+- Warlock L1 `eldritch-invocations-2` OfferChoice options: 14 → 15 (Pact of the Blade added).
+
+**Doc-count update**: `EFFECT_KINDS` 57 → 58 (56 → 57 primitives + `Custom`). Updated [docs/authoring-content-packs.md](docs/authoring-content-packs.md) + [docs/concepts.md](docs/concepts.md). Feats 32 → 33 (15 invocation feats) in [docs/getting-started.md](docs/getting-started.md). Features snapshot gains `invocation:pact-of-the-blade`.
+
+**Documented RAW deviations (consumer-managed):**
+- Per-hit damage-type choice (RAW: "you can cause the weapon to deal Necrotic, Psychic, or Radiant damage or its normal damage type") is collapsed to a single conjure-time choice (mirror of slice 501's Shillelagh). Picking Radiant once means every subsequent attack with the bonded weapon deals Radiant; re-conjuring to change types is the consumer's path.
+- Bonded-weapon proficiency arm (RAW grants proficiency with the bonded weapon while bonded). Not modeled — a warlock conjuring a martial weapon they're not class-proficient with attacks without proficiency bonus. A future slice extending `temporaryBuff` with `grantsProficiency` + threading instance through `isWeaponProficient` would close it.
+- Spellcasting Focus arm consumer-managed (engine doesn't model focus-vs-component requirements at cast time).
+- Bond-ends conditions (re-conjure, weapon-distance, death) consumer-managed.
+- Each conjure call creates a new instance; prior-bond cleanup is the consumer's responsibility (the conjure planner doesn't unconjure prior pact weapons).
+
+**Tests** at [tests/unit/engine/slice-518-pact-of-the-blade.test.ts](tests/unit/engine/slice-518-pact-of-the-blade.test.ts) - 8 cases: feat shape; effect stack projects `hasPactBlade === true` after picking the invocation; conjure without the invocation throws; conjure emits the 3 events with `abilityOverride: 'CHA'` and `source: 'pact-blade'`; `damageTypeOverride: 'necrotic'` stamps on the buff; ranged weapons rejected (Melee only); invalid damage type (e.g. 'fire') rejected; **end-to-end** — after conjuring a longsword with `damageTypeOverride: 'radiant'`, the warlock's attack with the pact weapon shows `attackBonus === 4` (CHA mod +4, no PB since warlock isn't class-proficient with martial), the damage modifier is +4 (CHA), and the damage type is `radiant`.
+
+**Audit:**
+- *RAW match*: CHA-for-attack/damage + optional Necrotic/Psychic/Radiant override; Simple/Martial Melee weapon filter; Bonus Action consumption. Documented deviations above.
+- *Names*: `GrantPactBlade` mirrors `GrantRitualAdept` / `GrantPotentCantrip` (marker effects); `planConjurePactWeapon` mirrors `planSacredWeapon` (Bonus Action + resource/event emission pattern).
+- *DRY*: reuses slice-501 `temporaryBuff` fields (`abilityOverride`, `damageTypeOverride`, `source`) — no new buff state; reuses the slice-507/513 GrantSpell `at-will` and feat-marker patterns; the planner mirrors `planSacredWeapon`'s structure (BA consumption + event sequence).
+- *SRP*: the marker presence-flags one thing; the planner does one thing (conjure + bond a pact weapon); the buff fields already in place do the per-attack work.
+- *Magic numbers*: none. Damage-type allowlist `{Necrotic, Psychic, Radiant}` is RAW.
+- *Mechanical outcomes asserted*: feat shape, marker projection, conjure validation (no invocation / not melee / invalid type), event-sequence shape + buff fields, end-to-end attack + damage with CHA override + damage-type override.
+
+**Pattern-check**: the conjure-pact-weapon shape generalizes to any future "summon a bonded item" feature (Find Steed's spectral mount has different mechanics but a similar bond pattern; Spectral Shield, etc.). The five documented deviations are a clear menu of follow-up slices when needed — proficiency arm is the most-mechanically-visible (changes attack-bonus math for martial weapons) and is the natural next step if a content user appears.
+
 **Engine + content (slice 517): `ChoiceResolved` cascade primitive + Pact of the Tome canonical user**
 
 Closes the L1-RAW gap: only **5 invocations are L1-eligible per RAW** (Armor of Shadows + Eldritch Mind, both already wired, plus the 3 Pact boons — Pact of the Blade / Chain / Tome). Every other invocation has a Level 2+ Warlock prereq (the engine doesn't enforce feat prereqs today, so the slice-513/514/515/516 invocations are still pickable at L1 — documented deviation, no engine gate). Slice 517 ships Pact of the Tome plus the engine primitive (ChoiceResolved cascade) needed for invocations that carry nested OfferChoices.

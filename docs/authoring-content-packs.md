@@ -377,7 +377,7 @@ Note that monster statblocks ship the *flat* values for AC, saves, and skills �
 
 ## Effect primitives reference
 
-Effects are the building blocks that classes, feats, species, items, and conditions all use. There are 57 effect kinds (56 primitives plus the `Custom` escape hatch); the canonical list lives in `EFFECT_KINDS` in [src/schemas/effects.ts](../src/schemas/effects.ts). The reference below documents the most-used kinds — for the full vocabulary including the recently added markers (`GrantUncannyDodge`, `GrantInnateSorcerySpendAlternative`, `GrantSelfRestoration`, `GrantMaxHealingDice`, `GrantUnarmedAsMagical`, `CancelAdvantageOnAttackers`, `ExpandAuraRange`, etc.), consult the schema.
+Effects are the building blocks that classes, feats, species, items, and conditions all use. There are 58 effect kinds (57 primitives plus the `Custom` escape hatch); the canonical list lives in `EFFECT_KINDS` in [src/schemas/effects.ts](../src/schemas/effects.ts). The reference below documents the most-used kinds — for the full vocabulary including the recently added markers (`GrantUncannyDodge`, `GrantInnateSorcerySpendAlternative`, `GrantSelfRestoration`, `GrantMaxHealingDice`, `GrantUnarmedAsMagical`, `CancelAdvantageOnAttackers`, `ExpandAuraRange`, etc.), consult the schema.
 
 ### Modifiers and rolls
 

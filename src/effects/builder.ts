@@ -209,6 +209,8 @@ export class EffectAccumulator {
   private potentCantripFlag: boolean = false;
   // Slice 505: Wizard L1 Ritual Adept presence marker.
   private ritualAdeptFlag: boolean = false;
+  // Slice 518: Warlock L1 Pact of the Blade presence marker.
+  private pactBladeFlag: boolean = false;
   private uncannyDodgeFlag: boolean = false;
   private innateSorcerySpendAlternativeFlag: boolean = false;
   private selfRestorationFlag: boolean = false;
@@ -850,6 +852,14 @@ export class EffectAccumulator {
   hasRitualAdept(): boolean {
     return this.ritualAdeptFlag;
   }
+  markPactBlade(): void {
+    this.pactBladeFlag = true;
+  }
+  // Slice 518: Warlock L1 Pact of the Blade. Read by planConjurePactWeapon
+  // to gate the conjure action on the bearer having the invocation.
+  hasPactBlade(): boolean {
+    return this.pactBladeFlag;
+  }
   // Slice 200: marker that gates `planUncannyDodge`. Set by Rogue L5+
   // via the `GrantUncannyDodge` effect on the Uncanny Dodge feature.
   markUncannyDodge(): void {
@@ -1101,6 +1111,9 @@ export const applyEffectToBuilder = (
       // in scope). A GrantFeat reaching the builder means a caller fed
       // raw (unexpanded) effects in — treat as a no-op so behavior
       // degrades gracefully.
+      return;
+    case 'GrantPactBlade':
+      acc.markPactBlade();
       return;
     case 'GrantUncannyDodge':
       acc.markUncannyDodge();
