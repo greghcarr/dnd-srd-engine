@@ -4,6 +4,28 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 522): Venomous Snake monster statblock + `venomous-snake-bite` natural weapon**
+
+Closes slice 519's tracked open follow-up: the 7th Pact of the Chain RAW special-form familiar (Imp / Pseudodragon / Quasit / Skeleton / Sphinx of Wonder / Sprite / **Venomous Snake**) was missing from the pack despite the other 6 shipping. This pure-content slice authors the statblock + its natural weapon. No engine work.
+
+RAW (SRD 5.2.1 Venomous Snake, CR 1/8, Tiny Beast, Unaligned): "AC 12; HP 5 (2d4); Speed 30 ft., Swim 30 ft. STR 2 (-4) DEX 15 (+2) CON 11 (+0) INT 1 (-5) WIS 10 (+0) CHA 3 (-4). Senses Blindsight 10 ft.; Passive Perception 10. Languages None. PB +2; XP 25. Bite. Melee Attack Roll: +4, reach 5 ft. Hit: 4 (1d4 + 2) Piercing damage plus 3 (1d6) Poison damage."
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- New `venomous-snake-bite` weapon definition: 1d4 piercing + slice-316 unconditional onHit 1d6 poison rider (mirror of Giant Spider Bite scaled down).
+- New `venomous-snake` monster statblock: full RAW shape per above. No traits (Venomous Snake has no RAW traits — Blindsight is in senses, not a trait).
+
+**Doc-count updates:** pack monsters 253 -> 254. SRD 5.2.1 monster catalog 235/235 -> 236/236 (this was a previously-missed SRD entry — slice 519's test surfaced it). Updated [docs/getting-started.md](docs/getting-started.md), [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md), [docs/status.md](docs/status.md) (both Conditions-rivaling rows).
+
+**Tests** ([tests/unit/engine/slice-522-venomous-snake.test.ts](tests/unit/engine/slice-522-venomous-snake.test.ts), 3 cases): statblock ships RAW shape (AC 12, HP 5/2d4, Speed 30+swim30, abilities, blindsight 10, CR 1/8, PB +2); weapon ships RAW damage profile (1d4 piercing + 1d6 poison rider); all 7 Pact of the Chain special-form familiars are now present (closes slice 519 follow-up).
+
+**Audit (content-sweep abbreviated form):** RAW match exact per SRD entry; no engine work; weapon mirrors Giant Spider Bite shape (which mirrors Spy Shortsword shape). No new identifiers beyond the two content ids.
+
+**Pattern-check:** the slice surfaced an SRD-counting drift — the prior "235/235 SRD complete" claim was off by one (missed Venomous Snake). The drift audit ([tests/audit/srd-drift.test.ts](tests/audit/srd-drift.test.ts)) parses statblock fields against the SRD markdown but doesn't sweep for "every SRD monster exists in pack." A future audit slice could promote that check from manual to CI-guarded — same shape as the existing per-spell coverage audit. Tracked, not blocking.
+
+**Closes slice 519 open follow-up:** ~~`venomous-snake` monster statblock not in pack, content-authoring slice.~~ **Closed by slice 522.**
+
+---
+
 **Engine + content (slice 521): Expeditious Retreat + `planExpeditiousRetreatDash` Bonus-Action-Dash arm + `expeditious-retreat-active` marker condition**
 
 Wires Expeditious Retreat, the second L1 spell that grants a per-turn Bonus-Action-Dash capability (sibling to Rogue's Cunning Action and Orc Adrenaline Rush). The cast itself consumes the bearer's Bonus Action (handled by the existing `castingTime: "Bonus Action"` path) and stamps the new `expeditious-retreat-active` marker condition on Self via the existing `buff` mechanic; on subsequent turns the bearer invokes the new `planExpeditiousRetreatDash` to spend their BA on a Dash, gated on the marker condition being active.
@@ -127,7 +149,7 @@ RAW (Pact of the Chain): "You learn the _Find Familiar_ spell and can cast it as
 **Pattern-check:** the GrantSpell + marker pair is now the canonical shape for any "you learn spell X and can cast it without a slot, plus you gain Y" invocation, Aspect of the Moon and Mask of Many Faces both fit but are L2+ feature-gated, so they wait. The marker presence pattern (introduced slice 505 with `GrantRitualAdept`) is now used 5 times (RitualAdept, PotentCantrip, Evasion, PactBlade, PactChain); the duplication is below the abstraction threshold (each marker has a distinct trigger gate and zero shared state) so no factoring needed yet, but slice 6+ would be the threshold to consider a marker registry.
 
 **Open follow-ups** (tracked, not blocking):
-- `venomous-snake` monster statblock not in pack, content-authoring slice. **Still open.**
+- ~~`venomous-snake` monster statblock not in pack, content-authoring slice.~~ **Closed by slice 522.**
 - Find Familiar Magic-action casting-time override, consumer-managed; future slice could add a per-grant `castingTimeOverride` field to `GrantSpell`. **Still open.**
 - "Forgo one attack for familiar reaction-attack" arm, requires multi-attack action-economy reroute. **Still open.**
 - Strict-RAW L1 prerequisite enforcement across all invocations, documented engine deviation since slice 511. **Still open.**
