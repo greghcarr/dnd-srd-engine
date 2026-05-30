@@ -4,6 +4,46 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 521): Expeditious Retreat + `planExpeditiousRetreatDash` Bonus-Action-Dash arm + `expeditious-retreat-active` marker condition**
+
+Wires Expeditious Retreat, the second L1 spell that grants a per-turn Bonus-Action-Dash capability (sibling to Rogue's Cunning Action and Orc Adrenaline Rush). The cast itself consumes the bearer's Bonus Action (handled by the existing `castingTime: "Bonus Action"` path) and stamps the new `expeditious-retreat-active` marker condition on Self via the existing `buff` mechanic; on subsequent turns the bearer invokes the new `planExpeditiousRetreatDash` to spend their BA on a Dash, gated on the marker condition being active.
+
+RAW (Expeditious Retreat, 1st-level transmutation, V/S, Self, Concentration up to 10 minutes): "Cast this spell as a Bonus Action. Until the spell ends, you can take the Dash action as a Bonus Action on each of your turns."
+
+**Engine:**
+- New `planExpeditiousRetreatDash` ([src/engine/plan/expeditious-retreat.ts](src/engine/plan/expeditious-retreat.ts)). Intent: `{ actorId }`. Validates the actor exists + can act + carries the `expeditious-retreat-active` condition + is the active combatant in an active encounter + has BA available + hasn't already dashed this turn. Mirrors `planCunningAction`'s dash arm verbatim (intent-revealing names, same error messages, same event sequence). Emits `ActionEconomyConsumed(bonusAction)` + `Dashed`.
+- Wired through [src/engine/plan/index.ts](src/engine/plan/index.ts) (export), [src/engine/index.ts](src/engine/index.ts) (import + `ExpeditiousRetreatDashIntent` type re-export + `expeditiousRetreatDash` method on the Engine interface + `planNs` factory), [src/engine/conveniences.ts](src/engine/conveniences.ts) (`ExpeditiousRetreatDash` dispatch entry — auto-picked-up by the planner-wiring audit).
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- `expeditious-retreat` `mechanicalEffects`: `[]` -> `[{ kind: 'buff', conditionId: 'expeditious-retreat-active' }]`. No other fields changed (castingTime + concentration + class list all RAW-correct).
+- New `expeditious-retreat-active` Condition: marker only (no inline effects), `stackable: false`, no `endsOn` triggers (concentration cleanup handles removal).
+
+**Doc-count guards:**
+- Spell wired count: 197 -> 198 (dedicated-planner bucket 24 -> 25). Narrative count: 69 -> 68. Updated [docs/getting-started.md](docs/getting-started.md), [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md) Coverage table, [docs/gaps-spells.md](docs/gaps-spells.md) Totals + L1 breakdown (44 -> 45 wired, 13 -> 12 narrative; L1 gains a "Wired, planner-companion (1)" line for expeditious-retreat).
+- The conditions count moves 130 -> 131. The doc-counts audit guards the headline "130 conditions" citation; updating it in this slice as part of the count discipline.
+
+**Documented RAW deviations (consumer-managed):**
+- "Cast this spell as a Bonus Action" — the cast turn itself: the bearer's BA is consumed by the cast, so they cannot also BA-Dash that turn (the planner correctly throws on the second BA attempt). RAW-correct; documented for clarity.
+- "10 minutes" concentration timer is consumer-managed (the engine doesn't tick wall-clock; concentration cleanup happens on cast-of-a-new-concentration-spell, damage CON-save fail, or the consumer signaling end-of-spell).
+- The dash itself is positional (the engine doesn't move tokens); the consumer applies the doubled movement budget per their own movement model. Same deviation as planDash / planCunningAction / planAdrenalineRush.
+
+**Tests** ([tests/unit/engine/slice-521-expeditious-retreat.test.ts](tests/unit/engine/slice-521-expeditious-retreat.test.ts), 6 cases): spell wires the buff mechanic correctly; the new marker condition ships with empty effects + non-stackable; casting applies the condition + starts concentration on the caster; without the buff the BA-Dash planner throws with an intent-revealing message; with the buff active on a subsequent turn the planner emits `ActionEconomyConsumed(bonusAction)` + `Dashed`; on the cast turn itself BA-Dash is blocked because cast already consumed the BA.
+
+**Uncle Bob audit:**
+- **Names:** `planExpeditiousRetreatDash` / `ExpeditiousRetreatDashIntent` mirror the slice-446 `planAdrenalineRush` and slice-180 `planCunningAction` naming. `expeditious-retreat-active` matches the existing `<spell-id>-active` convention. The internal `EXPEDITIOUS_RETREAT_CONDITION` module-scope constant follows the slice-180 cunning-action convention.
+- **DRY:** zero new event types, zero new reducers, zero new effect primitives. The planner is a near-verbatim mirror of `planCunningAction`'s dash arm (the differences: gate is "has condition" instead of "is Rogue L2+", and there's no mode parameter since RAW only allows Dash). Single-call-site duplication of ~50 lines is below the abstraction threshold; documented in the planner header comment.
+- **SRP:** the planner does one thing (emit BA + Dashed when the bearer qualifies). The condition is a pure marker (no inline effects). The cast-spell envelope handles the cast economy.
+- **Magic numbers:** none. The condition id is the single named constant.
+- **at-threading:** planner resolves `at ?? nowIso()` once and threads to both emitted events.
+- **Mechanical outcomes asserted:** spell shape, condition shape, cast-time state flip, gate-throws-without-buff, BA-Dash event sequence on subsequent turn, BA-Dash blocked on cast turn.
+- **Tests:** 6 unit tests. Each names a specific bug it prevents (wiring intact, marker shape correct, concentration starts, gate works, dash emits, cast-turn double-BA blocked).
+
+**Pattern-check:** the family of "spell or feature that lets you Dash as a Bonus Action" now has three siblings — planCunningAction (Rogue L2 + Spy statblock), planAdrenalineRush (Orc trait, per-rest), planStepOfTheWind (Monk Bonus Action Dash/Disengage), and now planExpeditiousRetreatDash (spell-buff-gated). All four share the same skeleton: validate active combatant + BA available + per-feature gate, emit `ActionEconomyConsumed(bonusAction)` + `Dashed`. At 4 siblings the duplication remains below the abstraction threshold; a factor-out would need to also unify the per-feature gate shape (eligibility predicate vs. condition presence vs. per-rest tracker), which would over-couple. Documenting the family here so a future "create a shared planBonusActionMovementAction(actorId, mode, gate)" refactor has the inventory ready. Other L1 spells with similar "grant per-turn capability" shapes (Hunter's Mark already wired, Hex via concentration buff) follow the slice-180/521 pattern; **the family is well-established**.
+
+**Open follow-ups:** none for this slice. The Hide and Disengage arms of Expeditious Retreat-style buffs don't exist in RAW (Expeditious Retreat is Dash-only).
+
+---
+
 **Engine + content (slice 520): Spare the Dying + new `stabilize` spell mechanic**
 
 Wires Spare the Dying, the most-picked L0 healing-utility cantrip in the SRD and one of the last remaining narrative-only L0 cantrips with concrete in-engine mechanics. Adds a new `mechanicalEffects.kind: 'stabilize'` to the spell schema; the cast-spell planner dispatches to `planStabilizeMechanic`, which emits a `Stabilized` event on the first targetId when the target is at 0 HP and not already stable. The reducer side (`applyStabilized`) predates this slice; no reducer / event-schema work needed.

@@ -71,6 +71,7 @@ import {
   planAdrenalineRush,
   planNimbleEscape,
   planCunningAction,
+  planExpeditiousRetreatDash,
   planStirgeDrain,
   planDetachStirge,
   planTurnUndead,
@@ -208,6 +209,7 @@ import {
   type AdrenalineRushIntent,
   type NimbleEscapeIntent,
   type CunningActionIntent,
+  type ExpeditiousRetreatDashIntent,
   type StirgeDrainIntent,
   type DetachStirgeIntent,
   type TurnUndeadIntent,
@@ -366,6 +368,7 @@ export interface Engine {
     adrenalineRush(state: CampaignState, intent: Omit<AdrenalineRushIntent, 'type'>): PlanResult;
     nimbleEscape(state: CampaignState, intent: Omit<NimbleEscapeIntent, 'type'>): PlanResult;
     cunningAction(state: CampaignState, intent: Omit<CunningActionIntent, 'type'>): PlanResult;
+    expeditiousRetreatDash(state: CampaignState, intent: Omit<ExpeditiousRetreatDashIntent, 'type'>): PlanResult;
     stirgeDrain(state: CampaignState, intent: Omit<StirgeDrainIntent, 'type'>): PlanResult;
     detachStirge(state: CampaignState, intent: Omit<DetachStirgeIntent, 'type'>): PlanResult;
     turnUndead(state: CampaignState, intent: Omit<TurnUndeadIntent, 'type'>): PlanResult;
@@ -705,6 +708,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     cunningAction(state, intent) {
       return { events: planCunningAction(state, content, rng, { type: 'CunningAction', ...intent }) };
+    },
+    expeditiousRetreatDash(state, intent) {
+      return { events: planExpeditiousRetreatDash(state, { type: 'ExpeditiousRetreatDash', ...intent }) };
     },
     stirgeDrain(state, intent) {
       return { events: planStirgeDrain(state, content, rng, { type: 'StirgeDrain', ...intent }) };

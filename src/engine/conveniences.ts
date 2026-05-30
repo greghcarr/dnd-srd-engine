@@ -43,6 +43,7 @@ export const performIntent = (
     AdrenalineRush: (i) => engine.plan.adrenalineRush(campaign.state, i),
     NimbleEscape: (i) => engine.plan.nimbleEscape(campaign.state, i),
     CunningAction: (i) => engine.plan.cunningAction(campaign.state, i),
+    ExpeditiousRetreatDash: (i) => engine.plan.expeditiousRetreatDash(campaign.state, i),
     TurnUndead: (i) => engine.plan.turnUndead(campaign.state, i),
     IntimidatingPresence: (i) => engine.plan.intimidatingPresence(campaign.state, i),
     DragonWings: (i) => engine.plan.dragonWings(campaign.state, i),
