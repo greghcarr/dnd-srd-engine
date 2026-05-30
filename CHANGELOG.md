@@ -4,6 +4,40 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 526): Quasit Rend natural weapon — completes the Pact of the Chain familiar combat surface**
+
+Wires the Quasit's Rend action per RAW. Same shape as Giant Centipede Bite (slice 477) but slashing instead of piercing. Quasit's Magic Resistance was already wired; Invisibility / Shape-Shift / Scare stay deferred (each requires its own primitive). **This closes the Pact of the Chain familiar combat surface: all 7 RAW special-form familiars (Pseudodragon, Venomous Snake, Sphinx of Wonder, Sprite, Imp, Quasit, Skeleton) now have wired primary-attack routes.** (Skeleton uses generic Shortsword/Shortbow + has no RAW Multiattack.)
+
+RAW (SRD 5.2.1 Quasit, CR 1, Tiny Fiend (Demon)): "Rend. Melee Attack Roll: +5, reach 5 ft. Hit: 5 (1d4 + 3) Slashing damage, and the target has the Poisoned condition until the start of the quasit's next turn."
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- New `quasit-rend` weapon definition: 1d4 slashing primary + slice-321 unconditional onHit `applyConditionId: 'poisoned'` rider (Giant Centipede Bite mirror, recolored to slashing).
+
+**Doc-count updates:** pack weapons 79 -> 80, items 543 -> 544.
+
+**Documented RAW deviations (still deferred):**
+- **Invisibility** (action, at-will, self-cast): sibling gap with Imp + Sprite. Needs the monster-action-self-cast-condition primitive.
+- **Shape-Shift** (action; polymorph between true form / bat / centipede / toad with speed-only stat changes): sibling gap with Imp. Needs the monster-action-polymorph primitive composed with the existing spell-side polymorph planner.
+- **Scare** (1/Day reaction, WIS DC 10 -> Frightened with recurring end-of-turn save, 1-min auto-success): needs the per-day-uses + reaction-with-save-or-condition primitive. Sibling shape with Burst of Ingenuity (Sphinx of Wonder, slice 524) on the per-day-uses + reaction half.
+- Poisoned condition duration ("until the start of the quasit's next turn") is consumer-managed (mirror of slice 286, shared with all per-turn condition-rider weapons).
+
+**Tests** ([tests/unit/engine/slice-526-quasit-rend.test.ts](tests/unit/engine/slice-526-quasit-rend.test.ts), 3 cases): natural weapon RAW damage profile + Poisoned rider; statblock retains pre-existing Magic Resistance + has no Multiattack; **all 7 Pact of the Chain familiars now have a wired primary-attack route** (5 monster-specific natural weapons + Skeleton's generic Shortsword/Shortbow).
+
+**Audit (content-sweep abbreviated):** RAW match exact for the wired Rend; deferred Invisibility / Shape-Shift / Scare documented; no new identifiers beyond the weapon id.
+
+**Pattern-check:** the Pact of the Chain familiar cohort (slices 518-526) is the clearest case study yet of "complete a cohort via incremental natural-weapon slices." Eight slices touched the cohort directly or indirectly:
+- 518 (Pact of the Blade primitive)
+- 519 (Pact of the Chain primitive + 6-of-7 familiars in pack)
+- 522 (Venomous Snake statblock — closed 519 follow-up)
+- 523 (Pseudodragon Bite + Multiattack)
+- 524 (Sphinx of Wonder Rend)
+- 525 (Imp Sting)
+- 526 (Quasit Rend)
+
+The natural-weapon-with-onHit-rider shape (slices 316/321) carried 5 of these slices in essentially one-line authoring tasks each. The remaining Pact-Chain-cluster gaps (at-will Invisibility, Shape-Shift, monster reaction-with-save) are sibling-shaped across familiars and would unblock multiple monsters per slice — those are the natural next L1-monster-sweep primitives, but each is a substantial slice on its own. Documented above per-familiar so a future slice can scope them as a cluster.
+
+---
+
 **Content (slice 525): Imp Sting natural weapon**
 
 Wires the Imp's Sting action per RAW. Same shape as slice 524's Sphinx of Wonder Rend (single attack + on-hit damage rider) but with a piercing primary + poison rider instead of slashing + radiant. Imp's Magic Resistance was already wired (pre-existing `GrantMagicResistance`); its Shape-Shift, at-will Invisibility, and Devil's Sight stay deferred (each requires its own primitive — see deviations below).
