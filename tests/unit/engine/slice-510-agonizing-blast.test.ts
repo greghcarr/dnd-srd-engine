@@ -76,7 +76,7 @@ const seedAgonizingBlast = (characterId: string): [ChoiceRequiredEvent, ChoiceRe
       prompt: 'Pick an invocation.',
       options: [
         {
-          id: 'agonizing-blast',
+          id: 'agonizing-blast-eldritch-blast',
           label: 'Agonizing Blast',
           effects: [
             {
@@ -96,7 +96,7 @@ const seedAgonizingBlast = (characterId: string): [ChoiceRequiredEvent, ChoiceRe
       type: 'ChoiceResolved',
       choiceId,
       characterId,
-      selectedOptionIds: ['agonizing-blast'],
+      selectedOptionIds: ['agonizing-blast-eldritch-blast'],
     },
   ];
 };
@@ -109,7 +109,7 @@ describe('Warlock L1 Eldritch Invocations + Agonizing Blast (slice 510)', () => 
     const oc = feat.effects[0] as { kind: string; oneOf: number; options: ReadonlyArray<{ id: string }> };
     expect(oc.kind).toBe('OfferChoice');
     expect(oc.oneOf).toBe(1);
-    expect(oc.options[0]!.id).toBe('agonizing-blast');
+    expect(oc.options[0]!.id).toBe('agonizing-blast-eldritch-blast');
   });
 
   it('a Warlock who picks Agonizing Blast deals +CHA-mod extra damage on each Eldritch Blast beam', () => {

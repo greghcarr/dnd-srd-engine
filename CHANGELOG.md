@@ -4,6 +4,33 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content + test (slice 512): per-cantrip generalization for Agonizing Blast — 3 invocation Feat variants**
+
+Closes the slice-510/511 documented RAW deviation: Agonizing Blast was hardcoded to Eldritch Blast; RAW lets the warlock pick any known Warlock damage cantrip. The starter pack lists three such cantrips (Eldritch Blast, Chill Touch, Poison Spray), and this slice authors one Feat variant per cantrip — the warlock's L1 invocation OfferChoice now exposes three labeled options ("Agonizing Blast (Eldritch Blast)" / "(Chill Touch)" / "(Poison Spray)"), each granting its corresponding feat. The player's pick at acquisition time IS the cantrip choice; no nested OfferChoice or ChoiceResolved-cascade needed for the one-cantrip-pick case.
+
+RAW (Agonizing Blast): "Choose one of your known Warlock cantrips that deals damage. You can add your Charisma modifier to that spell's damage rolls."
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- `agonizing-blast` Feat renamed to `agonizing-blast-eldritch-blast` (the Eldritch Blast variant; same effects).
+- New `agonizing-blast-chill-touch` and `agonizing-blast-poison-spray` Feat rows (category: 'invocation', repeatable: false, prerequisites name the cantrip), each with `AddModifier(damage, CHA-mod)` gated on its own `event.spellId`.
+- Warlock L1 `eldritch-invocations-2` OfferChoice's options: 1 → 3 (one per variant), each `[{ kind: 'GrantFeat', featId: '<variant>' }]`.
+
+**Tests** at [tests/unit/engine/slice-512-agonizing-blast-per-cantrip.test.ts](tests/unit/engine/slice-512-agonizing-blast-per-cantrip.test.ts) - 4 cases: the pack ships all three variants with the right per-cantrip `event.spellId` condition; the warlock L1 OfferChoice exposes all three; picking the Chill Touch variant adds +CHA-mod to Chill Touch only (not Eldritch Blast or Poison Spray); picking the Poison Spray variant adds +CHA-mod to Poison Spray only. Updated slice-510 + slice-511 tests to reference the renamed feat id.
+
+**Doc-count update**: `getting-started.md` feats total 19 → 21 (3 invocation feats instead of 1). Features snapshot updated to include the two new wired feat ids.
+
+**Documented design note** (deferred): the per-cantrip-variant content pattern (1 invocation × N cantrips = N feats) is intentionally simple. A future multi-pick invocation — Pact of the Tome lets the warlock pick 3 cantrips — will need a real `ChoiceResolved`-cascade mechanism in `applyChoiceResolved` (so a resolved option's effects can install follow-up PendingChoices for nested OfferChoices in the granted feat's effects). The per-variant pattern doesn't scale to multi-pick combinatorics. Tracked.
+
+**Audit:**
+- *RAW match*: any of the 3 warlock damage cantrips can now be chosen as the Agonizing Blast target. Repeatability is across variants (the warlock could pick a different cantrip's variant at a later tier).
+- *Names*: feat id `agonizing-blast-<cantrip-id>` is the established sibling-feat pattern (parallel to `magic-initiate-{cleric,druid,wizard}`).
+- *DRY*: each variant feat is one AddModifier; the only field that differs is the spellId in the condition.
+- *SRP*: each variant does one thing — gate the CHA-mod fold on one cantrip's id.
+- *Magic numbers*: none.
+- *Mechanical outcomes asserted*: schema shape, OfferChoice shape, per-variant projection isolation (each variant fires only for its named cantrip).
+
+**Pattern-check**: the renamed feat id propagated symmetrically into slice-510 + slice-511 (sed across both test files; one assertion's `repeatable` flag flipped from `true` to `false` since per-variant feats don't repeat). Any future invocation with a single-pick parameter (Whispers of the Grave's chosen-language, Mask of Many Faces' chosen alternate form when added) can mirror this per-variant content pattern without engine work.
+
 **Engine + content (slice 511): `GrantFeat` primitive + refactor Agonizing Blast as a Feat content row**
 
 Adds the indirection primitive that makes the Warlock invocation catalog (and any future "feat-as-content" cohort) scale cleanly. Before this slice each invocation's effects would have to be inline-duplicated in every tier OfferChoice's option list — for the Warlock's 8 tiers and ~30 invocations that's a quadratic content explosion. After this slice each invocation is a single Feat row; each tier OfferChoice's option just grants the feat by id.

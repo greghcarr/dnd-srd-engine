@@ -11,7 +11,7 @@
 // from inline-in-the-OfferChoice-option (slice 510) to a standalone Feat
 // content row (`category: 'invocation'`). The warlock L1 invocation
 // OfferChoice's option now reads `{ kind: 'GrantFeat', featId:
-// 'agonizing-blast' }` rather than inlining the AddModifier. Behavior is
+// 'agonizing-blast-eldritch-blast' }` rather than inlining the AddModifier. Behavior is
 // identical to slice 510 (the slice-510 end-to-end test continues to
 // pass); the wire shape scales — future invocations are just new Feat
 // rows + one new option entry on each tier's OfferChoice.
@@ -42,10 +42,14 @@ const CONTENT = resolveContent([PACK]);
 
 describe('GrantFeat primitive (slice 511)', () => {
   it('the pack ships Agonizing Blast as a Feat (category: invocation) with the inline AddModifier on damage', () => {
-    const feat = PACK.feats.find((f) => f.id === 'agonizing-blast');
+    const feat = PACK.feats.find((f) => f.id === 'agonizing-blast-eldritch-blast');
     expect(feat).toBeDefined();
     expect(feat!.category).toBe('invocation');
-    expect(feat!.repeatable).toBe(true);
+    // Slice 512: per-variant (one feat per warlock damage cantrip), so
+    // each variant is `repeatable: false` — picking the same variant twice
+    // is a no-op. Repeatability of "Agonizing Blast" RAW is across the
+    // variants (the warlock could pick a different one at a later tier).
+    expect(feat!.repeatable).toBe(false);
     expect(feat!.effects).toEqual([
       {
         kind: 'AddModifier',
@@ -64,12 +68,12 @@ describe('GrantFeat primitive (slice 511)', () => {
       options: ReadonlyArray<{ id: string; effects: ReadonlyArray<{ kind: string }> }>;
     };
     expect(oc.kind).toBe('OfferChoice');
-    expect(oc.options[0]!.id).toBe('agonizing-blast');
-    expect(oc.options[0]!.effects).toEqual([{ kind: 'GrantFeat', featId: 'agonizing-blast' }]);
+    expect(oc.options[0]!.id).toBe('agonizing-blast-eldritch-blast');
+    expect(oc.options[0]!.effects).toEqual([{ kind: 'GrantFeat', featId: 'agonizing-blast-eldritch-blast' }]);
   });
 
   it('expandGrantFeatEffects recursively resolves a GrantFeat reference to the named feat\'s effects', () => {
-    const input: Effect[] = [{ kind: 'GrantFeat', featId: 'agonizing-blast' }];
+    const input: Effect[] = [{ kind: 'GrantFeat', featId: 'agonizing-blast-eldritch-blast' }];
     const expanded = expandGrantFeatEffects(input, CONTENT);
     expect(expanded).toEqual([
       {
@@ -84,8 +88,8 @@ describe('GrantFeat primitive (slice 511)', () => {
   it('expandGrantFeatEffects breaks self-referential cycles (the second visit is skipped)', () => {
     // The pack has no cyclic feats, so synthesize the situation by
     // pre-seeding the visited set with the only-reachable feat id.
-    const input: Effect[] = [{ kind: 'GrantFeat', featId: 'agonizing-blast' }];
-    const expanded = expandGrantFeatEffects(input, CONTENT, new Set(['agonizing-blast']));
+    const input: Effect[] = [{ kind: 'GrantFeat', featId: 'agonizing-blast-eldritch-blast' }];
+    const expanded = expandGrantFeatEffects(input, CONTENT, new Set(['agonizing-blast-eldritch-blast']));
     expect(expanded).toEqual([]);
   });
 
@@ -114,15 +118,15 @@ describe('GrantFeat primitive (slice 511)', () => {
         id: eventId(), at: isoTimestamp(), type: 'ChoiceRequired', choiceId,
         characterId: warlock.id, promptKey: 'eldritch-invocations-l1', prompt: 'Pick an invocation.',
         options: [{
-          id: 'agonizing-blast',
+          id: 'agonizing-blast-eldritch-blast',
           label: 'Agonizing Blast',
-          effects: [{ kind: 'GrantFeat', featId: 'agonizing-blast' }],
+          effects: [{ kind: 'GrantFeat', featId: 'agonizing-blast-eldritch-blast' }],
         }],
         oneOf: 1,
       },
       {
         id: eventId(), at: isoTimestamp(), type: 'ChoiceResolved', choiceId,
-        characterId: warlock.id, selectedOptionIds: ['agonizing-blast'],
+        characterId: warlock.id, selectedOptionIds: ['agonizing-blast-eldritch-blast'],
       },
     ];
     campaign = commit(campaign, [
