@@ -262,7 +262,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'blink': { kind: 'skip', reason: 'per-turn 1d6 ethereal-plane toggle; cross-plane mechanic not modeled' },
   'divine-smite': { kind: 'buff', conditionId: 'divine-smite-active' },
   'elementalism': { kind: 'skip', reason: '5-variant cosmetic utility cantrip (Beckon Air/Earth/Fire/Water + Sculpt Element); no mechanical effect' },
-  'floating-disk': { kind: 'skip', reason: 'creates a 500-lb-capacity force disk; carry-capacity entity not modeled' },
+  'floating-disk': { kind: 'skip', reason: 'cast emits no mechanical events (consumer-side world entity); the 500-lb-capacity disk + follow-the-caster behavior is engine-out-of-scope per the no-positions stance. The cast path is exercised by slice-507-floating-disk.test.ts.' },
   'freezing-sphere': { kind: 'save' },
   'ice-knife': { kind: 'attack' },
   'illusory-script': { kind: 'skip', reason: 'imbues parchment with illusory writing for 10 days; narrative utility ritual' },

@@ -4,6 +4,20 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Test + docs (slice 507): Floating Disk — reclassify the last L1 "deferred" entry as consumer-side narrative + lock the cast path**
+
+Closes the last L1 spell formerly classified as "deferred." Floating Disk is misclassified: the *cast* itself works through `planCastSpell` (Action consumes a slot; Ritual doesn't; neither emits mechanical events), but the *disk* is a positional carry-capacity world entity (500-lb capacity, follows the caster within 20 ft, can't cross 10-ft elevation changes, falls off when overloaded) that the engine explicitly doesn't model per the no-positions stance. It belongs in the narrative bucket alongside the other consumer-side utility spells, not in the deferred queue.
+
+RAW (SRD 5.2.1 Floating Disk, L1 Wizard Conjuration, Action or Ritual, 30 ft range, 1 hour, NOT concentration, IS ritual): see the spell text in [references/srd-markdown/spells.md](references/srd-markdown/spells.md).
+
+**No engine or content changes** — pure reclassification + cast test.
+
+[tests/unit/engine/slice-507-floating-disk.test.ts](tests/unit/engine/slice-507-floating-disk.test.ts) - 3 cases: the spell ships `mechanicalEffects: []` (ritual: true, concentration: false); cast as Action consumes a spell slot and emits no downstream effect events (no ConcentrationStarted / DamageApplied / SaveRolled / AttackRolled / ConditionApplied); cast as Ritual does NOT consume a slot and similarly emits no downstream events. spell-coverage skip reason updated to point at this file.
+
+**Doc-count update**: L1 row 44 wired / 12 narrative / 1 deferred -> 44 wired / 13 narrative / 0 deferred. Headline 196 wired / 69 narrative / 74 deferred -> 196 wired / 70 narrative / 73 deferred. **The L1 spell surface is now formally complete: 0 deferred entries.** Aligned across gaps-spells / getting-started / starter-pack-gaps / status.
+
+**Documented RAW deviations (consumer-managed, never engine-modeled)**: the disk's 500-lb capacity, the follow-the-caster behavior (immobile within 20 ft of caster; follows when caster moves > 20 ft away), the 10-ft elevation gate, and the fall-off-when-overloaded behavior all stay engine-out-of-scope, consistent with the "engine doesn't model positions" stance ([CLAUDE.md](CLAUDE.md)).
+
 **Test (slice 506): Cleric L1 Divine Order — lock both sub-feature projections via PendingChoice resolution**
 
 Closes the slice-504 tracked follow-up: Divine Order was already wired as an `OfferChoice` (Protector / Thaumaturge), but no test pinned the projection of each chosen sub-feature.
