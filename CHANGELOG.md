@@ -4,6 +4,18 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Test (slice 506): Cleric L1 Divine Order — lock both sub-feature projections via PendingChoice resolution**
+
+Closes the slice-504 tracked follow-up: Divine Order was already wired as an `OfferChoice` (Protector / Thaumaturge), but no test pinned the projection of each chosen sub-feature.
+
+[tests/unit/engine/slice-506-divine-order.test.ts](tests/unit/engine/slice-506-divine-order.test.ts) seeds the `ChoiceRequired` + `ChoiceResolved` pair (mirror of the slice-215 [druid-primal-order.test.ts](tests/unit/engine/druid-primal-order.test.ts) template) and asserts:
+- **Protector**: `proficiencyLevel('weapon', 'martial')` and `('armor', 'heavy')` both resolve to `'proficient'`; no Guidance grant.
+- **Thaumaturge**: `grantedSpells()` lists `guidance` (always-prepared); `computeAbilityCheck` returns the expected totals — Arcana (INT) = 0 + WIS(+3) + sage PB(+2) = 5; Religion (WIS) = WIS(+3) + WIS(+3) = 6. Martial / heavy-armor proficiency NOT granted.
+
+Doc: [docs/gaps-class-features.md](docs/gaps-class-features.md) — slice-504's "Open follow-up" line struck with a closed-by annotation referencing the new test file.
+
+Pure test slice — no engine or content changes.
+
 **Engine + content (slice 505): Wizard L1 Ritual Adept — new `GrantRitualAdept` marker + content cleanup**
 
 Closes the Wizard L1 Ritual Adept feature gap. The underlying behavior has been functional since the cast pathway shipped: `intent.asRitual: true` already requires the spell's `ritual` tag, skips slot consumption, and skips action-economy consumption; `characterKnowsSpell` accepts `knownSpells` (the wizard's spellbook) alone, so an unprepared spellbook ritual cast just works. The Wizard L1 feature was carrying a misleading `Custom { handlerId: 'ritual-adept' }` content stub whose handler was never registered.
