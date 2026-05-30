@@ -4,6 +4,14 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Docs (slice 509): strike two more stale L1-feature notes (Bardic Inspiration formula + Barbarian L1 Weapon Mastery)**
+
+Pattern-check sweep continuing from slice 504's stale-stub discoveries. Two more notes in [docs/gaps-class-features.md](docs/gaps-class-features.md) describe gaps that no longer exist:
+- **Bardic Inspiration use-count formula** claimed "still hardcoded at 3 instead of CHA-mod-with-floor-1." The L1 `bardic-inspiration` feature actually ships `GrantResource.max = max(1, abilityMod CHA)` — exactly RAW.
+- **Barbarian L1 Weapon Mastery** claimed "not in the current pack — the L1 row only ships Rage + Unarmored Defense." Closed by slice 378 (noted at the top of the same doc, but this open-item line wasn't struck). The Barbarian L1 features array ships `weapon-mastery-barbarian` with `GrantWeaponMastery` (slots: 2, all 8 RAW masteries), enforced by the slice-502 gate.
+
+Both notes struck with closed-by annotations. Pure docs slice — no engine / content / test changes.
+
 **Content + test (slice 508): Skilled origin feat — wire the 3-pick OfferChoice over 18 skills + 37 tools**
 
 Closes the last gettable L1 origin-feat gap. The `skilled` feat previously shipped `effects: []` (a no-op stub) — content authoring with no engine block. Now ships an `OfferChoice` with `oneOf: 3` over 55 options (18 skills + 37 tools, each option granting `GrantProficiency` for the picked target).
