@@ -4,6 +4,37 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 516): Repelling Blast invocation + `PushTarget` TriggerAction + `event.source` damage fact + cast-spell trigger dispatch**
+
+Wires Repelling Blast (warlock invocation: push 10 ft on Eldritch Blast hits). The work touches four engine surfaces, each surgical:
+
+RAW (Repelling Blast): "When you hit a creature with Eldritch Blast, you can push that creature up to 10 feet away from you in a straight line."
+
+**Engine:**
+- New **`PushTarget { distanceFeet: number }`** TriggerAction ([src/schemas/effects.ts](src/schemas/effects.ts)) + dispatcher branch ([src/engine/triggers/dispatch.ts](src/engine/triggers/dispatch.ts)) that emits a `CreaturePushed` event targeting the triggering event's target (`AttackRolled` and `DamageApplied` both carry `targetId`). The engine doesn't model positions; the event is informational for consumers to apply the position change.
+- New **`event.source`** fact added to DamageApplied trigger facts ([src/engine/triggers/dispatch.ts](src/engine/triggers/dispatch.ts) `buildEventFacts`). The `source` field is already on the event (set by cast-spell to the spell id for spell damage); the fact surfaces it to predicates so per-spell on-hit riders can gate on it (canonical user here: `eq event.source 'eldritch-blast'`).
+- **Cast-spell now dispatches OnEvent triggers** on the spell-attack `DamageApplied` it emits ([src/engine/plan/cast-spell.ts](src/engine/plan/cast-spell.ts) `planAttackMechanic`). Mirrors the resolveAttack damageTriggers dispatch in attack.ts. Previously OnEvent riders attached to spell-cast damage (anything granted via GrantFeat / OnEvent on the caster's effect stack) never fired because cast-spell built its own DamageApplied events without invoking the trigger dispatcher.
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- New `repelling-blast` Feat (category: 'invocation', repeatable: false). Single OnEvent: trigger on DamageApplied where `sourceIsSelf` + `source == 'eldritch-blast'`; action `PushTarget distanceFeet: 10`.
+- Warlock L1 `eldritch-invocations-2` OfferChoice options: 12 → 13.
+
+**Doc-count update**: feats 30 → 31 (13 invocation feats). Features snapshot gains `invocation:repelling-blast`.
+
+**Documented RAW deviation (minor)**: RAW says "when you hit" — engine fires post-damage (the trigger event is DamageApplied, not AttackRolled-then-DamageApplied). RAW doesn't specify damage-vs-push ordering, so the outcome (target damaged + pushed) is the same.
+
+**Tests** at [tests/unit/engine/slice-516-repelling-blast.test.ts](tests/unit/engine/slice-516-repelling-blast.test.ts) - 4 cases: feat ships the expected OnEvent shape; a warlock with Repelling Blast hitting with Eldritch Blast emits `CreaturePushed targetId distanceFeet: 10 sourceCharacterId`; a warlock WITHOUT the invocation doesn't push on EB hits; a warlock WITH Repelling Blast casting fire-bolt does NOT push (gated on `event.source == eldritch-blast`).
+
+**Audit:**
+- *RAW match*: 10-ft push on Eldritch Blast hits, no spillover to other cantrips. Damage-then-push ordering is the documented minor deviation.
+- *Names*: `PushTarget` mirrors `ApplyCondition` / `GrantTempHP` (TriggerAction naming); `event.source` mirrors `event.spellSchool` / `event.spellId`.
+- *DRY*: PushTarget dispatch is one branch in the existing action loop; trigger dispatch in cast-spell mirrors the attack.ts pattern verbatim.
+- *SRP*: PushTarget does one thing (emit CreaturePushed); the engine extension fills one gap (cast-spell never dispatched triggers).
+- *Magic numbers*: 10 (RAW Repelling Blast distance).
+- *Mechanical outcomes asserted*: feat shape, push fires on EB hit with correct fields, no push without invocation, no push on other cantrips.
+
+**Pattern-check**: cast-spell never dispatched OnEvent triggers before this slice — only attack.ts did. That meant ANY on-hit / on-damage rider attached to a spell-caster's effect stack was silently inert for spell damage. Adding the dispatch here unlocks Repelling Blast and any future per-spell on-hit / on-damage rider (Empowered Smite-style rider on a damaging cantrip, etc.). The dispatch is added only at planAttackMechanic; other emission sites in cast-spell (planSaveMechanic damage, planAutoHitMechanic, planHpThresholdMechanic) still don't dispatch — a follow-up slice can extend if a content user appears. Tracked.
+
 **Engine + content (slice 515): Eldritch Mind invocation + `event.isConcentrationCheck` save fact**
 
 Wires Eldritch Mind, the warlock invocation that grants advantage on Constitution saves to maintain Concentration. The fix needs one new save fact so the SetAdvantage condition can fire ONLY for concentration checks (not for ordinary CON saves like poison or hold person).

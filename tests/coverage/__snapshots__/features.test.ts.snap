@@ -267,6 +267,7 @@ exports[`feature-coverage matrix: feats > wired feats catalog is stable 1`] = `
   "invocation:mask-of-many-faces",
   "invocation:misty-visions",
   "invocation:otherworldly-leap",
+  "invocation:repelling-blast",
   "origin:alert",
   "origin:magic-initiate-cleric",
   "origin:magic-initiate-druid",

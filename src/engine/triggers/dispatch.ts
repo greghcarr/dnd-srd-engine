@@ -128,6 +128,13 @@ const buildEventFacts = (
     for (const [type, amount] of byType) {
       facts.set(`event.damageOfType.${type}`, amount);
     }
+    // Slice 516: surface the source string (spell id for cast-spell
+    // damage; weapon id for weapon-attack damage when set) so per-spell
+    // predicates can gate on it. Canonical user: Warlock Repelling Blast
+    // (`OnEvent DamageApplied condition: eq event.source 'eldritch-blast'`).
+    if (event.source !== undefined) {
+      facts.set('event.source', event.source);
+    }
   }
   return facts;
 };
@@ -604,6 +611,25 @@ const fireTrigger = (
           amount,
           source: triggerId,
         } satisfies TempHPGrantedEvent);
+      }
+    } else if (action.kind === 'PushTarget') {
+      // Slice 516: emit CreaturePushed targeting the triggering event's
+      // target (AttackRolled and DamageApplied both carry `targetId`).
+      // The engine doesn't model positions; the event is informational
+      // for consumers to apply the position change. Canonical user:
+      // Warlock Repelling Blast.
+      const targetId = (event as { targetId?: string }).targetId;
+      if (targetId !== undefined && action.distanceFeet > 0) {
+        events.push({
+          id: newEventId() as ULID,
+          at,
+          type: 'CreaturePushed',
+          targetId: targetId as ULID,
+          distanceFeet: action.distanceFeet,
+          sourceCharacterId: character.id as ULID,
+          source: triggerId,
+          causedByEventId: triggerFired.id,
+        });
       }
     }
   }

@@ -58,6 +58,7 @@ import { resolveAttack } from './attack.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { applyAll } from '../apply.js';
+import { dispatchTriggers } from '../triggers/dispatch.js';
 import { buildEffectStack } from '../../derive/effect-stack.js';
 import { isImmuneToCondition } from '../../derive/condition-immunity.js';
 import { isHealingBlocked } from '../../derive/healing-block.js';
@@ -567,6 +568,19 @@ const planAttackMechanic = (
     events.push(...intercept.extraEvents);
     events.push(
       ...planConcentrationBreakOnDrop(target, intercept.components, damageApplied.id, at),
+    );
+    // Slice 516: dispatch OnEvent triggers on the spell-attack
+    // DamageApplied so per-spell on-hit riders fire (canonical user:
+    // Warlock Repelling Blast — push 10 ft on Eldritch Blast hits).
+    // Mirrors the resolveAttack damageTriggers dispatch (attack.ts).
+    events.push(
+      ...dispatchTriggers({
+        state: applyAll(state, events),
+        content,
+        rng,
+        event: damageApplied,
+        at,
+      }),
     );
   }
   return events;

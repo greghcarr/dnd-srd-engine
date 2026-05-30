@@ -106,6 +106,12 @@ export type TriggerAction =
   // bearer reduces an enemy to 0 HP). Emits a TempHPGranted event,
   // which uses max-not-additive temp-HP semantics (slice 75).
   | { kind: 'GrantTempHP'; amount: number | Formula }
+  // Slice 516: emit a `CreaturePushed` event targeting the triggering
+  // event's target, pushing them up to `distanceFeet` away from the
+  // bearer (the engine doesn't model positions, so the event is
+  // informational — consumers apply the position change). Canonical
+  // user: Warlock Repelling Blast (Eldritch Blast pushes 10 ft on hit).
+  | { kind: 'PushTarget'; distanceFeet: number }
   | { kind: 'ApplyCondition'; conditionId: string; durationRounds?: number }
   // Retaliation variant of ApplyCondition: stamps the condition on
   // the attacker of the triggering event instead of the target. Used
@@ -156,6 +162,10 @@ export const TriggerActionSchema: z.ZodType<TriggerAction> = z.union([
   z.object({
     kind: z.literal('GrantTempHP'),
     amount: z.union([z.number(), FormulaSchema]),
+  }),
+  z.object({
+    kind: z.literal('PushTarget'),
+    distanceFeet: z.number().int().min(0),
   }),
   z.object({
     kind: z.literal('ApplyCondition'),
