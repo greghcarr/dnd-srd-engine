@@ -4,6 +4,27 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content + test (slice 508): Skilled origin feat — wire the 3-pick OfferChoice over 18 skills + 37 tools**
+
+Closes the last gettable L1 origin-feat gap. The `skilled` feat previously shipped `effects: []` (a no-op stub) — content authoring with no engine block. Now ships an `OfferChoice` with `oneOf: 3` over 55 options (18 skills + 37 tools, each option granting `GrantProficiency` for the picked target).
+
+RAW (SRD 5.2.1 Skilled, Origin Feat, Repeatable): "You gain proficiency in any combination of three skills or tools of your choice."
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- `skilled` feat: `effects: []` -> single OfferChoice with `oneOf: 3, options: [...18 skill + 37 tool...]`. Each option's effects array is one `GrantProficiency` grant for that skill or tool. Pack file grew ~9 KB; JSON parses, schema validates.
+
+**Tests** at [tests/unit/engine/slice-508-skilled.test.ts](tests/unit/engine/slice-508-skilled.test.ts) - 3 cases: the feat ships the OfferChoice with exactly 55 options (18 skills + 37 tools); a mixed pick (1 skill + 2 tools) projects all three proficiencies; a pure-skills pick (3 skills) also projects. Mirror of the slice-215 / slice-506 OfferChoice-resolution template (seed `ChoiceRequired` + `ChoiceResolved`, read `proficiencyLevel` from the effect stack).
+
+**Pure content + test slice — no engine changes.**
+
+**Audit (short):**
+- *RAW match*: any-three-from-skills-or-tools, repeatable. `OfferChoice.oneOf: 3` is the engine's standard multi-pick shape (precedent: `magic-initiate-*-cantrips` use `oneOf: 2`, `rogue-expertise-l1/l6` use `oneOf: 2`).
+- *Names*: option ids reuse the canonical skill/tool ids already in the pack.
+- *DRY*: option list generated mirroring the existing Human Skillful skill-option shape + the pack's tool catalog; no hand-curated copy.
+- *Mechanical outcomes asserted*: 18+37 = 55 options shape, mixed-pick projection, all-skills-pick projection.
+
+**Pattern-check**: every other 2024 origin feat shipping in the pack is now either fully wired or correctly using an engine-recognized-by-id pattern (`savage-attacker` via the attack planner's `getEffectiveFeatIds` consumer, like Monk Martial Arts). The remaining feat stubs are deliberately outside L1 scope (general feat `grappler`, 5 epic-boon feats — all L4+/L19+ entries).
+
 **Test + docs (slice 507): Floating Disk — reclassify the last L1 "deferred" entry as consumer-side narrative + lock the cast path**
 
 Closes the last L1 spell formerly classified as "deferred." Floating Disk is misclassified: the *cast* itself works through `planCastSpell` (Action consumes a slot; Ritual doesn't; neither emits mechanical events), but the *disk* is a positional carry-capacity world entity (500-lb capacity, follows the caster within 20 ft, can't cross 10-ft elevation changes, falls off when overloaded) that the engine explicitly doesn't model per the no-positions stance. It belongs in the narrative bucket alongside the other consumer-side utility spells, not in the deferred queue.
