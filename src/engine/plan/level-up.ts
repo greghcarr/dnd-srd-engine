@@ -14,6 +14,7 @@ import { abilityModifier } from '../../derive/ability.js';
 import { nowIso } from '../../internal/clock.js';
 import type { ULID } from '../ids-utils.js';
 import type { Effect } from '../../schemas/effects.js';
+import { expandGrantFeatEffects } from '../../derive/effect-stack.js';
 
 const HP_AVERAGE_BY_DIE: Record<number, number> = { 6: 4, 8: 5, 10: 6, 12: 7 };
 
@@ -113,7 +114,7 @@ export interface ResolveChoiceIntent {
 
 export const planResolveChoice = (
   state: CampaignState,
-  _content: ResolvedContent,
+  content: ResolvedContent,
   intent: ResolveChoiceIntent,
 ): ReadonlyArray<Event> => {
   const choice = state.pendingChoices[intent.choiceId];
@@ -142,5 +143,46 @@ export const planResolveChoice = (
     characterId: intent.characterId,
     selectedOptionIds: [...intent.selectedOptionIds],
   };
-  return [event];
+  // Slice 517: cascade ChoiceRequired events for nested OfferChoice
+  // effects in the resolved option(s). Canonical user: Warlock Pact of
+  // the Tome — picking it via the L1 invocation OfferChoice triggers
+  // two nested OfferChoices (3 cantrips + 2 L1 ritual spells from any
+  // class). Without cascade, the nested choices never install as
+  // PendingChoices (level-up.ts only walks new class features, not
+  // resolved-option effects).
+  //
+  // The cascade:
+  //   1. For each chosen option's effects, expand GrantFeat references
+  //      (slice 511) so granted feats' nested OfferChoices also fire.
+  //   2. For each OfferChoice in the resulting flat effects (with
+  //      `when !== 'onLongRest'`, same filter as planLevelUp), emit a
+  //      ChoiceRequired event.
+  const events: Event[] = [event];
+  const at = intent.at ?? nowIso();
+  for (const optionId of intent.selectedOptionIds) {
+    const option = choice.options.find((o) => o.id === optionId);
+    if (option === undefined) continue;
+    const expandedEffects = expandGrantFeatEffects(option.effects as Effect[], content);
+    for (const effect of expandedEffects) {
+      if (effect.kind !== 'OfferChoice' || effect.when === 'onLongRest') continue;
+      const cascaded: ChoiceRequiredEvent = {
+        id: newEventId() as ULID,
+        at,
+        type: 'ChoiceRequired',
+        choiceId: newChoiceId(),
+        characterId: intent.characterId,
+        promptKey: effect.choiceId,
+        prompt: effect.prompt,
+        options: effect.options.map((o) => ({
+          id: o.id,
+          label: o.label,
+          effects: o.effects as Effect[],
+        })),
+        oneOf: effect.oneOf,
+        causedByEventId: event.id,
+      };
+      events.push(cascaded);
+    }
+  }
+  return events;
 };
