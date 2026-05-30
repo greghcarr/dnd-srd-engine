@@ -4,6 +4,20 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Docs (slice 528): reflect slice 527's at-will spellcasting discovery in the deferred-mechanics catalog**
+
+Three entries updated in [docs/gaps-monsters-deferred-mechanics.md](docs/gaps-monsters-deferred-mechanics.md):
+
+1. **At-will Invisibility (Imp/Quasit/Sprite):** struck through + marked "Closed by slice 527" with the composition explanation (slice-260 annotation convention).
+2. **Innate Spellcasting (per-spell envelope):** split into "at-will arm (shipped per slice 527, one-line content per monster)" and "per-day arm (still deferred; needs per-spell usage counter + per-day reset + new trait shape)." Couatl's 13-entry list annotated 3 at-will + 10 per-day.
+3. **Permanent magical Invisibility (Invisible Stalker):** corrected the stale "both routes need a pathway, currently absent" cross-reference; reframed to note the at-will route is closed (slice 527) and the always-on route is a distinct remaining gap (two design alternatives proposed).
+
+No content / engine changes. Pure doc correction.
+
+**Pattern-check:** slice 527's discovery is an instance of a broader pattern — the engine has accreted enough primitives that some "deferred" entries are stale claims, not real gaps. A future audit-promotion could CI-guard the deferred-mechanics doc with "verified deferred at slice N" timestamps; not in scope here, tracked.
+
+---
+
 **Content (slice 527): at-will Invisibility for Imp / Quasit / Sprite via monster-trait GrantSpell**
 
 Wires the Imp + Quasit + Sprite Invisibility actions per RAW. **Zero engine code** — the slice is pure-content. Discovered while scoping the next monster primitive: three independent pre-existing pieces compose to make at-will monster spellcasting work today, without any new schema or planner.
