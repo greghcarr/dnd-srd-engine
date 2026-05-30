@@ -1094,6 +1094,14 @@ export const applyEffectToBuilder = (
     case 'GrantRitualAdept':
       acc.markRitualAdept();
       return;
+    case 'GrantFeat':
+      // Slice 511: GrantFeat is pre-expanded by `expandGrantFeatEffects`
+      // in derive/effect-stack.ts before reaching this switch (cycle
+      // protection + feat lookup live there, where the content pack is
+      // in scope). A GrantFeat reaching the builder means a caller fed
+      // raw (unexpanded) effects in — treat as a no-op so behavior
+      // degrades gracefully.
+      return;
     case 'GrantUncannyDodge':
       acc.markUncannyDodge();
       return;

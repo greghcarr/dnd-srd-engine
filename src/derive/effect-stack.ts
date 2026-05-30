@@ -97,6 +97,34 @@ const collectFeatEffects = (character: Character, content: ResolvedContent): Eff
   return effects;
 };
 
+// Slice 511: expand any `GrantFeat { featId }` effect into the named
+// feat's effects, recursively (a granted feat's effects might themselves
+// contain GrantFeat references). The builder switch in
+// `src/effects/builder.ts` treats a raw GrantFeat as a no-op, so this
+// expansion is the load-bearing path. Cycle protection: a feat that
+// transitively grants itself is broken at the second visit (the second
+// reference's effects are skipped).
+export const expandGrantFeatEffects = (
+  effects: ReadonlyArray<Effect>,
+  content: ResolvedContent,
+  visited: ReadonlySet<string> = new Set(),
+): Effect[] => {
+  const out: Effect[] = [];
+  for (const effect of effects) {
+    if (effect.kind === 'GrantFeat') {
+      if (visited.has(effect.featId)) continue;
+      const feat = content.feats.get(effect.featId);
+      if (feat === undefined) continue;
+      const nextVisited = new Set(visited);
+      nextVisited.add(effect.featId);
+      out.push(...expandGrantFeatEffects(feat.effects, content, nextVisited));
+    } else {
+      out.push(effect);
+    }
+  }
+  return out;
+};
+
 // Slice 132: magic-item passive effects project to the wearer's
 // effect stack. Two paths:
 //   - Attuned items (in `character.equipped.attuned`) always project,
@@ -265,7 +293,10 @@ export const collectEffectsFromCharacter = (input: BuildEffectStackInput): Effec
   if (pendingChoices) {
     effects.push(...collectResolvedChoiceEffects(character, pendingChoices));
   }
-  return effects;
+  // Slice 511: expand `GrantFeat` references at the boundary so callers
+  // of this helper (which feeds the builder-less Effect[] consumers, e.g.
+  // condition projection introspection) see fully-resolved effects.
+  return expandGrantFeatEffects(effects, content);
 };
 
 export const buildEffectStack = (input: BuildEffectStackInput): EffectAccumulator => {
@@ -275,7 +306,7 @@ export const buildEffectStack = (input: BuildEffectStackInput): EffectAccumulato
 
   const species = content.species.get(character.speciesId);
   if (species) {
-    for (const effect of species.traits) {
+    for (const effect of expandGrantFeatEffects(species.traits, content)) {
       applyEffectToBuilder(effect, acc, {
         source: `species:${species.id}`,
         formulaContext: targetFormulaContext,
@@ -285,7 +316,7 @@ export const buildEffectStack = (input: BuildEffectStackInput): EffectAccumulato
 
   const background = content.backgrounds.get(character.backgroundId);
   if (background) {
-    for (const effect of [...background.traits, ...backgroundProficiencyEffects(background)]) {
+    for (const effect of expandGrantFeatEffects([...background.traits, ...backgroundProficiencyEffects(background)], content)) {
       applyEffectToBuilder(effect, acc, {
         source: `background:${background.id}`,
         formulaContext: targetFormulaContext,
@@ -293,16 +324,16 @@ export const buildEffectStack = (input: BuildEffectStackInput): EffectAccumulato
     }
   }
 
-  for (const effect of collectClassEffects(character, content)) {
+  for (const effect of expandGrantFeatEffects(collectClassEffects(character, content), content)) {
     applyEffectToBuilder(effect, acc, { source: 'class', formulaContext: targetFormulaContext });
   }
-  for (const effect of collectFeatEffects(character, content)) {
+  for (const effect of expandGrantFeatEffects(collectFeatEffects(character, content), content)) {
     applyEffectToBuilder(effect, acc, { source: 'feat', formulaContext: targetFormulaContext });
   }
-  for (const effect of collectItemEffects(character, itemInstances, content)) {
+  for (const effect of expandGrantFeatEffects(collectItemEffects(character, itemInstances, content), content)) {
     applyEffectToBuilder(effect, acc, { source: 'item', formulaContext: targetFormulaContext });
   }
-  for (const effect of collectMonsterEffects(character, content)) {
+  for (const effect of expandGrantFeatEffects(collectMonsterEffects(character, content), content)) {
     applyEffectToBuilder(effect, acc, { source: 'monster', formulaContext: targetFormulaContext });
   }
 
@@ -332,7 +363,7 @@ export const buildEffectStack = (input: BuildEffectStackInput): EffectAccumulato
   }
 
   if (pendingChoices) {
-    for (const effect of collectResolvedChoiceEffects(character, pendingChoices)) {
+    for (const effect of expandGrantFeatEffects(collectResolvedChoiceEffects(character, pendingChoices), content)) {
       applyEffectToBuilder(effect, acc, { source: 'choice', formulaContext: targetFormulaContext });
     }
   }

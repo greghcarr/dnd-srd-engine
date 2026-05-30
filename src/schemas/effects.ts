@@ -344,6 +344,18 @@ export type Effect =
   // available to a future RAW-tightening slice that gates ritual casting
   // strictly on a ritual-casting class feature.
   | { kind: 'GrantRitualAdept' }
+  // Slice 511: indirection primitive that lets an effect projection
+  // include another Feat's effects by id. Canonical user: Warlock
+  // Eldritch Invocations — each invocation is authored as a Feat
+  // (`category: 'invocation'`), and the warlock's per-tier invocation
+  // OfferChoice's options each grant the chosen invocation via
+  // `GrantFeat { featId }`. Expanded by `expandGrantFeatEffects` in
+  // `src/derive/effect-stack.ts` before reaching `applyEffectToBuilder`
+  // (the builder switch sees only fully-expanded leaf effects), with
+  // cycle protection. Unlike adding the feat to `character.featsTaken`,
+  // GrantFeat does NOT surface the feat in `getEffectiveFeatIds`; it
+  // only projects the feat's effects into the effect stack.
+  | { kind: 'GrantFeat'; featId: string }
   // Cross-character effect: while this is active on a character, attacks
   // against that character are made with advantage. Used by Faerie Fire,
   // Hex (kind of), Hunter's Mark variants. The attack planner consults
@@ -722,6 +734,10 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       kind: z.literal('GrantRitualAdept'),
     }),
     z.object({
+      kind: z.literal('GrantFeat'),
+      featId: z.string(),
+    }),
+    z.object({
       kind: z.literal('GrantAdvantageToAttackers'),
       condition: PredicateSchema.optional(),
     }),
@@ -847,6 +863,7 @@ export const EFFECT_KINDS = [
   'GrantEvasion',
   'GrantPotentCantrip',
   'GrantRitualAdept',
+  'GrantFeat',
   'GrantAdvantageToAttackers',
   'ImposeDisadvantageOnAttackers',
   'CancelAdvantageOnAttackers',
