@@ -211,6 +211,8 @@ export class EffectAccumulator {
   private ritualAdeptFlag: boolean = false;
   // Slice 518: Warlock L1 Pact of the Blade presence marker.
   private pactBladeFlag: boolean = false;
+  // Slice 519: Warlock L1 Pact of the Chain presence marker.
+  private pactChainFlag: boolean = false;
   private uncannyDodgeFlag: boolean = false;
   private innateSorcerySpendAlternativeFlag: boolean = false;
   private selfRestorationFlag: boolean = false;
@@ -860,6 +862,18 @@ export class EffectAccumulator {
   hasPactBlade(): boolean {
     return this.pactBladeFlag;
   }
+  markPactChain(): void {
+    this.pactChainFlag = true;
+  }
+  // Slice 519: Warlock L1 Pact of the Chain. Presence marker for the
+  // invocation. The free-cast of Find Familiar comes from the companion
+  // `GrantSpell find-familiar 'at-will'` on the same feat (slice-513
+  // at-will free-cast pathway). This accessor is the gate for future
+  // Chain-specific surface (special familiar forms enforcement, the
+  // "forgo one attack" reaction arm).
+  hasPactChain(): boolean {
+    return this.pactChainFlag;
+  }
   // Slice 200: marker that gates `planUncannyDodge`. Set by Rogue L5+
   // via the `GrantUncannyDodge` effect on the Uncanny Dodge feature.
   markUncannyDodge(): void {
@@ -1114,6 +1128,9 @@ export const applyEffectToBuilder = (
       return;
     case 'GrantPactBlade':
       acc.markPactBlade();
+      return;
+    case 'GrantPactChain':
+      acc.markPactChain();
       return;
     case 'GrantUncannyDodge':
       acc.markUncannyDodge();

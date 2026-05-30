@@ -374,6 +374,17 @@ export type Effect =
   // (abilityOverride 'CHA' + damageTypeOverride; reuses slice-501's
   // `temporaryBuff` shape).
   | { kind: 'GrantPactBlade' }
+  // Slice 519 marker. Presence flag indicating the bearer has the Pact
+  // of the Chain invocation (warlock). Projected via
+  // `EffectAccumulator.markPactChain()` / `hasPactChain()`. Authored
+  // alongside a `GrantSpell find-familiar 'at-will'` companion that
+  // gives the warlock the free-cast of Find Familiar; this marker is
+  // the gate for any future Chain-specific surface (special familiar
+  // forms enforcement, the "forgo one attack" reaction arm). Today the
+  // special-form list and the familiar attack-via-reaction arm are
+  // consumer-managed; the marker exists so a later slice can wire them
+  // without changing the feat-side authoring.
+  | { kind: 'GrantPactChain' }
   // Cross-character effect: while this is active on a character, attacks
   // against that character are made with advantage. Used by Faerie Fire,
   // Hex (kind of), Hunter's Mark variants. The attack planner consults
@@ -759,6 +770,9 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       kind: z.literal('GrantPactBlade'),
     }),
     z.object({
+      kind: z.literal('GrantPactChain'),
+    }),
+    z.object({
       kind: z.literal('GrantAdvantageToAttackers'),
       condition: PredicateSchema.optional(),
     }),
@@ -886,6 +900,7 @@ export const EFFECT_KINDS = [
   'GrantRitualAdept',
   'GrantFeat',
   'GrantPactBlade',
+  'GrantPactChain',
   'GrantAdvantageToAttackers',
   'ImposeDisadvantageOnAttackers',
   'CancelAdvantageOnAttackers',
