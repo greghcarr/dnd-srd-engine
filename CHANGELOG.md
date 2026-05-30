@@ -4,6 +4,51 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 520): Spare the Dying + new `stabilize` spell mechanic**
+
+Wires Spare the Dying, the most-picked L0 healing-utility cantrip in the SRD and one of the last remaining narrative-only L0 cantrips with concrete in-engine mechanics. Adds a new `mechanicalEffects.kind: 'stabilize'` to the spell schema; the cast-spell planner dispatches to `planStabilizeMechanic`, which emits a `Stabilized` event on the first targetId when the target is at 0 HP and not already stable. The reducer side (`applyStabilized`) predates this slice; no reducer / event-schema work needed.
+
+RAW (Spare the Dying, 2024 cantrip): "Choose a creature within range that has 0 Hit Points and isn't dead. The creature becomes Stable."
+
+**Engine:**
+- New `SpellStabilizeMechanicSchema` ([src/schemas/content/spell.ts](src/schemas/content/spell.ts), added to the `SpellMechanic` discriminated union; mirror of `create-item` / `weapon-attack` in shape, no fields beyond `kind`).
+- New `planStabilizeMechanic` inline helper ([src/engine/plan/cast-spell.ts](src/engine/plan/cast-spell.ts), mirror of `planCreateItemMechanic`). Validates a targetId is supplied; gates on `hp.current === 0` AND `deathSaves.stable !== true`; ineligible targets produce zero events (matches RAW "spell does nothing" outcome). Wired into the cast-spell dispatch loop.
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- `spare-the-dying` mechanicalEffects: `[]` -> `[{ kind: 'stabilize' }]`. No other changes (cleric / druid class list, range, components all stay RAW-correct).
+
+**Doc-count guards:**
+- Spell wired count: 196 -> 197 (cast-time bucket 153 -> 154). Narrative count: 70 -> 69. Updated [docs/getting-started.md](docs/getting-started.md), [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md) Coverage table, [docs/gaps-spells.md](docs/gaps-spells.md) Totals + L0 breakdown (16 -> 17 wired, 11 -> 10 narrative).
+- L0 breakdown gains a new "Wired, stabilize (1): spare-the-dying" line. `spare-the-dying` moved out of the L0 Narrative list.
+- The `EFFECT_KINDS` count is unchanged (this is a spell-mechanic schema entry, not an effect primitive); existing guard regexes stay accurate.
+
+**Documented RAW deviations (consumer-managed):**
+- "Choose a creature within range" — the 15-foot range gate is not engine-enforced (consumer-managed, mirror of all other range gates).
+- "isn't dead" — the planner gates on `hp.current === 0 + !stable`. A creature with `deathSaves.failures >= 3` is "dead" per the standard rules but is filtered out by the existing reducer (`applyStabilized` checks the failure count); the planner doesn't re-check. The compound effect is RAW-correct (a dead creature can't be stabilized) but the gate split between planner and reducer is documented here.
+
+**Tests** ([tests/unit/engine/slice-520-spare-the-dying.test.ts](tests/unit/engine/slice-520-spare-the-dying.test.ts), 5 cases): spell shape includes `stabilize`; casting on a downed (0-HP, unstable) target emits Stabilized and flips `deathSaves.stable -> true` on commit; casting on a healthy target (hp.current > 0) emits no Stabilized; casting on an already-stable target emits no Stabilized (idempotent no-op); empty `targetIds` throws with an intent-revealing message.
+
+**Uncle Bob audit:**
+- **Names:** `SpellStabilizeMechanicSchema` / `planStabilizeMechanic` mirror the create-item / weapon-buff naming exactly. `stabilize` mechanic kind matches the existing `Stabilized` event verb form.
+- **DRY:** no new event type, no new reducer; the planner emits the existing `Stabilized` event into the existing reducer. The shape mirrors create-item/weapon-attack which mirror each other.
+- **SRP:** the mechanic helper does one thing (decide whether to emit Stabilized for the first target); the reducer does one thing (set `stable = true`); the cast-spell envelope does the spell-economy work.
+- **Magic numbers:** none. The `0` HP and `true`/`false` stable values are RAW thresholds, named via field access.
+- **at-threading:** the planner takes `at` from the surrounding cast-spell envelope (resolved once via the `at ?? nowIso()` in `planCastSpell`); the helper threads it into the emitted event without re-resolving.
+- **Mechanical outcomes asserted:** spell shape, positive case (Stabilized emitted + state flip on commit), two negative cases (healthy, already-stable), input-validation throw.
+- **Tests:** 5 unit tests. Each names a specific bug it prevents (stabilize wires the existing event; ineligibility gates work; missing target throws clearly).
+
+**Pattern-check:** the `mechanicalEffects.kind` shape now has 18 members. Two patterns dominate: cast-time emitters (most kinds) and tick-time no-ops at cast (`aura-damage`, `movement-damage`, `recurring`, `zone`). `stabilize` joins the cast-time emitter family; it's the smallest member (zero RNG, zero schema-field beyond `kind`) and proves the shape scales down cleanly. Other obvious "tiny mechanic" candidates: `extinguish` (Snuff Out variants), `remove-curse`-style multi-condition strip (the engine has `remove-condition` already; future curse-family work would consider whether to extend that or add a new kind). No factoring needed; cast-spell's mechanic switch is the right level of abstraction.
+
+**Pattern-check ii** (the broader L1 SRD playability arc): the L1 cantrip Wired catalog is now 17 of 27 (62%). The 10 remaining are all genuinely narrative (dancing-lights, druidcraft, light, mage-hand, mending, message, minor-illusion, prestidigitation, thaumaturgy, elementalism). No further mechanical wires are deferred at L0; L0 wiring is complete to the extent the engine models. **L1 cantrip surface is done.**
+
+**Open follow-ups:**
+- None for this slice — Spare the Dying's RAW is fully modeled. The 10 remaining narrative L0 cantrips are genuinely narrative.
+- The README spell-count (line 120) cites "182/339 wired" and is stale (stale since pre-slice-444 by ~15 slices' worth of wires). A future doc-reconcile slice should refresh it; deferring here to keep this slice focused.
+
+**Docs hygiene (slice 520 also)**: archived slices 513-516 detail to [docs/changelog/archive-slices-513-516.md](docs/changelog/archive-slices-513-516.md) to keep the live CHANGELOG under the 60 KB single-Read ceiling (it crossed 61.8 KB before the cut; ~48 KB after).
+
+---
+
 **Engine + content (slice 519): Pact of the Chain invocation + `GrantPactChain` marker + at-will Find Familiar free-cast**
 
 Wires the third L1 Pact boon. Pact of the Chain authors two effects on the same feat: `GrantSpell find-familiar 'at-will'` (CHA spellcasting ability) and the new `GrantPactChain` presence marker. Slice 513's at-will + free-cast pathway makes the granted Find Familiar slot-free. The marker is the gate for any future Chain-specific surface (special-form enforcement, the "forgo one Attack-action attack" reaction arm) without disturbing the feat-side authoring. **This completes the five strict-RAW L1 Warlock invocations** (Armor of Shadows, Eldritch Mind, Pact of the Blade, Pact of the Chain, Pact of the Tome).
@@ -117,120 +162,7 @@ RAW (Pact of the Tome): "Stitching together strands of shadow, you conjure forth
 
 **Pattern-check**: the cascade closes a class of deferrals — any feat / invocation that grants other content via its own OfferChoices now works without inline-duplication. Lessons of the First Ones (when added) can use it; magic-initiate variants granted via Lessons would also work; future Pact of the Chain (familiar form pick) will use it. The `expandGrantFeatEffects` integration means the cascade ALSO works when an option grants a feat that itself contains OfferChoices (recursive indirection). Pact of the Blade and Pact of the Chain stay deferred — Blade needs a summon-weapon mechanism; Chain needs find-familiar-as-action + the special-form-list.
 
-**Engine + content (slice 516): Repelling Blast invocation + `PushTarget` TriggerAction + `event.source` damage fact + cast-spell trigger dispatch**
-
-Wires Repelling Blast (warlock invocation: push 10 ft on Eldritch Blast hits). The work touches four engine surfaces, each surgical:
-
-RAW (Repelling Blast): "When you hit a creature with Eldritch Blast, you can push that creature up to 10 feet away from you in a straight line."
-
-**Engine:**
-- New **`PushTarget { distanceFeet: number }`** TriggerAction ([src/schemas/effects.ts](src/schemas/effects.ts)) + dispatcher branch ([src/engine/triggers/dispatch.ts](src/engine/triggers/dispatch.ts)) that emits a `CreaturePushed` event targeting the triggering event's target (`AttackRolled` and `DamageApplied` both carry `targetId`). The engine doesn't model positions; the event is informational for consumers to apply the position change.
-- New **`event.source`** fact added to DamageApplied trigger facts ([src/engine/triggers/dispatch.ts](src/engine/triggers/dispatch.ts) `buildEventFacts`). The `source` field is already on the event (set by cast-spell to the spell id for spell damage); the fact surfaces it to predicates so per-spell on-hit riders can gate on it (canonical user here: `eq event.source 'eldritch-blast'`).
-- **Cast-spell now dispatches OnEvent triggers** on the spell-attack `DamageApplied` it emits ([src/engine/plan/cast-spell.ts](src/engine/plan/cast-spell.ts) `planAttackMechanic`). Mirrors the resolveAttack damageTriggers dispatch in attack.ts. Previously OnEvent riders attached to spell-cast damage (anything granted via GrantFeat / OnEvent on the caster's effect stack) never fired because cast-spell built its own DamageApplied events without invoking the trigger dispatcher.
-
-**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
-- New `repelling-blast` Feat (category: 'invocation', repeatable: false). Single OnEvent: trigger on DamageApplied where `sourceIsSelf` + `source == 'eldritch-blast'`; action `PushTarget distanceFeet: 10`.
-- Warlock L1 `eldritch-invocations-2` OfferChoice options: 12 → 13.
-
-**Doc-count update**: feats 30 → 31 (13 invocation feats). Features snapshot gains `invocation:repelling-blast`.
-
-**Documented RAW deviation (minor)**: RAW says "when you hit" — engine fires post-damage (the trigger event is DamageApplied, not AttackRolled-then-DamageApplied). RAW doesn't specify damage-vs-push ordering, so the outcome (target damaged + pushed) is the same.
-
-**Tests** at [tests/unit/engine/slice-516-repelling-blast.test.ts](tests/unit/engine/slice-516-repelling-blast.test.ts) - 4 cases: feat ships the expected OnEvent shape; a warlock with Repelling Blast hitting with Eldritch Blast emits `CreaturePushed targetId distanceFeet: 10 sourceCharacterId`; a warlock WITHOUT the invocation doesn't push on EB hits; a warlock WITH Repelling Blast casting fire-bolt does NOT push (gated on `event.source == eldritch-blast`).
-
-**Audit:**
-- *RAW match*: 10-ft push on Eldritch Blast hits, no spillover to other cantrips. Damage-then-push ordering is the documented minor deviation.
-- *Names*: `PushTarget` mirrors `ApplyCondition` / `GrantTempHP` (TriggerAction naming); `event.source` mirrors `event.spellSchool` / `event.spellId`.
-- *DRY*: PushTarget dispatch is one branch in the existing action loop; trigger dispatch in cast-spell mirrors the attack.ts pattern verbatim.
-- *SRP*: PushTarget does one thing (emit CreaturePushed); the engine extension fills one gap (cast-spell never dispatched triggers).
-- *Magic numbers*: 10 (RAW Repelling Blast distance).
-- *Mechanical outcomes asserted*: feat shape, push fires on EB hit with correct fields, no push without invocation, no push on other cantrips.
-
-**Pattern-check**: cast-spell never dispatched OnEvent triggers before this slice — only attack.ts did. That meant ANY on-hit / on-damage rider attached to a spell-caster's effect stack was silently inert for spell damage. Adding the dispatch here unlocks Repelling Blast and any future per-spell on-hit / on-damage rider (Empowered Smite-style rider on a damaging cantrip, etc.). The dispatch is added only at planAttackMechanic; other emission sites in cast-spell (planSaveMechanic damage, planAutoHitMechanic, planHpThresholdMechanic) still don't dispatch — a follow-up slice can extend if a content user appears. Tracked.
-
-**Engine + content (slice 515): Eldritch Mind invocation + `event.isConcentrationCheck` save fact**
-
-Wires Eldritch Mind, the warlock invocation that grants advantage on Constitution saves to maintain Concentration. The fix needs one new save fact so the SetAdvantage condition can fire ONLY for concentration checks (not for ordinary CON saves like poison or hold person).
-
-RAW (Eldritch Mind): "You have advantage on Constitution saving throws that you make to maintain Concentration."
-
-**Engine** ([src/derive/save.ts](src/derive/save.ts), [src/engine/plan/concentration.ts](src/engine/plan/concentration.ts)):
-- `ComputeSaveInput` gains an optional `isConcentrationCheck?: boolean` field. When true, the SetAdvantage condition facts include `event.isConcentrationCheck: true` (else false).
-- `planConcentrationBreakOnDrop` passes `isConcentrationCheck: true` to `computeSavingThrow`. All other CON-save callers (spell saves, recurring-save planners, etc.) leave it false. Safe addition: no existing predicate references this fact, so behavior is unchanged for every save except the new gated Eldritch Mind one.
-
-**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
-- New `eldritch-mind` Feat (category: 'invocation', repeatable: false). Single effect: `SetAdvantage on: { kind: 'save', ability: 'CON' } mode: 'advantage' condition: eq event.isConcentrationCheck true`.
-- Warlock L1 `eldritch-invocations-2` OfferChoice options: 11 → 12.
-
-**Doc-count update**: feats 29 → 30 (12 invocation feats). Features snapshot gains `invocation:eldritch-mind`.
-
-**Tests** at [tests/unit/engine/slice-515-eldritch-mind.test.ts](tests/unit/engine/slice-515-eldritch-mind.test.ts) - 4 cases: feat shape; a warlock with Eldritch Mind gets advantage on a concentration CON save but NOT on an ordinary CON save (the condition fires correctly per-fact); a warlock without the invocation gets NO advantage on the concentration save; L1 OfferChoice exposes Eldritch Mind.
-
-**Audit:**
-- *RAW match*: advantage on concentration CON saves only, no spillover to other CON saves.
-- *Names*: `event.isConcentrationCheck` mirrors `event.isSpellSave` / `event.savePreventsCondition` (existing `event.*` save-facts).
-- *DRY*: one new field on `ComputeSaveInput`; one new entry in the facts map; one inline content effect.
-- *SRP*: the fact does one thing — flag "this save is a concentration check"; the SetAdvantage gates on it.
-- *Magic numbers*: none.
-- *Mechanical outcomes asserted*: feat shape, advantage on concentration save, no advantage on ordinary CON save, control case without invocation.
-
-**Pattern-check**: the new save fact follows the established `event.*` per-save context pattern (slice 258's `event.isSpellSave`, slice 291's `event.savePreventsCondition`). Any future predicate that wants to discriminate concentration saves from other CON saves can use it. Only one caller (`planConcentrationBreakOnDrop`) currently sets the flag; non-concentration save paths default to false (safe).
-
-**Content (slice 514): Warlock invocations batch 2 — Ascendant Step + Gift of the Depths**
-
-Continuation of the post-slice-511 catalog sweep. Two more L1-eligible invocations, content-only (no engine work):
-- **Ascendant Step** — cast Levitate at will. → `GrantSpell levitate 'at-will'`. Rides the slice-513 at-will slot bypass.
-- **Gift of the Depths** — swim speed equal to walking speed + cast Water Breathing once per long rest. → `ModifySpeed swim matchWalkSpeed` + `GrantSpell water-breathing 'oncePerLongRest'`. Multi-effect.
-
-**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
-- 2 new Feat rows (category: 'invocation', repeatable: false), one and two effects respectively.
-- Warlock L1 `eldritch-invocations-2` OfferChoice options: 9 → 11.
-
-**Doc-count update**: feats 27 → 29 (11 invocation feats). Features snapshot gains 2 new wired feat ids. Slice-513's "exactly 9" assertions relaxed to subset checks (added invocations are still PRESENT, but other slices may add more).
-
-**Documented RAW deviation**: Gift of the Depths' "breathe underwater" arm is consumer-managed (engine doesn't model breathing/drowning); the swim speed + once-per-rest Water Breathing cover the mechanically-load-bearing parts.
-
-**Tests** at [tests/unit/engine/slice-514-warlock-invocations-batch-2.test.ts](tests/unit/engine/slice-514-warlock-invocations-batch-2.test.ts) - 5 cases: pack ships 11 invocation feats (slice 513's 9 + 2 new); warlock L1 OfferChoice exposes both; Ascendant Step grants Levitate at-will; Levitate casts without consuming a slot (at-will bypass); Gift of the Depths sets swim speed = walk speed (30 ft for human) AND grants Water Breathing oncePerLongRest.
-
-Pure content slice — no engine changes.
-
-**Engine + content (slice 513): Warlock invocation content sweep — 6 new invocations + at-will GrantSpell slot bypass**
-
-First batch of the post-slice-511 Warlock invocation catalog expansion. Six invocations authored as Feat content rows (category: 'invocation') and added to the warlock L1 OfferChoice. Five are at-will GrantSpell invocations (cast a 1st-level spell without expending a slot, unlimited uses); one is a sense grant.
-
-RAW + wired (each, slice 513):
-- **Armor of Shadows** — cast Mage Armor at will. → `GrantSpell mage-armor 'at-will'`.
-- **Devil's Sight** — see in nonmagical darkness within 120 ft. → `GrantSense darkvision 120`.
-- **Fiendish Vigor** — cast False Life at will. → `GrantSpell false-life 'at-will'`.
-- **Mask of Many Faces** — cast Disguise Self at will. → `GrantSpell disguise-self 'at-will'`.
-- **Misty Visions** — cast Silent Image at will. → `GrantSpell silent-image 'at-will'`.
-- **Otherworldly Leap** — cast Jump at will. → `GrantSpell jump 'at-will'`.
-
-**Engine** ([src/engine/plan/cast-spell.ts](src/engine/plan/cast-spell.ts)):
-- The cast pathway's `noSlotCost` gate now also fires when the bearer has an `at-will` `GrantSpell` for the cast spell id (mirror of the existing `useFreeCast` and `intent.noSlotCost` arms). Detection: walk the caster's `buildEffectStack(...).grantedSpells()` for any entry whose `spellId` matches and `preparation === 'at-will'`. Cantrips short-circuit (already bypass slots). **Previously**: `preparation: 'at-will'` was schema-recognized but not load-bearing — the cast still consumed a slot unless the consumer explicitly passed `noSlotCost: true`. **Now**: any at-will-granted spell casts free. Safe addition: zero existing at-will GrantSpell content in the pack before this slice (verified), so no regression.
-
-**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
-- 6 new Feat rows (above), all `category: 'invocation'`, `repeatable: false`, prerequisites name the relevant prereq (e.g., "Warlock"). Effects are one each (GrantSpell at-will or GrantSense).
-- Warlock L1 `eldritch-invocations-2` OfferChoice's options: 3 → 9 (added one GrantFeat option per new invocation).
-
-**Doc-count update**: `getting-started.md` feats total 21 → 27 (9 invocation feats now). Features snapshot gains 6 new wired feat ids.
-
-**Documented RAW deviations:**
-- **Devil's Sight**: the "see through magical darkness" arm is not modeled (the engine has no magical-darkness obscurement enforcement to bypass). Standard 120 ft darkvision IS granted, which is the load-bearing arm for sight-in-dim-light scenarios.
-- **Mask of Many Faces / Misty Visions / Disguise Self illusion arms**: the perception-vs-illusion mechanic is consumer-managed (no engine model for "the illusion is detected on close inspection / a successful Investigation check").
-- **The L2+ warlock invocation tiers (eldritch-invocations-3 through -9)** still ship `effects: []`. A warlock at L2 with only the L1 OfferChoice wired knows 1 invocation, not the RAW 2. Per-tier wiring is a separate content slice each; the L1 OfferChoice expansion this slice ships is the L1-only fix.
-
-**Tests** at [tests/unit/engine/slice-513-warlock-invocations-batch.test.ts](tests/unit/engine/slice-513-warlock-invocations-batch.test.ts) - 10 cases: pack ships exactly 9 invocation feats; warlock L1 OfferChoice exposes all 9; each of the 5 new at-will GrantSpell invocations projects its `GrantSpell preparation: 'at-will'` into the bearer's effective spell list (table-driven `it.each`); Devil's Sight grants 120 ft darkvision via `senseRange`; **end-to-end the at-will slot bypass works** (a warlock with Armor of Shadows casts Mage Armor with no `SpellSlotConsumed` / `PactSlotConsumed` event); control case (warlock without the invocation casting Mage Armor via knownSpells consumes a slot as normal).
-
-**Audit:**
-- *RAW match*: each invocation grants what RAW says. Deviations documented above.
-- *Names*: feat ids match the canonical invocation names (kebab-case).
-- *DRY*: all 5 at-will spell invocations are one-line GrantSpell rows; the cast-spell engine extension is one ~10-line block at the existing `noSlotCost` derivation site.
-- *SRP*: each invocation does one thing; the engine extension does one thing (detect at-will → bypass slot).
-- *Magic numbers*: 120 (Devil's Sight darkvision range) is RAW.
-- *Mechanical outcomes asserted*: catalog shape, OfferChoice shape, per-invocation projection, sense range, slot-bypass end-to-end, control case.
-
-**Pattern-check**: the at-will slot bypass mechanism generalizes to any future invocation or feat granting an at-will spell (Magic Initiate's `oncePerLongRest` was the only previous "free-cast"-style flag; `at-will` was schema-only). The 5 sibling at-will invocations all use the same one-effect Feat shape — any future at-will-spell invocation (Ascendant Step → Levitate, Eldritch Sight → Detect Magic, etc.) is one content row + one OfferChoice option. The L2-L18 OfferChoice tiers staying stubbed is the next-cohort content sweep work.
+Per-slice detail for slices 513-516 (Warlock invocation content sweep: 6 invocations + at-will GrantSpell slot bypass; Ascendant Step + Gift of the Depths; Eldritch Mind + `event.isConcentrationCheck` save fact; Repelling Blast + `PushTarget` TriggerAction + `event.source` damage fact + cast-spell trigger dispatch) is archived at [docs/changelog/archive-slices-513-516.md](docs/changelog/archive-slices-513-516.md) (slice 520, to keep this file under the 60 KB single-Read ceiling).
 
 Per-slice detail for slices 506-512 (Cleric Divine Order test; Floating Disk reclassification; Skilled origin feat; stale-note sweep; Warlock invocation foundation — choice mechanism + Agonizing Blast + `event.spellId` + `GrantFeat` indirection + per-cantrip variants) is archived at [docs/changelog/archive-slices-506-512.md](docs/changelog/archive-slices-506-512.md) (slice 517, to keep this file under the 60 KB single-Read ceiling).
 

@@ -1579,6 +1579,41 @@ const planWeaponBuffMechanic = (
 // inventory via one ItemAcquired-with-characterId event each. Canonical
 // user: Goodberry (10 single-use `goodberry` consumables). Validates
 // the item definition exists so a typo fails at plan time.
+// Slice 520: stabilize-the-dying mechanic. Emits a `Stabilized` event
+// on the first valid target (0 HP, not yet stable, not dead). Mirrors
+// the create-item shape: tiny, deterministic, no RNG. The event-side
+// reducer (`applyStabilized`) flips `deathSaves.stable = true` and
+// halts the death-save sequence. Ineligible targets produce zero
+// events; the surrounding cast-spell envelope still consumes the
+// spell economy, matching the RAW "spell does nothing" outcome.
+const planStabilizeMechanic = (
+  state: CampaignState,
+  intent: CastSpellIntent,
+  spell: Spell,
+  declaredEventId: string,
+  at: string,
+): Event[] => {
+  const targetId = intent.targetIds?.[0];
+  if (!targetId) {
+    throw new Error(`Spell ${spell.id} stabilize requires a targetId`);
+  }
+  const target = state.characters[targetId];
+  if (!target) {
+    throw new Error(`Spell ${spell.id} stabilize target ${targetId} not found`);
+  }
+  if (target.hp.current !== 0) return [];
+  if (target.deathSaves.stable === true) return [];
+  return [
+    {
+      id: newEventId() as ULID,
+      at,
+      type: 'Stabilized',
+      targetId: targetId as ULID,
+      causedByEventId: declaredEventId as ULID,
+    } as Event,
+  ];
+};
+
 const planCreateItemMechanic = (
   content: ResolvedContent,
   intent: CastSpellIntent,
@@ -1905,6 +1940,8 @@ export const planCastSpell = (
       // reducer can persist it on the EffectInstance in one shot.
     } else if (mechanic.kind === 'create-item') {
       events.push(...planCreateItemMechanic(content, intent, spell, mechanic, declared.id));
+    } else if (mechanic.kind === 'stabilize') {
+      events.push(...planStabilizeMechanic(state, intent, spell, declared.id, at));
     } else {
       events.push(...planHealMechanic(state, content, rng, intent, spell, mechanic, declared.id, at));
     }

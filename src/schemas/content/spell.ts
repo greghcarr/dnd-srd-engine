@@ -512,6 +512,23 @@ const SpellWeaponBuffMechanicSchema = z
   })
   .strict();
 
+// Slice 520: stabilize-the-dying mechanic. Canonical user: Spare the
+// Dying (2024 Necromancy cantrip): "Choose a creature within range
+// that has 0 Hit Points and isn't dead. The creature becomes Stable."
+// The target is named on the cast intent (`targetIds[0]`); the
+// mechanic flag drives the cast-spell planner to emit a `Stabilized`
+// event (slice's existing `applyStabilized` reducer sets
+// `deathSaves.stable = true`). The planner gates the event on the
+// target being at 0 HP and not yet stable; an unmet gate emits zero
+// events (the cast still consumes its slot / spell economy via the
+// surrounding cast-spell envelope, mirroring the RAW "spell does
+// nothing" outcome on an ineligible target).
+const SpellStabilizeMechanicSchema = z
+  .object({
+    kind: z.literal('stabilize'),
+  })
+  .strict();
+
 export const SpellMechanicSchema = z.discriminatedUnion('kind', [
   SpellAttackMechanicSchema,
   SpellSaveMechanicSchema,
@@ -531,6 +548,7 @@ export const SpellMechanicSchema = z.discriminatedUnion('kind', [
   SpellWeaponBuffMechanicSchema,
   SpellZoneMechanicSchema,
   SpellCreateItemMechanicSchema,
+  SpellStabilizeMechanicSchema,
 ]);
 export type SpellMechanic = z.infer<typeof SpellMechanicSchema>;
 
