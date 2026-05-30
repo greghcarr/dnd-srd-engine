@@ -4011,7 +4011,8 @@
       "proficiencyBonus": 2,
       "languages": ["infernal", "common"],
       "traits": [
-        { "kind": "GrantMagicResistance" }
+        { "kind": "GrantMagicResistance" },
+        { "kind": "GrantSpell", "spellId": "invisibility", "preparation": "at-will", "spellcastingAbility": "CHA" }
       ]
     },
     {
@@ -4035,7 +4036,8 @@
       "proficiencyBonus": 2,
       "languages": ["abyssal", "common"],
       "traits": [
-        { "kind": "GrantMagicResistance" }
+        { "kind": "GrantMagicResistance" },
+        { "kind": "GrantSpell", "spellId": "invisibility", "preparation": "at-will", "spellcastingAbility": "CHA" }
       ]
     },
     {
@@ -4655,6 +4657,9 @@
       "senses": { "passivePerceptionOverride": 13 },
       "cr": 0.25,
       "xp": 50,
+      "traits": [
+        { "kind": "GrantSpell", "spellId": "invisibility", "preparation": "at-will", "spellcastingAbility": "CHA" }
+      ],
       "proficiencyBonus": 2,
       "languages": ["common", "elvish", "sylvan"]
     },

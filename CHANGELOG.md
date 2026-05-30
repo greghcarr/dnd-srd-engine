@@ -4,6 +4,48 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 527): at-will Invisibility for Imp / Quasit / Sprite via monster-trait GrantSpell**
+
+Wires the Imp + Quasit + Sprite Invisibility actions per RAW. **Zero engine code** — the slice is pure-content. Discovered while scoping the next monster primitive: three independent pre-existing pieces compose to make at-will monster spellcasting work today, without any new schema or planner.
+
+RAW (each, paraphrased): "The {monster} casts Invisibility on itself, requiring no spell components and using Charisma as the spellcasting ability."
+
+**The discovery:** what looked like a substantial new primitive ("monster-action-self-cast-condition") was already supported by composing three slices that landed years apart:
+
+1. **Slice 444-ish**: monster statblock `traits[]` array folds verbatim into the bearer's effect stack ([src/derive/effect-stack.ts](src/derive/effect-stack.ts) `collectMonsterEffects` line 223).
+2. **Slice 212**: `characterKnowsSpell` consults the effect stack via `effectiveSpellList`, so GrantSpell entries projected from any source (subclass, item, **monster trait**) make the spell castable.
+3. **Slice 513**: the cast-spell `noSlotCost` derivation detects `preparation: 'at-will'` on granted spells and skips SpellSlotConsumed emission entirely.
+
+Together, an at-will GrantSpell trait on a monster makes the monster cast that spell for free. No new pathway needed.
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- Imp `traits` gain `{ kind: 'GrantSpell', spellId: 'invisibility', preparation: 'at-will', spellcastingAbility: 'CHA' }`.
+- Quasit `traits` gain the same.
+- Sprite `traits` (previously `[]`) become `[{ kind: 'GrantSpell', spellId: 'invisibility', ...}]`.
+
+No counts move (traits aren't doc-count guarded; the spell + condition are pre-existing).
+
+**Tests** ([tests/unit/engine/slice-527-monster-at-will-invisibility.test.ts](tests/unit/engine/slice-527-monster-at-will-invisibility.test.ts), 9 cases — 3 monsters × 3 assertions each via `it.each`): trait shape ships correctly; effect stack projects `grantedSpells().invisibility` with `at-will` + `CHA`; `engine.plan.castSpell` resolves with `ConditionApplied(invisible)` + `ConcentrationStarted` and **no** `SpellSlotConsumed` / `PactSlotConsumed`.
+
+**Documented RAW deviations (deferred, all three monsters):**
+- "Requiring no spell components" — the engine doesn't gate cast-spell on V/S/M availability (components are narrative); non-deviation in practice.
+- Imp + Quasit Shape-Shift action stays deferred (needs monster-action polymorph primitive).
+- Quasit Scare (1/Day) reaction stays deferred (needs per-day-uses + reaction-with-save-or-condition primitive).
+- Sprite Enchanting Bow (ranged 1-piercing + Charmed-on-hit) stays deferred (small slice; would be a slice-321 mirror).
+
+**Audit (content-sweep abbreviated):**
+- **Names:** GrantSpell trait shape matches the existing slice-513 invocation pattern verbatim.
+- **DRY:** zero new mechanism; three pre-existing slices compose. No new identifiers anywhere.
+- **SRP:** each composed slice still does one thing; this slice authors three monster traits.
+- **Magic numbers:** none.
+- **Mechanical outcomes asserted:** trait shape, effect-stack projection, end-to-end cast emits the right events and skips the slot consumption event.
+
+**Pattern-check:** this slice changes how to think about monster spellcasting going forward. The deferred-mechanics doc ([docs/gaps-monsters-deferred-mechanics.md](docs/gaps-monsters-deferred-mechanics.md)) lists "Innate Spellcasting (per-spell envelope flavor)" as a substantial deferred primitive needing "monster-spellcasting deferral... per-spell at-will / per-day usage envelope." **For the at-will arm specifically, that primitive already exists.** Authoring a monster trait `{kind: 'GrantSpell', spellId: X, preparation: 'at-will', spellcastingAbility: Y}` is the canonical shape. **The per-day arm still needs a new primitive** (per-spell usage counter + per-day reset trigger), but the at-will arm should be migrated from the "deferred" list to the "wire as content" list.
+
+The at-will-spell monsters in the pack that should next get this treatment (per the deferred-mechanics doc's Innate Spellcasting list): Cloud Giant (Detect Magic, Fog Cloud), Storm Giant (Detect Magic, Feather Fall, Levitate, Light), Couatl (Detect Evil and Good, Detect Magic, Detect Thoughts), Unicorn (Detect Evil and Good, Druidcraft, Pass without Trace), Deva, Planetar, Solar (Detect Evil and Good, Invisibility self-only). Each is a 1-3-line content slice now, not a new-primitive slice. Tracked.
+
+---
+
 **Content (slice 526): Quasit Rend natural weapon — completes the Pact of the Chain familiar combat surface**
 
 Wires the Quasit's Rend action per RAW. Same shape as Giant Centipede Bite (slice 477) but slashing instead of piercing. Quasit's Magic Resistance was already wired; Invisibility / Shape-Shift / Scare stay deferred (each requires its own primitive). **This closes the Pact of the Chain familiar combat surface: all 7 RAW special-form familiars (Pseudodragon, Venomous Snake, Sphinx of Wonder, Sprite, Imp, Quasit, Skeleton) now have wired primary-attack routes.** (Skeleton uses generic Shortsword/Shortbow + has no RAW Multiattack.)
