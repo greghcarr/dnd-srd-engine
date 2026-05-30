@@ -4,6 +4,36 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 510): Warlock L1 Eldritch Invocations choice mechanism + Agonizing Blast canonical user + `event.spellId` damage fact**
+
+Opens the Warlock invocations arc. The L1 `eldritch-invocations-2` feature was an `effects: []` stub; now ships an `OfferChoice oneOf: 1` whose first option is **Agonizing Blast** with inline effects (`AddModifier target:'damage' value:abilityMod-CHA condition: eq event.spellId 'eldritch-blast'`). Additional invocations are future content slices; this one establishes the wire shape.
+
+RAW (SRD 5.2.1 Warlock L1 Eldritch Invocations): "You gain one invocation of your choice."
+RAW (Agonizing Blast invocation): "Choose one of your known Warlock cantrips that deals damage. You can add your Charisma modifier to that spell's damage rolls."
+
+**Engine** ([src/engine/plan/cast-spell.ts](src/engine/plan/cast-spell.ts)):
+- Added `event.spellId: spell.id` to BOTH the attack-mechanic and save-mechanic damage-facts maps (lines ~441 and ~632), enabling per-spell damage riders via `AddModifier ... condition: eq event.spellId '<id>'`. Mirror of how slice 359 added `event.spellSchool` for Empowered Evocation.
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- Warlock L1 `eldritch-invocations-2`: `effects: []` → single `OfferChoice oneOf: 1` over options `[{ agonizing-blast → AddModifier(damage, CHA-mod) gated on eldritch-blast }]`.
+
+**Documented RAW deviations (this first ship):**
+- The invocation is wired statically to Eldritch Blast. RAW lets the warlock pick any known Warlock damage cantrip; modeling that needs an inner sub-choice inside the option (an OfferChoice within an OfferChoice option's effects, or a `damageBoostsSpell` parameterized field). Deferred. Eldritch Blast is the only Warlock-class-listed damage cantrip in the pack, so the deviation rarely matters in practice.
+- The full invocation catalog (Mask of Many Faces, Devil's Sight, Pact of the Tome/Blade/Chain, etc.) is a multi-slice content authoring effort; this slice ships only the L1 choice mechanism + Agonizing Blast.
+- The L1 feature is still named `eldritch-invocations-2` ("(2 known)") — off-by-one from RAW (L1 grants 1, not 2). Renaming has blast radius across the slice-377 drift audit and content references; left for a separate cleanup slice. The `OfferChoice oneOf: 1` correctly grants 1 invocation regardless of the misleading name.
+
+**Tests** at [tests/unit/engine/slice-510-agonizing-blast.test.ts](tests/unit/engine/slice-510-agonizing-blast.test.ts) - 4 cases: the L1 feature ships the OfferChoice with Agonizing Blast as the first option; a warlock who picks Agonizing Blast adds +4 CHA-mod to Eldritch Blast damage (verified via both `modifierSum` on the effect stack with `event.spellId` facts AND end-to-end via DamageRolled.rolls[0].modifier === 4); a warlock who has NOT picked the invocation deals no extra damage; the invocation does NOT add CHA-mod to other cantrips (gated on spellId, fire-bolt unaffected).
+
+**Audit:**
+- *RAW match*: 1 invocation choice at L1; Agonizing Blast adds CHA-mod to Eldritch Blast damage rolls. The hardcoded-Eldritch-Blast vs. per-cantrip-choice is the documented deviation.
+- *Names*: `event.spellId` mirrors `event.spellSchool` / `event.damageType` (existing per-spell-property fact pattern).
+- *DRY*: reuses the existing AddModifier + condition + modifierSum chain (precedent: Empowered Evocation slice 359). The OfferChoice option is inline; future invocations will inline-duplicate effects too unless a `GrantFeat` primitive ships first to deduplicate.
+- *SRP*: `event.spellId` is one field on two facts maps; the invocation is one inline effect on one option.
+- *Magic numbers*: none.
+- *Mechanical outcomes asserted*: feature shape, effect-stack `modifierSum` projection (both matching and non-matching spellId), end-to-end damage delta with/without the invocation.
+
+**Pattern-check**: both damage paths in cast-spell.ts (attack + save) got the new `event.spellId` fact symmetrically. Any future per-spell damage rider (e.g., Bloodbond Hex variants) can gate on it. No regression: existing AddModifier predicates that don't reference `event.spellId` evaluate identically.
+
 **Docs (slice 509): strike two more stale L1-feature notes (Bardic Inspiration formula + Barbarian L1 Weapon Mastery)**
 
 Pattern-check sweep continuing from slice 504's stale-stub discoveries. Two more notes in [docs/gaps-class-features.md](docs/gaps-class-features.md) describe gaps that no longer exist:

@@ -440,6 +440,10 @@ const planAttackMechanic = (
   const damageFacts = new Map<string, unknown>([
     ['event.damageType', damageType],
     ['event.spellSchool', spell.school],
+    // Slice 510: enables per-spell damage riders (Warlock Agonizing Blast
+    // adds CHA-mod to Eldritch Blast damage rolls only). Predicate uses
+    // `eq event.spellId '<spell-id>'`.
+    ['event.spellId', spell.id],
   ]);
   const damageModifierBonus = casterEffects.modifierSum('damage', damageFacts);
   const events: Event[] = [];
@@ -631,6 +635,8 @@ const planSaveMechanic = (
     const damageFacts = new Map<string, unknown>([
       ['event.damageType', mechanic.damageType],
       ['event.spellSchool', spell.school],
+      // Slice 510: per-spell damage rider parallel to the attack path.
+      ['event.spellId', spell.id],
     ]);
     saveDamageModifierBonus = casterEffects.modifierSum('damage', damageFacts);
     const { rolls: baseRolls, modifier } = rollDamage(mechanic.damageDice, bonusDice, rng, false);

@@ -342,7 +342,7 @@
       "skillChoices": { "choices": 2, "from": ["arcana", "deception", "history", "intimidation", "investigation", "nature", "religion"] },
       "subclassLevel": 3,
       "levelTable": {
-        "1": { "proficiencyBonus": 2, "features": [{ "id": "eldritch-invocations-2", "name": "Eldritch Invocations (2 known)", "effects": [] }], "columns": {} },
+        "1": { "proficiencyBonus": 2, "features": [{ "id": "eldritch-invocations-2", "name": "Eldritch Invocations (2 known)", "effects": [{ "kind": "OfferChoice", "choiceId": "eldritch-invocations-l1", "prompt": "Choose an Eldritch Invocation. (Slice 510 ships one canonical option: Agonizing Blast. The full invocation catalog is a future content sweep.)", "oneOf": 1, "when": "onAcquire", "options": [{ "id": "agonizing-blast", "label": "Agonizing Blast", "effects": [{ "kind": "AddModifier", "target": "damage", "value": { "kind": "abilityMod", "ability": "CHA" }, "condition": { "kind": "eq", "path": "event.spellId", "value": "eldritch-blast" } }] }] }] }], "columns": {} },
         "2": { "proficiencyBonus": 2, "features": [{ "id": "magical-cunning", "name": "Magical Cunning", "effects": [] }, { "id": "eldritch-invocations-3", "name": "Eldritch Invocations (3 known)", "effects": [] }], "columns": {} },
         "3": { "proficiencyBonus": 2, "features": [], "columns": {} },
         "4": { "proficiencyBonus": 2, "features": [], "columns": {} },
