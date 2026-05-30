@@ -4,6 +4,24 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 514): Warlock invocations batch 2 — Ascendant Step + Gift of the Depths**
+
+Continuation of the post-slice-511 catalog sweep. Two more L1-eligible invocations, content-only (no engine work):
+- **Ascendant Step** — cast Levitate at will. → `GrantSpell levitate 'at-will'`. Rides the slice-513 at-will slot bypass.
+- **Gift of the Depths** — swim speed equal to walking speed + cast Water Breathing once per long rest. → `ModifySpeed swim matchWalkSpeed` + `GrantSpell water-breathing 'oncePerLongRest'`. Multi-effect.
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- 2 new Feat rows (category: 'invocation', repeatable: false), one and two effects respectively.
+- Warlock L1 `eldritch-invocations-2` OfferChoice options: 9 → 11.
+
+**Doc-count update**: feats 27 → 29 (11 invocation feats). Features snapshot gains 2 new wired feat ids. Slice-513's "exactly 9" assertions relaxed to subset checks (added invocations are still PRESENT, but other slices may add more).
+
+**Documented RAW deviation**: Gift of the Depths' "breathe underwater" arm is consumer-managed (engine doesn't model breathing/drowning); the swim speed + once-per-rest Water Breathing cover the mechanically-load-bearing parts.
+
+**Tests** at [tests/unit/engine/slice-514-warlock-invocations-batch-2.test.ts](tests/unit/engine/slice-514-warlock-invocations-batch-2.test.ts) - 5 cases: pack ships 11 invocation feats (slice 513's 9 + 2 new); warlock L1 OfferChoice exposes both; Ascendant Step grants Levitate at-will; Levitate casts without consuming a slot (at-will bypass); Gift of the Depths sets swim speed = walk speed (30 ft for human) AND grants Water Breathing oncePerLongRest.
+
+Pure content slice — no engine changes.
+
 **Engine + content (slice 513): Warlock invocation content sweep — 6 new invocations + at-will GrantSpell slot bypass**
 
 First batch of the post-slice-511 Warlock invocation catalog expansion. Six invocations authored as Feat content rows (category: 'invocation') and added to the warlock L1 OfferChoice. Five are at-will GrantSpell invocations (cast a 1st-level spell without expending a slot, unlimited uses); one is a sense grant.

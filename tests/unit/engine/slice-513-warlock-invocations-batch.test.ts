@@ -78,24 +78,16 @@ const seedInvocationPick = (characterId: string, featId: string): [ChoiceRequire
 };
 
 describe('Warlock invocations content sweep (slice 513)', () => {
-  it('ships 9 invocation feats (3 Agonizing Blast variants + 6 new sweep)', () => {
-    const invocations = PACK.feats.filter((f) => f.category === 'invocation');
-    expect(invocations).toHaveLength(9);
-    const ids = invocations.map((f) => f.id).sort();
-    expect(ids).toEqual([
-      'agonizing-blast-chill-touch',
-      'agonizing-blast-eldritch-blast',
-      'agonizing-blast-poison-spray',
-      'armor-of-shadows',
-      'devils-sight',
-      'fiendish-vigor',
-      'mask-of-many-faces',
-      'misty-visions',
-      'otherworldly-leap',
-    ]);
+  it('ships the slice-513 batch of 6 invocations alongside earlier wires', () => {
+    const ids = PACK.feats.filter((f) => f.category === 'invocation').map((f) => f.id);
+    // Slice 513 added these 6 (Agonizing Blast variants from slices
+    // 510/512 are separate; later content sweeps may add more).
+    for (const id of ['armor-of-shadows', 'devils-sight', 'fiendish-vigor', 'mask-of-many-faces', 'misty-visions', 'otherworldly-leap']) {
+      expect(ids).toContain(id);
+    }
   });
 
-  it('the warlock L1 OfferChoice exposes all 9 invocation options', () => {
+  it('the warlock L1 OfferChoice exposes the slice-513 invocation options', () => {
     const w = PACK.classes.find((c) => c.id === 'warlock')!;
     const feat = w.levelTable['1']!.features.find((f) => f.id === 'eldritch-invocations-2')!;
     const oc = feat.effects[0] as {
@@ -104,7 +96,10 @@ describe('Warlock invocations content sweep (slice 513)', () => {
       options: ReadonlyArray<{ id: string }>;
     };
     expect(oc.oneOf).toBe(1);
-    expect(oc.options).toHaveLength(9);
+    const ids = oc.options.map((o) => o.id);
+    for (const id of ['armor-of-shadows', 'devils-sight', 'fiendish-vigor', 'mask-of-many-faces', 'misty-visions', 'otherworldly-leap']) {
+      expect(ids).toContain(id);
+    }
   });
 
   it.each(NEW_INVOCATIONS)('the $featId invocation grants $spellId via the bearer\'s effective spell list', ({ featId, spellId }) => {
