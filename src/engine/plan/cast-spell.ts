@@ -1661,7 +1661,25 @@ export const planCastSpell = (
       );
     }
   }
-  const noSlotCost = intent.noSlotCost === true || useFreeCast;
+  // Slice 513: a spell granted to this character with `preparation: 'at-will'`
+  // (Warlock invocations like Armor of Shadows, Fiendish Vigor, Mask of
+  // Many Faces, etc.) is cast without expending a slot RAW. The cast path
+  // walks the bearer's effect-stack GrantSpell entries and checks whether
+  // any grants the cast spell id at-will; if so, slot consumption is
+  // bypassed regardless of the consumer's intent flags.
+  const isAtWillGranted = (() => {
+    if (spell.level === CANTRIP_LEVEL) return false; // cantrips already bypass slots
+    const effects = buildEffectStack({
+      character,
+      content,
+      itemInstances: state.itemInstances,
+      pendingChoices: state.pendingChoices,
+    });
+    return effects.grantedSpells().some(
+      (g) => g.spellId === intent.spellId && g.preparation === 'at-will',
+    );
+  })();
+  const noSlotCost = intent.noSlotCost === true || useFreeCast || isAtWillGranted;
   if (spell.level > CANTRIP_LEVEL && !castAsRitual && !noSlotCost) {
     const available = computeAvailableSpellSlots(character, content.classes);
     if (slotSource === 'pact') {

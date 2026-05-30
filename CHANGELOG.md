@@ -4,6 +4,44 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 513): Warlock invocation content sweep — 6 new invocations + at-will GrantSpell slot bypass**
+
+First batch of the post-slice-511 Warlock invocation catalog expansion. Six invocations authored as Feat content rows (category: 'invocation') and added to the warlock L1 OfferChoice. Five are at-will GrantSpell invocations (cast a 1st-level spell without expending a slot, unlimited uses); one is a sense grant.
+
+RAW + wired (each, slice 513):
+- **Armor of Shadows** — cast Mage Armor at will. → `GrantSpell mage-armor 'at-will'`.
+- **Devil's Sight** — see in nonmagical darkness within 120 ft. → `GrantSense darkvision 120`.
+- **Fiendish Vigor** — cast False Life at will. → `GrantSpell false-life 'at-will'`.
+- **Mask of Many Faces** — cast Disguise Self at will. → `GrantSpell disguise-self 'at-will'`.
+- **Misty Visions** — cast Silent Image at will. → `GrantSpell silent-image 'at-will'`.
+- **Otherworldly Leap** — cast Jump at will. → `GrantSpell jump 'at-will'`.
+
+**Engine** ([src/engine/plan/cast-spell.ts](src/engine/plan/cast-spell.ts)):
+- The cast pathway's `noSlotCost` gate now also fires when the bearer has an `at-will` `GrantSpell` for the cast spell id (mirror of the existing `useFreeCast` and `intent.noSlotCost` arms). Detection: walk the caster's `buildEffectStack(...).grantedSpells()` for any entry whose `spellId` matches and `preparation === 'at-will'`. Cantrips short-circuit (already bypass slots). **Previously**: `preparation: 'at-will'` was schema-recognized but not load-bearing — the cast still consumed a slot unless the consumer explicitly passed `noSlotCost: true`. **Now**: any at-will-granted spell casts free. Safe addition: zero existing at-will GrantSpell content in the pack before this slice (verified), so no regression.
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- 6 new Feat rows (above), all `category: 'invocation'`, `repeatable: false`, prerequisites name the relevant prereq (e.g., "Warlock"). Effects are one each (GrantSpell at-will or GrantSense).
+- Warlock L1 `eldritch-invocations-2` OfferChoice's options: 3 → 9 (added one GrantFeat option per new invocation).
+
+**Doc-count update**: `getting-started.md` feats total 21 → 27 (9 invocation feats now). Features snapshot gains 6 new wired feat ids.
+
+**Documented RAW deviations:**
+- **Devil's Sight**: the "see through magical darkness" arm is not modeled (the engine has no magical-darkness obscurement enforcement to bypass). Standard 120 ft darkvision IS granted, which is the load-bearing arm for sight-in-dim-light scenarios.
+- **Mask of Many Faces / Misty Visions / Disguise Self illusion arms**: the perception-vs-illusion mechanic is consumer-managed (no engine model for "the illusion is detected on close inspection / a successful Investigation check").
+- **The L2+ warlock invocation tiers (eldritch-invocations-3 through -9)** still ship `effects: []`. A warlock at L2 with only the L1 OfferChoice wired knows 1 invocation, not the RAW 2. Per-tier wiring is a separate content slice each; the L1 OfferChoice expansion this slice ships is the L1-only fix.
+
+**Tests** at [tests/unit/engine/slice-513-warlock-invocations-batch.test.ts](tests/unit/engine/slice-513-warlock-invocations-batch.test.ts) - 10 cases: pack ships exactly 9 invocation feats; warlock L1 OfferChoice exposes all 9; each of the 5 new at-will GrantSpell invocations projects its `GrantSpell preparation: 'at-will'` into the bearer's effective spell list (table-driven `it.each`); Devil's Sight grants 120 ft darkvision via `senseRange`; **end-to-end the at-will slot bypass works** (a warlock with Armor of Shadows casts Mage Armor with no `SpellSlotConsumed` / `PactSlotConsumed` event); control case (warlock without the invocation casting Mage Armor via knownSpells consumes a slot as normal).
+
+**Audit:**
+- *RAW match*: each invocation grants what RAW says. Deviations documented above.
+- *Names*: feat ids match the canonical invocation names (kebab-case).
+- *DRY*: all 5 at-will spell invocations are one-line GrantSpell rows; the cast-spell engine extension is one ~10-line block at the existing `noSlotCost` derivation site.
+- *SRP*: each invocation does one thing; the engine extension does one thing (detect at-will → bypass slot).
+- *Magic numbers*: 120 (Devil's Sight darkvision range) is RAW.
+- *Mechanical outcomes asserted*: catalog shape, OfferChoice shape, per-invocation projection, sense range, slot-bypass end-to-end, control case.
+
+**Pattern-check**: the at-will slot bypass mechanism generalizes to any future invocation or feat granting an at-will spell (Magic Initiate's `oncePerLongRest` was the only previous "free-cast"-style flag; `at-will` was schema-only). The 5 sibling at-will invocations all use the same one-effect Feat shape — any future at-will-spell invocation (Ascendant Step → Levitate, Eldritch Sight → Detect Magic, etc.) is one content row + one OfferChoice option. The L2-L18 OfferChoice tiers staying stubbed is the next-cohort content sweep work.
+
 **Content + test (slice 512): per-cantrip generalization for Agonizing Blast — 3 invocation Feat variants**
 
 Closes the slice-510/511 documented RAW deviation: Agonizing Blast was hardcoded to Eldritch Blast; RAW lets the warlock pick any known Warlock damage cantrip. The starter pack lists three such cantrips (Eldritch Blast, Chill Touch, Poison Spray), and this slice authors one Feat variant per cantrip — the warlock's L1 invocation OfferChoice now exposes three labeled options ("Agonizing Blast (Eldritch Blast)" / "(Chill Touch)" / "(Poison Spray)"), each granting its corresponding feat. The player's pick at acquisition time IS the cantrip choice; no nested OfferChoice or ChoiceResolved-cascade needed for the one-cantrip-pick case.

@@ -96,12 +96,14 @@ describe('Agonizing Blast per-cantrip generalization (slice 512)', () => {
       options: ReadonlyArray<{ id: string; effects: ReadonlyArray<{ kind: string; featId?: string }> }>;
     };
     expect(oc.oneOf).toBe(1);
-    expect(oc.options.map((o) => o.id).sort()).toEqual([
-      'agonizing-blast-chill-touch',
-      'agonizing-blast-eldritch-blast',
-      'agonizing-blast-poison-spray',
-    ]);
-    for (const opt of oc.options) {
+    // Slice 513 expanded the OfferChoice from 3 -> 9 options (added 6
+    // sweep invocations). Check the 3 Agonizing Blast variants are
+    // PRESENT (subset), not that they're the only options.
+    const optionIds = oc.options.map((o) => o.id);
+    expect(optionIds).toContain('agonizing-blast-chill-touch');
+    expect(optionIds).toContain('agonizing-blast-eldritch-blast');
+    expect(optionIds).toContain('agonizing-blast-poison-spray');
+    for (const opt of oc.options.filter((o) => o.id.startsWith('agonizing-blast-'))) {
       expect(opt.effects).toEqual([{ kind: 'GrantFeat', featId: opt.id }]);
     }
   });
