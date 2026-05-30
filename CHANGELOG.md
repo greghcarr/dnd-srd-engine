@@ -4,6 +4,30 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 524): Sphinx of Wonder Rend natural weapon**
+
+Wires the Sphinx of Wonder's Rend action per RAW. The Sphinx of Wonder is a Pact of the Chain special-form familiar (CR 1); its Magic Resistance trait was already wired (pre-existing `GrantMagicResistance`). This slice closes the Rend gap so the Sphinx can perform its RAW slashing+radiant attack in combat. Pure content slice; single weapon definition, no statblock change (Sphinx of Wonder has no RAW Multiattack — single Rend action).
+
+RAW (SRD 5.2.1 Sphinx of Wonder, CR 1): "Rend. Melee Attack Roll: +5, reach 5 ft. Hit: 5 (1d4 + 3) Slashing damage plus 7 (2d6) Radiant damage."
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- New `sphinx-of-wonder-rend` weapon definition: 1d4 slashing primary + slice-316 unconditional onHit 2d6 radiant rider (Spy Shortsword's poison rider shape recolored to radiant).
+
+**Doc-count updates:** pack weapons 77 -> 78, items 541 -> 542. Updated [docs/getting-started.md](docs/getting-started.md) and [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md).
+
+**Documented RAW deviation (deferred):**
+- **Burst of Ingenuity** (2/Day reaction): adds +2 to an ability check or saving throw made by the sphinx or a creature within 30 ft. Needs the per-day-uses + reaction-with-numeric-modifier primitive (no current sibling primitive composes for "reaction granting +N to someone else's d20"). Substantial slice, not bundled here.
+
+**Tests** ([tests/unit/engine/slice-524-sphinx-of-wonder-rend.test.ts](tests/unit/engine/slice-524-sphinx-of-wonder-rend.test.ts), 2 cases): natural weapon RAW damage profile (1d4 slashing + 2d6 radiant rider); statblock retains pre-existing Magic Resistance + has no Multiattack (RAW correctness).
+
+**Audit (content-sweep abbreviated):** RAW match exact for the wired Rend; deferred Burst of Ingenuity documented; no new identifiers beyond the weapon id.
+
+**Pattern-check:** Sphinx of Wonder joins the "single-attack natural weapon with on-hit damage rider" family (Spy Shortsword poison rider, Giant Spider Bite, Venomous Snake Bite). At 4 + members the shape is canonical; on-hit damage-rider weapons are now a routine one-line authoring task.
+
+**Closes a Pact-of-the-Chain familiar combat gap.** With Sphinx of Wonder now combat-ready, **4 of 7 Chain familiars** (Pseudodragon, Venomous Snake, Sphinx of Wonder, Sprite) can attack via the engine's combat pipeline. Imp, Quasit, Skeleton still need slices (Imp/Quasit need Shapechanger + at-will Invisibility primitives; Skeleton needs its weapon attacks wired).
+
+---
+
 **Content (slice 523): Pseudodragon Multiattack + `pseudodragon-bite` natural weapon**
 
 Wires the Pseudodragon's Bite + Multiattack actions per RAW. The Pseudodragon is a Pact of the Chain special-form familiar (CR 1/4); its Magic Resistance trait was already wired (pre-existing `GrantMagicResistance`). This slice closes the Multiattack gap so the Pseudodragon can perform its RAW two-bite attack in combat. Pure content slice; uses the slice-464 Multiattack primitive + slice-446 natural-weapon shape (Wolf Bite mirror, no on-hit rider).
