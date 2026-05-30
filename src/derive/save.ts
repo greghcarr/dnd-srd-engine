@@ -43,6 +43,14 @@ export interface ComputeSaveInput {
   // magical sources (cast-spell, traps spell-armed, recurring saves
   // on spell-applied conditions, etc.) pass `true`.
   readonly sourceIsMagical?: boolean;
+  // Slice 515: tells the save resolver whether this is a Constitution
+  // save to maintain Concentration (the per-hit save triggered by
+  // `planConcentrationBreakOnDrop`). Surfaces as `event.isConcentrationCheck`
+  // in the SetAdvantage condition facts so predicates like Warlock
+  // Eldritch Mind ("advantage on Constitution saving throws to maintain
+  // Concentration") can gate on it. Default false; only the
+  // concentration-break planner sets it true.
+  readonly isConcentrationCheck?: boolean;
   // Slice 291: the condition id this save's outcome would prevent or
   // end, when known. Cast-spell save mechanics with `conditionOnFail`
   // pass the conditionId here (the save's failure applies that
@@ -142,6 +150,10 @@ export const computeSavingThrow = (input: ComputeSaveInput): SaveResult => {
     ['bearer.speedZero', bearerSpeedZero],
     // Slice 291: per-condition save-advantage gate (Antitoxin).
     ['event.savePreventsCondition', input.savePreventsCondition],
+    // Slice 515: per-Concentration-check save-advantage gate (Eldritch
+    // Mind invocation: "advantage on Constitution saving throws to
+    // maintain Concentration").
+    ['event.isConcentrationCheck', input.isConcentrationCheck === true],
   ]);
   const adv = effects.advantageFor(target, facts);
   // Slice 131: Magic Resistance contributes advantage to the save

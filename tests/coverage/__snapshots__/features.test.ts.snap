@@ -261,6 +261,7 @@ exports[`feature-coverage matrix: feats > wired feats catalog is stable 1`] = `
   "invocation:armor-of-shadows",
   "invocation:ascendant-step",
   "invocation:devils-sight",
+  "invocation:eldritch-mind",
   "invocation:fiendish-vigor",
   "invocation:gift-of-the-depths",
   "invocation:mask-of-many-faces",

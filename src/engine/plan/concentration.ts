@@ -104,6 +104,9 @@ export const planCheckConcentration = (
     content,
     ability: 'CON',
     characters: state.characters,
+    // Slice 515: surface "this save is a Concentration check" to the
+    // SetAdvantage condition facts so Eldritch Mind etc. can gate on it.
+    isConcentrationCheck: true,
   });
   const d20 = rollDie(D20_SIDES, rng);
   // Slice 331: per-roll save bonus dice (Bless +1d4 / Bane -1d4).

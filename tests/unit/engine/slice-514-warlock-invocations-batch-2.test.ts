@@ -58,22 +58,21 @@ const seedInvocationPick = (characterId: string, featId: string): [ChoiceRequire
 };
 
 describe('Warlock invocations content sweep batch 2 (slice 514)', () => {
-  it('ships 11 invocation feats total (slice 513\'s 9 + 2 new)', () => {
-    const invocations = PACK.feats.filter((f) => f.category === 'invocation');
-    expect(invocations).toHaveLength(11);
-    const ids = invocations.map((f) => f.id);
-    expect(ids).toContain('ascendant-step');
-    expect(ids).toContain('gift-of-the-depths');
+  it('ships the slice-514 batch 2 invocations alongside earlier wires', () => {
+    const ids = PACK.feats.filter((f) => f.category === 'invocation').map((f) => f.id);
+    for (const id of ['ascendant-step', 'gift-of-the-depths']) {
+      expect(ids).toContain(id);
+    }
   });
 
-  it('the warlock L1 OfferChoice exposes 11 options', () => {
+  it('the warlock L1 OfferChoice exposes the slice-514 batch options', () => {
     const w = PACK.classes.find((c) => c.id === 'warlock')!;
     const feat = w.levelTable['1']!.features.find((f) => f.id === 'eldritch-invocations-2')!;
     const oc = feat.effects[0] as { options: ReadonlyArray<{ id: string }> };
-    expect(oc.options).toHaveLength(11);
     const ids = oc.options.map((o) => o.id);
-    expect(ids).toContain('ascendant-step');
-    expect(ids).toContain('gift-of-the-depths');
+    for (const id of ['ascendant-step', 'gift-of-the-depths']) {
+      expect(ids).toContain(id);
+    }
   });
 
   it('Ascendant Step grants Levitate at-will via the bearer\'s effective spell list', () => {

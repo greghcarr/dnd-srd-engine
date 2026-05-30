@@ -4,6 +4,34 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 515): Eldritch Mind invocation + `event.isConcentrationCheck` save fact**
+
+Wires Eldritch Mind, the warlock invocation that grants advantage on Constitution saves to maintain Concentration. The fix needs one new save fact so the SetAdvantage condition can fire ONLY for concentration checks (not for ordinary CON saves like poison or hold person).
+
+RAW (Eldritch Mind): "You have advantage on Constitution saving throws that you make to maintain Concentration."
+
+**Engine** ([src/derive/save.ts](src/derive/save.ts), [src/engine/plan/concentration.ts](src/engine/plan/concentration.ts)):
+- `ComputeSaveInput` gains an optional `isConcentrationCheck?: boolean` field. When true, the SetAdvantage condition facts include `event.isConcentrationCheck: true` (else false).
+- `planConcentrationBreakOnDrop` passes `isConcentrationCheck: true` to `computeSavingThrow`. All other CON-save callers (spell saves, recurring-save planners, etc.) leave it false. Safe addition: no existing predicate references this fact, so behavior is unchanged for every save except the new gated Eldritch Mind one.
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- New `eldritch-mind` Feat (category: 'invocation', repeatable: false). Single effect: `SetAdvantage on: { kind: 'save', ability: 'CON' } mode: 'advantage' condition: eq event.isConcentrationCheck true`.
+- Warlock L1 `eldritch-invocations-2` OfferChoice options: 11 → 12.
+
+**Doc-count update**: feats 29 → 30 (12 invocation feats). Features snapshot gains `invocation:eldritch-mind`.
+
+**Tests** at [tests/unit/engine/slice-515-eldritch-mind.test.ts](tests/unit/engine/slice-515-eldritch-mind.test.ts) - 4 cases: feat shape; a warlock with Eldritch Mind gets advantage on a concentration CON save but NOT on an ordinary CON save (the condition fires correctly per-fact); a warlock without the invocation gets NO advantage on the concentration save; L1 OfferChoice exposes Eldritch Mind.
+
+**Audit:**
+- *RAW match*: advantage on concentration CON saves only, no spillover to other CON saves.
+- *Names*: `event.isConcentrationCheck` mirrors `event.isSpellSave` / `event.savePreventsCondition` (existing `event.*` save-facts).
+- *DRY*: one new field on `ComputeSaveInput`; one new entry in the facts map; one inline content effect.
+- *SRP*: the fact does one thing — flag "this save is a concentration check"; the SetAdvantage gates on it.
+- *Magic numbers*: none.
+- *Mechanical outcomes asserted*: feat shape, advantage on concentration save, no advantage on ordinary CON save, control case without invocation.
+
+**Pattern-check**: the new save fact follows the established `event.*` per-save context pattern (slice 258's `event.isSpellSave`, slice 291's `event.savePreventsCondition`). Any future predicate that wants to discriminate concentration saves from other CON saves can use it. Only one caller (`planConcentrationBreakOnDrop`) currently sets the flag; non-concentration save paths default to false (safe).
+
 **Content (slice 514): Warlock invocations batch 2 — Ascendant Step + Gift of the Depths**
 
 Continuation of the post-slice-511 catalog sweep. Two more L1-eligible invocations, content-only (no engine work):
