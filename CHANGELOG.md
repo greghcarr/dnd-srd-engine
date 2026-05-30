@@ -4,6 +4,32 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 525): Imp Sting natural weapon**
+
+Wires the Imp's Sting action per RAW. Same shape as slice 524's Sphinx of Wonder Rend (single attack + on-hit damage rider) but with a piercing primary + poison rider instead of slashing + radiant. Imp's Magic Resistance was already wired (pre-existing `GrantMagicResistance`); its Shape-Shift, at-will Invisibility, and Devil's Sight stay deferred (each requires its own primitive — see deviations below).
+
+RAW (SRD 5.2.1 Imp, CR 1, Tiny Fiend (Devil)): "Sting. Melee Attack Roll: +5, reach 5 ft. Hit: 6 (1d6 + 3) Piercing damage plus 7 (2d6) Poison damage."
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- New `imp-sting` weapon definition: 1d6 piercing primary + slice-316 unconditional onHit 2d6 poison rider (Spy Shortsword mirror).
+
+**Doc-count updates:** pack weapons 78 -> 79, items 542 -> 543.
+
+**Documented RAW deviations (still deferred):**
+- **Invisibility** (action, at-will, self-cast): needs the monster-action-self-cast-condition primitive. Sibling gap with Quasit, Sprite (the Pact-Chain Invisibility cluster).
+- **Shape-Shift** (action; polymorph between true form / rat / raven / spider with speed-only stat changes): needs the monster-action-polymorph primitive composed with the existing spell-side polymorph planner. Sibling gap with Quasit.
+- **Devil's Sight**: narrative (magical-darkness vision; the engine doesn't model magical darkness as obscurement).
+
+**Tests** ([tests/unit/engine/slice-525-imp-sting.test.ts](tests/unit/engine/slice-525-imp-sting.test.ts), 2 cases): natural weapon RAW damage profile; statblock retains pre-existing Magic Resistance + has no Multiattack (RAW correctness).
+
+**Audit (content-sweep abbreviated):** RAW match exact for the wired Sting; deferred Invisibility / Shape-Shift / Devil's Sight documented; no new identifiers beyond the weapon id.
+
+**Pattern-check:** Imp Sting joins the "single-attack natural weapon with on-hit damage rider" family (now Spy Shortsword poison, Giant Spider Bite, Venomous Snake Bite, Sphinx of Wonder Rend, Imp Sting). At 5+ members the shape is fully routine; on-hit damage-rider weapons are one-line authoring tasks. **Quasit Claws is the natural next sibling** (same shape: 1d4 slashing + 2d4 poison per Quasit RAW, but Quasit also has the same Shape-Shift + Invisibility cluster).
+
+**Closes another Pact-of-the-Chain familiar combat gap.** With Imp's primary attack wired, **5 of 7 Chain familiars** (Pseudodragon, Venomous Snake, Sphinx of Wonder, Sprite, Imp) can attack via the engine's combat pipeline. Quasit + Skeleton (Skeleton is already combat-complete via generic Shortsword/Shortbow + no RAW Multiattack — surfaced this slice; was previously listed as a remaining gap in slice 524's CHANGELOG, corrected here) round out the cohort.
+
+---
+
 **Content (slice 524): Sphinx of Wonder Rend natural weapon**
 
 Wires the Sphinx of Wonder's Rend action per RAW. The Sphinx of Wonder is a Pact of the Chain special-form familiar (CR 1); its Magic Resistance trait was already wired (pre-existing `GrantMagicResistance`). This slice closes the Rend gap so the Sphinx can perform its RAW slashing+radiant attack in combat. Pure content slice; single weapon definition, no statblock change (Sphinx of Wonder has no RAW Multiattack — single Rend action).
