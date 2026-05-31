@@ -4,6 +4,45 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 530): Tiefling Fiendish Legacy + Otherworldly Presence — closes L1 RAW gap**
+
+Wires the two missing Tiefling L1 traits surfaced by a fresh L1 SRD audit against [references/srd-markdown/character-origins.md](references/srd-markdown/character-origins.md). Before this slice the Tiefling species had only Darkvision wired; RAW (SRD 5.2.1) requires Darkvision + Fiendish Legacy + Otherworldly Presence at L1.
+
+RAW (SRD 5.2.1 Tiefling): "_Fiendish Legacy._ Choose a legacy from the Fiendish Legacies table. You gain the level 1 benefit of the chosen legacy. ... _Otherworldly Presence._ You know the _Thaumaturgy_ cantrip."
+
+L1 Fiendish Legacies (resistance + cantrip each):
+| Legacy | L1 benefit |
+|---|---|
+| Abyssal | Poison resistance + Poison Spray cantrip |
+| Chthonic | Necrotic resistance + Chill Touch cantrip |
+| Infernal | Fire resistance + Fire Bolt cantrip |
+
+Pure content slice. Reuses existing primitives: `OfferChoice` (legacy pick), `GrantResistance`, `GrantSpell at-will` (slice 527's pathway). Zero engine work.
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- Tiefling traits gain: `OfferChoice` `tiefling-fiendish-legacy` with 3 options (Abyssal / Chthonic / Infernal), each granting `GrantResistance` + `GrantSpell` cantrip at-will CHA + `GrantSpell thaumaturgy at-will CHA` (Otherworldly Presence).
+
+**Documented RAW deviations:**
+- Spellcasting ability hardcoded to **CHA**. RAW lets the player choose INT / WIS / CHA at legacy-pick time (one ability for both Fiendish Legacy and Otherworldly Presence). Default CHA covers the typical sorcerer/warlock tiefling; consumer can override per-cast via the existing ability-override pathway. Future slice could add a meta-choice.
+- L3 + L5 Fiendish Legacy spells (Ray of Sickness / False Life / Hellish Rebuke at L3; Hold Person / Ray of Enfeeblement / Darkness at L5) stay deferred. They're L3+ scope and the pack-level species model is flat (no per-level progression for non-class traits today).
+
+**Tests** ([tests/unit/engine/slice-530-tiefling-fiendish-legacy.test.ts](tests/unit/engine/slice-530-tiefling-fiendish-legacy.test.ts), 6 cases): trait shape (Darkvision + OfferChoice + GrantSpell Thaumaturgy); OfferChoice exposes all 3 legacies; each legacy projects its resistance + cantrip via effect stack (table-driven `it.each`); Otherworldly Presence Thaumaturgy is granted at-will regardless of legacy pick.
+
+**Audit (content-sweep abbreviated):** zero new mechanism; reuses OfferChoice + GrantSpell + GrantResistance primitives. No new identifiers.
+
+**L1 SRD audit findings** (this slice closes 2 of ~14 gaps surfaced):
+- ✓ Tiefling: Fiendish Legacy + Otherworldly Presence (this slice).
+- Dragonborn: Draconic Ancestry choice + Breath Weapon (PB uses/long rest) + Damage Resistance. Slice 531 candidate; Breath Weapon can reuse the slice-140 `BreathWeaponSpec` primitive (originally built for monster dragons).
+- Halfling: Nimbleness + Luck (reroll-on-1) + Naturally Stealthy. Luck needs a new reroll primitive.
+- Dwarf: Dwarven Toughness (+1 HP per level) + Stonecunning (PB-uses Tremorsense Bonus Action).
+- Elf: Elven Lineage choice (Drow / High / Wood) + Trance (narrative).
+- Gnome: Gnomish Lineage choice (Forest / Rock — each grants spells).
+- Human: Resourceful (Heroic Inspiration on Long Rest) + Versatile (origin feat choice).
+
+**Pattern-check:** the OfferChoice + per-option-effects shape is the canonical L1-species-lineage pattern now (Human Skillful + Goliath Giant Ancestry + Elf Keen Senses + Tiefling Fiendish Legacy). At 4+ uses the shape is well-established; sibling lineage gaps (Elf, Gnome, Dragonborn ancestry) follow the same shape and ship as one-line OfferChoice traits each.
+
+---
+
 **Content (slice 529): at-will spellcasting sweep — 8 monsters wired, 5 missing Magic Resistance traits closed**
 
 Follow-up to slice 527. Authors the at-will arm of every per-spell-envelope monster in the pack per SRD 5.2.1 (8 monsters, 16 at-will GrantSpell traits). Folds in 5 missing Magic Resistance traits surfaced during the SRD audit (Unicorn, Dryad, Deva, Planetar, Solar — all carry MR per RAW; pack was silently missing).

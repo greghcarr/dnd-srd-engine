@@ -46,7 +46,22 @@
       { "kind": "SetAdvantage", "on": { "kind": "save" }, "mode": "advantage", "condition": { "kind": "eq", "path": "event.savePreventsCondition", "value": "frightened" } }
     ] },
     { "id": "tiefling", "name": "Tiefling", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "infernal"], "traits": [
-      { "kind": "GrantSense", "sense": "darkvision", "range": 60 }
+      { "kind": "GrantSense", "sense": "darkvision", "range": 60 },
+      { "kind": "GrantSpell", "spellId": "thaumaturgy", "preparation": "at-will", "spellcastingAbility": "CHA" },
+      { "kind": "OfferChoice", "choiceId": "tiefling-fiendish-legacy", "prompt": "Choose a Fiendish Legacy (L1 benefit).", "oneOf": 1, "when": "onAcquire", "options": [
+        { "id": "abyssal", "label": "Abyssal (Poison resistance + Poison Spray cantrip)", "effects": [
+          { "kind": "GrantResistance", "damageType": "poison" },
+          { "kind": "GrantSpell", "spellId": "poison-spray", "preparation": "at-will", "spellcastingAbility": "CHA" }
+        ] },
+        { "id": "chthonic", "label": "Chthonic (Necrotic resistance + Chill Touch cantrip)", "effects": [
+          { "kind": "GrantResistance", "damageType": "necrotic" },
+          { "kind": "GrantSpell", "spellId": "chill-touch", "preparation": "at-will", "spellcastingAbility": "CHA" }
+        ] },
+        { "id": "infernal", "label": "Infernal (Fire resistance + Fire Bolt cantrip)", "effects": [
+          { "kind": "GrantResistance", "damageType": "fire" },
+          { "kind": "GrantSpell", "spellId": "fire-bolt", "preparation": "at-will", "spellcastingAbility": "CHA" }
+        ] }
+      ] }
     ] },
     { "id": "dragonborn", "name": "Dragonborn", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "draconic"], "traits": [
       { "kind": "GrantSense", "sense": "darkvision", "range": 60 }
