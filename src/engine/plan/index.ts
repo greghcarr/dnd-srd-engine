@@ -101,6 +101,7 @@ export { planFlurryOfBlows, type FlurryOfBlowsIntent } from './flurry-of-blows.j
 export { planPatientDefense, type PatientDefenseIntent } from './patient-defense.js';
 export { planStepOfTheWind, type StepOfTheWindIntent } from './step-of-the-wind.js';
 export { planAdrenalineRush, type AdrenalineRushIntent } from './adrenaline-rush.js';
+export { planStonecunning, type StonecunningIntent } from './stonecunning.js';
 export { planNimbleEscape, type NimbleEscapeIntent, type NimbleEscapeMode } from './nimble-escape.js';
 export { planCunningAction, type CunningActionIntent, type CunningActionMode } from './cunning-action.js';
 export { planExpeditiousRetreatDash, type ExpeditiousRetreatDashIntent } from './expeditious-retreat.js';

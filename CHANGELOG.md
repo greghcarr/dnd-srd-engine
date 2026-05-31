@@ -4,6 +4,35 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 540): Dwarf Stonecunning — per-Long-Rest Bonus Action tremorsense**
+
+Wires the Dwarf's Stonecunning trait per RAW. The dwarf species gains a `GrantResource { resourceId: 'stonecunning', max: profBonus, recharge: 'longRest' }` declaration; a new `stonecunning-active` condition projects `GrantSense tremorsense 60` while active; new `planStonecunning` planner consumes Bonus Action + ResourceSpent + applies the condition.
+
+RAW (SRD 5.2.1 Dwarf): "_Stonecunning._ As a Bonus Action, you gain Tremorsense with a range of 60 feet for 10 minutes. You must be on a stone surface or touching a stone surface to use this Tremorsense. The stone can be natural or worked. You can use this Bonus Action a number of times equal to your Proficiency Bonus, and you regain all expended uses when you finish a Long Rest."
+
+**Engine:**
+- New `planStonecunning` ([src/engine/plan/stonecunning.ts](src/engine/plan/stonecunning.ts)). Intent: `{ dwarfId, onStoneSurface }`. Validates dwarf species + has resource > 0 + active combatant + BA available + on-stone-surface flag from intent. Emits `ActionEconomyConsumed(bonusAction)` + `ResourceSpent(stonecunning, 1)` + `ConditionApplied(stonecunning-active)`. Mirror of `planAdrenalineRush` shape.
+- Wired through [src/engine/plan/index.ts](src/engine/plan/index.ts), [src/engine/index.ts](src/engine/index.ts) (interface + type re-export + factory), [src/engine/conveniences.ts](src/engine/conveniences.ts) (`Stonecunning` dispatch entry).
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- Dwarf species gains `{ kind: 'GrantResource', resourceId: 'stonecunning', max: { kind: 'profBonus' }, recharge: 'longRest' }`.
+- New `stonecunning-active` Condition: `effects: [{ kind: 'GrantSense', sense: 'tremorsense', range: 60 }]`, non-stackable, no autoExpiry (consumer-managed 10-min duration).
+
+**Doc-count updates:** conditions 131 → 132 (116 → 117 mechanic-rider, 114 → 115 with effects). Updated [docs/getting-started.md](docs/getting-started.md), [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md), [docs/status.md](docs/status.md) (both rows).
+
+**Documented RAW deviations (consumer-managed):**
+- **10-minute duration**: the engine doesn't tick wall-clock outside encounters; the consumer ends the condition after 10 in-fiction minutes (or whatever rule they enforce). Inside encounters, the consumer can stamp `expiresOnRound: currentRound + 100` if they want; the planner doesn't auto-stamp.
+- **On-stone-surface gate**: consumer signals via `intent.onStoneSurface`. The engine has no surface-contact model.
+- **Resource auto-population**: the species `GrantResource` declaration is read at character-build time by consumers; the runtime `character.resources` array is consumer-populated (mirror of Orc Adrenaline Rush). The test fixture demonstrates the convention.
+
+**Tests** ([tests/unit/engine/slice-540-dwarf-stonecunning.test.ts](tests/unit/engine/slice-540-dwarf-stonecunning.test.ts), 8 cases): species trait shape; condition shape with GrantSense tremorsense 60; L1 dwarf carries 2 uses (PB +2); planner emits 3-event chain; post-commit tremorsense projects via effect stack + resource decrements; throws without onStoneSurface gate; throws for non-dwarf; throws when uses exhausted.
+
+**Audit:** Names mirror planAdrenalineRush. DRY: 2 sibling planners, no factoring. SRP: planner consumes BA + grants tremorsense. Magic numbers: `60` (RAW) in the condition, not the planner. at-threading: resolved once.
+
+**Pattern-check:** "species per-rest resource + condition projector + planner that consumes BA and grants condition" shape now used by Orc Adrenaline Rush + Dwarf Stonecunning. Future similar traits mirror.
+
+---
+
 **Engine (slice 539): Halfling Luck — complete the primitive at save + ability-check sites**
 
 Completes the slice-538 partial primitive. The save + check d20 sites now reroll on natural 1 when the bearer carries the `GrantHalflingLuck` marker, matching RAW's "D20 Test" scope (attack + save + check). `SaveResult` and `AbilityCheckResult` both gain a `hasHalflingLuck: boolean` flag surfaced from the bearer's effect stack; the three roll-site planners ([_save-roll.ts](src/engine/plan/_save-roll.ts) `rollSaveAgainstDC`, [checks.ts](src/engine/plan/checks.ts) `planSave` + `planAbilityCheck`) read the flag and reroll.

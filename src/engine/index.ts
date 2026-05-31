@@ -69,6 +69,7 @@ import {
   planPatientDefense,
   planStepOfTheWind,
   planAdrenalineRush,
+  planStonecunning,
   planNimbleEscape,
   planCunningAction,
   planExpeditiousRetreatDash,
@@ -207,6 +208,7 @@ import {
   type PatientDefenseIntent,
   type StepOfTheWindIntent,
   type AdrenalineRushIntent,
+  type StonecunningIntent,
   type NimbleEscapeIntent,
   type CunningActionIntent,
   type ExpeditiousRetreatDashIntent,
@@ -366,6 +368,7 @@ export interface Engine {
     patientDefense(state: CampaignState, intent: Omit<PatientDefenseIntent, 'type'>): PlanResult;
     stepOfTheWind(state: CampaignState, intent: Omit<StepOfTheWindIntent, 'type'>): PlanResult;
     adrenalineRush(state: CampaignState, intent: Omit<AdrenalineRushIntent, 'type'>): PlanResult;
+    stonecunning(state: CampaignState, intent: Omit<StonecunningIntent, 'type'>): PlanResult;
     nimbleEscape(state: CampaignState, intent: Omit<NimbleEscapeIntent, 'type'>): PlanResult;
     cunningAction(state: CampaignState, intent: Omit<CunningActionIntent, 'type'>): PlanResult;
     expeditiousRetreatDash(state: CampaignState, intent: Omit<ExpeditiousRetreatDashIntent, 'type'>): PlanResult;
@@ -702,6 +705,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     adrenalineRush(state, intent) {
       return { events: planAdrenalineRush(state, content, { type: 'AdrenalineRush', ...intent }) };
+    },
+    stonecunning(state, intent) {
+      return { events: planStonecunning(state, { type: 'Stonecunning', ...intent }) };
     },
     nimbleEscape(state, intent) {
       return { events: planNimbleEscape(state, content, rng, { type: 'NimbleEscape', ...intent }) };
