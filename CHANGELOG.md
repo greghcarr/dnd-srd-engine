@@ -4,6 +4,53 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 532): Elf + Gnome Lineage choices — closes 2 more L1 RAW gaps**
+
+Wires the Elf and Gnome species lineage choices per RAW. Sibling pattern to slices 530-531: each lineage option grants its L1 effects (cantrips + persistent modifiers) via an `OfferChoice` on the species traits array. Pure content; reuses existing primitives.
+
+**Elven Lineages** (L1 benefit):
+| Lineage | Effect |
+|---|---|
+| Drow | Darkvision range 60 → 120 + Dancing Lights cantrip |
+| High Elf | Prestidigitation cantrip |
+| Wood Elf | Speed 30 → 35 ft + Druidcraft cantrip |
+
+**Gnomish Lineages** (L1 benefit):
+| Lineage | Effect |
+|---|---|
+| Forest Gnome | Minor Illusion + Speak with Animals cantrips |
+| Rock Gnome | Mending + Prestidigitation cantrips |
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- Elf traits gain `OfferChoice` `elf-elven-lineage` with 3 options (Drow / High Elf / Wood Elf).
+- Gnome traits gain `OfferChoice` `gnome-gnomish-lineage` with 2 options (Forest / Rock).
+- Drow's Darkvision 120 correctly overrides the base Darkvision 60 via `grantSense`'s max-range composition rule.
+
+**Documented RAW deviations:**
+- **Forest Gnome Speak with Animals**: wired as `at-will` instead of "PB uses per long rest." The spell is pure-narrative (consumer-managed talk-to-animals); the per-day envelope is cosmetic at the engine level. Tightens when per-day-uses primitive ships.
+- **High Elf cantrip-swap on Long Rest**: not modeled (narrative).
+- **Rock Gnome Tiny Clockwork Device**: narrative (consumer manages the device entity).
+- **L3 + L5 Elven Lineage spells** (Faerie Fire / Darkness for Drow; Detect Magic / Misty Step for High Elf; Longstrider / Pass without Trace for Wood Elf): L3+ scope.
+
+**Tests** ([tests/unit/engine/slice-532-elf-gnome-lineages.test.ts](tests/unit/engine/slice-532-elf-gnome-lineages.test.ts), 7 cases): both species ship correct OfferChoice traits with all options; Drow's 120-ft darkvision overrides base; Wood Elf's 35-ft walk speed via getEffectiveSpeed; High Elf cantrip; Forest Gnome dual-cantrip; Rock Gnome dual-cantrip.
+
+**Audit (content-sweep abbreviated):** zero new mechanism; reuses OfferChoice + GrantSense + ModifySpeed + GrantSpell at-will. No new identifiers.
+
+**L1 SRD audit progress** (closes 5 of ~14 gaps now):
+- ✓ Tiefling: Fiendish Legacy + Otherworldly Presence (slice 530)
+- ✓ Dragonborn: Draconic Ancestry + Damage Resistance (slice 531)
+- ✓ Elf: Elven Lineage choice (this slice)
+- ✓ Gnome: Gnomish Lineage choice (this slice)
+- ⏳ Dragonborn: Breath Weapon (slice 533 candidate; needs new primitive)
+- ⏳ Halfling: Nimbleness + Luck + Naturally Stealthy
+- ⏳ Dwarf: Dwarven Toughness + Stonecunning
+- ⏳ Elf: Trance (narrative)
+- ⏳ Human: Resourceful + Versatile
+
+**Pattern-check:** the OfferChoice-with-per-option-effects shape is now used 5 times for L1 species (Human Skillful, Goliath Giant Ancestry, Tiefling Fiendish Legacy, Dragonborn Draconic Ancestry, Elf Elven Lineage + Keen Senses, Gnome Gnomish Lineage). It's the canonical L1-species-choice shape; sibling gaps fit it cleanly. Remaining L1 species work splits into "OfferChoice content" (Human Versatile — origin feat choice) and "new primitive" (Halfling Luck reroll, Dwarf Toughness +1 HP/level, Stonecunning per-day bonus action).
+
+---
+
 **Content (slice 531): Dragonborn Draconic Ancestry + Damage Resistance — closes L1 RAW gap (resistance arm)**
 
 Wires the Dragonborn's Draconic Ancestry choice + the resistance arm per RAW. Mirror of slice 530's Tiefling Fiendish Legacy pattern. The active arm (Breath Weapon: PB uses per long rest, 1d10 area save scaling by level) stays deferred to slice 532 — it needs a character-side breath-weapon planner since the slice-140 BreathWeaponSpec primitive is monster-only.

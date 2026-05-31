@@ -35,6 +35,19 @@
         { "id": "insight", "label": "Insight", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "insight", "level": "proficient" }] },
         { "id": "perception", "label": "Perception", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "perception", "level": "proficient" }] },
         { "id": "survival", "label": "Survival", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "survival", "level": "proficient" }] }
+      ] },
+      { "kind": "OfferChoice", "choiceId": "elf-elven-lineage", "prompt": "Choose an Elven Lineage (L1 benefit).", "oneOf": 1, "when": "onAcquire", "options": [
+        { "id": "drow", "label": "Drow (Darkvision 120 + Dancing Lights)", "effects": [
+          { "kind": "GrantSense", "sense": "darkvision", "range": 120 },
+          { "kind": "GrantSpell", "spellId": "dancing-lights", "preparation": "at-will", "spellcastingAbility": "CHA" }
+        ] },
+        { "id": "high-elf", "label": "High Elf (Prestidigitation)", "effects": [
+          { "kind": "GrantSpell", "spellId": "prestidigitation", "preparation": "at-will", "spellcastingAbility": "INT" }
+        ] },
+        { "id": "wood-elf", "label": "Wood Elf (Speed 35 + Druidcraft)", "effects": [
+          { "kind": "ModifySpeed", "mode": "walk", "op": "set", "value": 35 },
+          { "kind": "GrantSpell", "spellId": "druidcraft", "preparation": "at-will", "spellcastingAbility": "WIS" }
+        ] }
       ] }
     ] },
     { "id": "dwarf", "name": "Dwarf", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "dwarvish"], "traits": [
@@ -82,7 +95,17 @@
       { "kind": "GrantSense", "sense": "darkvision", "range": 60 },
       { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "INT" }, "mode": "advantage" },
       { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "WIS" }, "mode": "advantage" },
-      { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "CHA" }, "mode": "advantage" }
+      { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "CHA" }, "mode": "advantage" },
+      { "kind": "OfferChoice", "choiceId": "gnome-gnomish-lineage", "prompt": "Choose a Gnomish Lineage.", "oneOf": 1, "when": "onAcquire", "options": [
+        { "id": "forest-gnome", "label": "Forest Gnome (Minor Illusion + Speak with Animals)", "effects": [
+          { "kind": "GrantSpell", "spellId": "minor-illusion", "preparation": "at-will", "spellcastingAbility": "INT" },
+          { "kind": "GrantSpell", "spellId": "speak-with-animals", "preparation": "at-will", "spellcastingAbility": "INT" }
+        ] },
+        { "id": "rock-gnome", "label": "Rock Gnome (Mending + Prestidigitation)", "effects": [
+          { "kind": "GrantSpell", "spellId": "mending", "preparation": "at-will", "spellcastingAbility": "INT" },
+          { "kind": "GrantSpell", "spellId": "prestidigitation", "preparation": "at-will", "spellcastingAbility": "INT" }
+        ] }
+      ] }
     ] },
     { "id": "goliath", "name": "Goliath", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 35 }, "languages": ["common", "giant"], "traits": [
       { "kind": "SetAdvantage", "on": { "kind": "check" }, "mode": "advantage", "condition": { "kind": "eq", "path": "event.endingCondition", "value": "grappled" } },
