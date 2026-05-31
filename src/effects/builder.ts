@@ -213,6 +213,10 @@ export class EffectAccumulator {
   private pactBladeFlag: boolean = false;
   // Slice 519: Warlock L1 Pact of the Chain presence marker.
   private pactChainFlag: boolean = false;
+  // Slice 538: Halfling Luck presence marker. Read at d20 roll sites
+  // (currently attack rolls; save/check sites to follow) to trigger
+  // the reroll-on-natural-1 mechanic.
+  private halflingLuckFlag: boolean = false;
   private uncannyDodgeFlag: boolean = false;
   private innateSorcerySpendAlternativeFlag: boolean = false;
   private selfRestorationFlag: boolean = false;
@@ -874,6 +878,16 @@ export class EffectAccumulator {
   hasPactChain(): boolean {
     return this.pactChainFlag;
   }
+  markHalflingLuck(): void {
+    this.halflingLuckFlag = true;
+  }
+  // Slice 538: Halfling Luck. Read by the attack-roll site (and future
+  // save/check sites) to trigger reroll-on-natural-1 per RAW: "When you
+  // roll a 1 on the d20 of a D20 Test, you can reroll the die, and you
+  // must use the new roll."
+  hasHalflingLuck(): boolean {
+    return this.halflingLuckFlag;
+  }
   // Slice 200: marker that gates `planUncannyDodge`. Set by Rogue L5+
   // via the `GrantUncannyDodge` effect on the Uncanny Dodge feature.
   markUncannyDodge(): void {
@@ -1131,6 +1145,9 @@ export const applyEffectToBuilder = (
       return;
     case 'GrantPactChain':
       acc.markPactChain();
+      return;
+    case 'GrantHalflingLuck':
+      acc.markHalflingLuck();
       return;
     case 'GrantUncannyDodge':
       acc.markUncannyDodge();

@@ -385,6 +385,14 @@ export type Effect =
   // consumer-managed; the marker exists so a later slice can wire them
   // without changing the feat-side authoring.
   | { kind: 'GrantPactChain' }
+  // Slice 538: Halfling Luck. Presence marker for the reroll-on-natural-1
+  // mechanic. RAW: "When you roll a 1 on the d20 of a D20 Test, you can
+  // reroll the die, and you must use the new roll." Projected via
+  // `EffectAccumulator.markHalflingLuck()` / `hasHalflingLuck()`. The
+  // attack-roll site reads the accessor and rerolls when the chosen d20
+  // is a natural 1. Save / check / other d20 sites stay deferred to
+  // follow-up slices that wire the same helper at each site.
+  | { kind: 'GrantHalflingLuck' }
   // Cross-character effect: while this is active on a character, attacks
   // against that character are made with advantage. Used by Faerie Fire,
   // Hex (kind of), Hunter's Mark variants. The attack planner consults
@@ -773,6 +781,9 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       kind: z.literal('GrantPactChain'),
     }),
     z.object({
+      kind: z.literal('GrantHalflingLuck'),
+    }),
+    z.object({
       kind: z.literal('GrantAdvantageToAttackers'),
       condition: PredicateSchema.optional(),
     }),
@@ -901,6 +912,7 @@ export const EFFECT_KINDS = [
   'GrantFeat',
   'GrantPactBlade',
   'GrantPactChain',
+  'GrantHalflingLuck',
   'GrantAdvantageToAttackers',
   'ImposeDisadvantageOnAttackers',
   'CancelAdvantageOnAttackers',

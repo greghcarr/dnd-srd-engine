@@ -68,6 +68,7 @@
     ] },
     { "id": "halfling", "name": "Halfling", "size": "Small", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "halfling"], "traits": [
       { "kind": "SetAdvantage", "on": { "kind": "save" }, "mode": "advantage", "condition": { "kind": "eq", "path": "event.savePreventsCondition", "value": "frightened" } },
+      { "kind": "GrantHalflingLuck" },
       { "kind": "Custom", "handlerId": "halfling-nimbleness" },
       { "kind": "Custom", "handlerId": "halfling-naturally-stealthy" }
     ] },

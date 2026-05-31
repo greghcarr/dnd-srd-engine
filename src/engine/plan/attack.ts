@@ -885,12 +885,25 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   if (advantage !== 'none') {
     rolls.push(rollDie(D20_SIDES, rng));
   }
-  const usedRoll =
+  let usedRoll =
     advantage === 'advantage'
       ? Math.max(...rolls)
       : advantage === 'disadvantage'
         ? Math.min(...rolls)
         : (rolls[0] ?? 0);
+  // Slice 538: Halfling Luck. RAW: "When you roll a 1 on the d20 of
+  // a D20 Test, you can reroll the die, and you must use the new
+  // roll." Fires when the chosen d20 (post-advantage/disadvantage
+  // selection) is a natural 1 AND the attacker carries the marker.
+  // Reroll once; the new value replaces usedRoll. The reroll is
+  // appended to the `d20` array on the event so the consumer can
+  // see the reroll happened. No second reroll even if the new die
+  // is also a 1 (RAW: "you must use the new roll").
+  if (usedRoll === NAT_1 && attackerEffects.hasHalflingLuck()) {
+    const reroll = rollDie(D20_SIDES, rng);
+    rolls.push(reroll);
+    usedRoll = reroll;
+  }
   // Slice 330: per-roll bonus dice (Bless +1d4 / Bane -1d4 via
   // AddBonusDie). Rolled here, after the d20(s), and folded into the
   // attack bonus so `total === usedRoll + attackBonus` still holds; the

@@ -4,6 +4,41 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 538): Halfling Luck — new `GrantHalflingLuck` marker + attack-roll reroll-on-natural-1 wire**
+
+Wires Halfling's Luck trait per RAW (attack-roll arm). New effect kind `GrantHalflingLuck` (presence marker) + `markHalflingLuck()` / `hasHalflingLuck()` accessor on EffectAccumulator + the attack-roll site in `planAttack` reads the accessor and rerolls when the chosen d20 (post-advantage/disadvantage selection) is a natural 1. The reroll is appended to the `d20` array on the event so consumers can see it happened; RAW "you must use the new roll" means no second reroll even if the new die is also a 1.
+
+RAW (SRD 5.2.1 Halfling): "_Luck._ When you roll a 1 on the d20 of a D20 Test, you can reroll the die, and you must use the new roll."
+
+**Engine:**
+- New `GrantHalflingLuck` effect kind ([src/schemas/effects.ts](src/schemas/effects.ts), added to union + Zod + `EFFECT_KINDS`).
+- `markHalflingLuck()` + `hasHalflingLuck()` on EffectAccumulator ([src/effects/builder.ts](src/effects/builder.ts)).
+- Attack-roll reroll wire at [src/engine/plan/attack.ts](src/engine/plan/attack.ts) ~line 884 (the main attack `usedRoll` computation). Reads `attackerEffects.hasHalflingLuck()`; rerolls when chosen d20 === 1; appends the reroll to the d20 array.
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)): Halfling traits gain `{ kind: 'GrantHalflingLuck' }`.
+
+**Doc-count guards:** `EFFECT_KINDS` 59 → 60 (58 → 59 primitives + Custom). Updated [docs/authoring-content-packs.md](docs/authoring-content-packs.md) + [docs/concepts.md](docs/concepts.md).
+
+**Documented RAW deferrals (follow-up slices):**
+- **Save d20 sites** (rollSaveAgainstDC + computeSavingThrow): not yet wired. A Halfling making a saving throw with a natural-1 d20 does not yet reroll. Same one-block-insertion pattern as this slice; a follow-up slice can sweep.
+- **Ability check d20 sites** (computeAbilityCheck + planAbilityCheck): same shape, not yet wired.
+- **~25 other d20 sites** (initiative, death saves, concentration CON saves, nimble-escape DEX, cunning-action Hide, reactive-spell rolls, offhand-attack, weapon-mastery, trap, transformations, encounter rolls): each is the same insertion. A future cohort sweep covers them all.
+- **Mirror-image deflection** (attack.ts ~line 115) is correctly NOT wired (it's a defender-side roll the attacker's Luck wouldn't affect).
+
+**Audit:**
+- **Names:** `GrantHalflingLuck` / `markHalflingLuck` / `hasHalflingLuck` mirror the slice-518 / slice-519 `GrantPactBlade` / `GrantPactChain` marker triad shape.
+- **DRY:** the reroll logic is one ~5-line block in attack.ts; future sites copy the same block. At ~5 lines × 25 sites, this is below the abstraction threshold for now; if the cohort sweep slice extracts a helper, refactor then.
+- **SRP:** marker + accessor + one site change. Each does one thing.
+- **Magic numbers:** none beyond the existing `NAT_1` constant.
+- **at-threading:** N/A (reroll is consumed during plan; the rolled value bakes into the existing event).
+- **Mechanical outcomes asserted:** marker projection (positive + negative control), end-to-end reroll fires on attack with natural 1, control case no reroll without Luck.
+
+**Tests** ([tests/unit/engine/slice-538-halfling-luck.test.ts](tests/unit/engine/slice-538-halfling-luck.test.ts), 5 cases): Halfling species ships the marker; `hasHalflingLuck()` projects true on Halflings + false on Humans (control); end-to-end seed-iteration finds a natural 1 attack and confirms reroll fires + d20 array has 2 entries + total reflects the reroll; control case confirms Human's natural 1 stays a 1 with d20 length 1.
+
+**Pattern-check:** Halfling Luck closes one of the four remaining L1 SRD primitive gaps (attack arm only; save + check arms follow). The reroll-on-natural-1 mechanism is unique to Halflings in the SRD; no other species or feat shares the shape, so this primitive is canonical with one user. Future variants (e.g., a feat that grants reroll-on-1 with limited uses per day) would compose with this marker's plumbing.
+
+---
+
 **Content (slice 537): Human Resourceful — narrative marker trait**
 
 Wires Human's Resourceful trait per RAW as a declarative Custom-handler marker. **Heroic Inspiration is not modeled in the engine at all today** (no field on Character, no events, no planner, no reroll mechanic). The full Heroic Inspiration primitive — grant on Long Rest + consume to reroll any d20 — is a substantial multi-slice primitive deferred to a future dedicated slice.
