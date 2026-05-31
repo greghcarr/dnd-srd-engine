@@ -400,6 +400,17 @@ export interface ResolveAttackInput {
 const CUNNING_STRIKE_LEVEL = 5;
 const IMPROVED_CUNNING_STRIKE_LEVEL = 11;
 // Slice 467: feat id read by resolveAttack to gate the per-attack reroll.
+// The savage-attacker feat in the pack carries an empty effects array
+// intentionally: the engine keys off the id string here rather than off
+// a declarative effect primitive. Consumers opt in per attack via
+// AttackIntent.useSavageAttacker. Once-per-turn enforcement uses
+// turnUsage.savageAttackerUsedThisTurn (only inside an active
+// encounter; out-of-encounter use is unbounded by consumer
+// responsibility, mirror of Stunning Strike). The reroll fires at the
+// damage-roll site below; the discarded set rides on SavageAttackerUsed.
+// (Slice 547 audit-clarification note: an earlier "deep audit" agent
+// misread the empty effects array as "feat does nothing"; the feat is
+// fully wired, just by id-match rather than by effect declaration.)
 const SAVAGE_ATTACKER_FEAT_ID = 'savage-attacker';
 // Slice 490: weapon + condition ids used by the attached-stirge gate.
 // While a stirge is attached to a target, it cannot make Proboscis

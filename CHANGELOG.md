@@ -4,6 +4,22 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Docs (slice 547): Savage Attacker is already wired — audit-clarification note**
+
+The slice-544 deep audit flagged Savage Attacker as `UNWIRED` based on the feat's empty `effects: []` array. This was a misread: the feat is fully implemented since **slice 467** (the L1-playability arc part 3). The engine keys off the feat id directly in [src/engine/plan/attack.ts](src/engine/plan/attack.ts) rather than off a declarative effect primitive. The full mechanic — `AttackIntent.useSavageAttacker` opt-in dial, once-per-turn enforcement via `turnUsage.savageAttackerUsedThisTurn`, two-set damage roll keeping the higher sum, `SavageAttackerUsed` event surfacing the discarded set, hit-only consumption (RAW "when you hit") — has been live and test-covered ([tests/unit/engine/slice-467-savage-attacker.test.ts](tests/unit/engine/slice-467-savage-attacker.test.ts), 4 cases) for ~80 slices.
+
+**Engine** ([src/engine/plan/attack.ts](src/engine/plan/attack.ts)): expanded the comment block above `SAVAGE_ATTACKER_FEAT_ID = 'savage-attacker'` to document the indirect-wiring pattern (id-match, not effect declaration) and to surface this slice's audit-correction note. A future audit agent reading the feat-by-id matching site can now tell that the feat IS backed without needing to cross-reference the test file.
+
+**No content / schema / behavior change.** Pure documentation. The `FeatSchema` deliberately has no `description` field (consumer surfaces handle prose), so the clarification lives at the code site where misreads happen.
+
+**Pattern-check:** the "feat with empty effects array but backed by id-match in source" pattern is unique to Savage Attacker today (every other feat declares effects). Future feats of this shape should either (a) declare a Custom marker handler so pack-integrity allowlists pick them up, or (b) add a short code comment at the id-match site. This slice adopts pattern (b) for Savage Attacker, leaving the pack JSON minimal.
+
+**Slice-547 honest scope.** The original deep-audit plan had this slot allocated for "build the Savage Attacker primitive." That work doesn't need to happen — it's done. So slice 547 ships the doc clarification instead, and **planRage (Barbarian L1) moves to slice 548**, keeping the L1 SRD deep-audit close on track.
+
+L1 SRD gap close: 3 of 4 deep-audit gaps now closed (Second Wind, Healer's Kit, Savage Attacker). Remaining: planRage (slice 548).
+
+---
+
 **Engine + content (slice 546): Healer's Kit item + `planUseHealersKit` — Utilize-action stabilize**
 
 Closes the missing-item gap surfaced by the slice-544 deep audit. Healer's Kit is referenced by the Soldier background's starting equipment and the Healer feat's mechanical hook, but was absent from the item catalog. A character at 0 HP could not be stabilized via the SRD's most common path: a teammate spending one of the 10 kit uses.
