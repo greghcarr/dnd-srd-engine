@@ -135,6 +135,10 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
     }
     case 'Stabilized':
       return `**${characterName(stateBefore, event.targetId)}** stabilized.`;
+    case 'HeroicInspirationGranted':
+      return `**${characterName(stateBefore, event.characterId)}** gains Heroic Inspiration.`;
+    case 'HeroicInspirationConsumed':
+      return `**${characterName(stateBefore, event.characterId)}** spends Heroic Inspiration${event.appliedTo !== undefined ? ` (${event.appliedTo})` : ''}.`;
     case 'CreatureDestroyed':
       return `**${characterName(stateBefore, event.targetId)}** is destroyed${event.sourceCharacterId !== undefined ? ` by **${characterName(stateBefore, event.sourceCharacterId)}**` : ''}.`;
     case 'ResourceSpent':

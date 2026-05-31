@@ -22,10 +22,14 @@ const PACK = loadStarterPack();
 
 describe('Human Resourceful (slice 537)', () => {
   it('human species ships the human-resourceful Custom marker', () => {
+    // Slice 542 promoted the human-resourceful marker from a
+    // narrative Custom-handler stub to a real
+    // GrantHeroicInspirationOnLongRest effect primitive (observable
+    // in the effect stack via hasHeroicInspirationOnLongRest). This
+    // test asserts the new shape; the deeper grant + consume +
+    // reroll-deferral surface is tested in slice 542's test.
     const sp = PACK.species.find((s) => s.id === 'human')!;
-    const trait = sp.traits.find(
-      (t) => t.kind === 'Custom' && (t as { handlerId?: string }).handlerId === 'human-resourceful',
-    );
+    const trait = sp.traits.find((t) => t.kind === 'GrantHeroicInspirationOnLongRest');
     expect(trait).toBeDefined();
   });
 

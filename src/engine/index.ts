@@ -71,6 +71,7 @@ import {
   planAdrenalineRush,
   planStonecunning,
   planDragonbornBreath,
+  planConsumeHeroicInspiration,
   planNimbleEscape,
   planCunningAction,
   planExpeditiousRetreatDash,
@@ -211,6 +212,7 @@ import {
   type AdrenalineRushIntent,
   type StonecunningIntent,
   type DragonbornBreathIntent,
+  type ConsumeHeroicInspirationIntent,
   type NimbleEscapeIntent,
   type CunningActionIntent,
   type ExpeditiousRetreatDashIntent,
@@ -372,6 +374,7 @@ export interface Engine {
     adrenalineRush(state: CampaignState, intent: Omit<AdrenalineRushIntent, 'type'>): PlanResult;
     stonecunning(state: CampaignState, intent: Omit<StonecunningIntent, 'type'>): PlanResult;
     dragonbornBreath(state: CampaignState, intent: Omit<DragonbornBreathIntent, 'type'>): PlanResult;
+    consumeHeroicInspiration(state: CampaignState, intent: Omit<ConsumeHeroicInspirationIntent, 'type'>): PlanResult;
     nimbleEscape(state: CampaignState, intent: Omit<NimbleEscapeIntent, 'type'>): PlanResult;
     cunningAction(state: CampaignState, intent: Omit<CunningActionIntent, 'type'>): PlanResult;
     expeditiousRetreatDash(state: CampaignState, intent: Omit<ExpeditiousRetreatDashIntent, 'type'>): PlanResult;
@@ -524,11 +527,11 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
       return { events: planShortRest(state, { type: 'ShortRest', ...intent }) };
     },
     longRest(state, intent) {
-      return { events: planLongRest(state, { type: 'LongRest', ...intent }) };
+      return { events: planLongRest(state, content, { type: 'LongRest', ...intent }) };
     },
     rest(state, intent) {
       if (intent.type === 'ShortRest') return { events: planShortRest(state, intent) };
-      return { events: planLongRest(state, intent) };
+      return { events: planLongRest(state, content, intent) };
     },
     attack(state, intent) {
       return { events: planAttack(state, content, rng, { type: 'Attack', ...intent }) };
@@ -714,6 +717,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     dragonbornBreath(state, intent) {
       return { events: planDragonbornBreath(state, content, rng, { type: 'DragonbornBreath', ...intent }) };
+    },
+    consumeHeroicInspiration(state, intent) {
+      return { events: planConsumeHeroicInspiration(state, { type: 'ConsumeHeroicInspiration', ...intent }) };
     },
     nimbleEscape(state, intent) {
       return { events: planNimbleEscape(state, content, rng, { type: 'NimbleEscape', ...intent }) };

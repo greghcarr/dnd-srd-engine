@@ -103,6 +103,7 @@ export { planStepOfTheWind, type StepOfTheWindIntent } from './step-of-the-wind.
 export { planAdrenalineRush, type AdrenalineRushIntent } from './adrenaline-rush.js';
 export { planStonecunning, type StonecunningIntent } from './stonecunning.js';
 export { planDragonbornBreath, type DragonbornBreathIntent } from './dragonborn-breath.js';
+export { planConsumeHeroicInspiration, type ConsumeHeroicInspirationIntent } from './heroic-inspiration.js';
 export { planNimbleEscape, type NimbleEscapeIntent, type NimbleEscapeMode } from './nimble-escape.js';
 export { planCunningAction, type CunningActionIntent, type CunningActionMode } from './cunning-action.js';
 export { planExpeditiousRetreatDash, type ExpeditiousRetreatDashIntent } from './expeditious-retreat.js';

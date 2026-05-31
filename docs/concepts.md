@@ -93,7 +93,7 @@ For the full authoring reference (every entity type's fields, the ~30 effect pri
 
 5.5e content has a wildly heterogeneous mechanical surface. The Barbarian's Rage is one shape; the Wizard's Mage Armor is another; Wish is its own beast.
 
-The engine expresses **most** features via a fixed vocabulary of about 59 **effect primitives** (plus the `Custom` escape hatch):
+The engine expresses **most** features via a fixed vocabulary of about 60 **effect primitives** (plus the `Custom` escape hatch):
 
 - `AddModifier { target, value, condition? }`: a +1 to AC, a +2 to attack bonus
 - `GrantResource { resourceId, max, recharge }`: Bardic Inspiration, Action Surge, Channel Divinity

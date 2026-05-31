@@ -268,6 +268,12 @@ Time passes: Day 00 18:00 -> Day 01 02:00 (+480 min) (long rest at the forest ed
 
 Long rest ends.
 
+**Alyx** gains Heroic Inspiration.
+
+**Mira** gains Heroic Inspiration.
+
+**Brother Cassius** gains Heroic Inspiration.
+
 Session "Session 1: Smoke on the Horizon" ends: Cleared the goblin scouts and made it through the forest..
 
 Downtime (research): Mira, 3d -> success. Mira translates a battered dracologist tome..

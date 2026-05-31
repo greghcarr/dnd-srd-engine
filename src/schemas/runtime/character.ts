@@ -128,6 +128,13 @@ export const CharacterSchema = z.object({
   hp: HPSchema,
   deathSaves: DeathSavesSchema.default({ successes: 0, failures: 0, stable: false }),
   exhaustion: ExhaustionLevelSchema.default(0),
+  // Slice 542: Heroic Inspiration (RAW: "You can have only one
+  // Heroic Inspiration at a time"). Boolean rather than count.
+  // Granted on Long Rest by features with the GrantHeroic
+  // InspirationOnLongRest marker (Human Resourceful, etc.); spent
+  // via planConsumeHeroicInspiration. Additive default; old saves
+  // load clean.
+  heroicInspiration: z.boolean().default(false),
   // Optional explicit walk-speed override. When set (transformations,
   // summons, a consumer pinning a custom value), it wins. When absent,
   // the walk speed derives from the species' / statblock's walk speed

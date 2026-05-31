@@ -62,6 +62,7 @@ export const applyCompanionSummoned = (
     featsTaken: [],
     pendingChoiceIds: [],
     breathWeaponExpended: false,
+    heroicInspiration: false,
     damageTypesTakenThisTurn: [],
     heroPoints: 0,
     xp: 0,

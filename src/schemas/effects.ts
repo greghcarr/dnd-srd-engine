@@ -393,6 +393,13 @@ export type Effect =
   // is a natural 1. Save / check / other d20 sites stay deferred to
   // follow-up slices that wire the same helper at each site.
   | { kind: 'GrantHalflingLuck' }
+  // Slice 542: Heroic Inspiration on Long Rest. RAW: "You gain
+  // Heroic Inspiration whenever you finish a Long Rest." Wired
+  // on Human Resourceful; future features that grant per-long-
+  // rest Inspiration share the same marker. The long-rest planner
+  // walks each participant's effect stack for the marker and
+  // emits HeroicInspirationGranted.
+  | { kind: 'GrantHeroicInspirationOnLongRest' }
   // Cross-character effect: while this is active on a character, attacks
   // against that character are made with advantage. Used by Faerie Fire,
   // Hex (kind of), Hunter's Mark variants. The attack planner consults
@@ -784,6 +791,9 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       kind: z.literal('GrantHalflingLuck'),
     }),
     z.object({
+      kind: z.literal('GrantHeroicInspirationOnLongRest'),
+    }),
+    z.object({
       kind: z.literal('GrantAdvantageToAttackers'),
       condition: PredicateSchema.optional(),
     }),
@@ -913,6 +923,7 @@ export const EFFECT_KINDS = [
   'GrantPactBlade',
   'GrantPactChain',
   'GrantHalflingLuck',
+  'GrantHeroicInspirationOnLongRest',
   'GrantAdvantageToAttackers',
   'ImposeDisadvantageOnAttackers',
   'CancelAdvantageOnAttackers',

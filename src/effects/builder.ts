@@ -217,6 +217,11 @@ export class EffectAccumulator {
   // (currently attack rolls; save/check sites to follow) to trigger
   // the reroll-on-natural-1 mechanic.
   private halflingLuckFlag: boolean = false;
+  // Slice 542: Heroic Inspiration on Long Rest presence marker.
+  // Read by planLongRest to auto-grant Heroic Inspiration to
+  // participants with the marker on their effect stack (Human
+  // Resourceful, etc.).
+  private heroicInspirationOnLongRestFlag: boolean = false;
   private uncannyDodgeFlag: boolean = false;
   private innateSorcerySpendAlternativeFlag: boolean = false;
   private selfRestorationFlag: boolean = false;
@@ -888,6 +893,14 @@ export class EffectAccumulator {
   hasHalflingLuck(): boolean {
     return this.halflingLuckFlag;
   }
+  markHeroicInspirationOnLongRest(): void {
+    this.heroicInspirationOnLongRestFlag = true;
+  }
+  // Slice 542: Heroic Inspiration on Long Rest. Read by planLongRest
+  // to auto-grant Heroic Inspiration to participants with the marker.
+  hasHeroicInspirationOnLongRest(): boolean {
+    return this.heroicInspirationOnLongRestFlag;
+  }
   // Slice 200: marker that gates `planUncannyDodge`. Set by Rogue L5+
   // via the `GrantUncannyDodge` effect on the Uncanny Dodge feature.
   markUncannyDodge(): void {
@@ -1148,6 +1161,9 @@ export const applyEffectToBuilder = (
       return;
     case 'GrantHalflingLuck':
       acc.markHalflingLuck();
+      return;
+    case 'GrantHeroicInspirationOnLongRest':
+      acc.markHeroicInspirationOnLongRest();
       return;
     case 'GrantUncannyDodge':
       acc.markUncannyDodge();

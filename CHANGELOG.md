@@ -4,6 +4,36 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 542): Heroic Inspiration as a first-class resource — completes Human Resourceful + the L1 SRD primitive surface**
+
+Promotes Heroic Inspiration from a narrative claim to a first-class engine resource. New Character field `heroicInspiration: boolean` (default false; additive, old saves load clean). New `GrantHeroicInspirationOnLongRest` effect-kind marker. Two new events (HeroicInspirationGranted + HeroicInspirationConsumed) with reducers. `planLongRest` extended to auto-emit Granted for each participant whose effect stack carries the marker. New `planConsumeHeroicInspiration` planner emits Consumed (the reducer clears the flag). Human Resourceful's slice-537 `Custom human-resourceful` marker is replaced by the new effect kind.
+
+RAW (SRD 5.2.1): "When you have Heroic Inspiration, you can expend it to reroll any die immediately after rolling it, and you must use the new roll. You can have only one Heroic Inspiration at a time." Human (Resourceful): "You gain Heroic Inspiration whenever you finish a Long Rest."
+
+**Engine:**
+- Character schema: `heroicInspiration: z.boolean().default(false)` ([src/schemas/runtime/character.ts](src/schemas/runtime/character.ts)).
+- New effect kind `GrantHeroicInspirationOnLongRest` ([src/schemas/effects.ts](src/schemas/effects.ts)) + EffectAccumulator `markHeroicInspirationOnLongRest()` / `hasHeroicInspirationOnLongRest()` ([src/effects/builder.ts](src/effects/builder.ts)).
+- New events `HeroicInspirationGrantedEvent` / `HeroicInspirationConsumedEvent` ([src/schemas/events/heroic-inspiration.ts](src/schemas/events/heroic-inspiration.ts)); reducers ([src/engine/reducers/heroic-inspiration.ts](src/engine/reducers/heroic-inspiration.ts)); wired through apply.ts switch + events/index.ts re-exports.
+- `planLongRest` ([src/engine/plan/rest.ts](src/engine/plan/rest.ts)) signature extended (backward-compatible 2 or 3 args): when content is supplied, walks each participant's effect stack via buildEffectStack and emits HeroicInspirationGranted for those with the marker. Wired in `engine.plan.longRest` to always pass content.
+- New `planConsumeHeroicInspiration` ([src/engine/plan/heroic-inspiration.ts](src/engine/plan/heroic-inspiration.ts)). Intent: `{ characterId, appliedTo? }`. Throws if the character has no Inspiration; emits HeroicInspirationConsumed (the reducer flips the boolean to false).
+- Wired through plan/index + engine/index + conveniences (`ConsumeHeroicInspiration` dispatch).
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)): Human traits' slice-537 `Custom human-resourceful` marker is replaced by `{ kind: 'GrantHeroicInspirationOnLongRest' }`. Audit allowlist entry removed (no longer indirect; observable via effect-stack accessor).
+
+**Doc-count guards:** `EFFECT_KINDS` 60 → 61 (59 → 60 primitives + Custom). Updated [docs/authoring-content-packs.md](docs/authoring-content-packs.md) + [docs/concepts.md](docs/concepts.md).
+
+**Documented RAW deferral:** the **reroll integration** (spend Inspiration → re-roll a recent d20) is consumer-managed for now. The consumer either re-plans the triggering roll with new RNG OR substitutes the new d20 into the prior event when displaying outcomes. Halfling Luck's reroll helper has the closest shape; a follow-up slice can extend it to also check for Heroic Inspiration as a spend-on-natural-1 alternative.
+
+**Tests** ([tests/unit/engine/slice-542-heroic-inspiration.test.ts](tests/unit/engine/slice-542-heroic-inspiration.test.ts), 8 cases): Human has the new GrantHeroicInspirationOnLongRest trait (old Custom marker gone); effect stack projects hasHeroicInspirationOnLongRest true for Human, false for Elf (control); planLongRest auto-emits Granted only for participants with the marker (Human yes, Elf no in same party); committing the Granted event flips the heroicInspiration flag to true; planConsumeHeroicInspiration emits Consumed + reducer flips the flag back to false; throws when the character has no Inspiration; re-granting while already true is idempotent (RAW: only one at a time).
+
+**Audit:** Names match the marker triad (`markX` / `hasX` / `GrantX`). DRY: reduces slice-537 + marker-pattern code surface. SRP: marker + planner + reducer each does one thing. Magic numbers: none. at-threading: resolved once via `at ?? nowIso()`.
+
+**Pattern-check:** the GrantX-on-LongRest marker pattern is now used twice (Halfling Luck for in-roll mechanic; Heroic Inspiration for on-rest grant). Future grant-on-rest features (Wizard Arcane Recovery is already wired via different machinery; subclass features that grant inspiration variants) fit this same shape: declare the marker on the granting feature + extend planLongRest to read it.
+
+**Closes Human Resourceful** (slice 537 followup). **L1 SRD primitive arc 11 of ~14 closes**: with this slice, Dwarf Stonecunning (540), Dragonborn Breath Weapon (541), and Heroic Inspiration (this slice) all ship as first-class primitives. Only the Halfling Luck cohort sweep remains.
+
+---
+
 **Engine + content (slice 541): Dragonborn Breath Weapon — character-side area-save attack**
 
 Wires the Dragonborn Breath Weapon per RAW. The dragonborn species gains `GrantResource { resourceId: 'dragonborn-breath-weapon', max: profBonus, recharge: 'longRest' }`; new `planDragonbornBreath` consumes Action + ResourceSpent + emits per-target SaveRolled (DEX, DC = 8 + CON + PB) + DamageApplied (damage rolled once for the area; halved on save). Damage dice scale by character level (1d10 at L1, 2d10 at L5, 3d10 at L11, 4d10 at L17). Damage type is consumer-supplied from the Draconic Ancestry pick (slice 531).

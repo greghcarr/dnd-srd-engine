@@ -43,6 +43,7 @@ export const performIntent = (
     AdrenalineRush: (i) => engine.plan.adrenalineRush(campaign.state, i),
     Stonecunning: (i) => engine.plan.stonecunning(campaign.state, i),
     DragonbornBreath: (i) => engine.plan.dragonbornBreath(campaign.state, i),
+    ConsumeHeroicInspiration: (i) => engine.plan.consumeHeroicInspiration(campaign.state, i),
     NimbleEscape: (i) => engine.plan.nimbleEscape(campaign.state, i),
     CunningAction: (i) => engine.plan.cunningAction(campaign.state, i),
     ExpeditiousRetreatDash: (i) => engine.plan.expeditiousRetreatDash(campaign.state, i),

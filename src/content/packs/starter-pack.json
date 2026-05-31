@@ -35,7 +35,7 @@
         { "id": "magic-initiate-druid", "label": "Magic Initiate (Druid)", "effects": [{ "kind": "GrantFeat", "featId": "magic-initiate-druid" }] },
         { "id": "skilled", "label": "Skilled", "effects": [{ "kind": "GrantFeat", "featId": "skilled" }] }
       ] },
-      { "kind": "Custom", "handlerId": "human-resourceful" }
+      { "kind": "GrantHeroicInspirationOnLongRest" }
     ] },
     { "id": "elf", "name": "Elf", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "elvish"], "traits": [
       { "kind": "GrantSense", "sense": "darkvision", "range": 60 },

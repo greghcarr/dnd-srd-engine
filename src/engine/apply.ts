@@ -21,6 +21,10 @@ import {
   applyResourceSpent,
 } from './reducers/resources.js';
 import {
+  applyHeroicInspirationGranted,
+  applyHeroicInspirationConsumed,
+} from './reducers/heroic-inspiration.js';
+import {
   applyLongRestEnded,
   applyLongRestStarted,
   applyShortRestEnded,
@@ -220,6 +224,12 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
         break;
       case 'Stabilized':
         applyStabilized(draft, event);
+        break;
+      case 'HeroicInspirationGranted':
+        applyHeroicInspirationGranted(draft, event);
+        break;
+      case 'HeroicInspirationConsumed':
+        applyHeroicInspirationConsumed(draft, event);
         break;
       case 'CreatureDestroyed':
         applyCreatureDestroyed(draft, event);

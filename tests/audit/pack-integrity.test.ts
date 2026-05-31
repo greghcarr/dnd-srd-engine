@@ -499,14 +499,12 @@ describe('pack integrity: every Custom handlerId has a backing implementation', 
     ['halfling-naturally-stealthy', 'narrative marker: Hide-with-larger-creature-obscurement rule; consumer-managed (engine has no LOS / obscurement model)'],
     // Slice 536: narrative-only Elf Trance trait.
     ['elf-trance', 'narrative marker: no-sleep + magic-cant-put-to-sleep + 4-hour Long Rest; consumer-managed (engine does not model sleep state, magical-sleep gates, or rest-wall-clock duration)'],
-    // Slice 537: Human Resourceful (Heroic Inspiration on Long Rest).
-    // The engine has no Heroic Inspiration resource model at all
-    // (no field, no events, no planner). Grant + consume + reroll is
-    // entirely consumer-managed. The marker exists so a consumer that
-    // does model Heroic Inspiration can detect Resourceful and grant
-    // an Inspiration token on Long Rest. Full primitive deferred to a
-    // future dedicated slice.
-    ['human-resourceful', 'narrative marker: Heroic Inspiration on Long Rest; consumer-managed (engine does not model Heroic Inspiration as a resource yet)'],
+    // Slice 537/542: Human Resourceful (Heroic Inspiration on Long
+    // Rest) was previously a narrative Custom marker; slice 542
+    // promoted it to a real GrantHeroicInspirationOnLongRest effect
+    // primitive (observable in the effect stack via
+    // hasHeroicInspirationOnLongRest()). Removed from this allowlist
+    // when the Custom-marker form left the pack.
   ]);
 
   it('every Custom handlerId is referenced in engine source or allowlisted as indirectly backed', () => {

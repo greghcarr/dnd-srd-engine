@@ -23,6 +23,10 @@ import {
   LongRestStartedEventSchema,
   LongRestEndedEventSchema,
 } from './rest.js';
+import {
+  HeroicInspirationGrantedEventSchema,
+  HeroicInspirationConsumedEventSchema,
+} from './heroic-inspiration.js';
 import { CharacterCreatedEventSchema } from './progression.js';
 import {
   EncounterCreatedEventSchema,
@@ -212,6 +216,8 @@ export const EventSchema = z.discriminatedUnion('type', [
   StabilizedEventSchema,
   CreatureDestroyedEventSchema,
   HPMaxBonusChangedEventSchema,
+  HeroicInspirationGrantedEventSchema,
+  HeroicInspirationConsumedEventSchema,
   ResourceSpentEventSchema,
   ResourceRestoredEventSchema,
   HitDieSpentEventSchema,
@@ -501,6 +507,10 @@ export type {
   HPMaxBonusChangedEvent,
 } from './combat.js';
 export type {
+  HeroicInspirationGrantedEvent,
+  HeroicInspirationConsumedEvent,
+} from './heroic-inspiration.js';
+export type {
   ResourceSpentEvent,
   ResourceRestoredEvent,
   HitDieSpentEvent,
@@ -543,6 +553,10 @@ export {
   CreatureDestroyedEventSchema,
   HPMaxBonusChangedEventSchema,
 } from './combat.js';
+export {
+  HeroicInspirationGrantedEventSchema,
+  HeroicInspirationConsumedEventSchema,
+} from './heroic-inspiration.js';
 export {
   ResourceSpentEventSchema,
   ResourceRestoredEventSchema,
