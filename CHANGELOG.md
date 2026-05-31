@@ -4,6 +4,30 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 535): Halfling Nimbleness + Naturally Stealthy — narrative marker traits**
+
+Wires the two narrative Halfling L1 traits per RAW. Both affect positional/Hide-action gates the engine doesn't model. Ships as declarative `{kind: 'Custom', handlerId}` markers so consumers can detect the trait presence and enforce the narrative rule. Mirror of the existing `nimble-escape` Custom-marker pattern on Goblin Warrior + Goblin Boss.
+
+RAW (SRD 5.2.1 Halfling):
+- "_Halfling Nimbleness._ You can move through the space of any creature that is a size larger than you, but you can't stop in the same space."
+- "_Naturally Stealthy._ You can take the Hide action even when you are obscured only by a creature that is at least one size larger than you."
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)): Halfling traits gain `{kind: 'Custom', handlerId: 'halfling-nimbleness'}` + `{kind: 'Custom', handlerId: 'halfling-naturally-stealthy'}`. No engine code; no handler implementation required (consumers read the marker to enforce the narrative rule when modeling positions / Hide gates).
+
+**Documented:** Halfling Luck (reroll a 1 on any d20 test) stays deferred — needs a new reroll-on-1 primitive. Separate slice. The pre-existing Halfling trait Brave (SetAdvantage on saves preventing Frightened) is unchanged.
+
+**Tests** ([tests/unit/engine/slice-535-halfling-narrative-traits.test.ts](tests/unit/engine/slice-535-halfling-narrative-traits.test.ts), 3 cases): both Custom markers ship; Brave regression check.
+
+**Audit (content-sweep abbreviated):** zero new mechanism; reuses the slice-nimble-escape Custom-marker pattern. No new identifiers in engine code (only two new declarative content strings).
+
+**L1 SRD audit progress (8 of ~14 gaps closed):**
+- ✓ slices 530-534 + Halfling Nimbleness + Stealthy (this slice)
+- ⏳ Halfling Luck (reroll primitive), Dwarf Stonecunning, Dragonborn Breath Weapon, Human Resourceful, Elf Trance.
+
+**Pattern-check:** the Custom-marker pattern for narrative-only declared traits is now used 5 times in the pack (nimble-escape on Goblins, martial-arts on Monk, plus the two new Halfling markers, and the slice-456 zombie-undead-fortitude predecessor). It's the canonical "declaratively present but consumer-managed" shape for traits the engine can't or shouldn't model. Halfling Nimbleness + Naturally Stealthy specifically: consumers like an encounter UI can scan for these markers to surface the narrative rule on the character sheet without the engine doing anything at the rules layer.
+
+---
+
 **Content (slice 534): Dwarven Toughness — +1 HP per character level via AddModifier level-formula**
 
 Wires Dwarf's Dwarven Toughness trait per RAW. Pure-content; the Formula DSL's `{ kind: 'level' }` node + the existing `AddModifier { target: 'hpMax' }` infrastructure compose to give +1 HP per total character level automatically (L1 = +1, L2 = +2, ..., L20 = +20). The derived `effectiveHpMax = hp.max + hpMaxBonus` shape already in place from the Aid spell (slice-Aid convention) carries this without any new derive code.

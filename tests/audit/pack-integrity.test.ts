@@ -489,6 +489,14 @@ describe('pack integrity: every Custom handlerId has a backing implementation', 
     // real `GrantRitualAdept` marker effect (observable in the effect
     // stack via `hasRitualAdept()`). Removed from this allowlist when the
     // pack no longer carried the Custom handlerId.
+    // Slice 535: narrative-only Halfling traits. The engine cannot model
+    // positional gates (Nimbleness = move-through-larger; Naturally
+    // Stealthy = Hide-with-larger-creature-obscurement). The markers are
+    // declaratively present so consumers (a position-aware UI / VTT) can
+    // detect them and enforce the narrative rule. No engine-side handler
+    // is required because the rule lives entirely in the consumer.
+    ['halfling-nimbleness', 'narrative marker: positional move-through-larger-creature rule; consumer-managed (engine has no position model)'],
+    ['halfling-naturally-stealthy', 'narrative marker: Hide-with-larger-creature-obscurement rule; consumer-managed (engine has no LOS / obscurement model)'],
   ]);
 
   it('every Custom handlerId is referenced in engine source or allowlisted as indirectly backed', () => {
