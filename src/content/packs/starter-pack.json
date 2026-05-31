@@ -2907,6 +2907,7 @@
     { "id": "block-and-tackle", "itemKind": "gear", "name": "Block and Tackle" },
     { "id": "chain", "itemKind": "gear", "name": "Chain" },
     { "id": "climbers-kit", "itemKind": "gear", "name": "Climber's Kit" },
+    { "id": "healers-kit", "itemKind": "gear", "name": "Healer's Kit", "weight": 3, "cost": { "amount": 5, "currency": "gp" }, "description": "A Healer's Kit has ten uses. As a Utilize action, you can expend one of its uses to stabilize an Unconscious creature that has 0 Hit Points without needing to make a Wisdom (Medicine) check. Slice 546: planUseHealersKit wires the Utilize action; ItemInstance.chargesRemaining / maxCharges initialize to 10 at create time (consumer-managed)." },
     { "id": "crowbar", "itemKind": "gear", "name": "Crowbar" },
     { "id": "grappling-hook", "itemKind": "gear", "name": "Grappling Hook" },
     { "id": "ladder-10", "itemKind": "gear", "name": "Ladder" },

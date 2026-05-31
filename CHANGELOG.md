@@ -4,6 +4,40 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 546): Healer's Kit item + `planUseHealersKit` — Utilize-action stabilize**
+
+Closes the missing-item gap surfaced by the slice-544 deep audit. Healer's Kit is referenced by the Soldier background's starting equipment and the Healer feat's mechanical hook, but was absent from the item catalog. A character at 0 HP could not be stabilized via the SRD's most common path: a teammate spending one of the 10 kit uses.
+
+RAW (SRD 5.2.1 Equipment, Healer's Kit): "A Healer's Kit has ten uses. As a Utilize action, you can expend one of its uses to stabilize an Unconscious creature that has 0 Hit Points without needing to make a Wisdom (Medicine) check."
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)): new `healers-kit` gear item (5 GP, 3 lb). The 10-use cap is consumer-managed via the existing `ItemInstance.chargesRemaining` / `maxCharges` fields (the kit instance is created with chargesRemaining = 10).
+
+**Engine:**
+- New `planUseHealersKit` ([src/engine/plan/use-healers-kit.ts](src/engine/plan/use-healers-kit.ts)). Intent: `{ healerId, healersKitInstanceId, targetId }`. Validates kit instance is `healers-kit` definition + chargesRemaining > 0 + target at 0 HP, not yet stable, not dead. Consumes Action (only inside an active encounter on the healer's turn — Utilize action) + emits `ItemChargeConsumed(1)` + `Stabilized`. Mirror of the slice-520 stabilize-mechanic shape (Spare the Dying cantrip), gated by the gear's charges.
+- Wired through [src/engine/plan/index.ts](src/engine/plan/index.ts), [src/engine/index.ts](src/engine/index.ts) (interface + type re-export + factory), [src/engine/conveniences.ts](src/engine/conveniences.ts) (`UseHealersKit` dispatch).
+
+**Doc-count updates:** gear count 77 → 78 (and items total 544 → 545). Updated [docs/getting-started.md](docs/getting-started.md) + [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md). The doc-counts audit caught the drift and required this update in the same slice (slice 362 norm).
+
+**Documented RAW deviations (intentional):**
+- **Kit-ownership / in-hand gate**: not enforced. The engine doesn't model "in-hand vs in-pack" granularity for gear; the consumer gates this if needed.
+- **Adjacency**: RAW implies the healer is adjacent to the target. The engine doesn't model adjacency for gear use either; positional gating is consumer territory.
+
+**Tests** ([tests/unit/engine/slice-546-healers-kit.test.ts](tests/unit/engine/slice-546-healers-kit.test.ts), 8 cases): kit ships in pack with correct weight + cost; out-of-encounter use emits 2-event chain (charge + stabilize); in-encounter use on healer's turn also emits ActionEconomyConsumed; replay-equivalence (charge decrement + stable=true); 0-charges throws; target-not-at-0-HP throws; target-already-stable throws; wrong-item-kind throws.
+
+**Audit:**
+- **Names:** `planUseHealersKit` / `UseHealersKitIntent` mirror the established planner-naming convention. `HEALERS_KIT_DEFINITION_ID` extracted as constant.
+- **DRY:** the action-economy + charge + stabilize composition is the same shape as Spare the Dying (cast-spell stabilize mechanic, slice 520) but is gear-driven. Below the abstraction threshold; the gear-use-stabilize family is now 1 member.
+- **SRP:** validates, consumes, emits — one thing.
+- **Magic numbers:** `HEALERS_KIT_CHARGE_COST = 1` extracted. Cost/weight live as RAW data on the item.
+- **at-threading:** single `nowIso()` resolution, threaded.
+- **Mechanical outcomes asserted:** event count + types + replay-equivalence on charges decrement + deathSaves.stable flip.
+
+**Pattern-check:** the deep audit also surfaced that the existing planner-naming convention (`planXxxxXxxx`) extends cleanly to "use this gear item to do Xxxx" planners. If future gear items grow per-instance use semantics (Antitoxin vial, Healing Salve, Spider Climbing Potion timing, etc.), they follow the same shape: bespoke planner that emits ItemChargeConsumed + the item-specific outcome event. The Consumable schema's `onConsume` shape (used by potions) covers the simpler "destroyed on first use" case.
+
+L1 SRD gap close: 2 of 4 deep-audit gaps closed (Second Wind, Healer's Kit). Remaining: Savage Attacker primitive (slice 547), planRage (slice 548).
+
+---
+
 **Engine (slice 545): planSecondWind — Fighter L1 Bonus Action heal**
 
 Closes the load-bearing Fighter L1 gap surfaced by the slice-544 deep audit. The `second-wind` resource was already granted by the Fighter class progression, but no planner existed to consume it; consumers had to manually emit `ResourceSpent` + `Healed` + `ActionEconomyConsumed` events. New `planSecondWind` does the canonical L1 Fighter action in one call.
