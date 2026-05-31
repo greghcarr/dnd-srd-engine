@@ -4129,7 +4129,12 @@
       "cr": 9,
       "xp": 5000,
       "proficiencyBonus": 4,
-      "languages": ["common", "giant"]
+      "languages": ["common", "giant"],
+      "traits": [
+        { "kind": "GrantSpell", "spellId": "detect-magic", "preparation": "at-will", "spellcastingAbility": "CHA" },
+        { "kind": "GrantSpell", "spellId": "fog-cloud", "preparation": "at-will", "spellcastingAbility": "CHA" },
+        { "kind": "GrantSpell", "spellId": "light", "preparation": "at-will", "spellcastingAbility": "CHA" }
+      ]
     },
     {
       "id": "storm-giant",
@@ -4149,7 +4154,11 @@
       "cr": 13,
       "xp": 10000,
       "proficiencyBonus": 5,
-      "languages": ["common", "giant"]
+      "languages": ["common", "giant"],
+      "traits": [
+        { "kind": "GrantSpell", "spellId": "detect-magic", "preparation": "at-will", "spellcastingAbility": "WIS" },
+        { "kind": "GrantSpell", "spellId": "light", "preparation": "at-will", "spellcastingAbility": "WIS" }
+      ]
     },
     {
       "id": "air-elemental",
@@ -4624,7 +4633,13 @@
       "cr": 1,
       "xp": 200,
       "proficiencyBonus": 2,
-      "languages": ["elvish", "sylvan"]
+      "languages": ["elvish", "sylvan"],
+      "traits": [
+        { "kind": "GrantMagicResistance" },
+        { "kind": "GrantSpell", "spellId": "animal-friendship", "preparation": "at-will", "spellcastingAbility": "CHA" },
+        { "kind": "GrantSpell", "spellId": "charm-monster", "preparation": "at-will", "spellcastingAbility": "CHA" },
+        { "kind": "GrantSpell", "spellId": "druidcraft", "preparation": "at-will", "spellcastingAbility": "CHA" }
+      ]
     },
     {
       "id": "satyr",
@@ -4715,7 +4730,11 @@
       "xp": 1100,
       "proficiencyBonus": 2,
       "languages": ["all languages", "telepathy 120 ft"],
-      "traits": []
+      "traits": [
+        { "kind": "GrantSpell", "spellId": "detect-evil-and-good", "preparation": "at-will", "spellcastingAbility": "WIS" },
+        { "kind": "GrantSpell", "spellId": "detect-magic", "preparation": "at-will", "spellcastingAbility": "WIS" },
+        { "kind": "GrantSpell", "spellId": "detect-thoughts", "preparation": "at-will", "spellcastingAbility": "WIS" }
+      ]
     },
     {
       "id": "unicorn",
@@ -4733,7 +4752,12 @@
       "cr": 5,
       "xp": 1800,
       "proficiencyBonus": 3,
-      "languages": ["celestial", "elvish", "sylvan", "telepathy 60 ft"]
+      "languages": ["celestial", "elvish", "sylvan", "telepathy 60 ft"],
+      "traits": [
+        { "kind": "GrantMagicResistance" },
+        { "kind": "GrantSpell", "spellId": "detect-evil-and-good", "preparation": "at-will", "spellcastingAbility": "CHA" },
+        { "kind": "GrantSpell", "spellId": "druidcraft", "preparation": "at-will", "spellcastingAbility": "CHA" }
+      ]
     },
     {
       "id": "deva",
@@ -4754,7 +4778,10 @@
       "xp": 5900,
       "proficiencyBonus": 4,
       "languages": ["all languages", "telepathy 120 ft"],
-      "traits": []
+      "traits": [
+        { "kind": "GrantMagicResistance" },
+        { "kind": "GrantSpell", "spellId": "detect-evil-and-good", "preparation": "at-will", "spellcastingAbility": "CHA" }
+      ]
     },
     {
       "id": "planetar",
@@ -4775,7 +4802,10 @@
       "xp": 15000,
       "proficiencyBonus": 5,
       "languages": ["all languages", "telepathy 120 ft"],
-      "traits": []
+      "traits": [
+        { "kind": "GrantMagicResistance" },
+        { "kind": "GrantSpell", "spellId": "detect-evil-and-good", "preparation": "at-will", "spellcastingAbility": "CHA" }
+      ]
     },
     {
       "id": "solar",
@@ -4795,7 +4825,10 @@
       "xp": 33000,
       "proficiencyBonus": 7,
       "languages": ["all languages", "telepathy 120 ft"],
-      "traits": []
+      "traits": [
+        { "kind": "GrantMagicResistance" },
+        { "kind": "GrantSpell", "spellId": "detect-evil-and-good", "preparation": "at-will", "spellcastingAbility": "CHA" }
+      ]
     },
     {
       "id": "awakened-shrub",
