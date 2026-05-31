@@ -26,6 +26,14 @@
         { "id": "sleight-of-hand", "label": "Sleight of Hand", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "sleight-of-hand", "level": "proficient" }] },
         { "id": "stealth", "label": "Stealth", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "stealth", "level": "proficient" }] },
         { "id": "survival", "label": "Survival", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "survival", "level": "proficient" }] }
+      ] },
+      { "kind": "OfferChoice", "choiceId": "human-versatile", "prompt": "Choose an Origin Feat (Human Versatile).", "oneOf": 1, "when": "onAcquire", "options": [
+        { "id": "savage-attacker", "label": "Savage Attacker", "effects": [{ "kind": "GrantFeat", "featId": "savage-attacker" }] },
+        { "id": "alert", "label": "Alert", "effects": [{ "kind": "GrantFeat", "featId": "alert" }] },
+        { "id": "magic-initiate-cleric", "label": "Magic Initiate (Cleric)", "effects": [{ "kind": "GrantFeat", "featId": "magic-initiate-cleric" }] },
+        { "id": "magic-initiate-wizard", "label": "Magic Initiate (Wizard)", "effects": [{ "kind": "GrantFeat", "featId": "magic-initiate-wizard" }] },
+        { "id": "magic-initiate-druid", "label": "Magic Initiate (Druid)", "effects": [{ "kind": "GrantFeat", "featId": "magic-initiate-druid" }] },
+        { "id": "skilled", "label": "Skilled", "effects": [{ "kind": "GrantFeat", "featId": "skilled" }] }
       ] }
     ] },
     { "id": "elf", "name": "Elf", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "elvish"], "traits": [

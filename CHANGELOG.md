@@ -4,6 +4,32 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 533): Human Versatile — origin-feat OfferChoice**
+
+Wires Human's Versatile trait per RAW. Mirror of slice 530-532 pattern (OfferChoice + per-option-effects). Each option is a `GrantFeat` over one of the 6 origin feats; the slice-511 expandGrantFeatEffects pathway projects the chosen feat's effects into the bearer's effect stack automatically.
+
+RAW (SRD 5.2.1 Human): "_Versatile._ You gain an Origin feat of your choice (see 'Feats'). Skilled is recommended."
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)): Human traits gain `OfferChoice` `human-versatile` with 6 options — Savage Attacker, Alert, Magic Initiate (Cleric/Wizard/Druid), Skilled — each carrying `GrantFeat { featId }`.
+
+**Documented RAW deferral:** Human's third trait, **Resourceful** ("You gain Heroic Inspiration whenever you finish a Long Rest"), stays deferred — it needs a Heroic-Inspiration-on-Long-Rest hook. Separate slice.
+
+**Tests** ([tests/unit/engine/slice-533-human-versatile.test.ts](tests/unit/engine/slice-533-human-versatile.test.ts), 3 cases): OfferChoice exposes all 6 origin feats; all options wired with `GrantFeat { featId }` (canonical shape); end-to-end the Alert pick projects `+initiative` modifier into the effect stack via expandGrantFeatEffects.
+
+**Audit (content-sweep abbreviated):** zero new mechanism; reuses OfferChoice + GrantFeat. No new identifiers.
+
+**L1 SRD audit progress (6 of ~14 gaps closed):**
+- ✓ Tiefling: Fiendish Legacy + Otherworldly Presence (slice 530)
+- ✓ Dragonborn: Draconic Ancestry + Damage Resistance (slice 531)
+- ✓ Elf: Elven Lineage (slice 532)
+- ✓ Gnome: Gnomish Lineage (slice 532)
+- ✓ Human: Versatile (this slice)
+- ⏳ Human Resourceful, Halfling (Nimbleness + Luck + Stealthy), Dwarf (Toughness + Stonecunning), Dragonborn Breath Weapon, Elf Trance.
+
+**Pattern-check:** Versatile is the 6th L1-species OfferChoice trait (Human Skillful, Goliath Giant Ancestry, Tiefling Fiendish Legacy, Dragonborn Draconic Ancestry, Elf Elven Lineage + Keen Senses, Gnome Gnomish Lineage, Human Versatile). The OfferChoice-with-GrantFeat shape (this slice) is a small variant of the broader OfferChoice pattern that proves the slice-511 GrantFeat indirection composes cleanly with species-side choices, not just class-feature choices.
+
+---
+
 **Content (slice 532): Elf + Gnome Lineage choices — closes 2 more L1 RAW gaps**
 
 Wires the Elf and Gnome species lineage choices per RAW. Sibling pattern to slices 530-531: each lineage option grants its L1 effects (cantrips + persistent modifiers) via an `OfferChoice` on the species traits array. Pure content; reuses existing primitives.
