@@ -64,7 +64,19 @@
       ] }
     ] },
     { "id": "dragonborn", "name": "Dragonborn", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "draconic"], "traits": [
-      { "kind": "GrantSense", "sense": "darkvision", "range": 60 }
+      { "kind": "GrantSense", "sense": "darkvision", "range": 60 },
+      { "kind": "OfferChoice", "choiceId": "dragonborn-draconic-ancestry", "prompt": "Choose a Draconic Ancestor (damage type for your Breath Weapon and Damage Resistance).", "oneOf": 1, "when": "onAcquire", "options": [
+        { "id": "black", "label": "Black (Acid)", "effects": [{ "kind": "GrantResistance", "damageType": "acid" }] },
+        { "id": "blue", "label": "Blue (Lightning)", "effects": [{ "kind": "GrantResistance", "damageType": "lightning" }] },
+        { "id": "brass", "label": "Brass (Fire)", "effects": [{ "kind": "GrantResistance", "damageType": "fire" }] },
+        { "id": "bronze", "label": "Bronze (Lightning)", "effects": [{ "kind": "GrantResistance", "damageType": "lightning" }] },
+        { "id": "copper", "label": "Copper (Acid)", "effects": [{ "kind": "GrantResistance", "damageType": "acid" }] },
+        { "id": "gold", "label": "Gold (Fire)", "effects": [{ "kind": "GrantResistance", "damageType": "fire" }] },
+        { "id": "green", "label": "Green (Poison)", "effects": [{ "kind": "GrantResistance", "damageType": "poison" }] },
+        { "id": "red", "label": "Red (Fire)", "effects": [{ "kind": "GrantResistance", "damageType": "fire" }] },
+        { "id": "silver", "label": "Silver (Cold)", "effects": [{ "kind": "GrantResistance", "damageType": "cold" }] },
+        { "id": "white", "label": "White (Cold)", "effects": [{ "kind": "GrantResistance", "damageType": "cold" }] }
+      ] }
     ] },
     { "id": "gnome", "name": "Gnome", "size": "Small", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "gnomish"], "traits": [
       { "kind": "GrantSense", "sense": "darkvision", "range": 60 },

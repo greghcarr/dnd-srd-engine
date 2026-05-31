@@ -4,6 +4,42 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 531): Dragonborn Draconic Ancestry + Damage Resistance — closes L1 RAW gap (resistance arm)**
+
+Wires the Dragonborn's Draconic Ancestry choice + the resistance arm per RAW. Mirror of slice 530's Tiefling Fiendish Legacy pattern. The active arm (Breath Weapon: PB uses per long rest, 1d10 area save scaling by level) stays deferred to slice 532 — it needs a character-side breath-weapon planner since the slice-140 BreathWeaponSpec primitive is monster-only.
+
+RAW (SRD 5.2.1 Dragonborn): "_Draconic Ancestry._ Choose the kind of dragon from the Draconic Ancestors table. Your choice affects your Breath Weapon and Damage Resistance traits ... _Damage Resistance._ You have Resistance to the damage type determined by your Draconic Ancestry trait."
+
+Draconic Ancestors → damage type:
+| Acid | Lightning | Fire | Cold | Poison |
+|---|---|---|---|---|
+| Black, Copper | Blue, Bronze | Brass, Gold, Red | Silver, White | Green |
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- Dragonborn traits gain: `OfferChoice` `dragonborn-draconic-ancestry` with 10 options (one per dragon), each granting `GrantResistance` for the canonical damage type.
+
+**Documented RAW deferrals:**
+- **Breath Weapon** (PB uses per long rest; 1d10 at L1, +1d10 at L5/11/17; DC 8 + CON + PB; 15-ft Cone or 30-ft Line shape): deferred to slice 532. Needs a character-side breath-weapon planner + per-long-rest PB-uses tracker + level-scaling damage. The slice-140 BreathWeaponSpec primitive handles monsters with a static spec on the statblock; PCs need the ancestry-driven damage type + level-scaled damage dice resolved at cast time.
+- **Draconic Flight** (L5 character feature): out of L1 scope.
+
+**Tests** ([tests/unit/engine/slice-531-dragonborn-draconic-ancestry.test.ts](tests/unit/engine/slice-531-dragonborn-draconic-ancestry.test.ts), 12 cases): trait shape (Darkvision + OfferChoice); OfferChoice exposes all 10 ancestries; each ancestry projects the correct damage-type resistance via the effect stack (table-driven `it.each` × 10 ancestries).
+
+**Audit (content-sweep abbreviated):** zero new mechanism; reuses OfferChoice + GrantResistance. No new identifiers.
+
+**L1 SRD audit progress** (closes 3 of ~14 gaps now):
+- ✓ Tiefling: Fiendish Legacy + Otherworldly Presence (slice 530)
+- ✓ Dragonborn: Draconic Ancestry + Damage Resistance (this slice)
+- ⏳ Dragonborn: Breath Weapon (slice 532 candidate)
+- Halfling: Nimbleness + Luck + Naturally Stealthy
+- Dwarf: Dwarven Toughness + Stonecunning
+- Elf: Elven Lineage choice + Trance
+- Gnome: Gnomish Lineage choice
+- Human: Resourceful + Versatile
+
+**Pattern-check:** the species-OfferChoice-for-ancestry shape is now used 3 times (Human Skillful, Tiefling Fiendish Legacy, Dragonborn Draconic Ancestry) plus Goliath Giant Ancestry from prior work. Elf + Gnome Lineage choices are the next natural siblings — same shape (OfferChoice with per-option-effects). Sibling lineage gaps are one-line content tasks.
+
+---
+
 **Content (slice 530): Tiefling Fiendish Legacy + Otherworldly Presence — closes L1 RAW gap**
 
 Wires the two missing Tiefling L1 traits surfaced by a fresh L1 SRD audit against [references/srd-markdown/character-origins.md](references/srd-markdown/character-origins.md). Before this slice the Tiefling species had only Darkvision wired; RAW (SRD 5.2.1) requires Darkvision + Fiendish Legacy + Otherworldly Presence at L1.
