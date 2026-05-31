@@ -7,6 +7,7 @@ import type { AbilityCheckRolledEvent } from '../../schemas/events/checks.js';
 import type { ConditionAppliedEvent } from '../../schemas/events/combat.js';
 import type { RNG } from '../../rng/index.js';
 import { rollDie } from '../../rng/dice.js';
+import { applyHalflingLuckForCharacter } from './_halfling-luck.js';
 import { newAppliedConditionId, newEventId } from '../../ids.js';
 import { D20_SIDES } from '../../internal/constants.js';
 import { nowIso } from '../../internal/clock.js';
@@ -140,7 +141,9 @@ export const planCunningAction = (
     pendingChoices: state.pendingChoices,
     characters: state.characters,
   });
-  const d20 = rollDie(D20_SIDES, rng);
+  const rolls: number[] = [rollDie(D20_SIDES, rng)];
+  // Slice 543: Halfling Luck on Cunning Action Hide check.
+  const d20 = applyHalflingLuckForCharacter(rolls[0]!, intent.actorId, state, content, rolls, rng);
   const total = d20 + derivation.total;
   const success = total >= dc;
   const events: Event[] = [
@@ -154,7 +157,7 @@ export const planCunningAction = (
       skill: 'stealth',
       dc,
       success,
-      d20: [d20],
+      d20: rolls,
       used: 'none',
       bonus: derivation.total,
       total,

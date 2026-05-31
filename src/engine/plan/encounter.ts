@@ -26,6 +26,7 @@ import { nowIso } from '../../internal/clock.js';
 import type { ULID } from '../ids-utils.js';
 import type { Character } from '../../schemas/runtime/character.js';
 import { planBreathWeaponRechargeAtTurnStart } from './breath-weapon.js';
+import { applyHalflingLuckFromFlag } from './_halfling-luck.js';
 import { planRegenerationAtTurnStart } from './regeneration.js';
 
 const DEATH_SAVE_SUCCESS_THRESHOLD = 10;
@@ -125,6 +126,9 @@ const planDeathSaveAtTurnStart = (
   if (character.deathSaves.failures >= DEATH_SAVE_FAILURES_TO_DIE) return [];
   if (character.deathSaves.successes >= DEATH_SAVE_SUCCESSES_TO_STABILIZE) return [];
   const d20 = rollDie(D20_SIDES, rng);
+  // Slice 543 deferral: Halfling Luck on death saves not wired
+  // here. planDeathSaveAtTurnStart's 3 callers would all need
+  // state + content threading; documented as a sweep follow-up.
   const success = d20 >= DEATH_SAVE_SUCCESS_THRESHOLD;
   const critical = d20 === NAT_20;
   const save: DeathSaveRolledEvent = {
@@ -198,12 +202,24 @@ export const planRollInitiative = (
         pendingChoices: state.pendingChoices,
       });
       const adv = effects.advantageFor('initiative');
+      const rolls: number[] = [];
       if (adv.advantage && !adv.disadvantage) {
-        d20 = Math.max(rollDie(D20_SIDES, rng), rollDie(D20_SIDES, rng));
+        const a = rollDie(D20_SIDES, rng);
+        const b = rollDie(D20_SIDES, rng);
+        rolls.push(a, b);
+        d20 = Math.max(a, b);
       } else if (adv.disadvantage && !adv.advantage) {
-        d20 = Math.min(rollDie(D20_SIDES, rng), rollDie(D20_SIDES, rng));
+        const a = rollDie(D20_SIDES, rng);
+        const b = rollDie(D20_SIDES, rng);
+        rolls.push(a, b);
+        d20 = Math.min(a, b);
       } else {
         d20 = rollDie(D20_SIDES, rng);
+        rolls.push(d20);
+      }
+      // Slice 543: Halfling Luck on initiative.
+      if (d20 === 1 && effects.hasHalflingLuck()) {
+        d20 = applyHalflingLuckFromFlag(d20, true, rolls, rng);
       }
       effectModifier = effects.modifierSum('initiative', new Map());
     } else {

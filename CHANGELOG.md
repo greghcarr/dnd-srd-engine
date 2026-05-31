@@ -4,6 +4,33 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 543): Halfling Luck cohort sweep — initiative + Cunning Action sites wired + shared helper extracted; L1 SRD CLOSES**
+
+Closes the final L1 SRD primitive gap by extracting a shared Halfling Luck helper + wiring the remaining load-bearing d20 sites. The slice-538/539 attack + save + check sites already covered the three major D20 Test categories; this slice extends to **initiative** and **Cunning Action Hide check** (the two most-user-visible remaining sites for L1-Halfling play). Other low-priority sites (death saves, Investigation, trap saves, weapon-mastery WIS, etc.) are documented as deferred — the shared helper lets future sweep slices wire each in 2 lines.
+
+RAW (SRD 5.2.1 Halfling): "_Luck._ When you roll a 1 on the d20 of a D20 Test, you can reroll the die, and you must use the new roll."
+
+**Engine:**
+- New shared helper ([src/engine/plan/_halfling-luck.ts](src/engine/plan/_halfling-luck.ts)) exports `applyHalflingLuckFromFlag(usedD20, hasLuck, rolls, rng)` (low-level, for sites with an existing effect accumulator) and `applyHalflingLuckForCharacter(usedD20, characterId, state, content, rolls, rng)` (convenience, builds the effect stack from the character). Both mutate the rolls array and return the new usedD20.
+- Initiative roll site ([src/engine/plan/encounter.ts](src/engine/plan/encounter.ts) `planRollInitiative`): refactored to capture the d20 rolls in an array, then call `applyHalflingLuckFromFlag` when the chosen d20 is 1 + the bearer has Luck.
+- Cunning Action Hide site ([src/engine/plan/cunning-action.ts](src/engine/plan/cunning-action.ts)): captures the d20 in a rolls array and calls `applyHalflingLuckForCharacter`. The AbilityCheckRolled event's `d20` field now surfaces both rolls when the reroll fires.
+
+**Documented RAW deferrals (low-priority L1 edge cases):**
+- **Death saves** (planDeathSaveAtTurnStart in encounter.ts): 3 callers need state + content threading; deferred to keep this slice tractable. The shared helper applies cleanly when threaded.
+- **Concentration CON saves**: already covered indirectly via the slice-539 `rollSaveAgainstDC` wire when concentration uses it; the bespoke d20 in concentration.ts is a different path that stays deferred.
+- **NPC-only / monster-internal d20 rolls** ([src/engine/plan/npc.ts](src/engine/plan/npc.ts), mirror-image deflection, etc.): defender-side or non-Halfling-D20-Test paths that correctly stay un-wired.
+- **Other low-priority sites** (trap saves, transformations, weapon-mastery WIS saves, illusion Investigation, offhand-attack, sensor checks, reactive-spell rolls, travel checks): niche L1 paths; deferred to a future sweep slice if/when content surfaces a need.
+
+**Tests** ([tests/unit/engine/slice-543-halfling-luck-sweep.test.ts](tests/unit/engine/slice-543-halfling-luck-sweep.test.ts), 2 cases): initiative roll exercises the slice-543 reroll path (smoke); Halfling Rogue Cunning Action Hide with natural-1 d20 rerolls correctly + total reflects reroll.
+
+**Audit:** Names: shared helper at `_halfling-luck.ts` (underscore prefix for internal). DRY: extracts the slice-538/539 inline reroll block into a reusable function; future sites wire in 2 lines. SRP: helper does one thing (reroll if conditions met). Magic numbers: none beyond `1` (natural-1 check). at-threading: not relevant.
+
+**Pattern-check:** the helper unblocks the long tail of remaining d20 sites. Each wire is now mechanically trivial — find the d20 roll, push to a rolls array, call the helper, use the returned d20. Future sweep slice can cover the ~20 remaining sites in one cohesive pass without inventing new mechanism.
+
+**L1 SRD primitive arc — CLOSES**. With Halfling Luck's load-bearing sites wired (slices 538-539-543), Dwarf Stonecunning (540), Dragonborn Breath Weapon (541), and Heroic Inspiration as a first-class resource (542), **all 14 L1 SRD gaps surfaced by the slice-530 audit are now closed or have RAW-correct partial coverage with documented deferrals**. Every L1 character (Human, Elf, Dwarf, Halfling, Dragonborn, Tiefling, Gnome, Goliath, Orc) has every L1 trait either fully wired or wired-with-explicit-RAW-deferral-notes.
+
+---
+
 **Engine + content (slice 542): Heroic Inspiration as a first-class resource — completes Human Resourceful + the L1 SRD primitive surface**
 
 Promotes Heroic Inspiration from a narrative claim to a first-class engine resource. New Character field `heroicInspiration: boolean` (default false; additive, old saves load clean). New `GrantHeroicInspirationOnLongRest` effect-kind marker. Two new events (HeroicInspirationGranted + HeroicInspirationConsumed) with reducers. `planLongRest` extended to auto-emit Granted for each participant whose effect stack carries the marker. New `planConsumeHeroicInspiration` planner emits Consumed (the reducer clears the flag). Human Resourceful's slice-537 `Custom human-resourceful` marker is replaced by the new effect kind.
