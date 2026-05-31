@@ -72,6 +72,7 @@ import {
   planStonecunning,
   planDragonbornBreath,
   planConsumeHeroicInspiration,
+  planSecondWind,
   planNimbleEscape,
   planCunningAction,
   planExpeditiousRetreatDash,
@@ -213,6 +214,7 @@ import {
   type StonecunningIntent,
   type DragonbornBreathIntent,
   type ConsumeHeroicInspirationIntent,
+  type SecondWindIntent,
   type NimbleEscapeIntent,
   type CunningActionIntent,
   type ExpeditiousRetreatDashIntent,
@@ -375,6 +377,7 @@ export interface Engine {
     stonecunning(state: CampaignState, intent: Omit<StonecunningIntent, 'type'>): PlanResult;
     dragonbornBreath(state: CampaignState, intent: Omit<DragonbornBreathIntent, 'type'>): PlanResult;
     consumeHeroicInspiration(state: CampaignState, intent: Omit<ConsumeHeroicInspirationIntent, 'type'>): PlanResult;
+    secondWind(state: CampaignState, intent: Omit<SecondWindIntent, 'type'>): PlanResult;
     nimbleEscape(state: CampaignState, intent: Omit<NimbleEscapeIntent, 'type'>): PlanResult;
     cunningAction(state: CampaignState, intent: Omit<CunningActionIntent, 'type'>): PlanResult;
     expeditiousRetreatDash(state: CampaignState, intent: Omit<ExpeditiousRetreatDashIntent, 'type'>): PlanResult;
@@ -720,6 +723,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     consumeHeroicInspiration(state, intent) {
       return { events: planConsumeHeroicInspiration(state, { type: 'ConsumeHeroicInspiration', ...intent }) };
+    },
+    secondWind(state, intent) {
+      return { events: planSecondWind(state, content, rng, { type: 'SecondWind', ...intent }) };
     },
     nimbleEscape(state, intent) {
       return { events: planNimbleEscape(state, content, rng, { type: 'NimbleEscape', ...intent }) };
