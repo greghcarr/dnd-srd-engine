@@ -4,6 +4,29 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 534): Dwarven Toughness — +1 HP per character level via AddModifier level-formula**
+
+Wires Dwarf's Dwarven Toughness trait per RAW. Pure-content; the Formula DSL's `{ kind: 'level' }` node + the existing `AddModifier { target: 'hpMax' }` infrastructure compose to give +1 HP per total character level automatically (L1 = +1, L2 = +2, ..., L20 = +20). The derived `effectiveHpMax = hp.max + hpMaxBonus` shape already in place from the Aid spell (slice-Aid convention) carries this without any new derive code.
+
+RAW (SRD 5.2.1 Dwarf): "_Dwarven Toughness._ Your Hit Point maximum increases by 1, and it increases by 1 again whenever you gain a level."
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)): Dwarf traits gain `{ kind: 'AddModifier', target: 'hpMax', value: { kind: 'level' } }`.
+
+**Documented (not a deviation):** the bonus is projected via `effectiveHpMax = hp.max + hpMaxBonus` on the derived character view. The stored `character.hp.max` is NOT mutated; reducer-side rules (massive damage threshold, heal clamping) still use stored `hp.max`. Standard Aid-spell convention.
+
+**Tests** ([tests/unit/engine/slice-534-dwarven-toughness.test.ts](tests/unit/engine/slice-534-dwarven-toughness.test.ts), 8 cases): trait shape (AddModifier hpMax level-formula); at L1/L2/L3/L5/L10/L20 the `hpMaxBonus` equals the character level and `effectiveHpMax = hp.max + level`; non-dwarf control gets 0 bonus.
+
+**Audit (content-sweep abbreviated):** zero new mechanism; reuses AddModifier + Formula DSL level node + the Aid-style effectiveHpMax convention. No new identifiers.
+
+**L1 SRD audit progress (7 of ~14 gaps closed):**
+- ✓ slices 530-533 (Tiefling, Dragonborn ancestry, Elf, Gnome, Human Versatile)
+- ✓ Dwarven Toughness (this slice)
+- ⏳ Halfling (Nimbleness + Luck + Stealthy), Dwarf Stonecunning, Dragonborn Breath Weapon, Human Resourceful, Elf Trance.
+
+**Pattern-check:** the Formula DSL's `level` node is rarely used for species traits (most species effects are flat values). This slice demonstrates the pattern works cleanly for "scales with character level" effects. Other future content with the same shape (potential examples: a future "Tough" feat granting +2 HP/level; per-level subclass bonuses) can mirror this directly.
+
+---
+
 **Content (slice 533): Human Versatile — origin-feat OfferChoice**
 
 Wires Human's Versatile trait per RAW. Mirror of slice 530-532 pattern (OfferChoice + per-option-effects). Each option is a `GrantFeat` over one of the 6 origin feats; the slice-511 expandGrantFeatEffects pathway projects the chosen feat's effects into the bearer's effect stack automatically.
