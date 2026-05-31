@@ -104,7 +104,8 @@
         { "id": "red", "label": "Red (Fire)", "effects": [{ "kind": "GrantResistance", "damageType": "fire" }] },
         { "id": "silver", "label": "Silver (Cold)", "effects": [{ "kind": "GrantResistance", "damageType": "cold" }] },
         { "id": "white", "label": "White (Cold)", "effects": [{ "kind": "GrantResistance", "damageType": "cold" }] }
-      ] }
+      ] },
+      { "kind": "GrantResource", "resourceId": "dragonborn-breath-weapon", "max": { "kind": "profBonus" }, "recharge": "longRest" }
     ] },
     { "id": "gnome", "name": "Gnome", "size": "Small", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "gnomish"], "traits": [
       { "kind": "GrantSense", "sense": "darkvision", "range": 60 },
