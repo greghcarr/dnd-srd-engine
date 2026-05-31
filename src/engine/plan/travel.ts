@@ -3,6 +3,7 @@ import type { ResolvedContent } from '../../content/pack.js';
 import type { Event } from '../../schemas/events/index.js';
 import type { RNG } from '../../rng/index.js';
 import { rollDie } from '../../rng/dice.js';
+import { applyHalflingLuckFromFlag } from './_halfling-luck.js';
 import { newEventId } from '../../ids.js';
 import { D20_SIDES } from '../../internal/constants.js';
 import { nowIso } from '../../internal/clock.js';
@@ -45,7 +46,9 @@ export const planForage = (
     pendingChoices: state.pendingChoices,
     characters: state.characters,
   });
-  const d20 = rollDie(D20_SIDES, rng);
+  const rolls: number[] = [rollDie(D20_SIDES, rng)];
+  // Slice 543: Halfling Luck on forage check.
+  const d20 = applyHalflingLuckFromFlag(rolls[0]!, derivation.hasHalflingLuck, rolls, rng);
   const total = d20 + derivation.total;
   const success = total >= intent.dc;
   const at = intent.at ?? nowIso();
@@ -142,7 +145,9 @@ export const planForcedMarch = (
         ability: 'CON',
         characters: state.characters,
       });
-      const d20 = rollDie(D20_SIDES, rng);
+      const rolls: number[] = [rollDie(D20_SIDES, rng)];
+      // Slice 543: Halfling Luck on forced-march save.
+      const d20 = applyHalflingLuckFromFlag(rolls[0]!, saveDerivation.hasHalflingLuck, rolls, rng);
       const saveBonus = rollSaveBonusDice(saveDerivation.bonusDice, rng);
       const bonus = saveDerivation.total + saveBonus.total;
       const total = d20 + bonus;
@@ -199,7 +204,9 @@ export const planNavigationCheck = (
     pendingChoices: state.pendingChoices,
     characters: state.characters,
   });
-  const d20 = rollDie(D20_SIDES, rng);
+  const rolls: number[] = [rollDie(D20_SIDES, rng)];
+  // Slice 543: Halfling Luck on navigation check.
+  const d20 = applyHalflingLuckFromFlag(rolls[0]!, derivation.hasHalflingLuck, rolls, rng);
   const total = d20 + derivation.total;
   const at = intent.at ?? nowIso();
   const event: NavigationCheckRolledEvent = {

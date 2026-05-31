@@ -26,7 +26,7 @@ import { nowIso } from '../../internal/clock.js';
 import type { ULID } from '../ids-utils.js';
 import type { Character } from '../../schemas/runtime/character.js';
 import { planBreathWeaponRechargeAtTurnStart } from './breath-weapon.js';
-import { applyHalflingLuckFromFlag } from './_halfling-luck.js';
+import { applyHalflingLuckFromFlag, applyHalflingLuckForCharacter } from './_halfling-luck.js';
 import { planRegenerationAtTurnStart } from './regeneration.js';
 
 const DEATH_SAVE_SUCCESS_THRESHOLD = 10;
@@ -119,16 +119,17 @@ const planDeathSaveAtTurnStart = (
   rng: RNG,
   causedByEventId: ULID,
   at: string,
+  state: CampaignState,
+  content: ResolvedContent,
 ): ReadonlyArray<DeathSaveRolledEvent> => {
   if (!character) return [];
   if (character.hp.current > 0) return [];
   if (character.deathSaves.stable) return [];
   if (character.deathSaves.failures >= DEATH_SAVE_FAILURES_TO_DIE) return [];
   if (character.deathSaves.successes >= DEATH_SAVE_SUCCESSES_TO_STABILIZE) return [];
-  const d20 = rollDie(D20_SIDES, rng);
-  // Slice 543 deferral: Halfling Luck on death saves not wired
-  // here. planDeathSaveAtTurnStart's 3 callers would all need
-  // state + content threading; documented as a sweep follow-up.
+  const rolls: number[] = [rollDie(D20_SIDES, rng)];
+  // Slice 543: Halfling Luck on death save.
+  const d20 = applyHalflingLuckForCharacter(rolls[0]!, character.id, state, content, rolls, rng);
   const success = d20 >= DEATH_SAVE_SUCCESS_THRESHOLD;
   const critical = d20 === NAT_20;
   const save: DeathSaveRolledEvent = {
@@ -390,6 +391,8 @@ export const planAdvanceTurn = (
       rng,
       nextTurn.id,
       at,
+      state,
+      content,
     );
     const expired = planAutoExpireConditionsAtTurnStart(
       state,
@@ -423,6 +426,8 @@ export const planAdvanceTurn = (
     rng,
     nextTurn.id,
     at,
+    state,
+    content,
   );
   const expired = planAutoExpireConditionsAtTurnStart(
     state,
@@ -472,6 +477,8 @@ export const planBeginFirstTurn = (
     rng,
     turnStart.id,
     at,
+    state,
+    content,
   );
   const recharge = planBreathWeaponRechargeAtTurnStart(
     state,

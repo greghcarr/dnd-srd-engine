@@ -10,6 +10,7 @@ import type {
 import type { DamageAppliedEvent } from '../../schemas/events/combat.js';
 import type { RNG } from '../../rng/index.js';
 import { rollDie, parseDiceExpression } from '../../rng/dice.js';
+import { applyHalflingLuckFromFlag } from './_halfling-luck.js';
 import { applyMartialArtsDieScaling, tryBuildDeflectedAttack } from './attack.js';
 import { findMirrorImage } from '../../derive/mirror-image.js';
 import { newEventId } from '../../ids.js';
@@ -157,7 +158,9 @@ export const planOffHandAttack = (
     });
     if (deflectedEvents !== undefined) return [...economyEvents, ...deflectedEvents];
   }
-  const d20 = rollDie(D20_SIDES, rng);
+  const rolls: number[] = [rollDie(D20_SIDES, rng)];
+  // Slice 543: Halfling Luck on off-hand attack.
+  const d20 = applyHalflingLuckFromFlag(rolls[0]!, attackerEffects.hasHalflingLuck(), rolls, rng);
   const total = d20 + attackBonusResult.total;
   const naturalHit = d20 === NAT_20;
   const naturalMiss = d20 === NAT_1;
@@ -171,7 +174,7 @@ export const planOffHandAttack = (
     attackerId: intent.attackerId,
     targetId: intent.targetId,
     weaponInstanceId: intent.weaponInstanceId,
-    d20: [d20],
+    d20: rolls,
     used: 'none',
     attackBonus: attackBonusResult.total,
     total,

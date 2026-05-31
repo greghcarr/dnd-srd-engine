@@ -7,6 +7,7 @@ import type { DamageComponent } from '../../schemas/events/combat.js';
 import type { Character } from '../../schemas/runtime/character.js';
 import type { RNG } from '../../rng/index.js';
 import { rollDie, parseDiceExpression } from '../../rng/dice.js';
+import { applyHalflingLuckFromFlag } from './_halfling-luck.js';
 import { newAppliedConditionId, newEventId } from '../../ids.js';
 import { computeSavingThrow } from '../../derive/save.js';
 import { rollSaveBonusDice } from './_bonus-dice.js';
@@ -108,7 +109,9 @@ export const planCheckConcentration = (
     // SetAdvantage condition facts so Eldritch Mind etc. can gate on it.
     isConcentrationCheck: true,
   });
-  const d20 = rollDie(D20_SIDES, rng);
+  const rolls: number[] = [rollDie(D20_SIDES, rng)];
+  // Slice 543: Halfling Luck on Concentration save.
+  const d20 = applyHalflingLuckFromFlag(rolls[0]!, saveDerivation.hasHalflingLuck, rolls, rng);
   // Slice 331: per-roll save bonus dice (Bless +1d4 / Bane -1d4).
   const saveBonus = rollSaveBonusDice(saveDerivation.bonusDice, rng);
   const bonus = saveDerivation.total + saveBonus.total;
@@ -122,7 +125,7 @@ export const planCheckConcentration = (
     targetId: intent.characterId as ULID,
     ability: 'CON',
     dc,
-    d20: [d20],
+    d20: rolls,
     used: 'none',
     bonus,
     total,
@@ -276,7 +279,9 @@ export const planTickAura = (
         ability: aura.saveAbility,
         characters: state.characters,
       });
-      const d20 = rollDie(D20_SIDES, rng);
+      const rolls: number[] = [rollDie(D20_SIDES, rng)];
+      // Slice 543: Halfling Luck on the aura save target side.
+      const d20 = applyHalflingLuckFromFlag(rolls[0]!, saveDerivation.hasHalflingLuck, rolls, rng);
       const saveBonus = rollSaveBonusDice(saveDerivation.bonusDice, rng);
       const bonus = saveDerivation.total + saveBonus.total;
       const total = d20 + bonus;
@@ -288,7 +293,7 @@ export const planTickAura = (
         targetId: targetId as ULID,
         ability: aura.saveAbility,
         dc: dcResult.total,
-        d20: [d20],
+        d20: rolls,
         used: 'none',
         bonus,
         total,

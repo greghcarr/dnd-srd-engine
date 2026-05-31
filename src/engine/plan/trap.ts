@@ -3,6 +3,7 @@ import type { ResolvedContent } from '../../content/pack.js';
 import type { Event } from '../../schemas/events/index.js';
 import type { RNG } from '../../rng/index.js';
 import { rollDie, rollExpression } from '../../rng/dice.js';
+import { applyHalflingLuckFromFlag } from './_halfling-luck.js';
 import { newEventId } from '../../ids.js';
 import { D20_SIDES } from '../../internal/constants.js';
 import { nowIso } from '../../internal/clock.js';
@@ -93,11 +94,13 @@ export const planTriggerTrap = (
     : saveDerivation.hasDisadvantage
       ? 'disadvantage'
       : 'none';
-  const usedD20 = saveDerivation.hasAdvantage
+  let usedD20 = saveDerivation.hasAdvantage
     ? Math.max(...rolls)
     : saveDerivation.hasDisadvantage
       ? Math.min(...rolls)
       : rolls[0]!;
+  // Slice 543: Halfling Luck on trap save.
+  usedD20 = applyHalflingLuckFromFlag(usedD20, saveDerivation.hasHalflingLuck, rolls, rng);
   const saveBonus = rollSaveBonusDice(saveDerivation.bonusDice, rng);
   const bonus = saveDerivation.total + saveBonus.total;
   const total = usedD20 + bonus;

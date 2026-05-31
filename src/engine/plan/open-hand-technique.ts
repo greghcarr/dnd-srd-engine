@@ -1,8 +1,10 @@
 import type { CampaignState } from '../../schemas/runtime/campaign.js';
+import type { ResolvedContent } from '../../content/pack.js';
 import type { Character } from '../../schemas/runtime/character.js';
 import type { Event } from '../../schemas/events/index.js';
 import type { RNG } from '../../rng/index.js';
 import { rollDie } from '../../rng/dice.js';
+import { applyHalflingLuckForCharacter } from './_halfling-luck.js';
 import { newEventId, newAppliedConditionId } from '../../ids.js';
 import { D20_SIDES } from '../../internal/constants.js';
 import { abilityModifier, proficiencyBonus } from '../../derive/ability.js';
@@ -36,8 +38,12 @@ const rollSave = (
   dc: number,
   rng: RNG,
   at: string,
+  state: CampaignState,
+  content: ResolvedContent,
 ): { event: SaveRolledEvent; success: boolean } => {
-  const d20 = rollDie(D20_SIDES, rng);
+  const rolls: number[] = [rollDie(D20_SIDES, rng)];
+  // Slice 543: Halfling Luck on Open Hand Technique target save.
+  const d20 = applyHalflingLuckForCharacter(rolls[0]!, targetId, state, content, rolls, rng);
   const bonus = abilityModifier(target.abilityScores[ability]);
   const total = d20 + bonus;
   const success = total >= dc;
@@ -50,7 +56,7 @@ const rollSave = (
       targetId,
       ability,
       dc,
-      d20: [d20],
+      d20: rolls,
       used: 'none',
       bonus,
       total,
@@ -70,6 +76,7 @@ const applyConditionEvent = (targetId: string, conditionId: string, at: string):
 
 export interface OpenHandTechniqueInput {
   readonly state: CampaignState;
+  readonly content: ResolvedContent;
   readonly monk: Character;
   readonly targetId: string;
   readonly technique: OpenHandTechnique;
@@ -89,7 +96,7 @@ export interface OpenHandTechniqueInput {
 //   encounter tracks positions; otherwise the save resolves with no move.
 // - Topple: Dexterity save vs the Monk's Ki DC or the Prone condition.
 export const applyOpenHandTechnique = (input: OpenHandTechniqueInput): ReadonlyArray<Event> => {
-  const { state, monk, targetId, technique, rng, at } = input;
+  const { state, content, monk, targetId, technique, rng, at } = input;
 
   if (technique === 'addle') {
     return [applyConditionEvent(targetId, ADDLED_CONDITION_ID, at)];
@@ -100,12 +107,12 @@ export const applyOpenHandTechnique = (input: OpenHandTechniqueInput): ReadonlyA
   const dc = monkSaveDC(monk);
 
   if (technique === 'topple') {
-    const { event, success } = rollSave('DEX', targetId, target, dc, rng, at);
+    const { event, success } = rollSave('DEX', targetId, target, dc, rng, at, state, content);
     return success ? [event] : [event, applyConditionEvent(targetId, PRONE_CONDITION_ID, at)];
   }
 
   // Push: Strength save, then a straight-away shove on a failure.
-  const { event, success } = rollSave('STR', targetId, target, dc, rng, at);
+  const { event, success } = rollSave('STR', targetId, target, dc, rng, at, state, content);
   if (success) return [event];
 
   const encounter = state.activeEncounterId !== undefined ? state.encounters[state.activeEncounterId] : undefined;

@@ -3,6 +3,7 @@ import type { ResolvedContent } from '../../content/pack.js';
 import type { Event } from '../../schemas/events/index.js';
 import type { RNG } from '../../rng/index.js';
 import { rollDie } from '../../rng/dice.js';
+import { applyHalflingLuckForCharacter } from './_halfling-luck.js';
 import { newEventId, newAppliedConditionId } from '../../ids.js';
 import { D20_SIDES } from '../../internal/constants.js';
 import { nowIso } from '../../internal/clock.js';
@@ -154,7 +155,9 @@ export const planWeaponMastery = (
       break;
     case 'Topple': {
       const dc = masterySaveDC(attacker);
-      const d20 = rollDie(D20_SIDES, rng);
+      const rolls: number[] = [rollDie(D20_SIDES, rng)];
+      // Slice 543: Halfling Luck on Topple target CON save.
+      const d20 = applyHalflingLuckForCharacter(rolls[0]!, intent.targetId, state, content, rolls, rng);
       const conBonus = abilityModifier(target.abilityScores.CON);
       const total = d20 + conBonus;
       const success = total >= dc;
@@ -165,7 +168,7 @@ export const planWeaponMastery = (
         targetId: intent.targetId,
         ability: 'CON',
         dc,
-        d20: [d20],
+        d20: rolls,
         used: 'none',
         bonus: conBonus,
         total,

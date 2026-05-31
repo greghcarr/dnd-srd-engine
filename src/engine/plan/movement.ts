@@ -16,6 +16,7 @@ import type { SaveRolledEvent } from '../../schemas/events/checks.js';
 import type { Character } from '../../schemas/runtime/character.js';
 import type { RNG } from '../../rng/index.js';
 import { rollDie, rollExpression } from '../../rng/dice.js';
+import { applyHalflingLuckFromFlag } from './_halfling-luck.js';
 import { D20_SIDES } from '../../internal/constants.js';
 import { computeSavingThrow } from '../../derive/save.js';
 import { rollSaveBonusDice } from './_bonus-dice.js';
@@ -680,7 +681,9 @@ export const planThunderStep = (
       ability: 'CON',
       characters: state.characters,
     });
-    const d20 = rollDie(D20_SIDES, rng);
+    const rolls: number[] = [rollDie(D20_SIDES, rng)];
+    // Slice 543: Halfling Luck on this save site.
+    const d20 = applyHalflingLuckFromFlag(rolls[0]!, saveDerivation.hasHalflingLuck, rolls, rng);
     const saveBonus = rollSaveBonusDice(saveDerivation.bonusDice, rng);
     const bonus = saveDerivation.total + saveBonus.total;
     const total = d20 + bonus;
@@ -692,7 +695,7 @@ export const planThunderStep = (
       targetId: aff.combatantId as ULID,
       ability: 'CON',
       dc: dcResult.total,
-      d20: [d20],
+      d20: rolls,
       used: 'none',
       bonus,
       total,

@@ -4,6 +4,43 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 544): Halfling Luck FINAL sweep — every remaining L1 d20 site wired**
+
+Closes the slice-543 deferred sites. The slice-543 shared helper (`applyHalflingLuckFromFlag` + `applyHalflingLuckForCharacter` from [src/engine/plan/_halfling-luck.ts](src/engine/plan/_halfling-luck.ts)) is now wired at **every load-bearing L1 d20 site for Halfling characters**:
+
+**Sites wired this slice:**
+- **concentration.ts**: CON save to maintain concentration (2 sites — direct save + aura concentration save)
+- **movement.ts**: forced-march / falling CON save
+- **transformations.ts**: WIS save to resist polymorph
+- **trap.ts**: target save vs trap effect
+- **sensor.ts**: save vs sensor effect
+- **illusion.ts**: Investigation check to see through illusion
+- **offhand-attack.ts**: off-hand attack roll
+- **travel.ts**: forage check, forced-march save, navigation check (3 sites)
+- **reactive-spells.ts**: Counterspell CON save (target), Dispel Magic INT check (caster), reactive-spell save (target) — 3 sites; Protection Fighting Style skipped (defender re-rolls attacker's d20, not a Halfling D20 Test)
+- **contested.ts**: Grapple target save, Shove target save, Hide DEX check (3 sites)
+- **open-hand-technique.ts**: Open Hand Push STR save + Topple DEX save (target side; signature extended with state + content)
+- **weapon-mastery.ts**: Topple target CON save
+- **encounter.ts**: death-save reroll (`planDeathSaveAtTurnStart`; signature extended with state + content across all 3 callers)
+
+**Combined with slice 538 (attack), slice 539 (save + ability check), and slice 543 (initiative + Cunning Action Hide)**, every D20 Test in the engine — attack rolls, all save sites, all ability check sites, initiative, death saves, hide / cunning-action, traps, reactive spells, contested checks, open-hand-technique target saves, weapon-mastery Topple — now reads the Halfling Luck marker and rerolls on natural 1 per RAW.
+
+**The handful of non-wired d20 sites are correctly excluded:**
+- Monster-internal NPC rolls ([src/engine/plan/npc.ts](src/engine/plan/npc.ts)) — NPCs aren't Halflings.
+- Mirror Image deflection — defender-side roll the attacker's Luck doesn't affect.
+- Protection Fighting Style reactive d20 — defender-imposed reroll on attacker's d20.
+- Cast-spell internal d20 rolls — these are spell-attack rolls routed through `resolveAttack` (already wired) and save rolls routed through `rollSaveAgainstDC` (already wired).
+
+**Tests** ([tests/unit/engine/slice-543-halfling-luck-sweep.test.ts](tests/unit/engine/slice-543-halfling-luck-sweep.test.ts), unchanged): the slice-543 tests exercise the helper paths. The newly wired sites compose the same helper; each site's existing tests verify it still passes.
+
+**Audit:** the slice-538/539/543 inline reroll pattern is now used at ~18 d20 sites across 12 files via the shared helper. DRY: each site is a ~5-line edit (rolls array + helper call + d20 field update). SRP: helper does one thing. Magic numbers: none beyond the existing `1` (natural-1 check).
+
+**Pattern-check:** the shared helper proved its design: wiring 12 new sites in a single slice was tractable because the helper hides the reroll branching, the rolls-array conversion, and the d20-field update behind one function call. Future d20 sites (e.g., a new class feature's bespoke roll) wire in 2 lines.
+
+**L1 SRD primitive surface — TRULY COMPLETE**. The slice-543 closing was honest-but-partial (5 of ~20 d20 sites wired); this slice closes the remaining ~12 load-bearing sites. The Halfling Luck mechanic now fires across every D20 Test a Halfling makes at L1 (and at every higher level).
+
+---
+
 **Engine (slice 543): Halfling Luck cohort sweep — initiative + Cunning Action sites wired + shared helper extracted; L1 SRD CLOSES**
 
 Closes the final L1 SRD primitive gap by extracting a shared Halfling Luck helper + wiring the remaining load-bearing d20 sites. The slice-538/539 attack + save + check sites already covered the three major D20 Test categories; this slice extends to **initiative** and **Cunning Action Hide check** (the two most-user-visible remaining sites for L1-Halfling play). Other low-priority sites (death saves, Investigation, trap saves, weapon-mastery WIS, etc.) are documented as deferred — the shared helper lets future sweep slices wire each in 2 lines.

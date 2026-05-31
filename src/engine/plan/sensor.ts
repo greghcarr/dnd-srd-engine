@@ -24,6 +24,7 @@ import { computeSpellSaveDC } from '../../derive/spell-dc.js';
 import { computeSavingThrow } from '../../derive/save.js';
 import { rollSaveBonusDice } from './_bonus-dice.js';
 import { rollDie } from '../../rng/dice.js';
+import { applyHalflingLuckFromFlag } from './_halfling-luck.js';
 import { D20_SIDES } from '../../internal/constants.js';
 import { newEventId, newSensorId, newEffectInstanceId } from '../../ids.js';
 import { nowIso } from '../../internal/clock.js';
@@ -413,11 +414,13 @@ export const planScrying = (
     : saveDerivation.hasDisadvantage
       ? 'disadvantage'
       : 'none';
-  const usedD20 = saveDerivation.hasAdvantage
+  let usedD20 = saveDerivation.hasAdvantage
     ? Math.max(...rolls)
     : saveDerivation.hasDisadvantage
       ? Math.min(...rolls)
       : rolls[0]!;
+  // Slice 543: Halfling Luck on sensor save.
+  usedD20 = applyHalflingLuckFromFlag(usedD20, saveDerivation.hasHalflingLuck, rolls, rng);
   const saveBonus = rollSaveBonusDice(saveDerivation.bonusDice, rng);
   const bonus = saveDerivation.total + saveBonus.total;
   const total = usedD20 + bonus;
