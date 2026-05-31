@@ -4,6 +4,26 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 536): Elf Trance — narrative marker trait**
+
+Wires the Elf Trance trait per RAW. All three arms are narrative/consumer-managed (no-sleep state, magic-can't-put-to-sleep gate, 4-hour Long Rest). Ships as a Custom-handler marker (mirror of slice 535's Halfling markers + the long-established nimble-escape pattern). Added to pack-integrity's BACKED_INDIRECTLY allowlist.
+
+RAW (SRD 5.2.1 Elf): "_Trance._ You don't need to sleep, and magic can't put you to sleep. You can finish a Long Rest in 4 hours if you spend those hours in a trancelike meditation, during which you retain consciousness."
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)): Elf traits gain `{kind: 'Custom', handlerId: 'elf-trance'}`. Audit allowlist entry documents why no engine handler is needed (engine doesn't model sleep state, magical-sleep gates, or rest-wall-clock duration).
+
+**Tests** ([tests/unit/engine/slice-536-elf-trance.test.ts](tests/unit/engine/slice-536-elf-trance.test.ts), 2 cases): elf-trance Custom marker ships; pre-existing Elf traits unchanged (no regression on Darkvision / Fey Ancestry / Keen Senses / Elven Lineage).
+
+**Audit (content-sweep abbreviated):** zero new mechanism; reuses Custom-marker narrative-trait pattern.
+
+**L1 SRD audit progress (9 of ~14 gaps closed):**
+- ✓ slices 530-535 + Elf Trance (this slice)
+- ⏳ Halfling Luck (reroll-on-1 primitive), Dwarf Stonecunning (per-day BA tremorsense primitive), Dragonborn Breath Weapon (character-side primitive), Human Resourceful (Heroic Inspiration on Long Rest), Goliath Powerful Build / Giant Ancestry (need to re-audit Goliath specifically).
+
+**Pattern-check:** 6 Custom-marker traits in the pack now (martial-arts, nimble-escape × 2 monsters, halfling-nimbleness, halfling-naturally-stealthy, elf-trance). The pattern is fully canonical for "RAW trait the engine cannot model + consumer should know about." Position-aware consumers, VTTs, character-sheet UIs all benefit from the declarative presence.
+
+---
+
 **Content (slice 535): Halfling Nimbleness + Naturally Stealthy — narrative marker traits**
 
 Wires the two narrative Halfling L1 traits per RAW. Both affect positional/Hide-action gates the engine doesn't model. Ships as declarative `{kind: 'Custom', handlerId}` markers so consumers can detect the trait presence and enforce the narrative rule. Mirror of the existing `nimble-escape` Custom-marker pattern on Goblin Warrior + Goblin Boss.

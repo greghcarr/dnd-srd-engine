@@ -497,6 +497,8 @@ describe('pack integrity: every Custom handlerId has a backing implementation', 
     // is required because the rule lives entirely in the consumer.
     ['halfling-nimbleness', 'narrative marker: positional move-through-larger-creature rule; consumer-managed (engine has no position model)'],
     ['halfling-naturally-stealthy', 'narrative marker: Hide-with-larger-creature-obscurement rule; consumer-managed (engine has no LOS / obscurement model)'],
+    // Slice 536: narrative-only Elf Trance trait.
+    ['elf-trance', 'narrative marker: no-sleep + magic-cant-put-to-sleep + 4-hour Long Rest; consumer-managed (engine does not model sleep state, magical-sleep gates, or rest-wall-clock duration)'],
   ]);
 
   it('every Custom handlerId is referenced in engine source or allowlisted as indirectly backed', () => {

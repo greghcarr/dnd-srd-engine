@@ -56,7 +56,8 @@
           { "kind": "ModifySpeed", "mode": "walk", "op": "set", "value": 35 },
           { "kind": "GrantSpell", "spellId": "druidcraft", "preparation": "at-will", "spellcastingAbility": "WIS" }
         ] }
-      ] }
+      ] },
+      { "kind": "Custom", "handlerId": "elf-trance" }
     ] },
     { "id": "dwarf", "name": "Dwarf", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "dwarvish"], "traits": [
       { "kind": "GrantSense", "sense": "darkvision", "range": 120 },
