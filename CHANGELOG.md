@@ -4,6 +4,36 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 539): Halfling Luck — complete the primitive at save + ability-check sites**
+
+Completes the slice-538 partial primitive. The save + check d20 sites now reroll on natural 1 when the bearer carries the `GrantHalflingLuck` marker, matching RAW's "D20 Test" scope (attack + save + check). `SaveResult` and `AbilityCheckResult` both gain a `hasHalflingLuck: boolean` flag surfaced from the bearer's effect stack; the three roll-site planners ([_save-roll.ts](src/engine/plan/_save-roll.ts) `rollSaveAgainstDC`, [checks.ts](src/engine/plan/checks.ts) `planSave` + `planAbilityCheck`) read the flag and reroll.
+
+RAW (SRD 5.2.1 Halfling): "_Luck._ When you roll a 1 on the d20 of a D20 Test, you can reroll the die, and you must use the new roll."
+
+**Engine:**
+- `SaveResult.hasHalflingLuck: boolean` ([src/derive/save.ts](src/derive/save.ts)) — surfaced from `effects.hasHalflingLuck()`.
+- `AbilityCheckResult.hasHalflingLuck: boolean` ([src/derive/ability-check.ts](src/derive/ability-check.ts)) — same.
+- Reroll wire in [src/engine/plan/_save-roll.ts](src/engine/plan/_save-roll.ts) (used by recurring-save / Land's Aid / intimidating-presence / spell on-hit-save / breath-weapon save / etc.).
+- Reroll wire in [src/engine/plan/checks.ts](src/engine/plan/checks.ts) `planSave` (the direct save planner) + `planAbilityCheck` (the direct check planner). All three sites are ~5-line `if usedD20 === 1 && hasLuck { reroll; rolls.push(reroll); usedD20 = reroll; }` blocks.
+
+**Documented RAW deferrals (cohort-sweep follow-up):**
+- **~25 other d20 sites** in planners still need the same insertion: initiative ([encounter.ts](src/engine/plan/encounter.ts) lines 127 + 202-210), death saves, concentration CON saves ([concentration.ts](src/engine/plan/concentration.ts) lines 111, 279), nimble-escape DEX ([nimble-escape.ts](src/engine/plan/nimble-escape.ts) line 112), cunning-action Hide ([cunning-action.ts](src/engine/plan/cunning-action.ts) line 143), reactive-spell rolls ([reactive-spells.ts](src/engine/plan/reactive-spells.ts) multiple sites), offhand-attack, weapon-mastery, trap, transformations, etc. Each is the same one-block insertion; a future sweep slice handles them all in one cohesive pass.
+- The most user-visible sites (attack + save + check) are now covered, so the L1-Halfling-playing experience matches RAW for the three most-common D20 Tests.
+
+**Tests** ([tests/unit/engine/slice-539-halfling-luck-save-check.test.ts](tests/unit/engine/slice-539-halfling-luck-save-check.test.ts), 7 cases): `SaveResult.hasHalflingLuck` projects true for Halfling, false for Human; same for `AbilityCheckResult`; end-to-end seed-iteration finds a natural-1 save for a halfling and confirms reroll fires + d20 array has 2 entries + total reflects the reroll; control case confirms Human's natural 1 stays a 1 with d20 length 1; same end-to-end test for ability checks.
+
+**Audit:**
+- **Names:** `hasHalflingLuck` field on both result types mirrors `hasAdvantage` / `hasDisadvantage`.
+- **DRY:** the reroll block is duplicated across 3 sites (~5 lines each). Below the abstraction threshold; if the cohort sweep slice covers ~25 more sites, the helper extraction is the natural moment.
+- **SRP:** each derive function surfaces the flag; each planner consumes it.
+- **Magic numbers:** none beyond the existing literal `1`.
+- **at-threading:** N/A.
+- **Mechanical outcomes asserted:** flag projection (positive + negative control) for both result types, end-to-end reroll fires for save + check, control cases no reroll without Luck.
+
+**Pattern-check:** the "derive surfaces a flag + planner consumes it" shape repeats from the existing `hasAdvantage` / `hasDisadvantage` precedent. The slice-538 attack-roll wire used a different pattern (read the EffectAccumulator directly in the planner) because attack.ts already has the effect stack handy. The save + check sites don't directly hold the stack, so surfacing via the derivation is the cleaner pattern. **Both patterns are valid**; the choice depends on what's available at the call site.
+
+---
+
 **Engine + content (slice 538): Halfling Luck — new `GrantHalflingLuck` marker + attack-roll reroll-on-natural-1 wire**
 
 Wires Halfling's Luck trait per RAW (attack-roll arm). New effect kind `GrantHalflingLuck` (presence marker) + `markHalflingLuck()` / `hasHalflingLuck()` accessor on EffectAccumulator + the attack-roll site in `planAttack` reads the accessor and rerolls when the chosen d20 (post-advantage/disadvantage selection) is a natural 1. The reroll is appended to the `d20` array on the event so consumers can see it happened; RAW "you must use the new roll" means no second reroll even if the new die is also a 1.

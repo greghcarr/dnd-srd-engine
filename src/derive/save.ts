@@ -22,6 +22,10 @@ export interface SaveResult {
   // Slice 331: unrolled per-roll bonus dice (AddBonusDie on saves). The
   // pure derivation surfaces them; the planner rolls them.
   readonly bonusDice: ReadonlyArray<BonusDieContribution>;
+  // Slice 539: Halfling Luck flag (surfaced from the bearer's effect
+  // stack). When true and the chosen d20 of the save is a natural 1,
+  // the planner rerolls once and uses the new die per RAW.
+  readonly hasHalflingLuck: boolean;
 }
 
 export interface ComputeSaveInput {
@@ -169,6 +173,7 @@ export const computeSavingThrow = (input: ComputeSaveInput): SaveResult => {
     breakdown,
     hasAdvantage: effectiveAdvantage && !adv.disadvantage,
     hasDisadvantage: adv.disadvantage && !effectiveAdvantage,
+    hasHalflingLuck: effects.hasHalflingLuck(),
     // Slice 331: the pending per-roll bonus dice for this save (Bless
     // +1d4 / Bane -1d4 via AddBonusDie). Returned unrolled (this is a
     // pure derivation); the planner that rolls the save rolls these too

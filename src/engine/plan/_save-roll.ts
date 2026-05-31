@@ -63,11 +63,21 @@ export const rollSaveAgainstDC = (input: RollSaveInput): SaveRollResult | undefi
     : derivation.hasDisadvantage
       ? 'disadvantage'
       : 'none';
-  const usedD20 = derivation.hasAdvantage
+  let usedD20 = derivation.hasAdvantage
     ? Math.max(...rolls)
     : derivation.hasDisadvantage
       ? Math.min(...rolls)
       : rolls[0]!;
+  // Slice 539: Halfling Luck (save arm). RAW: "When you roll a 1 on
+  // the d20 of a D20 Test, you can reroll the die, and you must use
+  // the new roll." Fires when the chosen d20 is a natural 1 AND the
+  // target carries the marker (surfaced via SaveResult.hasHalflingLuck).
+  // The reroll is appended to the d20 array; no second reroll.
+  if (usedD20 === 1 && derivation.hasHalflingLuck) {
+    const reroll = rollDie(D20_SIDES, input.rng);
+    rolls.push(reroll);
+    usedD20 = reroll;
+  }
   // Slice 331: per-roll save bonus dice (Bless +1d4 / Bane -1d4), rolled
   // after the d20(s) and folded into the bonus + total + breakdown.
   const saveBonus = rollSaveBonusDice(derivation.bonusDice, input.rng);

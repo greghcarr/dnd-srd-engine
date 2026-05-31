@@ -69,7 +69,16 @@ export const planSave = (
     derivation.hasAdvantage,
     derivation.hasDisadvantage,
   );
-  const { rolls, used: d20 } = rollWithAdvantage(rng, used);
+  const { rolls, used: initialD20 } = rollWithAdvantage(rng, used);
+  // Slice 539: Halfling Luck (save arm via planSave). Mirror of the
+  // _save-roll.ts wire; planSave uses its own rollWithAdvantage helper
+  // rather than rollSaveAgainstDC, so the reroll is duplicated here.
+  let d20 = initialD20;
+  if (d20 === 1 && derivation.hasHalflingLuck) {
+    const reroll = rollDie(D20_SIDES, rng);
+    rolls.push(reroll);
+    d20 = reroll;
+  }
   const saveBonus = rollSaveBonusDice(derivation.bonusDice, rng);
   const bonus = derivation.total + saveBonus.total;
   const total = d20 + bonus;
@@ -131,7 +140,19 @@ export const planAbilityCheck = (
     derivation.hasAdvantage,
     derivation.hasDisadvantage,
   );
-  const { rolls, used: d20 } = rollWithAdvantage(rng, used);
+  const { rolls, used: initialD20 } = rollWithAdvantage(rng, used);
+  // Slice 539: Halfling Luck (check arm). RAW: "When you roll a 1 on
+  // the d20 of a D20 Test, you can reroll the die, and you must use
+  // the new roll." Fires when the chosen d20 is a natural 1 AND the
+  // bearer carries the marker (surfaced via AbilityCheckResult.
+  // hasHalflingLuck). The reroll is appended to the d20 array; no
+  // second reroll.
+  let d20 = initialD20;
+  if (d20 === 1 && derivation.hasHalflingLuck) {
+    const reroll = rollDie(D20_SIDES, rng);
+    rolls.push(reroll);
+    d20 = reroll;
+  }
   const total = d20 + derivation.total;
   const event: AbilityCheckRolledEvent = {
     id: newEventId() as ULID,

@@ -19,6 +19,10 @@ export interface AbilityCheckResult {
   readonly breakdown: ReadonlyArray<AbilityCheckBreakdownEntry>;
   readonly hasAdvantage: boolean;
   readonly hasDisadvantage: boolean;
+  // Slice 539: Halfling Luck flag (surfaced from the bearer's effect
+  // stack). When true and the chosen d20 of the check is a natural 1,
+  // the planner rerolls once and uses the new die per RAW.
+  readonly hasHalflingLuck: boolean;
 }
 
 export interface ComputeAbilityCheckInput {
@@ -192,6 +196,7 @@ export const computeAbilityCheck = (input: ComputeAbilityCheckInput): AbilityChe
     breakdown,
     hasAdvantage: adv.advantage && !adv.disadvantage,
     hasDisadvantage: adv.disadvantage && !adv.advantage,
+    hasHalflingLuck: effects.hasHalflingLuck(),
   };
 };
 
