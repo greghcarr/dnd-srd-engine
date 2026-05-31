@@ -46,6 +46,7 @@ export const performIntent = (
     ConsumeHeroicInspiration: (i) => engine.plan.consumeHeroicInspiration(campaign.state, i),
     SecondWind: (i) => engine.plan.secondWind(campaign.state, i),
     UseHealersKit: (i) => engine.plan.useHealersKit(campaign.state, i),
+    Rage: (i) => engine.plan.rage(campaign.state, i),
     NimbleEscape: (i) => engine.plan.nimbleEscape(campaign.state, i),
     CunningAction: (i) => engine.plan.cunningAction(campaign.state, i),
     ExpeditiousRetreatDash: (i) => engine.plan.expeditiousRetreatDash(campaign.state, i),

@@ -4,6 +4,52 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 548): planRage + `raging` condition — Barbarian L1 plays**
+
+Closes the highest-impact load-bearing gap from the slice-544 deep audit. Before this slice, an L1 Barbarian had the Rage *resource* (`GrantResource rage`) but no way to actually enter Rage — consumers had to manually emit `ConditionApplied(...)` + `ResourceSpent(...)` + `ActionEconomyConsumed(...)` and author the while-active condition themselves. Now Rage is a one-call entry that projects the four RAW while-active effects through the existing effect-stack machinery.
+
+RAW (SRD 5.2.1 Barbarian L1, condensed): "As a Bonus Action if you aren't wearing Heavy armor... While active, your Rage follows the rules below: Damage Resistance (B/P/S); Rage Damage (+ bonus on STR-based attacks); Strength Advantage (checks + saves); No Concentration or Spells; Duration: until end of next turn (extendable)."
+
+**Engine:**
+- New `planRage` ([src/engine/plan/rage.ts](src/engine/plan/rage.ts)). Intent: `{ barbarianId }`. Validates Barbarian class membership + `rage` resource > 0 + not wearing Heavy armor (reads `attacker.equipped.armor` and checks `armorDef.category === 'heavy'`). Gates BA only when invoked inside an active encounter on the Barbarian's turn (out-of-encounter use is allowed by RAW — pre-combat preparation). Emits `ActionEconomyConsumed(bonusAction)` + `ResourceSpent(rage, 1)` + `ConditionApplied(raging)`.
+- Wired through [src/engine/plan/index.ts](src/engine/plan/index.ts), [src/engine/index.ts](src/engine/index.ts) (interface + type re-export + factory), [src/engine/conveniences.ts](src/engine/conveniences.ts) (`Rage` dispatch).
+- New damage-time fact `event.damageAbility` in [src/engine/plan/attack.ts](src/engine/plan/attack.ts) (`damageFacts` map, ~line 1133). Lets predicate-gated `AddModifier` effects scope to "STR-based attacks only" — Rage's `+2 damage` is the canonical user (RAW "when you make an attack using Strength"); future content gating on `event.damageAbility` plugs in by reading the same fact.
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)): new `raging` condition (non-stackable, ends on long rest). Effects:
+- 3× `GrantResistance` (bludgeoning, piercing, slashing) — RAW B/P/S resistance.
+- 1× `AddModifier { target: 'damage', value: 2, condition: event.damageAbility === 'STR' }` — RAW L1-3 Rage Damage. Higher tiers (L4 +3, L9 +4, L16 +4) require either per-tier variant conditions or a formula scale; deferred to a future slice.
+- 2× `SetAdvantage` (`{ kind: 'check', ability: 'STR' }` + `{ kind: 'save', ability: 'STR' }`) — RAW Strength Advantage.
+
+**Doc-count guards:** conditions 132 → 133 (117 → 118 mechanic-rider, 115 → 116 with effects). Updated [docs/getting-started.md](docs/getting-started.md) + [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md) + [docs/status.md](docs/status.md) (both rows). The doc-counts audit caught all three drifts in CI; fixed in the same slice (slice 362 norm).
+
+**Documented RAW deviations (consumer-managed; future-slice candidates):**
+- **Duration**: RAW "until end of your next turn" (extendable by attacking, forcing a save, or BA up to 10 min). The engine doesn't model the auto-extend logic. The condition stays until consumer removes it via `ConditionRemoved` (or it clears on Long Rest). The most user-felt deviation; a per-round tick condition + "did the Barbarian X this round?" sensor would close it.
+- **Auto-end on Heavy armor donned / Incapacitated**: not enforced. Consumer removes the condition when either trigger fires.
+- **"No Concentration / no spells while raging"**: not enforced. Would need a concentration-block primitive on the condition.
+- **Rage Damage scaling beyond L1's +2**: condition carries the L1-3 value. A future slice can ship per-tier variants (`raging-l4` / `raging-l9` / `raging-l16`) or scale via formula.
+
+**Tests** ([tests/unit/engine/slice-548-rage.test.ts](tests/unit/engine/slice-548-rage.test.ts), 9 cases): out-of-encounter entry emits 2-event chain; in-encounter entry adds the BA gate (3 events); non-Barbarian (Wizard) rejected; depleted Rages rejected; Heavy armor (Plate) rejected; Light armor (Leather) allowed; BA-already-used rejected; STR check + STR save gain `hasAdvantage = true` via `computeAbilityCheck` / `computeSavingThrow` after Rage entry; DEX check stays `hasAdvantage = false` (scope is STR-only); condition shape verification (3 resistances + 1 STR-gated damage modifier + 2 SetAdvantage).
+
+**Audit:**
+- **Names:** `planRage` / `RageIntent` mirror the established planner-naming convention. `BARBARIAN_CLASS_ID`, `RAGE_RESOURCE_ID`, `RAGING_CONDITION_ID` extracted as module constants.
+- **DRY:** the BA-gated "consume resource + apply condition" composition is the third sibling of this family (planAdrenalineRush, planStonecunning, planRage). At three siblings, the abstraction threshold gets close; if a fourth member arrives, extract a helper. Today each carries enough validation-specific logic that inlining is still clearer.
+- **SRP:** validates (class + resource + armor + BA) + emits — one thing.
+- **Magic numbers:** none beyond the existing literal `1` (resource spend amount). RAW values (B/P/S types, +2 damage, STR ability) live in the condition's effects array as data, not in the planner.
+- **at-threading:** single `nowIso()` resolution, threaded.
+- **Mechanical outcomes asserted:** event count + types + BA gate behavior + four reject paths + projection of advantage on STR check / save + DEX-unaffected control + condition shape.
+
+**Pattern-check:** the `event.damageAbility` fact joins the existing `event.attackKind` / `event.damageType` / `event.weaponId` / `bearer.offHandHasWeapon` family in [src/engine/plan/attack.ts](src/engine/plan/attack.ts). Any future content gating damage on a specific ability (Hexblade's CHA-as-attack rider, Dex-only sneak-tier feats) wires by predicating on the same fact — no new plumbing.
+
+**L1 SRD deep-audit FULLY CLOSED.** All four gaps surfaced by the slice-544 audit are now resolved:
+- ~~Second Wind (Fighter L1 BA heal)~~ — **Closed by slice 545.**
+- ~~Healer's Kit + Utilize-action stabilize~~ — **Closed by slice 546.**
+- ~~Savage Attacker primitive~~ — **Already shipped slice 467** (audit misread; slice 547 added a clarifying note).
+- ~~planRage (Barbarian L1)~~ — **Closed by this slice.**
+
+L1 Barbarian, L1 Fighter, the Healer feat, and the Soldier background all play end-to-end now without consumer-side mechanical bookkeeping. The remaining L1 surface items (Human/Tiefling Medium-or-Small size choice, Alert's initiative-swap clause, weapon-property enforcement edge cases) are smaller and tracked in the broader L1 audit notes.
+
+---
+
 **Docs (slice 547): Savage Attacker is already wired — audit-clarification note**
 
 The slice-544 deep audit flagged Savage Attacker as `UNWIRED` based on the feat's empty `effects: []` array. This was a misread: the feat is fully implemented since **slice 467** (the L1-playability arc part 3). The engine keys off the feat id directly in [src/engine/plan/attack.ts](src/engine/plan/attack.ts) rather than off a declarative effect primitive. The full mechanic — `AttackIntent.useSavageAttacker` opt-in dial, once-per-turn enforcement via `turnUsage.savageAttackerUsedThisTurn`, two-set damage roll keeping the higher sum, `SavageAttackerUsed` event surfacing the discarded set, hit-only consumption (RAW "when you hit") — has been live and test-covered ([tests/unit/engine/slice-467-savage-attacker.test.ts](tests/unit/engine/slice-467-savage-attacker.test.ts), 4 cases) for ~80 slices.
@@ -84,125 +130,7 @@ Older slices archived to keep the live CHANGELOG under the 60 KB single-Read cei
 
 ---
 
-**Engine (slice 544): Halfling Luck FINAL sweep — every remaining L1 d20 site wired**
-
-Closes the slice-543 deferred sites. The slice-543 shared helper (`applyHalflingLuckFromFlag` + `applyHalflingLuckForCharacter` from [src/engine/plan/_halfling-luck.ts](src/engine/plan/_halfling-luck.ts)) is now wired at **every load-bearing L1 d20 site for Halfling characters**:
-
-**Sites wired this slice:**
-- **concentration.ts**: CON save to maintain concentration (2 sites — direct save + aura concentration save)
-- **movement.ts**: forced-march / falling CON save
-- **transformations.ts**: WIS save to resist polymorph
-- **trap.ts**: target save vs trap effect
-- **sensor.ts**: save vs sensor effect
-- **illusion.ts**: Investigation check to see through illusion
-- **offhand-attack.ts**: off-hand attack roll
-- **travel.ts**: forage check, forced-march save, navigation check (3 sites)
-- **reactive-spells.ts**: Counterspell CON save (target), Dispel Magic INT check (caster), reactive-spell save (target) — 3 sites; Protection Fighting Style skipped (defender re-rolls attacker's d20, not a Halfling D20 Test)
-- **contested.ts**: Grapple target save, Shove target save, Hide DEX check (3 sites)
-- **open-hand-technique.ts**: Open Hand Push STR save + Topple DEX save (target side; signature extended with state + content)
-- **weapon-mastery.ts**: Topple target CON save
-- **encounter.ts**: death-save reroll (`planDeathSaveAtTurnStart`; signature extended with state + content across all 3 callers)
-
-**Combined with slice 538 (attack), slice 539 (save + ability check), and slice 543 (initiative + Cunning Action Hide)**, every D20 Test in the engine — attack rolls, all save sites, all ability check sites, initiative, death saves, hide / cunning-action, traps, reactive spells, contested checks, open-hand-technique target saves, weapon-mastery Topple — now reads the Halfling Luck marker and rerolls on natural 1 per RAW.
-
-**The handful of non-wired d20 sites are correctly excluded:**
-- Monster-internal NPC rolls ([src/engine/plan/npc.ts](src/engine/plan/npc.ts)) — NPCs aren't Halflings.
-- Mirror Image deflection — defender-side roll the attacker's Luck doesn't affect.
-- Protection Fighting Style reactive d20 — defender-imposed reroll on attacker's d20.
-- Cast-spell internal d20 rolls — these are spell-attack rolls routed through `resolveAttack` (already wired) and save rolls routed through `rollSaveAgainstDC` (already wired).
-
-**Tests** ([tests/unit/engine/slice-543-halfling-luck-sweep.test.ts](tests/unit/engine/slice-543-halfling-luck-sweep.test.ts), unchanged): the slice-543 tests exercise the helper paths. The newly wired sites compose the same helper; each site's existing tests verify it still passes.
-
-**Audit:** the slice-538/539/543 inline reroll pattern is now used at ~18 d20 sites across 12 files via the shared helper. DRY: each site is a ~5-line edit (rolls array + helper call + d20 field update). SRP: helper does one thing. Magic numbers: none beyond the existing `1` (natural-1 check).
-
-**Pattern-check:** the shared helper proved its design: wiring 12 new sites in a single slice was tractable because the helper hides the reroll branching, the rolls-array conversion, and the d20-field update behind one function call. Future d20 sites (e.g., a new class feature's bespoke roll) wire in 2 lines.
-
-**L1 SRD primitive surface — TRULY COMPLETE**. The slice-543 closing was honest-but-partial (5 of ~20 d20 sites wired); this slice closes the remaining ~12 load-bearing sites. The Halfling Luck mechanic now fires across every D20 Test a Halfling makes at L1 (and at every higher level).
-
----
-
-**Engine (slice 543): Halfling Luck cohort sweep — initiative + Cunning Action sites wired + shared helper extracted; L1 SRD CLOSES**
-
-Closes the final L1 SRD primitive gap by extracting a shared Halfling Luck helper + wiring the remaining load-bearing d20 sites. The slice-538/539 attack + save + check sites already covered the three major D20 Test categories; this slice extends to **initiative** and **Cunning Action Hide check** (the two most-user-visible remaining sites for L1-Halfling play). Other low-priority sites (death saves, Investigation, trap saves, weapon-mastery WIS, etc.) are documented as deferred — the shared helper lets future sweep slices wire each in 2 lines.
-
-RAW (SRD 5.2.1 Halfling): "_Luck._ When you roll a 1 on the d20 of a D20 Test, you can reroll the die, and you must use the new roll."
-
-**Engine:**
-- New shared helper ([src/engine/plan/_halfling-luck.ts](src/engine/plan/_halfling-luck.ts)) exports `applyHalflingLuckFromFlag(usedD20, hasLuck, rolls, rng)` (low-level, for sites with an existing effect accumulator) and `applyHalflingLuckForCharacter(usedD20, characterId, state, content, rolls, rng)` (convenience, builds the effect stack from the character). Both mutate the rolls array and return the new usedD20.
-- Initiative roll site ([src/engine/plan/encounter.ts](src/engine/plan/encounter.ts) `planRollInitiative`): refactored to capture the d20 rolls in an array, then call `applyHalflingLuckFromFlag` when the chosen d20 is 1 + the bearer has Luck.
-- Cunning Action Hide site ([src/engine/plan/cunning-action.ts](src/engine/plan/cunning-action.ts)): captures the d20 in a rolls array and calls `applyHalflingLuckForCharacter`. The AbilityCheckRolled event's `d20` field now surfaces both rolls when the reroll fires.
-
-**Documented RAW deferrals (low-priority L1 edge cases):**
-- **Death saves** (planDeathSaveAtTurnStart in encounter.ts): 3 callers need state + content threading; deferred to keep this slice tractable. The shared helper applies cleanly when threaded.
-- **Concentration CON saves**: already covered indirectly via the slice-539 `rollSaveAgainstDC` wire when concentration uses it; the bespoke d20 in concentration.ts is a different path that stays deferred.
-- **NPC-only / monster-internal d20 rolls** ([src/engine/plan/npc.ts](src/engine/plan/npc.ts), mirror-image deflection, etc.): defender-side or non-Halfling-D20-Test paths that correctly stay un-wired.
-- **Other low-priority sites** (trap saves, transformations, weapon-mastery WIS saves, illusion Investigation, offhand-attack, sensor checks, reactive-spell rolls, travel checks): niche L1 paths; deferred to a future sweep slice if/when content surfaces a need.
-
-**Tests** ([tests/unit/engine/slice-543-halfling-luck-sweep.test.ts](tests/unit/engine/slice-543-halfling-luck-sweep.test.ts), 2 cases): initiative roll exercises the slice-543 reroll path (smoke); Halfling Rogue Cunning Action Hide with natural-1 d20 rerolls correctly + total reflects reroll.
-
-**Audit:** Names: shared helper at `_halfling-luck.ts` (underscore prefix for internal). DRY: extracts the slice-538/539 inline reroll block into a reusable function; future sites wire in 2 lines. SRP: helper does one thing (reroll if conditions met). Magic numbers: none beyond `1` (natural-1 check). at-threading: not relevant.
-
-**Pattern-check:** the helper unblocks the long tail of remaining d20 sites. Each wire is now mechanically trivial — find the d20 roll, push to a rolls array, call the helper, use the returned d20. Future sweep slice can cover the ~20 remaining sites in one cohesive pass without inventing new mechanism.
-
-**L1 SRD primitive arc — CLOSES**. With Halfling Luck's load-bearing sites wired (slices 538-539-543), Dwarf Stonecunning (540), Dragonborn Breath Weapon (541), and Heroic Inspiration as a first-class resource (542), **all 14 L1 SRD gaps surfaced by the slice-530 audit are now closed or have RAW-correct partial coverage with documented deferrals**. Every L1 character (Human, Elf, Dwarf, Halfling, Dragonborn, Tiefling, Gnome, Goliath, Orc) has every L1 trait either fully wired or wired-with-explicit-RAW-deferral-notes.
-
----
-
-**Engine + content (slice 542): Heroic Inspiration as a first-class resource — completes Human Resourceful + the L1 SRD primitive surface**
-
-Promotes Heroic Inspiration from a narrative claim to a first-class engine resource. New Character field `heroicInspiration: boolean` (default false; additive, old saves load clean). New `GrantHeroicInspirationOnLongRest` effect-kind marker. Two new events (HeroicInspirationGranted + HeroicInspirationConsumed) with reducers. `planLongRest` extended to auto-emit Granted for each participant whose effect stack carries the marker. New `planConsumeHeroicInspiration` planner emits Consumed (the reducer clears the flag). Human Resourceful's slice-537 `Custom human-resourceful` marker is replaced by the new effect kind.
-
-RAW (SRD 5.2.1): "When you have Heroic Inspiration, you can expend it to reroll any die immediately after rolling it, and you must use the new roll. You can have only one Heroic Inspiration at a time." Human (Resourceful): "You gain Heroic Inspiration whenever you finish a Long Rest."
-
-**Engine:**
-- Character schema: `heroicInspiration: z.boolean().default(false)` ([src/schemas/runtime/character.ts](src/schemas/runtime/character.ts)).
-- New effect kind `GrantHeroicInspirationOnLongRest` ([src/schemas/effects.ts](src/schemas/effects.ts)) + EffectAccumulator `markHeroicInspirationOnLongRest()` / `hasHeroicInspirationOnLongRest()` ([src/effects/builder.ts](src/effects/builder.ts)).
-- New events `HeroicInspirationGrantedEvent` / `HeroicInspirationConsumedEvent` ([src/schemas/events/heroic-inspiration.ts](src/schemas/events/heroic-inspiration.ts)); reducers ([src/engine/reducers/heroic-inspiration.ts](src/engine/reducers/heroic-inspiration.ts)); wired through apply.ts switch + events/index.ts re-exports.
-- `planLongRest` ([src/engine/plan/rest.ts](src/engine/plan/rest.ts)) signature extended (backward-compatible 2 or 3 args): when content is supplied, walks each participant's effect stack via buildEffectStack and emits HeroicInspirationGranted for those with the marker. Wired in `engine.plan.longRest` to always pass content.
-- New `planConsumeHeroicInspiration` ([src/engine/plan/heroic-inspiration.ts](src/engine/plan/heroic-inspiration.ts)). Intent: `{ characterId, appliedTo? }`. Throws if the character has no Inspiration; emits HeroicInspirationConsumed (the reducer flips the boolean to false).
-- Wired through plan/index + engine/index + conveniences (`ConsumeHeroicInspiration` dispatch).
-
-**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)): Human traits' slice-537 `Custom human-resourceful` marker is replaced by `{ kind: 'GrantHeroicInspirationOnLongRest' }`. Audit allowlist entry removed (no longer indirect; observable via effect-stack accessor).
-
-**Doc-count guards:** `EFFECT_KINDS` 60 → 61 (59 → 60 primitives + Custom). Updated [docs/authoring-content-packs.md](docs/authoring-content-packs.md) + [docs/concepts.md](docs/concepts.md).
-
-**Documented RAW deferral:** the **reroll integration** (spend Inspiration → re-roll a recent d20) is consumer-managed for now. The consumer either re-plans the triggering roll with new RNG OR substitutes the new d20 into the prior event when displaying outcomes. Halfling Luck's reroll helper has the closest shape; a follow-up slice can extend it to also check for Heroic Inspiration as a spend-on-natural-1 alternative.
-
-**Tests** ([tests/unit/engine/slice-542-heroic-inspiration.test.ts](tests/unit/engine/slice-542-heroic-inspiration.test.ts), 8 cases): Human has the new GrantHeroicInspirationOnLongRest trait (old Custom marker gone); effect stack projects hasHeroicInspirationOnLongRest true for Human, false for Elf (control); planLongRest auto-emits Granted only for participants with the marker (Human yes, Elf no in same party); committing the Granted event flips the heroicInspiration flag to true; planConsumeHeroicInspiration emits Consumed + reducer flips the flag back to false; throws when the character has no Inspiration; re-granting while already true is idempotent (RAW: only one at a time).
-
-**Audit:** Names match the marker triad (`markX` / `hasX` / `GrantX`). DRY: reduces slice-537 + marker-pattern code surface. SRP: marker + planner + reducer each does one thing. Magic numbers: none. at-threading: resolved once via `at ?? nowIso()`.
-
-**Pattern-check:** the GrantX-on-LongRest marker pattern is now used twice (Halfling Luck for in-roll mechanic; Heroic Inspiration for on-rest grant). Future grant-on-rest features (Wizard Arcane Recovery is already wired via different machinery; subclass features that grant inspiration variants) fit this same shape: declare the marker on the granting feature + extend planLongRest to read it.
-
-**Closes Human Resourceful** (slice 537 followup). **L1 SRD primitive arc 11 of ~14 closes**: with this slice, Dwarf Stonecunning (540), Dragonborn Breath Weapon (541), and Heroic Inspiration (this slice) all ship as first-class primitives. Only the Halfling Luck cohort sweep remains.
-
----
-
-**Engine + content (slice 541): Dragonborn Breath Weapon — character-side area-save attack**
-
-Wires the Dragonborn Breath Weapon per RAW. The dragonborn species gains `GrantResource { resourceId: 'dragonborn-breath-weapon', max: profBonus, recharge: 'longRest' }`; new `planDragonbornBreath` consumes Action + ResourceSpent + emits per-target SaveRolled (DEX, DC = 8 + CON + PB) + DamageApplied (damage rolled once for the area; halved on save). Damage dice scale by character level (1d10 at L1, 2d10 at L5, 3d10 at L11, 4d10 at L17). Damage type is consumer-supplied from the Draconic Ancestry pick (slice 531).
-
-RAW (SRD 5.2.1 Dragonborn): "_Breath Weapon._ When you take the Attack action on your turn, you can replace one of your attacks with an exhalation of magical energy in either a 15-foot Cone or a 30-foot Line that is 5 feet wide ... DC 8 plus your Constitution modifier and Proficiency Bonus ... 1d10 damage ... 1d10 at L5/11/17 ... PB uses per Long Rest."
-
-**Engine:**
-- New `planDragonbornBreath` ([src/engine/plan/dragonborn-breath.ts](src/engine/plan/dragonborn-breath.ts)). Intent: `{ dragonbornId, damageType, areaShape, targetIds }`. Validates species + resource > 0 + Action available + damage type in allowed set (acid/cold/fire/lightning/poison). Mirrors monster `planBreathWeapon` (slice 140) but with character-side resource pool instead of monster `breathWeaponExpended` boolean.
-- Wired through plan/index + engine/index + conveniences.
-
-**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)): Dragonborn species gains `GrantResource` for `dragonborn-breath-weapon` (PB uses per Long Rest).
-
-**Documented RAW deviations:**
-- **Action cost** (rather than "replace one of your attacks within Attack action"): at L1 these are equivalent (1 attack on Attack action). From L5+ Extra Attack tier the engine under-prices breath by giving up the whole Action; deferred until a multiattack-replacement primitive lands.
-- **Damage type cross-check**: engine validates membership in the allowed-types set but does NOT cross-check against the resolved Draconic Ancestry pick. Consumer responsibility.
-- **Target list**: consumer-supplied per the area shape; engine doesn't compute cone/line inclusion (standard convention shared with monster breath weapons + spell area-of-effects).
-- **Area shape**: validated as 'cone' | 'line' on the intent but not enforced for size (15 ft cone / 30 ft line); narrative.
-
-**Tests** ([tests/unit/engine/slice-541-dragonborn-breath.test.ts](tests/unit/engine/slice-541-dragonborn-breath.test.ts), 8 cases): species GrantResource trait; L1 save DC = 13 (8 + 3 CON + 2 PB); 4-event chain (Action + ResourceSpent + SaveRolled + DamageApplied) at L1 with 1d10; L5 damage caps at 2d10 (≤ 20); multi-target emits 2 SaveRolled events; non-dragonborn throws; disallowed damage type throws; exhausted resource throws.
-
-**Audit:** Names mirror planBreathWeapon (monster). DRY: shares the area-save shape with the monster breath weapon but with character-side state. SRP: planner consumes Action + rolls per-target. Magic numbers: 8 (RAW DC base) is a constant.
-
-**Pattern-check:** Dragonborn Breath is the first character-side area-of-effect-with-save action in the engine. Future similar abilities (Sorcerer L3 Sorcerous Burst variants, future class-feature AoE actions) follow the same shape: GrantResource on the granting feature + planner that consumes Action + rolls per-target via rollSaveAgainstDC.
-
----
+Per-slice detail for slices 541-544 (the L1 SRD primitive-completion cohort: Dragonborn Breath Weapon character-side area-save; Heroic Inspiration as a first-class resource + Human Resourceful conversion; Halfling Luck cohort sweep with shared helper extraction; Halfling Luck final 12-site sweep) is archived at [docs/changelog/archive-slices-541-544.md](docs/changelog/archive-slices-541-544.md) (slice 548, to keep this file under the 60 KB single-Read ceiling).
 
 Per-slice detail for slices 536-540 (L1 SRD species coverage tail: Elf Trance narrative marker; Human Resourceful narrative marker; Halfling Luck primitive + attack arm wire; Halfling Luck save + ability-check arms; Dwarf Stonecunning per-Long-Rest BA tremorsense) is archived at [docs/changelog/archive-slices-536-540.md](docs/changelog/archive-slices-536-540.md) (slice 545, to keep this file under the 60 KB single-Read ceiling).
 

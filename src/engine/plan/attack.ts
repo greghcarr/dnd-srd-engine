@@ -1131,6 +1131,11 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     // is the canonical user; future weapon-specific item buffs plug
     // in by gating on the same fact).
     ['event.weaponId', weaponInstance.definitionId],
+    // Slice 548: damage-ability fact (STR / DEX). Lets predicate-gated
+    // AddModifier effects scope to "STR-based attacks only" (Rage's
+    // damage bonus is the canonical user — RAW "When you make an
+    // attack using Strength... you gain a bonus to the damage").
+    ['event.damageAbility', damageAbility],
   ]);
   const damageModifierBonus = attackerEffects.modifierSum('damage', damageFacts);
   const damageRollPayload: DamageRoll = {

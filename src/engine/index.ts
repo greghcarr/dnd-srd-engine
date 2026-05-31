@@ -74,6 +74,7 @@ import {
   planConsumeHeroicInspiration,
   planSecondWind,
   planUseHealersKit,
+  planRage,
   planNimbleEscape,
   planCunningAction,
   planExpeditiousRetreatDash,
@@ -217,6 +218,7 @@ import {
   type ConsumeHeroicInspirationIntent,
   type SecondWindIntent,
   type UseHealersKitIntent,
+  type RageIntent,
   type NimbleEscapeIntent,
   type CunningActionIntent,
   type ExpeditiousRetreatDashIntent,
@@ -381,6 +383,7 @@ export interface Engine {
     consumeHeroicInspiration(state: CampaignState, intent: Omit<ConsumeHeroicInspirationIntent, 'type'>): PlanResult;
     secondWind(state: CampaignState, intent: Omit<SecondWindIntent, 'type'>): PlanResult;
     useHealersKit(state: CampaignState, intent: Omit<UseHealersKitIntent, 'type'>): PlanResult;
+    rage(state: CampaignState, intent: Omit<RageIntent, 'type'>): PlanResult;
     nimbleEscape(state: CampaignState, intent: Omit<NimbleEscapeIntent, 'type'>): PlanResult;
     cunningAction(state: CampaignState, intent: Omit<CunningActionIntent, 'type'>): PlanResult;
     expeditiousRetreatDash(state: CampaignState, intent: Omit<ExpeditiousRetreatDashIntent, 'type'>): PlanResult;
@@ -732,6 +735,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     useHealersKit(state, intent) {
       return { events: planUseHealersKit(state, content, { type: 'UseHealersKit', ...intent }) };
+    },
+    rage(state, intent) {
+      return { events: planRage(state, content, { type: 'Rage', ...intent }) };
     },
     nimbleEscape(state, intent) {
       return { events: planNimbleEscape(state, content, rng, { type: 'NimbleEscape', ...intent }) };

@@ -9487,6 +9487,14 @@
     { "id": "stonecunning-active", "name": "Stonecunning", "description": "Tremorsense 60 ft for 10 minutes (Dwarf Stonecunning trait). Consumer manages wall-clock expiry; RAW: 10 minutes per Bonus Action use. Per-Long-Rest PB-uses tracked via the dwarf's `stonecunning` resource.", "stackable": false, "endsOn": [], "effects": [
       { "kind": "GrantSense", "sense": "tremorsense", "range": 60 }
     ] },
+    { "id": "raging", "name": "Raging", "description": "A Barbarian's Rage is active. Grants resistance to bludgeoning/piercing/slashing, +2 damage on STR-based attacks (RAW Barbarian L1-3; +3 at L4-8, +4 at L9-15, +4 at L16+ — consumer reapplies with the appropriate variant at higher tiers), advantage on STR ability checks + saves. Slice 548: per RAW the Rage lasts until the end of the Barbarian's next turn (extendable by attacking, forcing a save, or BA) up to 10 minutes; the engine doesn't model the auto-extend logic today, so duration is consumer-managed via ConditionRemoved. Also deferred: 'No Concentration / no spells while raging' (would need a concentration-block primitive on the condition); auto-end on donning Heavy armor or becoming Incapacitated.", "stackable": false, "endsOn": [{ "kind": "longRest" }], "effects": [
+      { "kind": "GrantResistance", "damageType": "bludgeoning" },
+      { "kind": "GrantResistance", "damageType": "piercing" },
+      { "kind": "GrantResistance", "damageType": "slashing" },
+      { "kind": "AddModifier", "target": "damage", "value": 2, "condition": { "kind": "eq", "path": "event.damageAbility", "value": "STR" } },
+      { "kind": "SetAdvantage", "on": { "kind": "check", "ability": "STR" }, "mode": "advantage" },
+      { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "STR" }, "mode": "advantage" }
+    ] },
     {
       "id": "longstrider-active",
       "name": "Longstrider",
