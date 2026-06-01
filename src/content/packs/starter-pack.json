@@ -2255,7 +2255,7 @@
     { "id": "goodberry", "name": "Goodberry", "level": 1, "school": "conjuration", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "a sprig of mistletoe" }, "duration": "24 hours", "concentration": false, "ritual": false, "classes": ["druid", "ranger"], "mechanicalEffects": [{ "kind": "create-item", "itemDefinitionId": "goodberry", "quantity": 10 }] },
     { "id": "grease", "name": "Grease", "level": 1, "school": "conjuration", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true, "material": "a bit of pork rind or butter" }, "duration": "1 minute", "concentration": false, "ritual": false, "classes": ["sorcerer", "wizard"], "targeting": { "shape": "cube", "size": 10 }, "mechanicalEffects": [{ "kind": "aura-damage", "rangeFeet": 10, "saveAbility": "DEX", "halfOnSuccess": false, "conditionOnFail": "prone" }] },
     { "id": "heroism", "name": "Heroism", "level": 1, "school": "enchantment", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "paladin"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "heroic-active" }, { "kind": "recurring", "effect": "temp-hp", "addCasterAbilityMod": "CHA" }] },
-    { "id": "hex", "name": "Hex", "level": 1, "school": "enchantment", "castingTime": "Bonus Action", "range": "90 feet", "components": { "verbal": true, "somatic": true, "material": "the petrified eye of a newt" }, "duration": "Concentration, up to 1 hour", "concentration": true, "ritual": false, "classes": ["warlock"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "hexed-active" }] },
+    { "id": "hex", "name": "Hex", "level": 1, "school": "enchantment", "castingTime": "Bonus Action", "range": "90 feet", "components": { "verbal": true, "somatic": true, "material": "the petrified eye of a newt" }, "duration": "Concentration, up to 1 hour", "concentration": true, "ritual": false, "classes": ["warlock"], "mechanicalEffects": [{ "kind": "buff", "casterChoosesVariant": { "variants": [{ "key": "STR", "conditionId": "hexed-STR-active" }, { "key": "DEX", "conditionId": "hexed-DEX-active" }, { "key": "CON", "conditionId": "hexed-CON-active" }, { "key": "INT", "conditionId": "hexed-INT-active" }, { "key": "WIS", "conditionId": "hexed-WIS-active" }, { "key": "CHA", "conditionId": "hexed-CHA-active" }] } }] },
     { "id": "hunters-mark", "name": "Hunter's Mark", "level": 1, "school": "divination", "castingTime": "Bonus Action", "range": "90 feet", "components": { "verbal": true }, "duration": "Concentration, up to 1 hour", "concentration": true, "ritual": false, "classes": ["ranger"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "hunters-mark-active" }] },
     { "id": "jump", "name": "Jump", "level": 1, "school": "transmutation", "castingTime": "Bonus Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a grasshopper's hind leg" }, "duration": "1 minute", "concentration": false, "ritual": false, "classes": ["druid", "ranger", "sorcerer", "wizard"], "mechanicalEffects": [] },
     { "id": "longstrider", "name": "Longstrider", "level": 1, "school": "transmutation", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a pinch of dirt" }, "duration": "1 hour", "concentration": false, "ritual": false, "classes": ["bard", "druid", "ranger", "wizard"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "longstrider-active" }] },
@@ -8785,9 +8785,9 @@
       ]
     },
     {
-      "id": "hexed-active",
-      "name": "Hexed",
-      "description": "Whenever the hex caster hits the bearer with an attack, the bearer takes an extra 1d6 necrotic damage. RAW also gives the caster Disadvantage on one chosen ability check (nested sub-choice not modeled; consumer carries the ability name out-of-band). Concentration up to 1 hour. The damage rider fires via OnEvent + AddDamage with a target-side filter that matches `event.targetIsSelf && event.hit && event.attackerIsSource` — `attackerIsSource` is true when the AttackRolled's attacker matches this AppliedCondition's sourceCharacterId.",
+      "id": "hexed-STR-active",
+      "name": "Hexed (STR)",
+      "description": "Whenever the hex caster hits the bearer with an attack, the bearer takes an extra 1d6 necrotic damage; the bearer also has Disadvantage on Strength ability checks (RAW: the caster chose STR as the cursed ability at cast time). Concentration up to 1 hour. Slice 565: replaced the single hexed-active condition with one variant per chosen ability so the ability-check disadvantage rider can target a specific ability via SetAdvantage { on: { kind: 'check', ability: 'STR' }, mode: 'disadvantage' }.",
       "stackable": false,
       "endsOn": [],
       "effects": [
@@ -8799,7 +8799,103 @@
             "filter": { "kind": "all", "terms": [{ "kind": "eq", "path": "event.targetIsSelf", "value": true }, { "kind": "eq", "path": "event.hit", "value": true }, { "kind": "eq", "path": "event.attackerIsSource", "value": true }] }
           },
           "actions": [{ "kind": "AddDamage", "dice": "1d6", "damageType": "necrotic" }]
-        }
+        },
+        { "kind": "SetAdvantage", "on": { "kind": "check", "ability": "STR" }, "mode": "disadvantage" }
+      ]
+    },
+    {
+      "id": "hexed-DEX-active",
+      "name": "Hexed (DEX)",
+      "description": "As hexed-STR-active but the ability-check disadvantage targets Dexterity. See hexed-STR-active for the damage-rider contract.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        {
+          "kind": "OnEvent",
+          "id": "hex-damage-rider",
+          "trigger": {
+            "eventType": "AttackRolled",
+            "filter": { "kind": "all", "terms": [{ "kind": "eq", "path": "event.targetIsSelf", "value": true }, { "kind": "eq", "path": "event.hit", "value": true }, { "kind": "eq", "path": "event.attackerIsSource", "value": true }] }
+          },
+          "actions": [{ "kind": "AddDamage", "dice": "1d6", "damageType": "necrotic" }]
+        },
+        { "kind": "SetAdvantage", "on": { "kind": "check", "ability": "DEX" }, "mode": "disadvantage" }
+      ]
+    },
+    {
+      "id": "hexed-CON-active",
+      "name": "Hexed (CON)",
+      "description": "As hexed-STR-active but the ability-check disadvantage targets Constitution. See hexed-STR-active for the damage-rider contract.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        {
+          "kind": "OnEvent",
+          "id": "hex-damage-rider",
+          "trigger": {
+            "eventType": "AttackRolled",
+            "filter": { "kind": "all", "terms": [{ "kind": "eq", "path": "event.targetIsSelf", "value": true }, { "kind": "eq", "path": "event.hit", "value": true }, { "kind": "eq", "path": "event.attackerIsSource", "value": true }] }
+          },
+          "actions": [{ "kind": "AddDamage", "dice": "1d6", "damageType": "necrotic" }]
+        },
+        { "kind": "SetAdvantage", "on": { "kind": "check", "ability": "CON" }, "mode": "disadvantage" }
+      ]
+    },
+    {
+      "id": "hexed-INT-active",
+      "name": "Hexed (INT)",
+      "description": "As hexed-STR-active but the ability-check disadvantage targets Intelligence. See hexed-STR-active for the damage-rider contract.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        {
+          "kind": "OnEvent",
+          "id": "hex-damage-rider",
+          "trigger": {
+            "eventType": "AttackRolled",
+            "filter": { "kind": "all", "terms": [{ "kind": "eq", "path": "event.targetIsSelf", "value": true }, { "kind": "eq", "path": "event.hit", "value": true }, { "kind": "eq", "path": "event.attackerIsSource", "value": true }] }
+          },
+          "actions": [{ "kind": "AddDamage", "dice": "1d6", "damageType": "necrotic" }]
+        },
+        { "kind": "SetAdvantage", "on": { "kind": "check", "ability": "INT" }, "mode": "disadvantage" }
+      ]
+    },
+    {
+      "id": "hexed-WIS-active",
+      "name": "Hexed (WIS)",
+      "description": "As hexed-STR-active but the ability-check disadvantage targets Wisdom. See hexed-STR-active for the damage-rider contract.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        {
+          "kind": "OnEvent",
+          "id": "hex-damage-rider",
+          "trigger": {
+            "eventType": "AttackRolled",
+            "filter": { "kind": "all", "terms": [{ "kind": "eq", "path": "event.targetIsSelf", "value": true }, { "kind": "eq", "path": "event.hit", "value": true }, { "kind": "eq", "path": "event.attackerIsSource", "value": true }] }
+          },
+          "actions": [{ "kind": "AddDamage", "dice": "1d6", "damageType": "necrotic" }]
+        },
+        { "kind": "SetAdvantage", "on": { "kind": "check", "ability": "WIS" }, "mode": "disadvantage" }
+      ]
+    },
+    {
+      "id": "hexed-CHA-active",
+      "name": "Hexed (CHA)",
+      "description": "As hexed-STR-active but the ability-check disadvantage targets Charisma. See hexed-STR-active for the damage-rider contract.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        {
+          "kind": "OnEvent",
+          "id": "hex-damage-rider",
+          "trigger": {
+            "eventType": "AttackRolled",
+            "filter": { "kind": "all", "terms": [{ "kind": "eq", "path": "event.targetIsSelf", "value": true }, { "kind": "eq", "path": "event.hit", "value": true }, { "kind": "eq", "path": "event.attackerIsSource", "value": true }] }
+          },
+          "actions": [{ "kind": "AddDamage", "dice": "1d6", "damageType": "necrotic" }]
+        },
+        { "kind": "SetAdvantage", "on": { "kind": "check", "ability": "CHA" }, "mode": "disadvantage" }
       ]
     },
     {

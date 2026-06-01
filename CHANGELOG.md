@@ -4,6 +4,40 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 565): Hex ability-disadvantage rider — third of three residual L1 drift closures**
+
+Closes the third residual L1 spell drift surfaced by the post-cycle deep review. Pre-slice Hex applied a single `hexed-active` condition carrying only the damage rider (RAW: "extra 1d6 Necrotic damage on a hit"); the RAW ability-check disadvantage arm ("choose one ability when you cast the spell. The target has Disadvantage on ability checks made with the chosen ability") was unwired, with the condition's description acknowledging: "RAW also gives the caster Disadvantage on one chosen ability check (nested sub-choice not modeled; consumer carries the ability name out-of-band)."
+
+RAW (SRD 5.2.1 Hex, Warlock L1): "You place a curse on a creature that you can see within range. Until the spell ends, you deal an extra 1d6 Necrotic damage to the target whenever you hit it with an attack roll. Also, choose one ability when you cast the spell. The target has Disadvantage on ability checks made with the chosen ability."
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- Removed: the single `hexed-active` condition.
+- Added: 6 ability-keyed variants `hexed-STR-active` / `hexed-DEX-active` / `hexed-CON-active` / `hexed-INT-active` / `hexed-WIS-active` / `hexed-CHA-active`. Each carries the existing target-side damage rider (`OnEvent` + `AddDamage 1d6 necrotic` filtered on `event.targetIsSelf && event.hit && event.attackerIsSource` — slice 88) PLUS a `SetAdvantage { on: { kind: 'check', ability }, mode: 'disadvantage' }` matching its named ability.
+- Hex spell switched from `{ kind: 'buff', conditionId: 'hexed-active' }` to `{ kind: 'buff', casterChoosesVariant: { variants: [STR, DEX, CON, INT, WIS, CHA] } }`. The cast intent must now supply `casterChoice: { kind: 'variant', value: 'STR'|...|'CHA' }`.
+
+**Pattern reused**: the `casterChoosesVariant` shape is the canonical way to express "RAW: caster chooses one of N variants at cast time" — established users include Bestow Curse (slice 367's 6 per-ability variants, same shape), Calm Emotions, Command, Enhance Ability, Enlarge/Reduce, Fire Shield, and Chromatic Orb (for damage type). No engine wiring is required; the existing `resolveVariantConditionId` planner helper (cast-spell.ts:302) drives the resolution.
+
+**Tests** ([tests/unit/engine/slice-565-hex-ability-disadvantage.test.ts](tests/unit/engine/slice-565-hex-ability-disadvantage.test.ts), 22 cases):
+- Pack declarations: Hex variant keys = [STR,DEX,CON,INT,WIS,CHA]; for each ability, the condition exists + ships the damage rider AND a SetAdvantage on `{ kind: 'check', ability }` with `mode: 'disadvantage'`; legacy `hexed-active` is removed.
+- Per-ability cast → correct variant applied with sourceCharacterId = caster.
+- Per-ability cast → target's matching ability check rolls with `used: 'disadvantage'`.
+- Scope proof: hexed-STR-active does NOT affect DEX/CON/INT/WIS/CHA checks.
+- Casting Hex without a `casterChoice` throws (the casterChoosesVariant gate is required).
+
+Updated tests: [tests/unit/engine/plan-hex-target-side-rider.test.ts](tests/unit/engine/plan-hex-target-side-rider.test.ts) (2 cast call-sites now supply `casterChoice: { kind: 'variant', value: 'STR' }`; conditionId checks moved to `hexed-STR-active`). [tests/unit/engine/spell-coverage.test.ts](tests/unit/engine/spell-coverage.test.ts) hex entry updated. [tests/coverage/__snapshots__/features.test.ts.snap](tests/coverage/__snapshots__/features.test.ts.snap) re-snapshotted: `hexed-active` removed, 6 variants added.
+
+**Audit:**
+- **Names:** the 6 conditions follow the established `hexed-<ABILITY>-active` convention (mirrors slice 367's `cursed-ability-<ability>-active` Bestow Curse variants).
+- **DRY:** the 6 condition entries are near-identical except for the SetAdvantage ability field; not factored further because content is JSON (no shared-effect-array primitive exists in the pack format).
+- **SRP:** Pure content edit: 1 condition removed, 6 added, 1 spell mechanic restructured. No engine code touched.
+- **Magic numbers:** none.
+- **at-threading:** N/A (no new event-emission paths).
+- **Mechanical outcomes asserted:** per-ability variant applied on cast; per-ability ability-check disadvantage fires; other ability checks unaffected (scope proof); no-choice path throws.
+
+**Pattern-check:** the original `hexed-active` design baked the assumption "one chosen ability per cast" into the consumer side as out-of-band metadata. Slice 367 had already solved this exact pattern for Bestow Curse via per-ability conditions + casterChoosesVariant. Slice 565 applies the slice-367 pattern to Hex, closing the parallel. Future spells with "caster picks an ability at cast time" RAW (e.g. variants of Boon-style spells) reuse the same shape. The doc-counts audit's conditions-count guard caught the +5 net change (135 → 140) and the rider sub-count (120 → 125) automatically; both updated in [docs/getting-started.md](docs/getting-started.md), [docs/status.md](docs/status.md) (twice — overview row + dimension row), and [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md).
+
+---
+
 **Tests (slice 564): per-caster L1 spellcasting math test suite**
 
 Pure test-rigor slice closing the biggest L1 spellcasting verification gap. Pre-slice the spell DC + slot derivation tests covered only Wizard / Paladin / Warlock at L1; five L1 caster classes (Bard, Cleric, Druid, Ranger, Sorcerer) had no direct math assertion, so a regression in `FULL_CASTER_SLOTS`, the half-caster rounding rule, or the per-class spellcasting-ability declaration could land without firing a test.

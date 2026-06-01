@@ -142,7 +142,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'goodberry': { kind: 'create-item', minItems: 10 },
   'grease': { kind: 'skip', reason: 'aura-damage mechanic (DEX save → prone, no damage); fires via engine.plan.tickAura on enter, not on cast. RAW difficult-terrain side-effect isn\'t expressed.' },
   'heroism': { kind: 'buff', conditionId: 'heroic-active' },
-  'hex': { kind: 'buff', conditionId: 'hexed-active' },
+  'hex': { kind: 'buff', conditionId: 'hexed-STR-active', casterChoice: { kind: 'variant', value: 'STR' } },
   'hunters-mark': { kind: 'skip', reason: 'has dedicated planHuntersMark (concentration mark, not planCastSpell)' },
   'jump': { kind: 'skip', reason: 'utility movement, narrative only' },
   'longstrider': { kind: 'buff', conditionId: 'longstrider-active' },
