@@ -4,6 +4,46 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 567): condition effect-list completeness sweep — RAW drift on 5 of 15 conditions**
+
+Closes a class of RAW drift surfaced by the post-cycle deep L1 audit (the audit fanned across 6 agents; condition-effects was the highest-impact dimension found). Pre-slice 5 of the 15 RAW conditions had under-modeled effect arrays:
+- **Blinded**: missing `GrantAdvantageToAttackers`.
+- **Paralyzed**: missing `GrantAdvantageToAttackers`.
+- **Stunned**: missing `ModifySpeed walk:0` AND `GrantAdvantageToAttackers`.
+- **Unconscious**: missing `GrantAdvantageToAttackers`.
+- **Petrified**: missing `GrantAdvantageToAttackers` AND auto-fail STR/DEX saves (RAW: Petrified composes Paralyzed).
+
+Only `restrained` carried `GrantAdvantageToAttackers` pre-slice. The drift meant attackers got no Advantage against a Paralyzed (Hold Person'd), Stunned, Unconscious, Petrified, or Blinded target — a major L1 combat under-modeling, since the whole *point* of these debuffs is to weaponize the bearer's vulnerability.
+
+RAW sources ([references/srd-markdown/rules-glossary.md](references/srd-markdown/rules-glossary.md)):
+- Blinded: "...Attack rolls against the creature have advantage..."
+- Paralyzed: "...Attack rolls against the creature have advantage. Any attack that hits the creature is a critical hit if the attacker is within 5 feet of the creature."
+- Stunned: "...the creature has Speed 0... Attack rolls against the creature have advantage."
+- Unconscious: "...The creature has Speed 0... Attack rolls against the creature have advantage. Any attack that hits the creature is a critical hit if the attacker is within 5 feet of the creature."
+- Petrified (composes Paralyzed): "...auto-fails STR and DEX saving throws... Attack rolls against the creature have advantage."
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)): the 5 condition entries gain the missing effect-array members. Every change is additive (no removed entries; existing arms are preserved).
+
+**Deferred to follow-up slices** (each its own engine work, not pure content):
+- **Paralyzed + Unconscious within-5-ft auto-crit** → slice 568 (needs attack-resolution range check; the existing crit pipeline doesn't gate on attacker-target distance).
+- **Prone asymmetric attacker advantage** (melee Advantage, ranged Disadvantage) → folded into slice 568 since the `event.attackKind` fact has to be added to the attacker-side facts map.
+- **Grappled disadvantage on attacks vs non-grappler** → folded into slice 568 (needs `bearer.targetIsGrappler` fact derived from the bearer's condition source).
+- Incapacitated composition arms (action / bonus / reaction block) stay engine-hardcoded via [`_actor-state.ts`'s `ACTION_BLOCKING_CONDITIONS`](src/engine/plan/_actor-state.ts) — already wired for paralyzed / stunned / petrified / unconscious, no slice work needed.
+
+**Tests** ([tests/unit/engine/slice-567-condition-effect-completeness.test.ts](tests/unit/engine/slice-567-condition-effect-completeness.test.ts), 14 cases): each new arm asserted at pack-declaration level (GrantAdvantageToAttackers on each of the 5 conditions; Stunned Speed 0; Petrified auto-fail STR + DEX); pre-existing arms regression-smoke-checked (bearer-side attack disadvantage on Blinded; resistance + immunity on Petrified; existing Speed 0 + auto-fails on Paralyzed / Unconscious / Stunned).
+
+**Audit:**
+- **Names:** all added entries reuse the canonical effect-kind names (`GrantAdvantageToAttackers`, `ModifySpeed walk:0`, `SetAdvantage mode:'auto-fail'`).
+- **DRY:** 5 conditions get the same shape (`{ kind: 'GrantAdvantageToAttackers' }`); not factored into a shared snippet because content is JSON and inlining is clearest at this scale.
+- **SRP:** pure content edit — no engine code touched. The 14 tests assert pack declarations, not behavior (which is exercised by the engine's existing attack-roll resolution path through `targetEffects.grantsAdvantageToAttackers()` — slice 262 wired this read site).
+- **Magic numbers:** none added.
+- **at-threading:** N/A (no new event emission).
+- **Mechanical outcomes asserted:** 14 per-condition pack-declaration assertions plus 5 regression-smoke checks for pre-existing arms.
+
+**Pattern-check:** the under-modeled-condition class likely has more instances in the rider variants (~125). Future slice 582 (condition behavior tests) will sweep the entire condition catalog — both RAW + rider variants — and surface any other missed effect entries.
+
+---
+
 **Engine + content (slice 566): Favored Enemy Hunter's Mark wiring — pool-based free-cast (real RAW drift)**
 
 Closes a real L1 Ranger RAW drift discovered while researching slice 565. Pre-slice Favored Enemy granted only the `hunters-mark` resource (`max: 2` at L1; recharging on Long Rest, bumped 3/4/5/6 at L5/9/13/17). Two RAW arms were unwired:
@@ -156,88 +196,10 @@ RAW (SRD 5.2.1 Eldritch Blast): "...The spell creates more than one beam when yo
 
 **Pattern-check:** Eldritch Blast is the canonical beam-scaling user in SRD 5.2.1; no other cantrip uses this mode. Future cantrips with similar shapes (e.g., a homebrew Scorching Ray analog) reuse the same field.
 
----
-
-**Content (slice 561): Final L1 closure — Druid Magician cantrip choice + deep-audit clarifications**
-
-Final slice of the deep-audit closure cycle. Three small concerns from the final L1 SRD compliance pass close together:
-
-**1. Druid Magician cantrip choice (closed)**
-RAW (SRD 5.2.1 Druid L1, Primal Order — Magician): "You know one extra cantrip from the Druid spell list." The pack hardcoded `druidcraft` as that extra cantrip — denying player agency. Slice ships a nested OfferChoice inside the Magician option's effects array: `druid-magician-cantrip` over all 11 Druid cantrips (Druidcraft, Guidance, Mending, Message, Poison Spray, Produce Flame, Resistance, Shillelagh, Spare the Dying, Starry Wisp, Elementalism). Each option's effects grant the chosen cantrip with `preparation: "always-prepared"` + `spellcastingAbility: "WIS"`. The Warden option (sibling) is untouched.
-
-**2. Heavy weapon Small-creature disadvantage + Loading property cap (audit-clarification)**
-The deep audit's combat-surface agent flagged BOTH as "unwired." Verification proved BOTH were already wired in [src/engine/plan/attack.ts](src/engine/plan/attack.ts):
-- `heavyForSmall` (~line 710): existing block; slice 560 routed it through `creatureSize` derive for consistency.
-- `weaponIsLoading` (~line 1514) + per-turn cap via `turnUsage.loadedWeaponsFiredThisTurn`: existing block.
-
-This was an audit misread (similar to the slice-547 Savage Attacker correction). The test in this slice asserts the load-bearing variables / blocks remain in attack.ts so a future audit doesn't re-flag them. No engine change required.
-
-**3. Tiefling Fiendish Legacy spellcasting ability choice (deferred + documented)**
-RAW (SRD 5.2.1 Tiefling, Fiendish Legacy): "Intelligence, Wisdom, or Charisma is your spellcasting ability for the spells you cast with this trait (choose the ability when you select the legacy)." The pack hardcodes `spellcastingAbility: 'CHA'` on the legacy's GrantSpell effects (Otherworldly Presence's Thaumaturgy + each legacy variant's L3/L5 spells). Making this player-choosable requires either (a) a new effect kind that sets the spellcasting ability for a category of spells, or (b) restructuring the slice-530 Fiendish Legacy choice so the ability selection cascades into each grant's `spellcastingAbility` field. Both options are non-trivial structural changes that aren't pure content fixes; tracked as a future slice in the gaps doc.
-
-The drift's gameplay impact at L1: low. Most L1 Tieflings playing CHA-keyed classes (Warlock, Sorcerer, Bard, Paladin) prefer CHA anyway; the deviation matters mainly for INT-keyed (Wizard) or WIS-keyed (Cleric, Druid) Tieflings who would optimize differently. Consumer can override `spellcastingAbility` per-cast via cast-spell intent until the structural slice ships.
-
-**Tests** ([tests/unit/engine/slice-561-final-l1-closures.test.ts](tests/unit/engine/slice-561-final-l1-closures.test.ts), 5 cases): Magician option contains nested OfferChoice; all 11 Druid cantrips offered (positive examples + cure-wounds negative control); Warden option untouched (martial weapon + medium armor); `heavyForSmall` block present in attack.ts with `creatureSize` lookup; `weaponIsLoading` block + per-turn cap present.
-
-**Audit:**
-- **Names:** `druid-magician-cantrip` mirrors existing `magic-initiate-druid-cantrips` convention.
-- **DRY:** the 11 cantrip options mirror the Magic Initiate Druid pattern (slice 485 / 469); could share a helper but inlining the array reads clearly and is local to one species feature.
-- **SRP:** content-only edit for #1; doc-only for #2 + #3.
-- **Magic numbers:** none.
-- **at-threading:** N/A.
-- **Mechanical outcomes asserted:** nested OfferChoice shape + cantrip pool + Warden control + load-bearing variable presence (smoke checks).
-
-**Pattern-check:** the slice-547 audit-clarification convention (note in CHANGELOG that the agent misread, no engine change) gets a second use here. The deep-audit reports are useful but not always reliable — verification before fix is required (this slice + slice 547 are both "audit agent was wrong" corrections).
-
-**L1 SRD compliance — DEEP-AUDIT CLOSURE COMPLETE.** Slices 549-561 close every load-bearing gap surfaced by the final L1 audit:
-- ~~Sneak Attack finesse/ranged gate~~ — closed slice 549.
-- ~~Cover bonus on Dex saves~~ — closed slice 550.
-- ~~Forest Gnome Speak with Animals at-will over-grant~~ — closed slice 551.
-- ~~Reach property OA threat range~~ — closed slice 552.
-- ~~3 missing focus variants~~ — closed slice 553.
-- ~~Goliath Giant Ancestry × 6 unwired options~~ — closed slices 554-559.
-- ~~Human / Tiefling Medium-or-Small size choice~~ — closed slice 560.
-- ~~Druid Magician cantrip choice~~ — closed by this slice.
-- Heavy/Small + Loading — never were unwired (audit misread; documented here).
-- Tiefling Fiendish Legacy ability choice — deferred (structural; tracked).
-
-L1 SRD is now substantively RAW-compliant for every species + class + background combination surfaced by the deep audit.
 
 ---
 
-**Engine + content (slice 560): Human / Tiefling Medium-or-Small size choice**
-
-Closes the size-choice gap surfaced by the final L1 SRD compliance pass. RAW: both Human and Tiefling species offer a size choice at character creation ("Medium or Small"). Pre-slice both species were hardcoded to Medium; Small humans / tieflings were unreachable. The closure ships an `sizeOverride` field on Character, an OfferChoice on each species, and threads the override through `creatureSize` so downstream gates (slice-552 Heavy weapon Small-creature disadvantage) honor it automatically.
-
-RAW (SRD 5.2.1 Human): "Size: Medium or Small (your choice)."
-RAW (SRD 5.2.1 Tiefling): "Size: Medium or Small (your choice)."
-
-**Engine:**
-- [src/schemas/runtime/character.ts](src/schemas/runtime/character.ts): new optional `sizeOverride: Size` field on the Character schema. Additive + defaulted to undefined; old saves load unchanged.
-- [src/derive/creature-size.ts](src/derive/creature-size.ts): `creatureSize` now reads `character.sizeOverride` FIRST, before falling back to statblock → species → Medium. The override takes precedence over even monster statblocks (a Polymorphed Hill Giant who picked Small as a Human stays Small).
-- [src/engine/plan/attack.ts](src/engine/plan/attack.ts) (heavy-for-Small disadvantage gate): swapped the direct `species.size` read for `creatureSize(attacker, content)` so the override propagates. A Small Human Fighter with a Greatsword now correctly rolls with disadvantage.
-
-**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
-- Human species declares OfferChoice `human-size` with two options: `medium` / `small`.
-- Tiefling species declares OfferChoice `tiefling-size` with the same two options.
-
-**Consumer projection (documented):** the engine doesn't auto-apply the OfferChoice option to `sizeOverride` — no `SetSize` effect kind exists. The consumer (UI / character builder) reads the resolved choice and sets `character.sizeOverride` before committing the character. This is the same consumer-managed pattern as starting ability score increases (background ASI choices); the engine declares the choice + the projection mechanism, the consumer wires the resolved value.
-
-**Tests** ([tests/unit/engine/slice-560-human-tiefling-size.test.ts](tests/unit/engine/slice-560-human-tiefling-size.test.ts), 10 cases): pack declarations for both species; Human + Tiefling default to Medium without override; sizeOverride = Small / Medium project correctly; sizeOverride takes precedence over statblockId; Small Human + Small Tiefling with Greatsword roll with disadvantage; Medium Human with Greatsword does NOT (control).
-
-**Audit:**
-- **Names:** `sizeOverride` is intention-revealing — clearly distinguishes player choice from species / monster base size.
-- **DRY:** the heavy-for-Small check now goes through the canonical `creatureSize` derive (was: bypass + direct `species.size`). One read site, one source of truth.
-- **SRP:** schema field is one line; derive update is two lines; attack.ts update is two lines.
-- **Magic numbers:** none.
-- **at-threading:** N/A.
-- **Mechanical outcomes asserted:** schema parse with the override; derive returns correct size in all 5 precedence cases; downstream attack disadvantage gate fires when override = Small.
-
-**Pattern-check:** the OfferChoice has empty `effects: []` for both options — RAW size is a flat property, not an effect-stack contribution. Future species with similar size-flexibility (none in SRD currently) reuse this pattern. The consumer-projection convention is shared with background ASI choices (slice 466) and equipment-pack picks (deferred narrative).
-
----
-
----
+Per-slice detail for slices 560-561 (Human / Tiefling Medium-or-Small size choice; Druid Magician cantrip choice + deep-audit clarifications) is archived at [docs/changelog/archive-slices-560-561.md](docs/changelog/archive-slices-560-561.md) (slice 567, to keep this file under the 60 KB single-Read ceiling).
 
 Per-slice detail for slices 553-559 (Goliath Giant Ancestry × 6 arms cohort + 3 missing focus variants) is archived at [docs/changelog/archive-slices-553-559.md](docs/changelog/archive-slices-553-559.md) (slice 562, to keep this file under the 60 KB single-Read ceiling).
 

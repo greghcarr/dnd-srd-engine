@@ -8444,10 +8444,12 @@
     {
       "id": "blinded",
       "name": "Blinded",
+      "description": "RAW (SRD 5.2.1 Blinded): Disadvantage on bearer's attack rolls; attacks against bearer have Advantage; the bearer can't see and auto-fails sight-dependent checks. Slice 567 added the GrantAdvantageToAttackers arm (was previously bearer-side-only); the auto-fail sight-check arm remains deferred (no sight-check predicate exists).",
       "stackable": false,
       "endsOn": [],
       "effects": [
-        { "kind": "SetAdvantage", "on": "attack", "mode": "disadvantage" }
+        { "kind": "SetAdvantage", "on": "attack", "mode": "disadvantage" },
+        { "kind": "GrantAdvantageToAttackers" }
       ]
     },
     {
@@ -8505,23 +8507,29 @@
     {
       "id": "paralyzed",
       "name": "Paralyzed",
+      "description": "RAW (SRD 5.2.1 Paralyzed): Incapacitated, Speed 0, auto-fails STR + DEX saves, attacks against bearer have Advantage, melee attacks within 5 ft are automatic critical hits. Incapacitated is enforced via `assertActorCanAct` (engine code, not effect-list). Slice 567 added the GrantAdvantageToAttackers arm. The within-5-ft auto-crit arm is deferred to slice 568 (needs attack-resolution range check).",
       "stackable": false,
       "endsOn": [],
       "effects": [
         { "kind": "ModifySpeed", "mode": "walk", "op": "set", "value": 0 },
         { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "STR" }, "mode": "auto-fail" },
-        { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "DEX" }, "mode": "auto-fail" }
+        { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "DEX" }, "mode": "auto-fail" },
+        { "kind": "GrantAdvantageToAttackers" }
       ]
     },
     {
       "id": "petrified",
       "name": "Petrified",
+      "description": "RAW (SRD 5.2.1 Petrified): Incapacitated, Speed 0, attacks against bearer have Advantage, auto-fails STR + DEX saves, Resistance to all damage, immune to Poisoned. Weight ×10 and disease immunity are narrative arms (no encumbrance / disease primitive). Incapacitated is enforced via `assertActorCanAct`. Slice 567 added the GrantAdvantageToAttackers arm and the auto-fail STR/DEX saves (Petrified composes Paralyzed in RAW).",
       "stackable": false,
       "endsOn": [],
       "effects": [
         { "kind": "ModifySpeed", "mode": "walk", "op": "set", "value": 0 },
         { "kind": "GrantResistance", "damageType": "all" },
-        { "kind": "GrantConditionImmunity", "conditionId": "poisoned" }
+        { "kind": "GrantConditionImmunity", "conditionId": "poisoned" },
+        { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "STR" }, "mode": "auto-fail" },
+        { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "DEX" }, "mode": "auto-fail" },
+        { "kind": "GrantAdvantageToAttackers" }
       ]
     },
     {
@@ -8549,22 +8557,27 @@
     {
       "id": "stunned",
       "name": "Stunned",
-      "stackable": false,
-      "endsOn": [],
-      "effects": [
-        { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "STR" }, "mode": "auto-fail" },
-        { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "DEX" }, "mode": "auto-fail" }
-      ]
-    },
-    {
-      "id": "unconscious",
-      "name": "Unconscious",
+      "description": "RAW (SRD 5.2.1 Stunned): Incapacitated, Speed 0, auto-fails STR + DEX saves, attacks against bearer have Advantage. Incapacitated is enforced via `assertActorCanAct`. Slice 567 added the missing ModifySpeed (Speed 0) and GrantAdvantageToAttackers arms (was previously save-only).",
       "stackable": false,
       "endsOn": [],
       "effects": [
         { "kind": "ModifySpeed", "mode": "walk", "op": "set", "value": 0 },
         { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "STR" }, "mode": "auto-fail" },
-        { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "DEX" }, "mode": "auto-fail" }
+        { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "DEX" }, "mode": "auto-fail" },
+        { "kind": "GrantAdvantageToAttackers" }
+      ]
+    },
+    {
+      "id": "unconscious",
+      "name": "Unconscious",
+      "description": "RAW (SRD 5.2.1 Unconscious): Incapacitated, Prone (in effect — falls prone unless held aloft), Speed 0, drops what it holds, unaware of surroundings, auto-fails STR + DEX saves, attacks against bearer have Advantage, melee attacks within 5 ft are automatic critical hits. Incapacitated is enforced via `assertActorCanAct`. Slice 567 added GrantAdvantageToAttackers. The within-5-ft auto-crit arm is deferred to slice 568 (needs attack-resolution range check); Prone composition stays implicit (HP-drop reducer separately marks the character).",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "ModifySpeed", "mode": "walk", "op": "set", "value": 0 },
+        { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "STR" }, "mode": "auto-fail" },
+        { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "DEX" }, "mode": "auto-fail" },
+        { "kind": "GrantAdvantageToAttackers" }
       ]
     },
     { "id": "expeditious-retreat-active", "name": "Expeditious Retreat Active", "description": "While concentrating on Expeditious Retreat, you may take the Dash action as a Bonus Action on each of your turns (via planExpeditiousRetreatDash).", "stackable": false, "endsOn": [], "effects": [] },
