@@ -4,6 +4,43 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 571): planHelp — the L1 Help action, both modes**
+
+Closes one of the six missing L1 action planners surfaced by the deep audit. Pre-slice Help was a documented gap: a Helper had no engine path to confer Advantage on an ally's check or distract a foe for an ally's attack. Slice 571 ships `planHelp` with both RAW modes.
+
+RAW (PHB 2024 ch.7 Help action):
+- **Help (Attack)**: "You momentarily distract a foe within 5 feet of you. The next attack roll one of your allies makes against that foe before the start of your next turn has Advantage on the attack roll."
+- **Help (Ability Check)**: "You momentarily help another creature do something. ... The creature has Advantage on that ability check."
+
+**Planner** ([src/engine/plan/help.ts](src/engine/plan/help.ts)): `planHelp({ helperId, targetId, mode: 'attack' | 'check' })`. Validates the helper isn't Incapacitated (`assertActorCanAct`); rejects self-help; consumes the helper's Action when invoked in an active encounter on their turn; emits `ConditionApplied` for the appropriate condition with `sourceCharacterId = helper.id` and `expiresOnRound = currentRound + 1, expiryTrigger: 'turnEnd'`. Out-of-encounter use bypasses the action gate (RAW: skill checks happen outside combat too).
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- **`helped-against-active`** (Attack mode): `GrantAdvantageToAttackers` + `consumeOnIncomingAttack: true` + `autoExpiry { afterRounds: 1, trigger: 'turnEnd' }`. The first attack against the foe consumes the condition; the autoExpiry sweeps any unused condition at the helper's next-turn-end (matching "before the start of your next turn").
+- **`helped-on-check-active`** (Ability Check mode): `SetAdvantage { on: { kind: 'check' }, mode: 'advantage' }` (wildcard ability) + `autoExpiry { afterRounds: 1, trigger: 'turnEnd' }`. The bearer gets Advantage on any ability check until expiry.
+
+**Documented RAW deviations:**
+- The Ability Check mode does NOT enforce "consumed on the first check" — the engine has no `consumeOnCheck` primitive yet (the existing `consumeOnAttack` / `consumeOnIncomingAttack` are attack-side only). A future engine slice can add parity; the impact is bounded (the autoExpiry sweeps at turn-end, so multiple checks within one round get advantage instead of just the first).
+- The 5-foot proximity gate for Attack mode is consumer-managed (the engine doesn't track positions).
+- The "helper must be proficient in the chosen skill" gate (Ability Check mode) is consumer-managed (the planner doesn't require a skill id).
+
+**Wiring**: [src/engine/plan/index.ts](src/engine/plan/index.ts) (re-export), [src/engine/index.ts](src/engine/index.ts) (Engine.plan.help + planHelp import), [src/engine/conveniences.ts](src/engine/conveniences.ts) (`Help` dispatch entry — planner-wiring audit's `performIntent` requirement).
+
+**Tests** ([tests/unit/engine/slice-571-help.test.ts](tests/unit/engine/slice-571-help.test.ts), 8 cases): pack declarations for both conditions; Attack mode applies the condition with `sourceCharacterId = helper`, ally's first attack rolls with Advantage, the condition is consumed on the first incoming attack so the second attack doesn't get the bonus; Check mode applies the condition, ally's ability check rolls with Advantage; helping yourself throws; an Incapacitated helper throws.
+
+**Doc-count updates**: conditions 140 → 142 (rider 125 → 127); updated in [docs/getting-started.md](docs/getting-started.md), [docs/status.md](docs/status.md) (×2 rows), [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md). Coverage snapshot ([tests/coverage/__snapshots__/features.test.ts.snap](tests/coverage/__snapshots__/features.test.ts.snap)) gains the two new conditions in the wired-catalog list.
+
+**Audit:**
+- **Names:** `helped-against-active` mirrors the existing `<verb>ed-<gate>-active` convention (e.g. `vexing-active`, `hexed-STR-active`); `helped-on-check-active` is verbose but unambiguous about the gate (check vs attack).
+- **DRY:** the two conditions follow the slice-571 pattern of a one-shot advantage with autoExpiry — no shared helper because the two condition entries are 1 JSON object each and inlining is clearest.
+- **SRP:** planner is one file, ~70 lines; two new content entries; the existing `consumeOnIncomingAttack` reducer (slice 484) and `autoExpiry` sweep (slice 269) consume the conditions without engine change.
+- **Magic numbers:** none.
+- **at-threading:** single `nowIso()` per planner pass-through; the encounter-round read is one resolution; `expiresOnRound` stamped once.
+- **Mechanical outcomes asserted:** 8 cases — pack declarations + per-mode condition application + consume-on-first-incoming-attack + Advantage on first ally attack + Advantage on first ability check + self-help / Incapacitated-helper negative controls.
+
+**Pattern-check:** Help is the simplest of the missing L1 actions — the next 5 (Ready, Search, Study, Influence, Utilize) follow similar planner shapes but each needs its own RAW-specific wiring (Ready needs reaction-window state; Search / Study are largely AbilityCheck wrappers with a category; Influence is a CHA-check wrapper with target-specific DC). Slice 572 ships Ready; the other four are lower-impact and deferred to future slices.
+
+---
+
 **Engine (slice 570): Incapacitated → concentration-break on apply**
 
 Closes the last load-bearing engine drift surfaced by the deep audit's combat-mechanics agent. Pre-slice the engine cleared concentration in two places:

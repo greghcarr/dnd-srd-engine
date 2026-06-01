@@ -185,6 +185,8 @@ exports[`feature-coverage matrix: conditions > wired conditions catalog is stabl
   "hasted-active",
   "healing-blocked-active",
   "held-paralyzed-active",
+  "helped-against-active",
+  "helped-on-check-active",
   "heroes-feasted-active",
   "heroic-active",
   "hexed-CHA-active",

@@ -8441,6 +8441,25 @@
       "effects": [{ "kind": "ModifySpeed", "mode": "walk", "op": "add", "value": -10 }]
     },
     {
+      "id": "helped-against-active",
+      "name": "Helped Against (Help action, Attack mode)",
+      "description": "RAW (PHB 2024 ch.7 Help action, Attack mode): 'You momentarily distract a foe within 5 feet of you. The next attack roll one of your allies makes against that foe before the start of your next turn has Advantage on the attack roll.' Slice 571 wires this as a target-side condition: GrantAdvantageToAttackers + consumeOnIncomingAttack (next attack consumes it) + autoExpiry afterRounds:1 turnEnd (the helper's next turn-end clears the unused condition, matching RAW's 'before the start of your next turn' window).",
+      "stackable": false,
+      "consumeOnIncomingAttack": true,
+      "endsOn": [],
+      "autoExpiry": { "afterRounds": 1, "trigger": "turnEnd" },
+      "effects": [{ "kind": "GrantAdvantageToAttackers" }]
+    },
+    {
+      "id": "helped-on-check-active",
+      "name": "Helped On Check (Help action, Ability Check mode)",
+      "description": "RAW (PHB 2024 ch.7 Help action, Ability Check mode): 'You momentarily help another creature do something. ... The creature has Advantage on that ability check.' Slice 571 wires this as a bearer-side SetAdvantage on check (wildcard ability) with autoExpiry afterRounds:1 turnEnd. RAW deviation: the engine does NOT enforce 'consumed on first check' (no consumeOnCheck primitive yet); the bearer carries advantage on ANY check until expiry. Future engine slice can add consumeOnCheck parity with consumeOnAttack.",
+      "stackable": false,
+      "endsOn": [],
+      "autoExpiry": { "afterRounds": 1, "trigger": "turnEnd" },
+      "effects": [{ "kind": "SetAdvantage", "on": { "kind": "check" }, "mode": "advantage" }]
+    },
+    {
       "id": "vexing-active",
       "name": "Vexing (Vex mastery)",
       "description": "RAW (weapon mastery Vex): 'If you hit a creature with this weapon and deal damage to the creature, you have Advantage on your next attack roll against that creature before the end of your next turn.' Applied to the ATTACKER (the vexer) with sourceCharacterId set to the vexed target; SetAdvantageVsSource grants the bearer Advantage on attacks against that source (the mirror of Bestow Curse's cursed-attacks-active). RAW deviation (documented in starter-pack-gaps.md): modeled as Advantage on all the vexer's attacks against that target until the end of the vexer's next turn (autoExpiry afterRounds 1, turnEnd); with Extra Attack this over-applies vs RAW's single attack.",

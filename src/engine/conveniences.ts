@@ -47,6 +47,7 @@ export const performIntent = (
     SecondWind: (i) => engine.plan.secondWind(campaign.state, i),
     UseHealersKit: (i) => engine.plan.useHealersKit(campaign.state, i),
     Rage: (i) => engine.plan.rage(campaign.state, i),
+    Help: (i) => engine.plan.help(campaign.state, i),
     CloudsJaunt: (i) => engine.plan.cloudsJaunt(campaign.state, i),
     NimbleEscape: (i) => engine.plan.nimbleEscape(campaign.state, i),
     CunningAction: (i) => engine.plan.cunningAction(campaign.state, i),

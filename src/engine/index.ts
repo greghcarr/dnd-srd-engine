@@ -75,6 +75,7 @@ import {
   planSecondWind,
   planUseHealersKit,
   planRage,
+  planHelp,
   planCloudsJaunt,
   planStonesEndurance,
   planStormsThunder,
@@ -222,6 +223,7 @@ import {
   type SecondWindIntent,
   type UseHealersKitIntent,
   type RageIntent,
+  type HelpIntent,
   type CloudsJauntIntent,
   type StonesEnduranceIntent,
   type StonesEnduranceOutcome,
@@ -392,6 +394,7 @@ export interface Engine {
     secondWind(state: CampaignState, intent: Omit<SecondWindIntent, 'type'>): PlanResult;
     useHealersKit(state: CampaignState, intent: Omit<UseHealersKitIntent, 'type'>): PlanResult;
     rage(state: CampaignState, intent: Omit<RageIntent, 'type'>): PlanResult;
+    help(state: CampaignState, intent: Omit<HelpIntent, 'type'>): PlanResult;
     cloudsJaunt(state: CampaignState, intent: Omit<CloudsJauntIntent, 'type'>): PlanResult;
     stonesEndurance(
       state: CampaignState,
@@ -755,6 +758,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     rage(state, intent) {
       return { events: planRage(state, content, { type: 'Rage', ...intent }) };
+    },
+    help(state, intent) {
+      return { events: planHelp(state, content, { type: 'Help', ...intent }) };
     },
     cloudsJaunt(state, intent) {
       return { events: planCloudsJaunt(state, content, { type: 'CloudsJaunt', ...intent }) };
