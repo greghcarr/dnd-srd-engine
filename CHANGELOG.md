@@ -4,6 +4,33 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 555): Goliath Fire's Burn — on-hit +1d10 Fire damage (2nd of 6-arm Giant Ancestry cohort)**
+
+Second arm of the Goliath Giant Ancestry sweep. Wires via the slice-467 Savage Attacker pattern: AttackIntent dial + pre-validation + on-hit damage rider + on-hit resource consumption.
+
+RAW (SRD 5.2.1 Goliath, Fire's Burn): "When you hit a target with an attack roll and deal damage to it, you can also deal 1d10 Fire damage to that target."
+
+**Engine** ([src/engine/plan/attack.ts](src/engine/plan/attack.ts)):
+- New AttackIntent + ResolveAttackInput dial `useGiantAncestryFiresBurn?: boolean`.
+- Pre-validation in resolveAttack (~line 558): Goliath species + Fire's Burn ancestry choice resolved (via `findGoliathAncestryChoice` from the slice-554 shared helper) + `giant-ancestry` resource > 0. Rejects malformed intents up front before any d20 is committed.
+- Damage-roll site (~line 1233): when set, rolls 1d10 fire via the existing `rollExtraDamageDice` helper (crits double the dice per general crit semantics). Folded into `damageRolled.rolls` + the mitigation pipeline (resistance / immunity / vulnerability apply).
+- Tail (~line 1442): emits `ResourceSpent(giant-ancestry, 1)` only on hit — RAW "When you hit". The miss path returns early before the damage chain, so a missed swing with the flag set does NOT consume the resource (mirror of Savage Attacker).
+- Forwarded through planAttack's intent → resolveAttack mapping.
+
+**Tests** ([tests/unit/engine/slice-555-fires-burn.test.ts](tests/unit/engine/slice-555-fires-burn.test.ts), 6 cases): happy path (fire roll appears in DamageRolled + ResourceSpent emitted); miss path (no fire roll, no ResourceSpent); non-Goliath rejected; wrong ancestry rejected; depleted resource rejected; no flag set → no fire roll + no ResourceSpent.
+
+**Audit:**
+- **Names:** `useGiantAncestryFiresBurn` mirrors `useSavageAttacker` exactly (boolean dial + verb-prefixed).
+- **DRY:** validation block mirrors the slice-467 Savage Attacker validation shape; the resource lookup reuses the slice-554 `findGoliathAncestryChoice` helper. The damage-roll inclusion + ResourceSpent emission are ~5-line edits each. Slices 556 (Frost's Chill) + 557 (Hill's Tumble) will reuse all three patterns (dial + validation + on-hit emission); if a 4th sibling appears, extract a shared `validateGoliathAncestry(ancestry, attacker, state)` helper.
+- **SRP:** resolveAttack gains a 3-line damage-roll arm + a 5-line ResourceSpent arm. Both gated by the same boolean.
+- **Magic numbers:** `'1d10'` and `'fire'` inline (the RAW values; hardcoded since they're per-arm). If a future ancestry uses a different die / type, the values stay at the call site.
+- **at-threading:** unchanged (uses existing `at`).
+- **Mechanical outcomes asserted:** fire roll + ResourceSpent on hit; both absent on miss; resource is in the `giant-ancestry` pool; 3 reject paths.
+
+**Pattern-check:** the Goliath cohort now has 2 of 6 arms wired (slice 554 Cloud's Jaunt + this slice). The remaining 4 split: Frost's Chill + Hill's Tumble are attack-rider arms (mirror this slice), Stone's Endurance + Storm's Thunder are reaction-style planners (mirror neither — they're triggered post-DamageApplied by a different consumer-driven flow).
+
+---
+
 **Engine (slice 554): Goliath Cloud's Jaunt — BA teleport 30 ft (first of 6-arm Giant Ancestry cohort)**
 
 Closes the first of six unwired Goliath Giant Ancestry options surfaced by the final L1 SRD compliance pass. Pre-slice each of the 6 ancestry options shipped as a Custom-marker `effects: []` choice — the OfferChoice presented to the player but no engine wire let the Goliath actually use the chosen ancestry. This slice ships the first arm with the shared infrastructure (helper + constants) the remaining 5 slices will reuse.

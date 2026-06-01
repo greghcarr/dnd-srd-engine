@@ -35,6 +35,11 @@ import { evaluatePredicate } from '../../effects/predicate.js';
 import { rollSaveAgainstDC } from './_save-roll.js';
 import { rollBonusDice } from './_bonus-dice.js';
 import {
+  GIANT_ANCESTRY_RESOURCE_ID,
+  GOLIATH_SPECIES_ID,
+  findGoliathAncestryChoice,
+} from './_giant-ancestry.js';
+import {
   findMirrorImage,
   mirrorImageThreshold,
   duplicateAC as computeDuplicateAC,
@@ -298,6 +303,15 @@ export interface AttackIntent {
   // The reroll only fires on a hit; a miss with this flag set does NOT
   // consume the per-turn use (RAW: "when you hit").
   readonly useSavageAttacker?: boolean;
+  // Slice 555: Goliath Giant Ancestry → Fire's Burn opt-in. RAW: "When
+  // you hit a target with an attack roll and deal damage to it, you
+  // can also deal 1d10 Fire damage to that target." Validates Goliath
+  // species + Fire's Burn ancestry choice resolved + giant-ancestry
+  // resource > 0. The +1d10 fire rides the damage roll on hit; on
+  // miss no resource is consumed (RAW "When you hit"). Engine
+  // mirrors the slice-467 Savage Attacker shape — pre-validate, fire
+  // at damage-roll site, emit a marker event so reducers can track.
+  readonly useGiantAncestryFiresBurn?: boolean;
   // Slice 491: consumer-supplied per-attack fact for "the attacker
   // moved 20+ feet straight toward this target immediately before the
   // hit." Canonical user: Boar Gore ("If the target is a Medium or
@@ -399,6 +413,8 @@ export interface ResolveAttackInput {
   readonly cunningStrike?: ReadonlyArray<CunningStrikeOption>;
   // Slice 467: see AttackIntent.useSavageAttacker doc comment above.
   readonly useSavageAttacker?: boolean;
+  // Slice 555: see AttackIntent.useGiantAncestryFiresBurn doc comment above.
+  readonly useGiantAncestryFiresBurn?: boolean;
   // Slice 491: see AttackIntent.chargedAtTarget doc comment above.
   readonly chargedAtTarget?: boolean;
   // Slice 494: see AttackIntent.abilityOverride doc comment above.
@@ -560,6 +576,29 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   // matching RAW "when you hit"); the validation here rejects malformed
   // intents up front so the consumer sees the error before any d20 is
   // committed.
+  // Slice 555: Goliath Fire's Burn validation (mirror of Savage
+  // Attacker shape). The +1d10 fire fires only on hit + only when the
+  // consumer opts in via useGiantAncestryFiresBurn; the resource is
+  // consumed only on hit (RAW "when you hit"). Pre-attack validation
+  // rejects malformed intents up front so consumers see the error
+  // before any d20 is committed.
+  if (input.useGiantAncestryFiresBurn === true) {
+    if (attacker.speciesId !== GOLIATH_SPECIES_ID) {
+      throw new Error(`${attacker.name} is not a Goliath (Fire's Burn is a Goliath Giant Ancestry option)`);
+    }
+    const ancestry = findGoliathAncestryChoice(attacker, state);
+    if (ancestry !== 'fires-burn') {
+      throw new Error(
+        `${attacker.name} did not choose Fire's Burn as their Giant Ancestry (current: ${ancestry ?? 'unresolved'})`,
+      );
+    }
+    const ancestryRes = attacker.resources.find((r) => r.resourceId === GIANT_ANCESTRY_RESOURCE_ID);
+    if (ancestryRes === undefined || ancestryRes.current <= 0) {
+      throw new Error(
+        `${attacker.name} has no Giant Ancestry uses remaining (regain all on a Long Rest)`,
+      );
+    }
+  }
   if (input.useSavageAttacker === true) {
     if (!getEffectiveFeatIds(attacker, content).includes(SAVAGE_ATTACKER_FEAT_ID)) {
       throw new Error(`${attacker.name} does not have the Savage Attacker feat`);
@@ -1197,6 +1236,14 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
       : [],
   );
 
+  // Slice 555: Goliath Fire's Burn rider rolls here when opted in
+  // (pre-validated up front). RAW: +1d10 Fire damage on hit. Crits
+  // double the dice per general crit semantics (mirror of
+  // rollExtraDamageDice's `critical` handling).
+  const firesBurnRoll = input.useGiantAncestryFiresBurn === true
+    ? rollExtraDamageDice('1d10', 'fire', rng, critical)
+    : undefined;
+
   const damageRolled: DamageRolledEvent = {
     id: newEventId() as ULID,
     at,
@@ -1208,6 +1255,7 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
       damageRollPayload,
       ...(extraDamageRoll === undefined ? [] : [extraDamageRoll]),
       ...onHitRiderRolls,
+      ...(firesBurnRoll === undefined ? [] : [firesBurnRoll]),
     ],
     critical,
     causedByEventId: attackRolled.id,
@@ -1249,6 +1297,12 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   for (const rider of onHitRiderRolls) {
     const riderTotal = rider.rolls.reduce((s, v) => s + v, 0) + rider.modifier;
     rawComponents.push({ amount: Math.max(0, riderTotal), type: rider.type });
+  }
+  // Slice 555: fold Fire's Burn damage into rawComponents so it flows
+  // through mitigation (resistance / immunity / vulnerability apply).
+  if (firesBurnRoll !== undefined) {
+    const fbTotal = firesBurnRoll.rolls.reduce((s, v) => s + v, 0) + firesBurnRoll.modifier;
+    rawComponents.push({ amount: Math.max(0, fbTotal), type: firesBurnRoll.type });
   }
   const attackIsMagical = isMagicWeaponAttack(
     weaponInstance,
@@ -1400,6 +1454,21 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     if (rider.destroy !== undefined && hpWithin(rider.destroy.hpThreshold)) destroyTarget();
   }
 
+  // Slice 555: Fire's Burn consumes 1 giant-ancestry use ONLY on hit
+  // (RAW "When you hit a target with an attack roll and deal damage
+  // to it"). The miss path returns early at line 1038-1040, so this
+  // branch is reached only when hit=true.
+  const firesBurnResource: ReadonlyArray<Event> = firesBurnRoll !== undefined
+    ? [{
+        id: newEventId() as ULID,
+        at,
+        type: 'ResourceSpent',
+        characterId: input.attackerId as ULID,
+        resourceId: GIANT_ANCESTRY_RESOURCE_ID,
+        amount: 1,
+      }]
+    : [];
+
   return [
     attackRolled,
     ...consumed,
@@ -1408,6 +1477,7 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     damageRolled,
     ...savageAttackerEvent,
     damageApplied,
+    ...firesBurnResource,
     ...damageTriggers,
     ...onHitRiderEvents,
     ...intercept.extraEvents,
@@ -1545,6 +1615,7 @@ export const planAttack = (
     ...(intent.lightLevel !== undefined ? { lightLevel: intent.lightLevel } : {}),
     ...(intent.cunningStrike !== undefined ? { cunningStrike: intent.cunningStrike } : {}),
     ...(intent.useSavageAttacker === true ? { useSavageAttacker: true } : {}),
+    ...(intent.useGiantAncestryFiresBurn === true ? { useGiantAncestryFiresBurn: true } : {}),
     ...(intent.chargedAtTarget === true ? { chargedAtTarget: true } : {}),
     ...(intent.abilityOverride !== undefined ? { abilityOverride: intent.abilityOverride } : {}),
     at,
