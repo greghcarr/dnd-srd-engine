@@ -4,6 +4,30 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content (slice 551): Forest Gnome Speak with Animals — per-rest cap closure**
+
+Closes an at-will over-grant surfaced by the final L1 SRD compliance pass. RAW caps Forest Gnome's Speak with Animals at PB free uses per long rest; the pack wired it as `at-will` (infinite). One-line content fix moves the preparation to `oncePerLongRest` — closer to RAW, erring toward stinginess (1 use per rest vs RAW PB uses) rather than the prior unbounded over-grant.
+
+RAW (SRD 5.2.1 Forest Gnome): "You also always have the Speak with Animals spell prepared. You can cast it without a spell slot a number of times equal to your Proficiency Bonus, and you regain all expended uses when you finish a Long Rest. You can also use any spell slots you have to cast the spell."
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)): single line under `gnome` species → `gnome-gnomish-lineage` OfferChoice → `forest-gnome` option → `speak-with-animals` GrantSpell: `preparation: "at-will"` → `preparation: "oncePerLongRest"`. The pre-existing Minor Illusion grant stays at-will (correctly: it's a cantrip per RAW).
+
+**Documented residual drift:** the engine's free-cast tracker ([src/schemas/runtime/character.ts](src/schemas/runtime/character.ts) `usedFreeCastSpellIds`, slice 486) is a boolean set per spell id — it can model "one free cast per rest" but NOT "PB free casts per rest." A future slice could introduce a per-spell-id counter primitive to land the exact RAW behavior. At L1 (PB 2), the engine grants 1 free cast vs RAW 2 — a one-cast-per-rest deficit. The slice-486 surface generalizes cleanly to a counter; tracked in [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md).
+
+**Tests** ([tests/unit/engine/slice-551-forest-gnome-speak-with-animals.test.ts](tests/unit/engine/slice-551-forest-gnome-speak-with-animals.test.ts), 3 cases): Speak with Animals is granted as `oncePerLongRest`, not `at-will`; Minor Illusion (cantrip) remains at-will; Rock Gnome cantrips remain at-will (control: didn't accidentally touch the wrong lineage).
+
+**Audit:**
+- **Names:** N/A (data-only change).
+- **DRY:** content-only edit, no abstraction.
+- **SRP:** N/A.
+- **Magic numbers:** none.
+- **at-threading:** N/A.
+- **Mechanical outcomes asserted:** preparation field value + cohort-control assertions (Minor Illusion + Rock Gnome unchanged).
+
+**Pattern-check:** the deep audit flagged this as the only at-will over-grant for a per-rest-uses RAW clause among species traits at L1. Other per-rest species resources (Stonecunning, Adrenaline Rush, Relentless Endurance, Heroic Inspiration, Dragonborn Breath, Halfling Luck) all wire correctly via `GrantResource` with `recharge: longRest` (or via dedicated marker primitives). Forest Gnome is the only one that's spell-shaped rather than resource-shaped, hence the unique drift.
+
+---
+
 **Engine (slice 550): Cover bonus on Dexterity saving throws**
 
 Mirrors the existing cover-to-AC bonus onto Dexterity saves per RAW. Closes one of two HIGH-impact drifts surfaced by the final L1 SRD compliance pass (the other was Sneak Attack weapon gate, slice 549). Before this slice, a target with half / three-quarters cover got +2 / +5 to AC against attack rolls, but Fireball / Burning Hands / Sacred Flame / Ice Knife / breath weapons all ignored the cover bonus on the target's Dex save — players in cover would still take half damage on a successful save but the engine made the save itself less likely than RAW.

@@ -115,7 +115,7 @@
       { "kind": "OfferChoice", "choiceId": "gnome-gnomish-lineage", "prompt": "Choose a Gnomish Lineage.", "oneOf": 1, "when": "onAcquire", "options": [
         { "id": "forest-gnome", "label": "Forest Gnome (Minor Illusion + Speak with Animals)", "effects": [
           { "kind": "GrantSpell", "spellId": "minor-illusion", "preparation": "at-will", "spellcastingAbility": "INT" },
-          { "kind": "GrantSpell", "spellId": "speak-with-animals", "preparation": "at-will", "spellcastingAbility": "INT" }
+          { "kind": "GrantSpell", "spellId": "speak-with-animals", "preparation": "oncePerLongRest", "spellcastingAbility": "INT" }
         ] },
         { "id": "rock-gnome", "label": "Rock Gnome (Mending + Prestidigitation)", "effects": [
           { "kind": "GrantSpell", "spellId": "mending", "preparation": "at-will", "spellcastingAbility": "INT" },
