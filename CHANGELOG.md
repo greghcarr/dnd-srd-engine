@@ -4,6 +4,35 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 549): Sneak Attack RAW weapon gate (Finesse or Ranged)**
+
+Closes the highest-impact drift surfaced by the final L1 SRD compliance pass. RAW (SRD 5.2.1 Rogue L1): "Once per turn, you can deal an extra 1d6 damage to one creature you hit with an attack roll if you have Advantage on the roll **and the attack uses a Finesse or Ranged weapon**." The engine's pre-slice Sneak Attack filter checked Advantage + ally-adjacent disjunction but DID NOT enforce the weapon-type clause — a L1 Rogue could trigger Sneak Attack with a Greatsword or Mace as long as they had Advantage.
+
+**Engine** ([src/engine/triggers/dispatch.ts](src/engine/triggers/dispatch.ts)): three new dispatch-time facts on AttackRolled events:
+- `event.attackerWeaponHasFinesse` — the weapon defines `finesse` in its properties
+- `event.attackerWeaponIsRanged` — mirror of `event.attackKind === 'ranged'` for parallel usage
+- `event.attackerWeaponIsFinesseOrRanged` — disjunction (the convenience fact Sneak Attack reads)
+
+The dispatcher looks the weapon up via `state.itemInstances[event.weaponInstanceId]` → `content.items.get(definitionId)`, falling back to `false` for synthetic / unknown weapons. Future RAW gates on other weapon properties (heavy / light / two-handed) plug in by reading the same instance.
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)): added `{ "kind": "eq", "path": "event.attackerWeaponIsFinesseOrRanged", "value": true }` as a third term in the `all` filter for every Sneak Attack rider — all 10 levels (L1, L3, L5, L7, L9, L11, L13, L15, L17, L19). Filter order intentionally puts the weapon gate before the advantage/ally-adjacent disjunction so the cheap eq predicate short-circuits the expensive `any` evaluation for non-finesse/ranged attacks.
+
+**Tests** ([tests/unit/engine/slice-549-sneak-attack-weapon-gate.test.ts](tests/unit/engine/slice-549-sneak-attack-weapon-gate.test.ts), 5 cases): Rapier (finesse) → SA fires; Shortbow (ranged) → SA fires; Shortsword (light finesse) → SA fires; Mace (no properties, melee) → SA does NOT fire; Greatsword (heavy/two-handed, melee) → SA does NOT fire. The "fires" assertions check `TriggerFired` event count = 1; the "blocked" assertions check count = 0 — surface that's robust against the dual `DamageRolled`/`DamageApplied` flow.
+
+Existing tests stay green: the [tests/golden/s7-sneak-attack.test.ts](tests/golden/s7-sneak-attack.test.ts) golden uses a Rapier (finesse) so its outcome is unchanged. The [tests/golden/showcase.test.ts](tests/golden/showcase.test.ts) golden also passes — Vex (the showcase Rogue) carries a finesse weapon.
+
+**Audit:**
+- **Names:** `attackerWeaponHasFinesse` / `attackerWeaponIsRanged` / `attackerWeaponIsFinesseOrRanged` mirror the existing `event.attackerHasAllyAdjacentToTarget` shape.
+- **DRY:** three facts share a single weapon lookup. The convenience disjunction fact avoids requiring every consumer to OR two booleans.
+- **SRP:** the dispatcher gains read-only facts. The filter is data; no new code paths.
+- **Magic numbers:** none.
+- **at-threading:** N/A (no events emitted by this slice).
+- **Mechanical outcomes asserted:** trigger fires on finesse + ranged; trigger blocked on non-finesse melee; 10 wire sites updated atomically.
+
+**Pattern-check:** the "weapon-property fact at dispatch time" approach generalizes. Future slices that need to gate riders on heavy / light / two-handed / loading wire by reading the same `state.itemInstances` → `content.items` lookup at the same dispatch site.
+
+---
+
 **Engine + content (slice 548): planRage + `raging` condition — Barbarian L1 plays**
 
 Closes the highest-impact load-bearing gap from the slice-544 deep audit. Before this slice, an L1 Barbarian had the Rage *resource* (`GrantResource rage`) but no way to actually enter Rage — consumers had to manually emit `ConditionApplied(...)` + `ResourceSpent(...)` + `ActionEconomyConsumed(...)` and author the while-active condition themselves. Now Rage is a one-call entry that projects the four RAW while-active effects through the existing effect-stack machinery.

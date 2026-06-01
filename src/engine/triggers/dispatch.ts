@@ -72,6 +72,29 @@ const buildEventFacts = (
     facts.set('event.attackKind', event.attackKind);
     facts.set('event.used', event.used);
     facts.set('event.weaponInstanceId', event.weaponInstanceId);
+    // Slice 549: weapon-type facts for Sneak Attack's RAW weapon gate
+    // ("Finesse or Ranged weapon"). Reads the weapon's definition via
+    // the item-instance lookup. Falls back to false for synthetic /
+    // unknown weapons. `event.attackerWeaponHasFinesse` = the weapon
+    // declares `finesse` in its properties; `event.attackerWeaponIsRanged`
+    // mirrors `event.attackKind === 'ranged'` for parallel use in the
+    // sneak-attack `any` term. Future RAW gates on other weapon
+    // properties (heavy / light / two-handed) reuse the same pattern.
+    if (event.weaponInstanceId !== undefined) {
+      const wi = state.itemInstances[event.weaponInstanceId];
+      const wdef = wi !== undefined ? content.items.get(wi.definitionId) : undefined;
+      const hasFinesse = wdef !== undefined && wdef.itemKind === 'weapon'
+        && wdef.properties.includes('finesse');
+      const isRanged = wdef !== undefined && wdef.itemKind === 'weapon'
+        && wdef.attackKind === 'ranged';
+      facts.set('event.attackerWeaponHasFinesse', hasFinesse);
+      facts.set('event.attackerWeaponIsRanged', isRanged);
+      facts.set('event.attackerWeaponIsFinesseOrRanged', hasFinesse || isRanged);
+    } else {
+      facts.set('event.attackerWeaponHasFinesse', false);
+      facts.set('event.attackerWeaponIsRanged', false);
+      facts.set('event.attackerWeaponIsFinesseOrRanged', false);
+    }
     facts.set(
       'event.attackerHasAllyAdjacentToTarget',
       event.attackerHasAllyAdjacentToTarget ?? false,
