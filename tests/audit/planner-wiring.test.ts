@@ -72,6 +72,11 @@ const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
   // several return a derived outcome the consumer branches on):
   'dodge', 'shield', 'sanctuaryWardSave', 'protection', 'consumeGuidance',
   'consumeResistance', 'cuttingWords', 'uncannyDodge', 'superiorDefense', 'paladinsSmite', 'breathWeapon',
+  // Slice 558: Stone's Endurance is a reaction-style planner; returns
+  // StonesEnduranceOutcome the consumer branches on (mirror of
+  // uncannyDodge). Consumer invokes it after observing a DamageApplied
+  // event on a Goliath with Stone's Endurance ancestry.
+  'stonesEndurance',
   // Per-moment ticks / duration sweeps (called at turn boundaries / on movement):
   'expireSpellDurations', 'tickAura', 'tickMovementDamage', 'tickRecurring', 'tickRecurringSave', 'triggerTrap',
   // Stirge Blood Drain (slice 490): drain fires at the stirge's turn-start
