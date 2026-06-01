@@ -45,6 +45,7 @@ import {
   newTrapId,
 } from '../../ids.js';
 import type { ItemBuffAppliedEvent } from '../../schemas/events/inventory.js';
+import type { ResourceSpentEvent } from '../../schemas/events/resources.js';
 import { computeSpellSaveDC, computeSpellAttackBonus } from '../../derive/spell-dc.js';
 import { effectiveSpellList } from '../../derive/effective-spell-list.js';
 import { computeAvailableSpellSlots } from '../../derive/spell-slots.js';
@@ -1732,9 +1733,16 @@ export const planCastSpell = (
 
   // Slice 486: useFreeCast implies noSlotCost and gates on the bearer's
   // GrantSpell oncePerLongRest grants + the usedFreeCastSpellIds tracker.
+  // Slice 566: ALSO supports pool-based free casts (Ranger Favored Enemy
+  // Hunter's Mark: GrantSpell with `freeCastResourceId: 'hunters-mark'`
+  // bypasses the slot by consuming the named resource). Exactly one
+  // path applies per cast; the matched grant's source determines the
+  // event emitted below (FreeCastUsed for the oncePerLongRest path,
+  // ResourceSpent for the pool path).
   // Computed before the slot-availability gate so the validation errors
   // surface even when the caster has no slots of the requested level.
   const useFreeCast = intent.useFreeCast === true;
+  let freeCastPoolResourceId: string | undefined;
   if (useFreeCast) {
     const effects = buildEffectStack({
       character,
@@ -1742,17 +1750,27 @@ export const planCastSpell = (
       itemInstances: state.itemInstances,
       pendingChoices: state.pendingChoices,
     });
-    const freeCastGrant = effects
-      .grantedSpells()
-      .find((g) => g.spellId === intent.spellId && g.preparation === 'oncePerLongRest');
-    if (freeCastGrant === undefined) {
+    const grants = effects.grantedSpells().filter((g) => g.spellId === intent.spellId);
+    const onceGrant = grants.find((g) => g.preparation === 'oncePerLongRest');
+    const poolGrant = grants.find((g) => g.freeCastResourceId !== undefined);
+    if (onceGrant !== undefined) {
+      if (character.usedFreeCastSpellIds.includes(intent.spellId)) {
+        throw new Error(
+          `${character.name} has already used the free cast for ${spell.name} since the last long rest`,
+        );
+      }
+    } else if (poolGrant !== undefined) {
+      const resourceId = poolGrant.freeCastResourceId!;
+      const resource = character.resources.find((r) => r.resourceId === resourceId);
+      if (resource === undefined || resource.current <= 0) {
+        throw new Error(
+          `${character.name} cannot use a free cast for ${spell.name}: resource ${resourceId} is depleted or absent`,
+        );
+      }
+      freeCastPoolResourceId = resourceId;
+    } else {
       throw new Error(
-        `${character.name} cannot use a free cast for ${spell.name}: no oncePerLongRest grant for this spell`,
-      );
-    }
-    if (character.usedFreeCastSpellIds.includes(intent.spellId)) {
-      throw new Error(
-        `${character.name} has already used the free cast for ${spell.name} since the last long rest`,
+        `${character.name} cannot use a free cast for ${spell.name}: no oncePerLongRest or pool-based grant for this spell`,
       );
     }
   }
@@ -1896,16 +1914,33 @@ export const planCastSpell = (
   // Slice 486: record the free-cast consumption when useFreeCast was set
   // (validated above). The reducer appends spellId to the bearer's
   // usedFreeCastSpellIds; long rest clears it.
+  // Slice 566: for the pool-based free-cast path, emit ResourceSpent
+  // instead (the resource itself recharges on long/short rest per its
+  // GrantResource declaration; no per-cast tracker needed). Exactly
+  // one of the two paths fires per cast.
   if (useFreeCast) {
-    const freeCast: FreeCastUsedEvent = {
-      id: newEventId() as ULID,
-      at,
-      type: 'FreeCastUsed',
-      characterId: intent.characterId,
-      spellId: intent.spellId,
-      causedByEventId: declared.id,
-    };
-    events.push(freeCast);
+    if (freeCastPoolResourceId !== undefined) {
+      const resourceSpent: ResourceSpentEvent = {
+        id: newEventId() as ULID,
+        at,
+        type: 'ResourceSpent',
+        characterId: intent.characterId as ULID,
+        resourceId: freeCastPoolResourceId,
+        amount: 1,
+        causedByEventId: declared.id,
+      };
+      events.push(resourceSpent);
+    } else {
+      const freeCast: FreeCastUsedEvent = {
+        id: newEventId() as ULID,
+        at,
+        type: 'FreeCastUsed',
+        characterId: intent.characterId,
+        spellId: intent.spellId,
+        causedByEventId: declared.id,
+      };
+      events.push(freeCast);
+    }
   }
 
   const conditionsApplied: AppliedConditionRef[] = [];

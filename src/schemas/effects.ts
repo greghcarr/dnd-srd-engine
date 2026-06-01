@@ -308,7 +308,7 @@ export type Effect =
   | { kind: 'Regeneration'; perTurn: number; suppressedBy: DamageType[] }
   | { kind: 'GrantResource'; resourceId: string; max: number | Formula; recharge: Recharge; diceSize?: number }
   | { kind: 'GrantSpellSlots'; level: SpellLevel; count: number; source: 'full' | 'half' | 'third' | 'pact' }
-  | { kind: 'GrantSpell'; spellId: string; preparation: 'always-prepared' | 'prepared' | 'known' | 'at-will' | 'oncePerLongRest' | 'oncePerShortRest'; spellcastingAbility?: AbilityScore }
+  | { kind: 'GrantSpell'; spellId: string; preparation: 'always-prepared' | 'prepared' | 'known' | 'at-will' | 'oncePerLongRest' | 'oncePerShortRest'; spellcastingAbility?: AbilityScore; freeCastResourceId?: string }
   | { kind: 'OnEvent'; id?: string; trigger: { eventType: string; filter?: Predicate }; actions: TriggerAction[]; oncePer?: 'turn' | 'round' | 'shortRest' | 'longRest'; requiresReaction?: boolean; consumeOnTrigger?: boolean }
   | { kind: 'RecoverResource'; resourceId: string; amount: number | 'all' | Formula; when: 'shortRest' | 'longRest' | 'turnStart' | 'turnEnd' | 'dawn' }
   | { kind: 'GrantAction'; actionId: string; name: string; cost: 'action' | 'bonusAction' | 'reaction' | 'free'; resourceCost?: { resourceId: string; amount: number } }
@@ -687,6 +687,16 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
         'oncePerShortRest',
       ]),
       spellcastingAbility: AbilityScoreSchema.optional(),
+      // Slice 566: pool-based free-cast bypass. When set, a cast of
+      // `spellId` with `useFreeCast: true` consumes 1 from the named
+      // resource (emits ResourceSpent) and skips the slot. Composes
+      // with `preparation: 'always-prepared'` for the canonical RAW
+      // shape "always prepared + N free casts per long rest": Ranger
+      // Favored Enemy grants Hunter's Mark always-prepared with
+      // `freeCastResourceId: 'hunters-mark'`, and a sibling
+      // GrantResource pumps the resource's max (2 at L1, 3/4/5/6 at
+      // L5/9/13/17) under the SAME `recharge: 'longRest'` policy.
+      freeCastResourceId: z.string().optional(),
     }),
     z.object({
       kind: z.literal('OnEvent'),

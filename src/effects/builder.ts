@@ -978,6 +978,7 @@ export class EffectAccumulator {
     spellId: string;
     preparation: 'always-prepared' | 'prepared' | 'known' | 'at-will' | 'oncePerLongRest' | 'oncePerShortRest';
     spellcastingAbility?: AbilityScore;
+    freeCastResourceId?: string;
   }): void {
     this.grantedSpellEntries.push(entry);
   }
@@ -985,6 +986,7 @@ export class EffectAccumulator {
     readonly spellId: string;
     readonly preparation: 'always-prepared' | 'prepared' | 'known' | 'at-will' | 'oncePerLongRest' | 'oncePerShortRest';
     readonly spellcastingAbility?: AbilityScore;
+    readonly freeCastResourceId?: string;
   }> {
     return this.grantedSpellEntries;
   }
@@ -1214,6 +1216,9 @@ export const applyEffectToBuilder = (
         preparation: effect.preparation,
         ...(effect.spellcastingAbility !== undefined
           ? { spellcastingAbility: effect.spellcastingAbility }
+          : {}),
+        ...(effect.freeCastResourceId !== undefined
+          ? { freeCastResourceId: effect.freeCastResourceId }
           : {}),
       });
       return;
