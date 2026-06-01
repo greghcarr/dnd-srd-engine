@@ -107,6 +107,7 @@ export { planConsumeHeroicInspiration, type ConsumeHeroicInspirationIntent } fro
 export { planSecondWind, type SecondWindIntent } from './second-wind.js';
 export { planUseHealersKit, type UseHealersKitIntent } from './use-healers-kit.js';
 export { planRage, type RageIntent } from './rage.js';
+export { planCloudsJaunt, type CloudsJauntIntent } from './clouds-jaunt.js';
 export { planNimbleEscape, type NimbleEscapeIntent, type NimbleEscapeMode } from './nimble-escape.js';
 export { planCunningAction, type CunningActionIntent, type CunningActionMode } from './cunning-action.js';
 export { planExpeditiousRetreatDash, type ExpeditiousRetreatDashIntent } from './expeditious-retreat.js';

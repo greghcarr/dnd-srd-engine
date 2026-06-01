@@ -4,6 +4,35 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 554): Goliath Cloud's Jaunt — BA teleport 30 ft (first of 6-arm Giant Ancestry cohort)**
+
+Closes the first of six unwired Goliath Giant Ancestry options surfaced by the final L1 SRD compliance pass. Pre-slice each of the 6 ancestry options shipped as a Custom-marker `effects: []` choice — the OfferChoice presented to the player but no engine wire let the Goliath actually use the chosen ancestry. This slice ships the first arm with the shared infrastructure (helper + constants) the remaining 5 slices will reuse.
+
+RAW (SRD 5.2.1 Goliath): "_Cloud's Jaunt (Cloud Giant)._ As a Bonus Action, you magically teleport up to 30 feet to an unoccupied space you can see."
+
+**Engine:**
+- New shared helper [src/engine/plan/_giant-ancestry.ts](src/engine/plan/_giant-ancestry.ts): constants (`GOLIATH_SPECIES_ID`, `GIANT_ANCESTRY_RESOURCE_ID`, `GIANT_ANCESTRY_CHOICE_ID`), the 6-option union (`GIANT_ANCESTRY_OPTION_IDS` / `GiantAncestryOption`), and `findGoliathAncestryChoice(character, state)` which scans the character's resolved pending choices for one of the 6 known ancestry option ids. The PendingChoice schema doesn't carry the source OfferChoice's `choiceId`, so the helper matches by option-id family — these 6 ids are unique to Giant Ancestry across the SRD content. Slices 555-559 reuse the helper.
+- New `planCloudsJaunt` ([src/engine/plan/clouds-jaunt.ts](src/engine/plan/clouds-jaunt.ts)). Intent: `{ goliathId, to }`. Validates Goliath species + resolved Cloud's Jaunt choice + `giant-ancestry` resource > 0 + active combatant on own turn + BA available + destination ≤ 30 ft (Chebyshev) + unoccupied. Emits `ActionEconomyConsumed(bonusAction)` + `ResourceSpent(giant-ancestry, 1)` + `CombatantMoved(feetTraveled=0)` (teleport — doesn't drain normal movement, mirror of planMistyStep).
+- Wired through [src/engine/plan/index.ts](src/engine/plan/index.ts), [src/engine/index.ts](src/engine/index.ts), [src/engine/conveniences.ts](src/engine/conveniences.ts) (`CloudsJaunt` dispatch).
+
+**Documented RAW deviations (consumer-managed):**
+- **"You can see it"**: the engine doesn't model line-of-sight to the destination cell. Consumer (UI / VTT) gates positionally.
+- **Range as Chebyshev**: 30 ft is checked via `chebyshevDistance` (matches `planMistyStep`'s approach), so diagonal moves cost the same as orthogonal — RAW-compliant by the 5e square-grid model.
+
+**Tests** ([tests/unit/engine/slice-554-clouds-jaunt.test.ts](tests/unit/engine/slice-554-clouds-jaunt.test.ts), 7 cases): happy path (3-event chain); non-Goliath rejected; wrong ancestry chosen rejected; depleted resource rejected; out-of-range destination rejected; BA-already-used rejected; replay equivalence (position updates + resource decrements).
+
+**Audit:**
+- **Names:** `planCloudsJaunt` / `CloudsJauntIntent` mirror the established planner-naming convention. Constants in `_giant-ancestry.ts` follow the slice-543 underscore-prefixed shared-helper convention.
+- **DRY:** the shared helper hoists species id + resource id + choice id + option family + the resolved-choice lookup. Each of slices 555-559 will be a ~80-line planner that reuses these.
+- **SRP:** helper does one thing (find the chosen ancestry); planner does one thing (teleport).
+- **Magic numbers:** `CLOUDS_JAUNT_RANGE_FEET = 30` extracted.
+- **at-threading:** single `nowIso()` resolution, threaded.
+- **Mechanical outcomes asserted:** event count + types + feetTraveled=0 (teleport) + position update + 6 reject paths.
+
+**Pattern-check:** the slice 465 Goliath species test introduced the OfferChoice + Custom-marker pattern; this slice is the first wire that actually consumes those Custom markers via the consumer-resolved choice. Slices 555-559 will follow: Fire's Burn / Frost's Chill / Hill's Tumble as AttackIntent dial-rider arms (consumed at the damage-roll site); Stone's Endurance / Storm's Thunder as reaction planners triggered post-DamageApplied.
+
+---
+
 **Content (slice 553): missing focus variants — Arcane Focus (Staff + Wand) and Druidic Focus (Wooden Staff)**
 
 Closes a small but visible RAW gap from the final L1 SRD compliance pass: the SRD lists 5 Arcane Focus variants (Crystal / Orb / Rod / Staff / Wand) and 3 Druidic Focus variants (Sprig of Mistletoe / Wooden Staff / Yew Wand); the pack shipped only 3 + 2. The two Staff variants and the second wand were absent, denying spellcasters their RAW alternatives.
