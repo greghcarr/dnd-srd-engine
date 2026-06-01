@@ -50,6 +50,16 @@ const SpellAttackMechanicSchema = z
     // burst vs the primary + everyone within 5 ft). The save mechanic
     // keeps `'all'` so it covers the whole burst.
     targetScope: z.enum(['first', 'all']).optional(),
+    // Slice 562: cantrip beam-scaling mode (RAW Eldritch Blast: "Create
+    // an additional beam at character levels 5, 11, and 17"). When
+    // true, the cast-spell planner enforces that `intent.targetIds`
+    // length is in [1, maxBeams] where maxBeams = 1 + cantripExtraDice
+    // (totalLevel) — 1 at L1, 2 at L5, 3 at L11, 4 at L17. Each entry
+    // in targetIds is one beam (an independent attack roll for the
+    // same `damageDice`). RAW per-beam damage is `damageDice` alone;
+    // `cantripScalingDice` is rejected at parse time when this is set
+    // (the "scaling" is the beam count, not extra dice per beam).
+    cantripBeamScaling: z.boolean().optional(),
     // Whether the spell attack is a Melee or Ranged Spell Attack. Stamped
     // on the AttackRolled event so the `event.attackKind` predicate fact
     // is correct (melee-gated riders, the ranged-in-melee disadvantage,
@@ -135,6 +145,15 @@ const SpellSaveMechanicSchema = z.object({
   // this save"). Read per-target in the save planner; ORs into any
   // existing advantage from the target's effect stack.
   largeCreatureAdvantage: z.boolean().optional(),
+  // Slice 563: source the on-fail condition from the target itself
+  // instead of the caster. RAW Vicious Mockery: "Disadvantage on the
+  // next attack roll it makes before the end of its next turn" — the
+  // expiry boundary is the TARGET's next turn end, not the caster's.
+  // The condition's autoExpiry sweeps by `sourceCharacterId`, so
+  // setting source = target lets the existing infrastructure handle
+  // the "end of its next turn" cleanup. No effect when the condition
+  // has no autoExpiry; safe to set even for source-agnostic riders.
+  applyConditionSourceFromTarget: z.boolean().optional(),
 })
   // Slice 370: `.strict()` so an authored field the engine doesn't
   // support (e.g. the `onFailure` / `onSuccess` shape that Sacred Flame /

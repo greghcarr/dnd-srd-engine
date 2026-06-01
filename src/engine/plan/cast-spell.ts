@@ -424,7 +424,12 @@ const planAttackMechanic = (
     castingAbility,
   });
   const bonusDice = (mechanic.extraDicePerSlotLevel ?? 0) * Math.max(0, intent.slotLevel - spell.level);
-  const cantripSteps = spell.level === CANTRIP_LEVEL ? cantripExtraDice(computeTotalLevel(character)) : 0;
+  // Slice 562: beam-scaling cantrips (Eldritch Blast) scale by BEAM
+  // COUNT, not by extra dice per beam. Skip cantripScalingDice
+  // accumulation so each beam rolls only the base `damageDice`.
+  const cantripSteps = spell.level === CANTRIP_LEVEL && mechanic.cantripBeamScaling !== true
+    ? cantripExtraDice(computeTotalLevel(character))
+    : 0;
   const damageType = resolveAttackDamageType(mechanic, intent, spell.id);
   // Slice 204: spell damage now consults the caster's effect stack
   // for `AddModifier { target: 'damage' }` contributions, gated on the
@@ -448,6 +453,27 @@ const planAttackMechanic = (
   ]);
   const damageModifierBonus = casterEffects.modifierSum('damage', damageFacts);
   const events: Event[] = [];
+  // Slice 562: cantripBeamScaling caps targetIds at the level-scaled
+  // beam count (Eldritch Blast: 1/2/3/4 beams at L1/5/11/17). Reuses
+  // cantripExtraDice (returns 0/1/2/3 at those tiers); maxBeams = 1 +
+  // that. Rejects exceeding intent so consumers see the gate at plan
+  // time. Each beam is an independent attack roll — base `damageDice`
+  // per beam, NO cantripScalingDice (the scaling IS the beam count).
+  // Repeated target ids are allowed (RAW: "the same or different
+  // creatures"). The schema's strict() rejects spells that author
+  // both cantripBeamScaling AND cantripScalingDice via parse-time
+  // strictness on `cantripScalingDice` set to something incompatible.
+  if (mechanic.cantripBeamScaling === true) {
+    const maxBeams = 1 + cantripExtraDice(computeTotalLevel(character));
+    if (intent.targetIds.length < 1) {
+      throw new Error(`Spell ${spell.id} requires at least one beam target`);
+    }
+    if (intent.targetIds.length > maxBeams) {
+      throw new Error(
+        `Spell ${spell.id} fires ${maxBeams} beam${maxBeams === 1 ? '' : 's'} at character level ${computeTotalLevel(character)}; received ${intent.targetIds.length} target id${intent.targetIds.length === 1 ? '' : 's'}`,
+      );
+    }
+  }
   // Slice 497: `targetScope: 'first'` makes the attack resolve against
   // only the primary target (targetIds[0]); a sibling save mechanic
   // covers the rest of the AOE. Default ('all' / unset) attacks every
@@ -825,6 +851,25 @@ const planSaveMechanic = (
       });
       if (!immune) {
         const appliedConditionId = newAppliedConditionId();
+        // Slice 563: source the condition from the target itself (for
+        // target-relative durations: Vicious Mockery's "end of its
+        // next turn"). Defaults to caster — the historical behavior.
+        const conditionSourceId = mechanic.applyConditionSourceFromTarget === true
+          ? (targetId as ULID)
+          : (intent.characterId as ULID);
+        // Stamp autoExpiry on the apply event when the condition has
+        // it (mirror of the attack-rider applyRiderCondition shape so
+        // turnStart/turnEnd sweeps see the expiresOnRound).
+        const autoExpiry = content.conditions.get(conditionOnFail)?.autoExpiry;
+        const currentEncounterRound = state.activeEncounterId
+          ? state.encounters[state.activeEncounterId]?.round
+          : undefined;
+        const expiryFields = autoExpiry !== undefined && currentEncounterRound !== undefined
+          ? {
+              expiresOnRound: currentEncounterRound + autoExpiry.afterRounds,
+              expiryTrigger: autoExpiry.trigger,
+            }
+          : {};
         const cond: ConditionAppliedEvent = {
           id: newEventId() as ULID,
           at,
@@ -832,10 +877,11 @@ const planSaveMechanic = (
           targetId,
           conditionId: conditionOnFail,
           appliedConditionId,
-          sourceCharacterId: intent.characterId as ULID,
+          sourceCharacterId: conditionSourceId,
           causedByEventId: saveEvent.id,
           // Slice 500: Animal Friendship's "ends if damaged" arm.
           ...(mechanic.conditionEndsOnDamage === true ? { endsOnDamage: true } : {}),
+          ...expiryFields,
         };
         events.push(cond);
         conditionsApplied.push({

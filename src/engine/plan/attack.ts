@@ -507,13 +507,19 @@ const assertCunningStrikeUsable = (
   }
 };
 
-// "Next attack roll" one-shot conditions (Sap / Vex). After the bearer
-// makes an attack roll, remove any `consumeOnAttack` condition it carries
-// so the advantage/disadvantage applies to exactly one attack. A
-// source-keyed condition (Vex's `vexing-active`, which stamps
-// `sourceCharacterId` = the vexed target) is consumed only when the bearer
-// attacks that source; an unkeyed one (Sap's `sapped`) is consumed on any
-// attack. Conditions dedupe by id on apply, so id-based removal is precise.
+// "Next attack roll" one-shot conditions (Sap / Vex / viciously-mocked).
+// After the bearer makes an attack roll, remove any `consumeOnAttack`
+// condition it carries so the advantage/disadvantage applies to exactly
+// one attack. Three source-key cases:
+// 1. Unsourced (Sap's `sapped`) — consumes on any attack.
+// 2. Source = the bearer themselves (slice 563: Vicious Mockery's
+//    `viciously-mocked`, sourced to the target so the autoExpiry
+//    fires at end of bearer's own next turn) — also consumes on any
+//    attack since the bearer is "themselves" relative to the rider.
+// 3. Source = a specific other creature (Vex's `vexing-active`,
+//    stamps `sourceCharacterId` = the vexed target) — consumed only
+//    when the bearer attacks THAT source.
+// Conditions dedupe by id on apply, so id-based removal is precise.
 const buildConsumeOnAttackRemovals = (
   attacker: Character,
   targetId: string,
@@ -523,7 +529,9 @@ const buildConsumeOnAttackRemovals = (
   attacker.appliedConditions
     .filter((applied) => {
       if (content.conditions.get(applied.conditionId)?.consumeOnAttack !== true) return false;
-      return applied.sourceCharacterId === undefined || applied.sourceCharacterId === targetId;
+      if (applied.sourceCharacterId === undefined) return true;
+      if (applied.sourceCharacterId === attacker.id) return true; // self-sourced
+      return applied.sourceCharacterId === targetId;
     })
     .map((applied) => ({
       id: newEventId() as ULID,

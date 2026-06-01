@@ -35,7 +35,7 @@ describe('Druid Magician cantrip choice (slice 561)', () => {
     expect(level1).toBeDefined();
     const primalOrder = level1!.features?.find((f) => f.id === 'primal-order');
     expect(primalOrder).toBeDefined();
-    const offer = primalOrder!.effects.find((e) => e.kind === 'OfferChoice') as {
+    const offer = primalOrder!.effects.find((e) => e.kind === 'OfferChoice') as unknown as {
       options: Array<{ id: string; effects: Array<{ kind: string; choiceId?: string; options?: Array<{ id: string }> }> }>;
     };
     return offer;
