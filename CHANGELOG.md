@@ -4,6 +4,34 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 570): Incapacitated → concentration-break on apply**
+
+Closes the last load-bearing engine drift surfaced by the deep audit's combat-mechanics agent. Pre-slice the engine cleared concentration in two places:
+1. HP-drop-to-0 in `applyDamageApplied` ([src/engine/reducers/combat.ts:104-117](src/engine/reducers/combat.ts#L104-L117)) — handles falling Unconscious from damage.
+2. Planners that explicitly emit `ConcentrationBroken` events (`planConcentrationBreakOnDrop`, etc.).
+
+Neither path triggers when a concentrating caster receives an Incapacitated-composing condition via non-damage source: Hold Person → `paralyzed`, Power Word Stun → `power-word-stunned-active`, Hideous Laughter → `hideous-laughter-active`, plain `incapacitated`, or any of `stunned` / `petrified` / `held-paralyzed-active` / `unconscious` applied without an HP-drop.
+
+RAW (PHB 2024 ch.7 Concentration): "Your Concentration ends if you become Incapacitated or die."
+
+**Reducer wiring** ([src/engine/reducers/combat.ts](src/engine/reducers/combat.ts)):
+- New local `INCAPACITATING_CONDITIONS` set — mirror of [`ACTION_BLOCKING_CONDITIONS`](src/engine/plan/_actor-state.ts#L32) in the planner side. Held as a separate const to avoid a planner-to-reducer import (layers stay separate; slice 582's condition-behavior audit will pin the parity).
+- `applyConditionApplied` adds a post-push hook: when the applied condition's id is in the set AND the character has `concentrationEffectId !== undefined`, the existing `clearConcentrationEffect` helper is called. Non-incapacitating conditions and non-concentrating bearers are no-ops.
+
+**Tests** ([tests/unit/reducers/slice-570-incapacitated-concentration-break.test.ts](tests/unit/reducers/slice-570-incapacitated-concentration-break.test.ts), 12 cases): each of the 8 incapacitating-condition ids clears concentration on a concentrating bearer; non-incapacitating conditions (`poisoned`, `frightened`) leave concentration intact; applying paralyzed to a non-concentrating character is a clean no-op; exhaustion (not in the set; tracked via its own field) leaves concentration intact.
+
+**Audit:**
+- **Names:** `INCAPACITATING_CONDITIONS` parallels the planner-side `ACTION_BLOCKING_CONDITIONS` axis; the comment block explicitly notes the parity requirement.
+- **DRY:** the same set lives in two places (reducer + planner). Resolving the duplication requires either (a) hoisting to a shared module (`src/internal/`) or (b) re-exporting from one side. Both add a cross-layer dependency more invasive than a 2-line `if` check; deferred to slice 582 where the broader condition-behavior audit will rationalize the constants.
+- **SRP:** one new const + one new `if` block in the existing apply-condition reducer. No new event kind, no new reducer file.
+- **Magic numbers:** none.
+- **at-threading:** N/A (reducer is RNG-free; the `clearConcentrationEffect` helper is pure state mutation).
+- **Mechanical outcomes asserted:** 8 incapacitating-condition coverage (per-id), 2 non-incapacitating control, 2 boundary (no-concentration + exhaustion).
+
+**Pattern-check:** the audit agent's "concentration breaks only on HP drop" finding was the canonical use of this slice. The future slice 582 will sweep `INCAPACITATING_CONDITIONS` vs `ACTION_BLOCKING_CONDITIONS` for parity (currently identical; any drift becomes a CI failure under that audit).
+
+---
+
 **Engine (slice 569): Exhaustion attack-roll + Speed penalties — PHB 2024 unified d20-Tests semantic**
 
 Closes a real L1 RAW drift surfaced by the deep audit. Pre-slice the engine applied the -2-per-level exhaustion penalty to ability checks ([src/derive/ability-check.ts:147](src/derive/ability-check.ts#L147)) and saving throws ([src/derive/save.ts:124-126](src/derive/save.ts#L124-L126)), but the **attack-roll** and **Speed** arms of the 2024 RAW were unwired. An exhausted character's to-hit was unaffected; their movement was unchanged.

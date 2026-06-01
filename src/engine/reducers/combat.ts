@@ -28,6 +28,25 @@ const DEATH_SAVE_NAT_1_FAILURE_COUNT = 2;
 const NAT_20_REVIVE_HP = 1;
 const EXHAUSTION_DEFAULT_LEVEL = 1;
 
+// Slice 570: RAW (PHB 2024 ch.7 Concentration): "Your Concentration
+// ends if you become Incapacitated or die." Mirrors the
+// ACTION_BLOCKING_CONDITIONS set in src/engine/plan/_actor-state.ts —
+// every condition that composes Incapacitated should break
+// Concentration on apply, not just the HP-drop case. Held in a local
+// const to avoid a planner-to-reducer import (layers stay separate);
+// future changes should keep the two sets in sync (slice 582's
+// condition-behavior audit will pin the parity).
+const INCAPACITATING_CONDITIONS: ReadonlySet<string> = new Set([
+  'incapacitated',
+  'stunned',
+  'paralyzed',
+  'petrified',
+  'unconscious',
+  'held-paralyzed-active',
+  'power-word-stunned-active',
+  'hideous-laughter-active',
+]);
+
 const requireCharacter = (state: Draft<CampaignState>, id: string): Draft<Character> => {
   const c = state.characters[id];
   invariant(c !== undefined, `Character ${id} not found`);
@@ -177,6 +196,17 @@ export const applyConditionApplied = (
   });
   if (event.hpMaxBonusDelta !== undefined && event.hpMaxBonusDelta !== 0) {
     character.hp.maxBonus = (character.hp.maxBonus ?? 0) + event.hpMaxBonusDelta;
+  }
+  // Slice 570: becoming Incapacitated (or any condition that
+  // composes Incapacitated per RAW) ends Concentration. The HP-drop
+  // case (line 114) handles falling Unconscious from damage; this
+  // covers the planner-applied case (Hold Person, Power Word Stun,
+  // Hideous Laughter, etc.).
+  if (
+    INCAPACITATING_CONDITIONS.has(event.conditionId)
+    && character.concentrationEffectId !== undefined
+  ) {
+    clearConcentrationEffect(state, character.concentrationEffectId);
   }
 };
 
