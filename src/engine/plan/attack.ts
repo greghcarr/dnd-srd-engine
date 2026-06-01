@@ -213,6 +213,14 @@ export const coverACBonus = (cover: CoverKind): number => {
   }
 };
 
+// Slice 550: RAW (SRD 5.2.1 Cover): "A target with half cover has a
+// +2 bonus to AC and Dexterity saving throws. A target with three-
+// quarters cover has a +5 bonus to AC and Dexterity saving throws."
+// The bonus is identical in magnitude to coverACBonus but the save
+// arm applies ONLY to Dexterity saves (not STR/CON/INT/WIS/CHA), so
+// the save site reads this helper after checking the ability.
+export const coverDexSaveBonus = (cover: CoverKind): number => coverACBonus(cover);
+
 export interface AttackIntent {
   readonly type: 'Attack';
   readonly attackerId: string;

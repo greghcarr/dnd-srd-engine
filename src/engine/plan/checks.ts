@@ -13,6 +13,7 @@ import { newEventId } from '../../ids.js';
 import { computeSavingThrow } from '../../derive/save.js';
 import { rollSaveBonusDice } from './_bonus-dice.js';
 import { computeAbilityCheck } from '../../derive/ability-check.js';
+import { coverDexSaveBonus, type CoverKind } from './attack.js';
 import { D20_SIDES } from '../../internal/constants.js';
 import { nowIso } from '../../internal/clock.js';
 import type { ULID } from '../ids-utils.js';
@@ -45,6 +46,10 @@ export interface SaveIntent {
   readonly ability: AbilityScore;
   readonly dc: number;
   readonly advantage?: CheckAdvantage;
+  // Slice 550: optional cover. RAW applies a +2 / +5 bonus to
+  // Dexterity saves under half / three-quarters cover (mirror of AC).
+  // Ignored for non-DEX ability saves.
+  readonly cover?: CoverKind;
   readonly at?: string;
 }
 
@@ -80,7 +85,14 @@ export const planSave = (
     d20 = reroll;
   }
   const saveBonus = rollSaveBonusDice(derivation.bonusDice, rng);
-  const bonus = derivation.total + saveBonus.total;
+  // Slice 550: cover bonus on Dex saves only.
+  const coverBonus = intent.ability === 'DEX' && intent.cover !== undefined
+    ? coverDexSaveBonus(intent.cover)
+    : 0;
+  const coverBreakdown = coverBonus > 0
+    ? [{ source: `cover (${intent.cover!})`, value: coverBonus }]
+    : [];
+  const bonus = derivation.total + saveBonus.total + coverBonus;
   const total = d20 + bonus;
   const event: SaveRolledEvent = {
     id: newEventId() as ULID,
@@ -94,7 +106,7 @@ export const planSave = (
     bonus,
     total,
     success: total >= intent.dc,
-    breakdown: [...derivation.breakdown, ...saveBonus.breakdown],
+    breakdown: [...derivation.breakdown, ...saveBonus.breakdown, ...coverBreakdown],
   };
   return [event];
 };

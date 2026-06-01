@@ -4,6 +4,37 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 550): Cover bonus on Dexterity saving throws**
+
+Mirrors the existing cover-to-AC bonus onto Dexterity saves per RAW. Closes one of two HIGH-impact drifts surfaced by the final L1 SRD compliance pass (the other was Sneak Attack weapon gate, slice 549). Before this slice, a target with half / three-quarters cover got +2 / +5 to AC against attack rolls, but Fireball / Burning Hands / Sacred Flame / Ice Knife / breath weapons all ignored the cover bonus on the target's Dex save — players in cover would still take half damage on a successful save but the engine made the save itself less likely than RAW.
+
+RAW (SRD 5.2.1 Cover): "A target with half cover has a +2 bonus to AC and Dexterity saving throws. A target with three-quarters cover has a +5 bonus to AC and Dexterity saving throws."
+
+**Engine:**
+- New helper `coverDexSaveBonus(cover)` in [src/engine/plan/attack.ts](src/engine/plan/attack.ts) — same magnitudes as `coverACBonus` (alias today; kept as a separate export so future RAW deviations on one arm don't entangle the other).
+- [src/engine/plan/_save-roll.ts](src/engine/plan/_save-roll.ts) (`rollSaveAgainstDC` — used by spell on-hit-save / breath weapons / recurring saves / use-item Save / sensor / trap / reactive spells / etc.): `RollSaveInput` gains optional `cover?: CoverKind`. When ability is `DEX` AND cover is supplied, the bonus is added to the total + an entry appears in the SaveRolled `breakdown` (`{ source: "cover (half)", value: 2 }`).
+- [src/engine/plan/checks.ts](src/engine/plan/checks.ts) (`planSave` — the public direct-save planner): `SaveIntent` gains the same `cover` field with identical semantics.
+
+**Why the bonus is DEX-only:** RAW scopes the cover bonus to Dexterity saves specifically. Other ability saves (STR/CON/INT/WIS/CHA) are unaffected, matching the AC-only-on-attack-rolls scoping. The save site checks `ability === 'DEX'` before reading the helper.
+
+**Documented design decisions:**
+- **Consumer supplies cover, not the engine.** The engine doesn't model positions, so cover detection (who's behind a wall / corner / ally) is a UI / VTT concern. The `cover` field rides on the save intent / planner input; absent it, behavior is unchanged.
+- **Total cover means untargetable.** The helper returns 0 for `total` — consumers should reject the attack / save entirely before reaching the save site (`coverACBonus` already throws for total-cover attacks; the save planner mirrors that pattern by returning 0).
+
+**Tests** ([tests/unit/engine/slice-550-cover-dex-save.test.ts](tests/unit/engine/slice-550-cover-dex-save.test.ts), 8 cases): helper returns correct values for all 4 cover kinds; helper mirrors `coverACBonus` exactly (parametrized over all 4 kinds); DEX save with half cover adds +2 + breakdown entry; DEX save with three-quarters cover adds +5; DEX save with no cover unchanged; CON save with half cover IGNORES cover (DEX-only); STR save with three-quarters cover IGNORES cover; DEX save with total cover adds 0.
+
+**Audit:**
+- **Names:** `coverDexSaveBonus` mirrors `coverACBonus`. The `cover?` field on `RollSaveInput` / `SaveIntent` matches the existing `cover?` field on `AttackIntent`.
+- **DRY:** the helper aliases `coverACBonus`. Two save sites (`_save-roll.ts` + `checks.ts`) each get a 5-line conditional. Below the abstraction threshold; if a third independent save site appears, extract a `applyCoverToSave` helper.
+- **SRP:** helper returns a number; save sites add it to the bonus and append to breakdown.
+- **Magic numbers:** none beyond the pre-existing `HALF_COVER_AC_BONUS` / `THREE_QUARTERS_COVER_AC_BONUS`.
+- **at-threading:** unchanged.
+- **Mechanical outcomes asserted:** the bonus magnitude + DEX-only scope + breakdown surfacing + identity of cover-AC and cover-DEX-save values.
+
+**Pattern-check:** the audit also flagged that **all 9 other call sites** of `rollSaveAgainstDC` (recurring-save tick, intimidating-presence, land's-aid, breath weapons, reactive-spells target, trap, sensor, transformations, weapon-mastery Topple) automatically pick up the cover bonus when their callers thread it. Most of those call sites don't naturally have positional context (e.g. an aura-damage tick doesn't know about cover), so they leave `cover` unset — which is fine. The big winners are AOE spell saves (Burning Hands, Sacred Flame, Ice Knife splash, breath weapons) where the caster explicitly knows the target's cover state.
+
+---
+
 **Engine + content (slice 549): Sneak Attack RAW weapon gate (Finesse or Ranged)**
 
 Closes the highest-impact drift surfaced by the final L1 SRD compliance pass. RAW (SRD 5.2.1 Rogue L1): "Once per turn, you can deal an extra 1d6 damage to one creature you hit with an attack roll if you have Advantage on the roll **and the attack uses a Finesse or Ranged weapon**." The engine's pre-slice Sneak Attack filter checked Advantage + ally-adjacent disjunction but DID NOT enforce the weapon-type clause — a L1 Rogue could trigger Sneak Attack with a Greatsword or Mace as long as they had Advantage.
