@@ -8208,6 +8208,7 @@
     {
       "id": "prone",
       "name": "Prone",
+      "description": "RAW (SRD 5.2.1 Prone): bearer's attack rolls have Disadvantage. Melee attacks against the bearer have Advantage; ranged attacks against the bearer have Disadvantage. The stand-up cost (half speed) is a movement-economy mechanic deferred to a future engine slice. Slice 568 wired the asymmetric attacker-side arms using the new `event.attackKind` fact in the attacker-facts maps.",
       "stackable": false,
       "endsOn": [],
       "effects": [
@@ -8215,6 +8216,14 @@
           "kind": "SetAdvantage",
           "on": "attack",
           "mode": "disadvantage"
+        },
+        {
+          "kind": "GrantAdvantageToAttackers",
+          "condition": { "kind": "eq", "path": "event.attackKind", "value": "melee" }
+        },
+        {
+          "kind": "ImposeDisadvantageOnAttackers",
+          "condition": { "kind": "eq", "path": "event.attackKind", "value": "ranged" }
         }
       ]
     },
@@ -8480,10 +8489,17 @@
     {
       "id": "grappled",
       "name": "Grappled",
+      "description": "RAW (SRD 5.2.1 Grappled): bearer's Speed is 0 (no speed bonuses). The bearer's attack rolls have Disadvantage against any target other than the grappler. The Grappled-vs-non-grappler disadvantage gate is the `bearer.targetIsNotGrappler` fact populated by the attack planner (slice 568) — true when the bearer carries a Grappled condition whose sourceCharacterId is not the current target.",
       "stackable": false,
       "endsOn": [],
       "effects": [
-        { "kind": "ModifySpeed", "mode": "walk", "op": "set", "value": 0 }
+        { "kind": "ModifySpeed", "mode": "walk", "op": "set", "value": 0 },
+        {
+          "kind": "SetAdvantage",
+          "on": "attack",
+          "mode": "disadvantage",
+          "condition": { "kind": "eq", "path": "bearer.targetIsNotGrappler", "value": true }
+        }
       ]
     },
     {

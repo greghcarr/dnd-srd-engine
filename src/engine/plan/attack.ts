@@ -689,8 +689,15 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     const cb = enc.combatants.find((c) => c.combatantId === input.targetId);
     return cb?.turnUsage.recklessAttackActive === true;
   })();
+  // Slice 568: surface event.attackKind to target-side predicate gates
+  // (Prone's RAW asymmetry: melee Advantage, ranged Disadvantage). Same
+  // fact name as the attackerFacts map and the trigger-dispatch fact,
+  // so a content gate reads one canonical path.
+  const targetSideAttackerFacts = new Map<string, unknown>([
+    ['event.attackKind', weaponDef.attackKind],
+  ]);
   const targetGrantsAdvantage =
-    targetEffects.grantsAdvantageToAttackers() || targetRecklessGrantsAdvantage;
+    targetEffects.grantsAdvantageToAttackers(targetSideAttackerFacts) || targetRecklessGrantsAdvantage;
   // Slice 199: target may carry `CancelAdvantageOnAttackers` (Rogue
   // L18 Elusive). Build a small bearer-facts map so a predicate-gated
   // entry can consult the target's own state — Elusive's gate is
@@ -845,6 +852,16 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     // same fact name so a consumer populates it once per intent.
     ['bearer.lightLevel', input.lightLevel],
     ['bearer.bloodied', attackerBloodied],
+    // Slice 568: Grappled's "Disadvantage on attacks against any
+    // target other than the grappler" arm. True iff the attacker is
+    // currently Grappled AND the attack's target is NOT the grappler
+    // (the condition's sourceCharacterId). The Grappled condition's
+    // SetAdvantage on attack disadvantage gates on this being true.
+    ['bearer.targetIsNotGrappler', ((): boolean => {
+      const grappled = attacker.appliedConditions.find((c) => c.conditionId === 'grappled');
+      if (grappled === undefined) return false;
+      return grappled.sourceCharacterId !== input.targetId;
+    })()],
   ]);
   const attackerSelfAdvantage = attackerEffects.advantageFor('attack', attackerSelfAdvantageFacts);
   // Build a small facts map for type-conditional ImposeDisadvantage
@@ -898,6 +915,10 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     // ResolveAttackInput.targetCanSeeAttacker above. Undefined
     // defaults to default-apply (predicate is `not eq value:false`).
     ['bearer.canSeeAttacker', input.targetCanSeeAttacker],
+    // Slice 568: Prone's asymmetric attacker advantage (melee
+    // Advantage, ranged Disadvantage) gates on event.attackKind. Same
+    // fact name as the trigger-dispatch map and targetSideAttackerFacts.
+    ['event.attackKind', weaponDef.attackKind],
   ]);
   const targetImposesDisadvantage =
     targetEffects.imposesDisadvantageOnAttackers(attackerFacts)
@@ -1007,7 +1028,28 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   // crit threshold via ExpandCritRange. Default 20. A crit only
   // counts on a hit (a 19 that misses AC is just a miss).
   const critThreshold = attackerEffects.critThreshold();
-  const critical = hit && usedRoll >= critThreshold;
+  // Slice 568: RAW Paralyzed / Unconscious "Any attack that hits the
+  // creature is a critical hit if the attacker is within 5 feet of
+  // the creature." The engine doesn't track positional adjacency, so
+  // melee attacks are taken as the proxy for "within 5 feet" (the
+  // common case: 5 ft melee reach). Reach weapons at 10 ft would
+  // RAW-correctly NOT auto-crit, but the engine over-grants here
+  // until positional state is modeled. Matches the existing
+  // melee-vs-incapacitated approximations elsewhere in the planner.
+  // Triggers on paralyzed (incl. held-paralyzed-active for Hold Person
+  // / Hold Monster — both compose Paralyzed in RAW), unconscious, or
+  // HP <= 0 (the synthetic-unconscious case findActorBlockingCondition
+  // also returns for).
+  const targetAutoCritsFromMelee = ((): boolean => {
+    if (weaponDef.attackKind !== 'melee') return false;
+    if (target.hp.current <= 0) return true;
+    return target.appliedConditions.some(
+      (c) => c.conditionId === 'paralyzed'
+        || c.conditionId === 'held-paralyzed-active'
+        || c.conditionId === 'unconscious',
+    );
+  })();
+  const critical = hit && (usedRoll >= critThreshold || targetAutoCritsFromMelee);
 
   // RAW Rogue Sneak Attack (and equivalent content triggers): the
   // ally-adjacent path requires *another* positioned, non-incapacitated

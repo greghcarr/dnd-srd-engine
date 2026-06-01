@@ -4,6 +4,41 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 568): three attack-resolution gates — within-5-ft auto-crit, Prone asymmetric attacker advantage, Grappled non-grappler disadvantage**
+
+Closes three of the engine-side RAW drifts surfaced by the deep audit (slice 567 was the content-side companion). Each gate adds a new attack-resolution behavior that was missing:
+
+**1. Paralyzed / Unconscious within-5-ft auto-crit** (RAW Paralyzed + Unconscious: "Any attack that hits the creature is a critical hit if the attacker is within 5 feet of the creature.")
+
+[src/engine/plan/attack.ts](src/engine/plan/attack.ts): the `critical` computation now considers `targetAutoCritsFromMelee` as a second source (alongside the existing `usedRoll >= critThreshold`). The check fires when the attack is melee (proxy for "within 5 feet" — the common case; reach weapons at 10 ft over-grant under this approximation until positional state is modeled) AND the target carries one of: `paralyzed`, `held-paralyzed-active` (Hold Person / Hold Monster — composes Paralyzed per RAW), `unconscious`, or HP <= 0 (synthetic-unconscious case `findActorBlockingCondition` returns).
+
+**2. Prone asymmetric attacker advantage** (RAW Prone: melee attacks against the bearer have Advantage; ranged attacks have Disadvantage.)
+
+[src/engine/plan/attack.ts](src/engine/plan/attack.ts): a new `targetSideAttackerFacts` map is built early (carries `event.attackKind` from `weaponDef.attackKind`) and passed to `targetEffects.grantsAdvantageToAttackers(...)` — the existing read site already supported a facts argument (slice 262) but no prior caller used it. The pre-existing `attackerFacts` map (consumed by `imposesDisadvantageOnAttackers`) gains the same `event.attackKind` entry for symmetry. Prone's content now carries two predicate-gated entries: `GrantAdvantageToAttackers { condition: event.attackKind == 'melee' }` and `ImposeDisadvantageOnAttackers { condition: event.attackKind == 'ranged' }`. The bearer-side attack disadvantage stays.
+
+**3. Grappled disadvantage on attacks vs non-grappler** (RAW Grappled: the bearer's attacks have Disadvantage on creatures other than the grappler.)
+
+[src/engine/plan/attack.ts](src/engine/plan/attack.ts): `attackerSelfAdvantageFacts` gains a new fact `bearer.targetIsNotGrappler` (computed inline: true iff the attacker carries a `grappled` condition whose `sourceCharacterId !== input.targetId`). Grappled's content gains a predicate-gated `SetAdvantage { on: 'attack', mode: 'disadvantage', condition: bearer.targetIsNotGrappler == true }`. Attacking the grappler itself still rolls 'none' (the predicate evaluates false).
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)): Prone gains 2 effect entries (melee-advantage + ranged-disadvantage); Grappled gains 1 entry (non-grappler disadvantage). Pre-existing arms preserved.
+
+**Tests** ([tests/unit/engine/slice-568-attack-gates.test.ts](tests/unit/engine/slice-568-attack-gates.test.ts), 11 cases): per-arm assertions —
+- within-5-ft auto-crit: melee hit vs paralyzed / unconscious / held-paralyzed-active / synthetic-unconscious (HP <= 0) all → critical = true; ranged hit vs paralyzed → NOT crit (RAW "within 5 ft"); melee hit vs Stunned → NOT crit (RAW exempts Stunned from auto-crit).
+- Prone asymmetric: melee attack → 'advantage'; ranged attack → 'disadvantage'.
+- Grappled: bearer attacking grappler → 'none'; bearer attacking non-grappler → 'disadvantage'; non-Grappled attacker → 'none' (control).
+
+**Audit:**
+- **Names:** `targetAutoCritsFromMelee` is the predicate at the read site; `targetSideAttackerFacts` mirrors the existing `attackerFacts` / `attackerSelfAdvantageFacts` naming axis; `bearer.targetIsNotGrappler` follows the slice-272 / 273 `bearer.<predicate>` fact-path convention.
+- **DRY:** the `event.attackKind` fact is populated in both fact maps with the same string source (`weaponDef.attackKind`); a hypothetical shared constant would add one line and read less clearly.
+- **SRP:** within-5-ft auto-crit adds ~10 lines around the existing `critical` line; Prone wiring is one new fact + one new call argument; Grappled wiring is one new fact and an inline closure to derive it.
+- **Magic numbers:** none.
+- **at-threading:** unchanged.
+- **Mechanical outcomes asserted:** 11 per-gate cases, plus negative controls for ranged (auto-crit doesn't fire) and Stunned (RAW exempt), plus the grappler-as-target negative for Grappled.
+
+**Pattern-check:** the within-5-ft proxy is "melee attack ⇒ within 5 ft" — an over-grant for reach weapons at 10 ft. Positional state is the right long-term primitive; until then, the approximation matches existing planner patterns (e.g., Sneak Attack's flank arm uses ally-adjacent facts, not exact distances). The two new facts (`event.attackKind`, `bearer.targetIsNotGrappler`) are predicate paths future content can reuse without re-wiring the planner.
+
+---
+
 **Content (slice 567): condition effect-list completeness sweep — RAW drift on 5 of 15 conditions**
 
 Closes a class of RAW drift surfaced by the post-cycle deep L1 audit (the audit fanned across 6 agents; condition-effects was the highest-impact dimension found). Pre-slice 5 of the 15 RAW conditions had under-modeled effect arrays:
