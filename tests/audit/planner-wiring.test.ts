@@ -77,6 +77,9 @@ const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
   // uncannyDodge). Consumer invokes it after observing a DamageApplied
   // event on a Goliath with Stone's Endurance ancestry.
   'stonesEndurance',
+  // Slice 559: Storm's Thunder is the sibling reaction; returns
+  // StormsThunderOutcome with the thunder damage dealt to the attacker.
+  'stormsThunder',
   // Per-moment ticks / duration sweeps (called at turn boundaries / on movement):
   'expireSpellDurations', 'tickAura', 'tickMovementDamage', 'tickRecurring', 'tickRecurringSave', 'triggerTrap',
   // Stirge Blood Drain (slice 490): drain fires at the stirge's turn-start

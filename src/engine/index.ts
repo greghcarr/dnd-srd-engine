@@ -77,6 +77,7 @@ import {
   planRage,
   planCloudsJaunt,
   planStonesEndurance,
+  planStormsThunder,
   planNimbleEscape,
   planCunningAction,
   planExpeditiousRetreatDash,
@@ -224,6 +225,8 @@ import {
   type CloudsJauntIntent,
   type StonesEnduranceIntent,
   type StonesEnduranceOutcome,
+  type StormsThunderIntent,
+  type StormsThunderOutcome,
   type NimbleEscapeIntent,
   type CunningActionIntent,
   type ExpeditiousRetreatDashIntent,
@@ -394,6 +397,10 @@ export interface Engine {
       state: CampaignState,
       intent: Omit<StonesEnduranceIntent, 'type'>,
     ): StonesEnduranceOutcome;
+    stormsThunder(
+      state: CampaignState,
+      intent: Omit<StormsThunderIntent, 'type'>,
+    ): StormsThunderOutcome;
     nimbleEscape(state: CampaignState, intent: Omit<NimbleEscapeIntent, 'type'>): PlanResult;
     cunningAction(state: CampaignState, intent: Omit<CunningActionIntent, 'type'>): PlanResult;
     expeditiousRetreatDash(state: CampaignState, intent: Omit<ExpeditiousRetreatDashIntent, 'type'>): PlanResult;
@@ -754,6 +761,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     stonesEndurance(state, intent) {
       return planStonesEndurance(state, content, rng, { type: 'StonesEndurance', ...intent });
+    },
+    stormsThunder(state, intent) {
+      return planStormsThunder(state, content, rng, { type: 'StormsThunder', ...intent });
     },
     nimbleEscape(state, intent) {
       return { events: planNimbleEscape(state, content, rng, { type: 'NimbleEscape', ...intent }) };

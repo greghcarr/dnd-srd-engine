@@ -4,6 +4,40 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 559): Goliath Storm's Thunder — reaction 1d8 thunder to attacker; Giant Ancestry COHORT COMPLETE**
+
+Sixth and final arm of the Goliath Giant Ancestry sweep. Reaction-style planner mirror of `planStonesEndurance` but emits a damage chain at the attacker instead of a compensating Healed on the bearer. **All 6 Goliath Giant Ancestry options are now mechanically wired** (Cloud's Jaunt, Fire's Burn, Frost's Chill, Hill's Tumble, Stone's Endurance, Storm's Thunder); the L1 Goliath species plays end-to-end without consumer-side mechanical bookkeeping for any ancestry choice.
+
+RAW (SRD 5.2.1 Goliath, Storm's Thunder): "When you take damage from a creature within 60 feet of you, you can take a Reaction to deal 1d8 Thunder damage to that creature."
+
+**Engine:**
+- New planner [src/engine/plan/storms-thunder.ts](src/engine/plan/storms-thunder.ts). Intent: `{ goliathId, attackerId, triggeringDamageEventId? }`. Returns `StormsThunderOutcome { events, damageDealt }`. Validates via the shared `validateGoliathAncestry` helper + `assertReactionAvailable`, plus a self-target rejection (the attacker must not be the goliath). Rolls 1d8, emits `ActionEconomyConsumed(reaction)` + `ResourceSpent(giant-ancestry, 1)` + `DamageRolled(1d8 thunder)` + `DamageApplied` (via the standard `mitigateDamage` + `interceptFatalDamage` chain — thunder resistance / immunity / vulnerability applies, fatal-damage intercept fires for things like Death Ward).
+- Wired through [src/engine/plan/index.ts](src/engine/plan/index.ts), [src/engine/index.ts](src/engine/index.ts), and added to the [tests/audit/planner-wiring.test.ts](tests/audit/planner-wiring.test.ts) `EXCLUDED_FROM_DISPATCH` allowlist (reaction-style outcome planner, mirror of Stone's Endurance).
+
+**Documented design decisions:**
+- **Within-60-ft gate is consumer-side.** The engine doesn't auto-check position-based range for reactions; consumers (UI / VTT) skip invoking when the attacker is too far. Same convention as Uncanny Dodge's "you can see the attacker" gate.
+- **Synthetic weapon-instance id.** `DamageRolledEvent.weaponInstanceId` is required by the schema (designed for weapon attacks), so we set it to the Goliath's id as a no-op synthetic. The `DamageApplied.source = 'storms-thunder'` is the canonical discriminator for downstream consumers / triggers.
+- **Source is non-magical.** RAW doesn't mark Goliath traits as magical sources, so `sourceIsMagical = false` in mitigation.
+
+**Tests** ([tests/unit/engine/slice-559-storms-thunder.test.ts](tests/unit/engine/slice-559-storms-thunder.test.ts), 7 cases): happy path (damage in [1,8] + 4-event chain + correct source attribution); damage actually applied to attacker not goliath (replay equivalence on HP); self-target rejected; non-Goliath / wrong ancestry / depleted / reaction-used all rejected.
+
+**Audit:**
+- **Names:** `planStormsThunder` / `StormsThunderIntent` / `StormsThunderOutcome` mirror Stone's Endurance.
+- **DRY:** reuses `validateGoliathAncestry` + `assertReactionAvailable` + `economyConsumedIfEncountered` + `mitigateDamage` + `interceptFatalDamage`. Net new logic ~30 lines (the damage emission chain).
+- **SRP:** planner does one thing (one Storm's Thunder reaction).
+- **Magic numbers:** `STORMS_THUNDER_DIE_SIDES = 8` extracted; `'storms-thunder'` source string extracted.
+- **at-threading:** single `nowIso()` resolution, threaded through all emitted events.
+- **Mechanical outcomes asserted:** damage in [1,8]; correct source / sourceCharacterId attribution; replay updates attacker HP (not goliath HP); 5 reject paths.
+
+**Pattern-check — Goliath cohort retrospective:** all 6 arms wired across slices 554-559 ship in 6 commits over 1 day with shared infrastructure (`_giant-ancestry.ts` helper + `validateGoliathAncestry`). Split by mechanic shape:
+- **BA actions** (1): Cloud's Jaunt — dedicated planner.
+- **Attack riders** (3): Fire's Burn / Frost's Chill / Hill's Tumble — AttackIntent dial in resolveAttack with pre-validation + on-hit damage / condition / resource emission.
+- **Reactions** (2): Stone's Endurance / Storm's Thunder — dedicated reaction-style planners returning outcomes the consumer branches on.
+
+The shared `validateGoliathAncestry` helper unified the species + choice + resource preconditions across all 6 arms (extracted in slice 557 after the third sibling). The deep-audit gap that surfaced this cohort ("Goliath Giant Ancestry × 6 options entirely unwired") is now fully closed — every L1 Goliath plays their RAW ancestry mechanically.
+
+---
+
 **Engine (slice 558): Goliath Stone's Endurance — reaction reduce damage by 1d12 + CON (5th of 6-arm Giant Ancestry cohort)**
 
 Fifth arm of the Goliath Giant Ancestry sweep. First reaction-style arm; modeled after `planUncannyDodge` (slice 200): the consumer invokes the planner post-DamageApplied with the damage amount, the planner rolls 1d12 + CON mod, and emits a compensating `Healed` event for the reduction value (capped at `damageAmount` so the reaction never over-heals).
