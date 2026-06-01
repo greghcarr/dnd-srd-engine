@@ -4,6 +4,32 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Tests (slice 564): per-caster L1 spellcasting math test suite**
+
+Pure test-rigor slice closing the biggest L1 spellcasting verification gap. Pre-slice the spell DC + slot derivation tests covered only Wizard / Paladin / Warlock at L1; five L1 caster classes (Bard, Cleric, Druid, Ranger, Sorcerer) had no direct math assertion, so a regression in `FULL_CASTER_SLOTS`, the half-caster rounding rule, or the per-class spellcasting-ability declaration could land without firing a test.
+
+RAW source: [references/srd-markdown/classes.md](references/srd-markdown/classes.md) per-class progression tables (PB column = +2 at L1; spell slots row at L1).
+
+**Tests** ([tests/unit/derive/slice-564-per-caster-l1-spellcasting.test.ts](tests/unit/derive/slice-564-per-caster-l1-spellcasting.test.ts), 32 cases — 4 per class × 8 caster classes): table-driven `CASTERS` array covers Bard / Cleric / Druid / Sorcerer / Wizard / Paladin / Ranger / Warlock. For each:
+1. Pack declaration: `spellcasting.ability` + `spellcasting.type` match the RAW spec (CHA-full / WIS-full / WIS-full / CHA-full / INT-full / CHA-half / WIS-half / CHA-pact).
+2. `computeSpellSlots` at L1 with the keying ability at 16: returns the RAW slot table (`[2,0,0,0,0,0,0,0,0]` for full + half casters; `[0,0,0,0,0,0,0,0,0]` standard plus `{level:1, count:1}` pact for Warlock).
+3. `computeSpellSaveDC`: 8 base + 2 prof + 3 ability mod = **13** for every caster.
+4. `computeSpellAttackBonus`: 2 prof + 3 ability mod = **+5** for every caster.
+
+The 2024 PHB half-caster change (L1 grants 2 first-level slots; 2014 granted nothing until L2) is now pinned for both Paladin and Ranger.
+
+**Audit:**
+- **Names:** `CasterSpec` and the `CASTERS` table read as RAW reference rather than test fixtures; ability constants (`ABILITY_AT_16`, `PROF_BONUS_L1`, `MOD_AT_16`, `DC_BASE`) extracted so the math is self-documenting.
+- **DRY:** one `buildL1Caster(classId, ability)` helper + a table-driven loop covers all 32 cases; adding a new caster (or correcting a RAW table value) is a single `CASTERS` row.
+- **SRP:** new test file only — no engine or content edits.
+- **Magic numbers:** all extracted to named constants (`ABILITY_AT_16 = 16`, `DC_BASE = 8`, `EXPECTED_DC = DC_BASE + PROF_BONUS_L1 + MOD_AT_16`).
+- **at-threading:** N/A (no events emitted).
+- **Mechanical outcomes asserted:** per-class spellcasting ability declaration, per-class slot table (full / half / pact), DC formula, attack-bonus formula.
+
+**Pattern-check:** the existing per-class one-off tests (Wizard in [tests/unit/derive/spell-dc.test.ts](tests/unit/derive/spell-dc.test.ts); Wizard + Paladin + Warlock in [tests/unit/derive/spell-slots.test.ts](tests/unit/derive/spell-slots.test.ts)) stay as targeted regression catches (with their L5 / L20 / multiclass scenarios). This slice ADDS the per-class L1 sweep alongside them rather than replacing — the legacy tests stay green and the new file covers the breadth.
+
+---
+
 **Engine + content (slice 563): Vicious Mockery disadvantage-on-next-attack rider — second of three residual L1 drift closures**
 
 Closes the Vicious Mockery rider drift surfaced by the post-cycle deep review. Pre-slice a failed save against Vicious Mockery dealt 1d6 psychic damage but the RAW disadvantage rider was absent; an L1 Bard had a strict damage cantrip, not the debuff cantrip RAW prescribes.
