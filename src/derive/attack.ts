@@ -8,6 +8,7 @@ import { computeTotalLevel } from '../schemas/runtime/character.js';
 import type { Weapon } from '../schemas/content/item.js';
 import type { EffectAccumulator } from '../effects/builder.js';
 import type { DiceExpression, DamageType } from '../schemas/primitives.js';
+import { EXHAUSTION_ATTACK_PENALTY_PER_LEVEL } from '../internal/constants.js';
 
 export interface AttackBreakdownEntry {
   readonly source: string;
@@ -149,6 +150,17 @@ export const computeAttackBonus = (input: ComputeAttackInput): AttackResult => {
   const enchantment = resolveEnchantment(instance, input.content);
   if (enchantment?.attackBonus !== undefined && enchantment.attackBonus !== 0) {
     breakdown.push({ source: `enchantment:${enchantment.id}`, value: enchantment.attackBonus });
+  }
+
+  // Slice 569: RAW PHB 2024 Exhaustion: -2 per level on every d20 Test
+  // (ability checks + saves + ATTACK ROLLS). Pre-slice the penalty was
+  // applied to checks (derive/ability-check.ts) and saves (derive/save.ts)
+  // but NOT attack rolls — an exhausted character's to-hit was unaffected.
+  if (input.character.exhaustion > 0) {
+    breakdown.push({
+      source: 'exhaustion',
+      value: EXHAUSTION_ATTACK_PENALTY_PER_LEVEL * input.character.exhaustion,
+    });
   }
 
   const total = breakdown.reduce((acc, e) => acc + e.value, 0);

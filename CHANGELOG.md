@@ -4,6 +4,41 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 569): Exhaustion attack-roll + Speed penalties — PHB 2024 unified d20-Tests semantic**
+
+Closes a real L1 RAW drift surfaced by the deep audit. Pre-slice the engine applied the -2-per-level exhaustion penalty to ability checks ([src/derive/ability-check.ts:147](src/derive/ability-check.ts#L147)) and saving throws ([src/derive/save.ts:124-126](src/derive/save.ts#L124-L126)), but the **attack-roll** and **Speed** arms of the 2024 RAW were unwired. An exhausted character's to-hit was unaffected; their movement was unchanged.
+
+RAW PHB 2024 Exhaustion ([references/srd-markdown/rules-glossary.md](references/srd-markdown/rules-glossary.md)):
+- "You take a -2 penalty to all D20 Tests for every level of Exhaustion." (D20 Tests = checks + saves + attack rolls.)
+- "Your Speed decreases by 5 feet for every level of Exhaustion."
+- Level 6 = death (already wired in the apply-condition reducer via `EXHAUSTION_MAX`).
+
+**Constants** ([src/internal/constants.ts](src/internal/constants.ts)): two new sibling constants alongside the legacy `EXHAUSTION_SAVE_PENALTY_PER_LEVEL`:
+- `EXHAUSTION_ATTACK_PENALTY_PER_LEVEL = -2`
+- `EXHAUSTION_SPEED_PENALTY_PER_LEVEL = -5`
+
+The pre-2024-unification names stay (the values are identical, but distinct names make the per-dimension wiring greppable for future maintenance / partial reverts).
+
+**Attack-roll wiring** ([src/derive/attack.ts](src/derive/attack.ts)): `computeAttackBonus` adds an `exhaustion` breakdown entry when `character.exhaustion > 0`, mirroring the existing pattern in [ability-check.ts](src/derive/ability-check.ts) and [save.ts](src/derive/save.ts). Penalty applied after all weapon bonuses and effect-stack modifiers — the breakdown is independently visible for sheet display.
+
+**Speed wiring** ([src/derive/speed.ts](src/derive/speed.ts)): `getEffectiveSpeedForMode` applies the exhaustion penalty AFTER all `op: 'set' / 'add' / 'multiply'` modifiers and the natural-vs-set precedence resolution — RAW: the penalty stacks on the final value. Applies to ALL movement modes (walk / fly / swim / climb / burrow); a zero-speed (Grappled / Restrained / Unconscious) is unaffected because the existing `if (zeroSet) return 0` short-circuits earlier. Final `Math.max(0, scaled + exhaustionPenalty)` clamps so a high-exhaustion character can't go negative on Speed.
+
+**Tests** ([tests/unit/derive/slice-569-exhaustion-attack-speed.test.ts](tests/unit/derive/slice-569-exhaustion-attack-speed.test.ts), 11 cases):
+- Attack: exhaustion 0 / 1 / 3 / 5 yielding -0 / -2 / -6 / -10 modifier; penalty exposed in breakdown; can push net bonus negative.
+- Speed: exhaustion 0 / 1 / 3 / 6 yielding 30 / 25 / 15 / 0 ft walk; Goliath base 35 with exhaustion 2 yielding 25; non-walk modes follow same penalty (fly stays 0 for no-fly-source case after penalty); Grappled (Speed 0) stays 0.
+
+**Audit:**
+- **Names:** the two new constants follow the slice-7 `EXHAUSTION_<dimension>_PENALTY_PER_LEVEL` naming axis.
+- **DRY:** all three derive sites (ability-check, save, attack) share the `if (character.exhaustion > 0)` + breakdown-push shape. Speed's wiring is one final `Math.max(0, scaled + exhaustionPenalty)` line. Not factored into a shared helper because each site computes against its own breakdown shape; the duplication is two lines per site.
+- **SRP:** constants split per-dimension; each derive site applies its own dimension's constant.
+- **Magic numbers:** all three penalty magnitudes extracted to named constants in [src/internal/constants.ts](src/internal/constants.ts).
+- **at-threading:** N/A (pure derivation; no event emission).
+- **Mechanical outcomes asserted:** 11 cases — per-level attack penalty progression, per-level speed reduction (walk + non-walk + boundary), Grappled-zero clamp.
+
+**Pattern-check:** the existing check + save sites were ad-hoc wirings of the same RAW family (slice 7's pre-2024 SAVE_PENALTY name predates the 2024 D20-Test unification). The three derive sites are now mechanically symmetric; the constant naming reflects that. Future modifiers to D20 Tests (e.g., a homebrew "Curse of the Sluggard: -1 to all D20 Tests") would land in the same three derive sites with a similar per-dimension constant.
+
+---
+
 **Engine + content (slice 568): three attack-resolution gates — within-5-ft auto-crit, Prone asymmetric attacker advantage, Grappled non-grappler disadvantage**
 
 Closes three of the engine-side RAW drifts surfaced by the deep audit (slice 567 was the content-side companion). Each gate adds a new attack-resolution behavior that was missing:
@@ -144,95 +179,8 @@ Updated tests: [tests/unit/engine/plan-hex-target-side-rider.test.ts](tests/unit
 
 **Pattern-check:** the original `hexed-active` design baked the assumption "one chosen ability per cast" into the consumer side as out-of-band metadata. Slice 367 had already solved this exact pattern for Bestow Curse via per-ability conditions + casterChoosesVariant. Slice 565 applies the slice-367 pattern to Hex, closing the parallel. Future spells with "caster picks an ability at cast time" RAW (e.g. variants of Boon-style spells) reuse the same shape. The doc-counts audit's conditions-count guard caught the +5 net change (135 → 140) and the rider sub-count (120 → 125) automatically; both updated in [docs/getting-started.md](docs/getting-started.md), [docs/status.md](docs/status.md) (twice — overview row + dimension row), and [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md).
 
----
 
-**Tests (slice 564): per-caster L1 spellcasting math test suite**
-
-Pure test-rigor slice closing the biggest L1 spellcasting verification gap. Pre-slice the spell DC + slot derivation tests covered only Wizard / Paladin / Warlock at L1; five L1 caster classes (Bard, Cleric, Druid, Ranger, Sorcerer) had no direct math assertion, so a regression in `FULL_CASTER_SLOTS`, the half-caster rounding rule, or the per-class spellcasting-ability declaration could land without firing a test.
-
-RAW source: [references/srd-markdown/classes.md](references/srd-markdown/classes.md) per-class progression tables (PB column = +2 at L1; spell slots row at L1).
-
-**Tests** ([tests/unit/derive/slice-564-per-caster-l1-spellcasting.test.ts](tests/unit/derive/slice-564-per-caster-l1-spellcasting.test.ts), 32 cases — 4 per class × 8 caster classes): table-driven `CASTERS` array covers Bard / Cleric / Druid / Sorcerer / Wizard / Paladin / Ranger / Warlock. For each:
-1. Pack declaration: `spellcasting.ability` + `spellcasting.type` match the RAW spec (CHA-full / WIS-full / WIS-full / CHA-full / INT-full / CHA-half / WIS-half / CHA-pact).
-2. `computeSpellSlots` at L1 with the keying ability at 16: returns the RAW slot table (`[2,0,0,0,0,0,0,0,0]` for full + half casters; `[0,0,0,0,0,0,0,0,0]` standard plus `{level:1, count:1}` pact for Warlock).
-3. `computeSpellSaveDC`: 8 base + 2 prof + 3 ability mod = **13** for every caster.
-4. `computeSpellAttackBonus`: 2 prof + 3 ability mod = **+5** for every caster.
-
-The 2024 PHB half-caster change (L1 grants 2 first-level slots; 2014 granted nothing until L2) is now pinned for both Paladin and Ranger.
-
-**Audit:**
-- **Names:** `CasterSpec` and the `CASTERS` table read as RAW reference rather than test fixtures; ability constants (`ABILITY_AT_16`, `PROF_BONUS_L1`, `MOD_AT_16`, `DC_BASE`) extracted so the math is self-documenting.
-- **DRY:** one `buildL1Caster(classId, ability)` helper + a table-driven loop covers all 32 cases; adding a new caster (or correcting a RAW table value) is a single `CASTERS` row.
-- **SRP:** new test file only — no engine or content edits.
-- **Magic numbers:** all extracted to named constants (`ABILITY_AT_16 = 16`, `DC_BASE = 8`, `EXPECTED_DC = DC_BASE + PROF_BONUS_L1 + MOD_AT_16`).
-- **at-threading:** N/A (no events emitted).
-- **Mechanical outcomes asserted:** per-class spellcasting ability declaration, per-class slot table (full / half / pact), DC formula, attack-bonus formula.
-
-**Pattern-check:** the existing per-class one-off tests (Wizard in [tests/unit/derive/spell-dc.test.ts](tests/unit/derive/spell-dc.test.ts); Wizard + Paladin + Warlock in [tests/unit/derive/spell-slots.test.ts](tests/unit/derive/spell-slots.test.ts)) stay as targeted regression catches (with their L5 / L20 / multiclass scenarios). This slice ADDS the per-class L1 sweep alongside them rather than replacing — the legacy tests stay green and the new file covers the breadth.
-
----
-
-**Engine + content (slice 563): Vicious Mockery disadvantage-on-next-attack rider — second of three residual L1 drift closures**
-
-Closes the Vicious Mockery rider drift surfaced by the post-cycle deep review. Pre-slice a failed save against Vicious Mockery dealt 1d6 psychic damage but the RAW disadvantage rider was absent; an L1 Bard had a strict damage cantrip, not the debuff cantrip RAW prescribes.
-
-RAW (SRD 5.2.1 Vicious Mockery): "Wisdom Saving Throw: 1d6 Psychic damage. The target has Disadvantage on the next attack roll it makes before the end of its next turn."
-
-**Schema** ([src/schemas/content/spell.ts](src/schemas/content/spell.ts)): new optional `applyConditionSourceFromTarget: boolean` on the spell `save` mechanic. When true, the `ConditionApplied` event emitted for `conditionOnFail` uses the *target* (the failed-save creature) as the `sourceCharacterId`, not the caster. This is load-bearing for autoExpiry's "next turn" semantic — autoExpiry keys off the bearer's turn, not the caster's.
-
-**Engine** ([src/engine/plan/cast-spell.ts](src/engine/plan/cast-spell.ts)):
-- When `applyConditionSourceFromTarget === true`, the emitted `ConditionApplied` event sets `sourceCharacterId = targetId`.
-- autoExpiry stamping: if the condition has `autoExpiry` and an active encounter is in progress, the event also carries `expiresOnRound` (current round + `afterRounds`) + `expiryTrigger`. The existing round-tick autoExpiry sweep already handles the cleanup; this just wires the per-event metadata.
-
-**Engine** ([src/engine/plan/attack.ts](src/engine/plan/attack.ts), `buildConsumeOnAttackRemovals`): the consume-on-attack filter previously matched applied conditions only when `sourceCharacterId` was undefined or equal to the *defender* (the original Sap / Vex pattern: attacker debuffs target, target's next attack consumes). Vicious Mockery is the inverse: the *attacker* (the mocked creature) bears a condition sourced from itself. The filter now also matches `sourceCharacterId === attacker.id` (self-sourced), so a self-borne consume-on-attack condition fires on the bearer's next attack. RAW: "next attack roll it makes" — the bearer's attack.
-
-**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
-- New `viciously-mocked` condition: `consumeOnAttack: true`; `autoExpiry: { afterRounds: 1, trigger: "turnEnd" }`; effects `[{ kind: "SetAdvantage", on: "attack", mode: "disadvantage" }]`.
-- Vicious Mockery save mechanic gains `conditionOnFail: "viciously-mocked"` + `applyConditionSourceFromTarget: true`.
-
-**Tests** ([tests/unit/engine/slice-563-vicious-mockery-rider.test.ts](tests/unit/engine/slice-563-vicious-mockery-rider.test.ts), 5 cases): pack declarations for condition + spell wiring; failed save emits ConditionApplied with sourceCharacterId = target (not caster); the mocked target's next attack rolls with disadvantage; the condition is consumed after the first attack (RAW "next attack roll").
-
-**Audit:**
-- **Names:** `applyConditionSourceFromTarget` is verbose but unambiguous — it documents exactly the inversion it performs vs. the default caster-as-source.
-- **DRY:** the `buildConsumeOnAttackRemovals` filter now covers all three source-shapes (undefined / defender / attacker-self) in one helper. The existing Sap / Vex paths are unaffected (their `sourceCharacterId` is the attacker who applied the debuff, which equals the defender in the attack-event frame).
-- **SRP:** schema is one optional field; cast-spell change is the conditional source + the autoExpiry stamping block; attack.ts change is one filter clause.
-- **Magic numbers:** none.
-- **at-threading:** the autoExpiry stamping uses the existing `state.encounters[activeEncounterId].round` read; the planner's single `nowIso()` resolution is unchanged.
-- **Mechanical outcomes asserted:** ConditionApplied source = target (not caster); attack-disadvantage fires post-cast; condition consumed after one attack; autoExpiry expiry stamping (implicit via the SetAdvantage taking effect through the existing applied-conditions read path).
-
-**Pattern-check:** the consume-on-attack filter's "sources" was the load-bearing pattern. Before: undefined / defender-sourced (Sap, Vex applied by attacker on defender). After: undefined / defender-sourced / attacker-self-sourced (viciously-mocked, where the *bearer* IS the future attacker). No other RAW condition today matches the new "attacker-self-sourced consume" shape, so the change widens the gate without changing existing match behavior. Future self-debuffs with consume-on-attack timing (a hypothetical "Stunning Smite consumes the smiter's next attack") would land in the same code path.
-
----
-
-**Engine + content (slice 562): Eldritch Blast multi-beam scaling — first of three residual L1 drift closures**
-
-Closes the highest-impact L1 spell drift surfaced by the post-cycle deep review. Pre-slice Eldritch Blast fired one beam regardless of caster level (`cantripScalingDice` was absent so no extra dice per beam, and no concept of beam count existed); RAW fires 1/2/3/4 beams at L1/L5/L11/L17. A L5+ Warlock was losing half (or more) of their cantrip's damage potential.
-
-RAW (SRD 5.2.1 Eldritch Blast): "...The spell creates more than one beam when you reach higher levels: two beams at level 5, three beams at level 11, and four beams at level 17. You can direct the beams at the same target or at different ones. Make a separate attack roll for each beam."
-
-**Schema** ([src/schemas/content/spell.ts](src/schemas/content/spell.ts)): new optional `cantripBeamScaling: boolean` field on the spell `attack` mechanic. When true, the scaling axis is the beam count (1 at L1, +1 at each of L5/L11/L17), not extra dice per beam. The existing `cantripScalingDice` is mutually exclusive (the cast-spell planner skips dice scaling when beam scaling is set).
-
-**Engine** ([src/engine/plan/cast-spell.ts](src/engine/plan/cast-spell.ts), `planAttackMechanic`):
-- Pre-iteration beam-count gate: `maxBeams = 1 + cantripExtraDice(totalLevel)` (reuses the existing scaling-threshold helper). Throws if `intent.targetIds.length` exceeds `maxBeams`, throws if zero target ids supplied.
-- Inside the per-target loop: `cantripSteps` set to 0 when `cantripBeamScaling === true` so each beam rolls only the base `damageDice`. The "scaling" IS the beam count.
-- Repeated target ids are allowed (RAW: "same or different creatures"). Each beam still rolls an independent attack via the existing per-target iteration.
-
-**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)): Eldritch Blast `mechanicalEffects` gains `cantripBeamScaling: true`. No other spell uses this mode today.
-
-**Tests** ([tests/unit/engine/slice-562-eldritch-blast-beams.test.ts](tests/unit/engine/slice-562-eldritch-blast-beams.test.ts), 10 cases): pack declaration verified; L1 → 1 beam (1 attack); L1 with 2 targets → rejected; L5 → 2 beams against different targets; L5 with 2 beams at the same target (RAW "same or different"); L5 with 3 targets → rejected; L11 → 3 beams; L17 → 4 beams; zero targets → rejected; per-beam damage stays 1d10 (no cantripScaling extra dice).
-
-**Audit:**
-- **Names:** `cantripBeamScaling` mirrors the existing `cantripScalingDice` naming axis.
-- **DRY:** reuses `cantripExtraDice` helper for the beam-count threshold table.
-- **SRP:** schema change is one optional field; engine change is one pre-iteration gate + one conditional in dice accumulation.
-- **Magic numbers:** thresholds (5, 11, 17) live in the existing `CANTRIP_SCALING_THRESHOLDS`; beam-count formula is `1 + cantripExtraDice(level)`.
-- **at-threading:** unchanged.
-- **Mechanical outcomes asserted:** beam count by level (1/2/3/4 at L1/L5/L11/L17); reject paths for under-count and over-count; same-target allowed; per-beam damage matches base die.
-
-**Pattern-check:** Eldritch Blast is the canonical beam-scaling user in SRD 5.2.1; no other cantrip uses this mode. Future cantrips with similar shapes (e.g., a homebrew Scorching Ray analog) reuse the same field.
-
-
----
+Per-slice detail for slices 562-564 (Eldritch Blast multi-beam scaling; Vicious Mockery disadvantage rider; per-caster L1 spellcasting math test suite) is archived at [docs/changelog/archive-slices-562-564.md](docs/changelog/archive-slices-562-564.md) (slice 569, to keep this file under the 60 KB single-Read ceiling).
 
 Per-slice detail for slices 560-561 (Human / Tiefling Medium-or-Small size choice; Druid Magician cantrip choice + deep-audit clarifications) is archived at [docs/changelog/archive-slices-560-561.md](docs/changelog/archive-slices-560-561.md) (slice 567, to keep this file under the 60 KB single-Read ceiling).
 

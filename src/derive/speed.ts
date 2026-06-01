@@ -9,6 +9,7 @@ import type { PendingChoice } from '../schemas/runtime/pending-choice.js';
 import type { ResolvedContent } from '../content/pack.js';
 import type { MovementMode } from '../schemas/primitives.js';
 import { collectEffectsFromCharacter } from './effect-stack.js';
+import { EXHAUSTION_SPEED_PENALTY_PER_LEVEL } from '../internal/constants.js';
 
 export interface GetEffectiveSpeedInput {
   readonly character: Character;
@@ -116,7 +117,15 @@ export const getEffectiveSpeedForMode = (
   const base = baseSpeedForMode(character, content, mode);
   const natural = highestSet ?? base + addSum;
   const scaled = Math.floor(natural * highestMultiplier);
-  return Math.max(0, scaled);
+  // Slice 569: RAW PHB 2024 Exhaustion: -5 ft per level on all Speeds.
+  // Applied after all other modifiers (set / add / multiply) so a
+  // Phantom-Steeded Exhausted character drops from 100 -> 100 - 5*level.
+  // Clamped to >= 0; a zero-set effect (Grappled / Restrained / etc.)
+  // already returned 0 above, so this only reaches non-zero speeds.
+  const exhaustionPenalty = character.exhaustion > 0
+    ? EXHAUSTION_SPEED_PENALTY_PER_LEVEL * character.exhaustion
+    : 0;
+  return Math.max(0, scaled + exhaustionPenalty);
 };
 
 /**
