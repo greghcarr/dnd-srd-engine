@@ -43,3 +43,33 @@ export const findGoliathAncestryChoice = (
   }
   return undefined;
 };
+
+// Slice 557: shared validation for the attack-rider arms (Fire's
+// Burn / Frost's Chill / Hill's Tumble). Throws with the matching
+// rejection message if any precondition fails. Caller passes the
+// human-readable option name (e.g. "Hill's Tumble") which appears
+// in the error text. Extracted from slices 555/556 once the third
+// sibling arrived — the validation block was identical except for
+// the option id + label.
+export const validateGoliathAncestry = (
+  attacker: Character,
+  state: CampaignState,
+  expectedOption: GiantAncestryOption,
+  optionLabel: string,
+): void => {
+  if (attacker.speciesId !== GOLIATH_SPECIES_ID) {
+    throw new Error(`${attacker.name} is not a Goliath (${optionLabel} is a Goliath Giant Ancestry option)`);
+  }
+  const ancestry = findGoliathAncestryChoice(attacker, state);
+  if (ancestry !== expectedOption) {
+    throw new Error(
+      `${attacker.name} did not choose ${optionLabel} as their Giant Ancestry (current: ${ancestry ?? 'unresolved'})`,
+    );
+  }
+  const ancestryRes = attacker.resources.find((r) => r.resourceId === GIANT_ANCESTRY_RESOURCE_ID);
+  if (ancestryRes === undefined || ancestryRes.current <= 0) {
+    throw new Error(
+      `${attacker.name} has no Giant Ancestry uses remaining (regain all on a Long Rest)`,
+    );
+  }
+};

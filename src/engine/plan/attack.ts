@@ -23,7 +23,7 @@ import { computeAC } from '../../derive/ac.js';
 import { buildEffectStack, collectEffectsFromCharacter, getEffectiveFeatIds } from '../../derive/effect-stack.js';
 import { cunningStrikeForgoDice, cunningStrikeMinLevel, type CunningStrikeOption } from './cunning-strike.js';
 import { getCreatureType } from '../../derive/creature-type.js';
-import { creatureSize } from '../../derive/creature-size.js';
+import { creatureSize, isLargeOrSmaller } from '../../derive/creature-size.js';
 import { canUseWeaponMastery } from '../../derive/weapon-mastery.js';
 import { abilityModifier, effectiveAbilityScore } from '../../derive/ability.js';
 import { computeActionEconomyBudget } from '../../derive/action-economy.js';
@@ -36,8 +36,7 @@ import { rollSaveAgainstDC } from './_save-roll.js';
 import { rollBonusDice } from './_bonus-dice.js';
 import {
   GIANT_ANCESTRY_RESOURCE_ID,
-  GOLIATH_SPECIES_ID,
-  findGoliathAncestryChoice,
+  validateGoliathAncestry,
 } from './_giant-ancestry.js';
 import {
   findMirrorImage,
@@ -320,6 +319,12 @@ export interface AttackIntent {
   // condition (`frosts-chill-slowed`) sourced by the attacker so its
   // autoExpiry fires on the attacker's next turn-start.
   readonly useGiantAncestryFrostsChill?: boolean;
+  // Slice 557: Goliath Giant Ancestry → Hill's Tumble opt-in. RAW:
+  // "When you hit a Large or smaller creature with an attack roll and
+  // deal damage to it, you can give that target the Prone condition."
+  // Same dial shape as the sibling arms; rejects pre-attack if the
+  // target is larger than Large.
+  readonly useGiantAncestryHillsTumble?: boolean;
   // Slice 491: consumer-supplied per-attack fact for "the attacker
   // moved 20+ feet straight toward this target immediately before the
   // hit." Canonical user: Boar Gore ("If the target is a Medium or
@@ -425,6 +430,8 @@ export interface ResolveAttackInput {
   readonly useGiantAncestryFiresBurn?: boolean;
   // Slice 556: see AttackIntent.useGiantAncestryFrostsChill doc comment above.
   readonly useGiantAncestryFrostsChill?: boolean;
+  // Slice 557: see AttackIntent.useGiantAncestryHillsTumble doc comment above.
+  readonly useGiantAncestryHillsTumble?: boolean;
   // Slice 491: see AttackIntent.chargedAtTarget doc comment above.
   readonly chargedAtTarget?: boolean;
   // Slice 494: see AttackIntent.abilityOverride doc comment above.
@@ -592,38 +599,25 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   // consumed only on hit (RAW "when you hit"). Pre-attack validation
   // rejects malformed intents up front so consumers see the error
   // before any d20 is committed.
+  // Slice 555/556/557: Goliath Giant Ancestry attack-rider validation.
+  // Each opt-in dial triggers the same precondition check (Goliath +
+  // resolved ancestry + giant-ancestry resource > 0) — extracted to
+  // the shared helper after the third sibling arrived in slice 557.
   if (input.useGiantAncestryFiresBurn === true) {
-    if (attacker.speciesId !== GOLIATH_SPECIES_ID) {
-      throw new Error(`${attacker.name} is not a Goliath (Fire's Burn is a Goliath Giant Ancestry option)`);
-    }
-    const ancestry = findGoliathAncestryChoice(attacker, state);
-    if (ancestry !== 'fires-burn') {
-      throw new Error(
-        `${attacker.name} did not choose Fire's Burn as their Giant Ancestry (current: ${ancestry ?? 'unresolved'})`,
-      );
-    }
-    const ancestryRes = attacker.resources.find((r) => r.resourceId === GIANT_ANCESTRY_RESOURCE_ID);
-    if (ancestryRes === undefined || ancestryRes.current <= 0) {
-      throw new Error(
-        `${attacker.name} has no Giant Ancestry uses remaining (regain all on a Long Rest)`,
-      );
-    }
+    validateGoliathAncestry(attacker, state, 'fires-burn', "Fire's Burn");
   }
-  // Slice 556: Frost's Chill validation (mirror of Fire's Burn).
   if (input.useGiantAncestryFrostsChill === true) {
-    if (attacker.speciesId !== GOLIATH_SPECIES_ID) {
-      throw new Error(`${attacker.name} is not a Goliath (Frost's Chill is a Goliath Giant Ancestry option)`);
-    }
-    const ancestry = findGoliathAncestryChoice(attacker, state);
-    if (ancestry !== 'frosts-chill') {
+    validateGoliathAncestry(attacker, state, 'frosts-chill', "Frost's Chill");
+  }
+  if (input.useGiantAncestryHillsTumble === true) {
+    validateGoliathAncestry(attacker, state, 'hills-tumble', "Hill's Tumble");
+    // Slice 557: Hill's Tumble RAW gate — "When you hit a Large or
+    // smaller creature." Larger targets (Huge / Gargantuan) are not
+    // valid; reject before any damage is rolled.
+    const tSize = creatureSize(target, content);
+    if (!isLargeOrSmaller(tSize)) {
       throw new Error(
-        `${attacker.name} did not choose Frost's Chill as their Giant Ancestry (current: ${ancestry ?? 'unresolved'})`,
-      );
-    }
-    const ancestryRes = attacker.resources.find((r) => r.resourceId === GIANT_ANCESTRY_RESOURCE_ID);
-    if (ancestryRes === undefined || ancestryRes.current <= 0) {
-      throw new Error(
-        `${attacker.name} has no Giant Ancestry uses remaining (regain all on a Long Rest)`,
+        `${target.name} is ${tSize}, larger than Large — Hill's Tumble only fells Large or smaller creatures`,
       );
     }
   }
@@ -1503,6 +1497,14 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   if (frostsChillRoll !== undefined) {
     applyRiderCondition('frosts-chill-slowed');
   }
+  // Slice 557: Hill's Tumble applies Prone on hit. The Large-or-
+  // smaller gate was already enforced pre-attack; if we got here on
+  // a hit, the target qualifies. Reuses the same applyRiderCondition
+  // helper for source attribution; `prone` carries no autoExpiry, so
+  // it persists until the target spends half their movement to stand.
+  if (input.useGiantAncestryHillsTumble === true) {
+    applyRiderCondition('prone');
+  }
 
   // Slice 555: Fire's Burn consumes 1 giant-ancestry use ONLY on hit
   // (RAW "When you hit a target with an attack roll and deal damage
@@ -1529,6 +1531,17 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
         amount: 1,
       }]
     : [];
+  // Slice 557: Hill's Tumble same — 1 use of giant-ancestry on hit.
+  const hillsTumbleResource: ReadonlyArray<Event> = input.useGiantAncestryHillsTumble === true
+    ? [{
+        id: newEventId() as ULID,
+        at,
+        type: 'ResourceSpent',
+        characterId: input.attackerId as ULID,
+        resourceId: GIANT_ANCESTRY_RESOURCE_ID,
+        amount: 1,
+      }]
+    : [];
 
   return [
     attackRolled,
@@ -1540,6 +1553,7 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     damageApplied,
     ...firesBurnResource,
     ...frostsChillResource,
+    ...hillsTumbleResource,
     ...damageTriggers,
     ...onHitRiderEvents,
     ...intercept.extraEvents,
@@ -1679,6 +1693,7 @@ export const planAttack = (
     ...(intent.useSavageAttacker === true ? { useSavageAttacker: true } : {}),
     ...(intent.useGiantAncestryFiresBurn === true ? { useGiantAncestryFiresBurn: true } : {}),
     ...(intent.useGiantAncestryFrostsChill === true ? { useGiantAncestryFrostsChill: true } : {}),
+    ...(intent.useGiantAncestryHillsTumble === true ? { useGiantAncestryHillsTumble: true } : {}),
     ...(intent.chargedAtTarget === true ? { chargedAtTarget: true } : {}),
     ...(intent.abilityOverride !== undefined ? { abilityOverride: intent.abilityOverride } : {}),
     at,

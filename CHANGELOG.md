@@ -4,6 +4,35 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 557): Goliath Hill's Tumble + shared validation helper (4th of 6-arm Giant Ancestry cohort)**
+
+Fourth arm of the Goliath Giant Ancestry sweep. Adds the on-hit Prone rider with a Large-or-smaller target gate AND fulfills the slice-555 audit promise to extract a shared `validateGoliathAncestry` helper once the third sibling arrives — refactoring the existing Fire's Burn + Frost's Chill validation blocks to call it.
+
+RAW (SRD 5.2.1 Goliath, Hill's Tumble): "When you hit a Large or smaller creature with an attack roll and deal damage to it, you can give that target the Prone condition."
+
+**Engine:**
+- [src/engine/plan/_giant-ancestry.ts](src/engine/plan/_giant-ancestry.ts) — new exported `validateGoliathAncestry(attacker, state, expectedOption, optionLabel)` helper. Throws the matching rejection if any of the three preconditions fail (Goliath species + matching ancestry choice + giant-ancestry resource > 0). The `optionLabel` parameter ("Hill's Tumble") feeds the error message.
+- [src/engine/plan/attack.ts](src/engine/plan/attack.ts):
+  - New AttackIntent + ResolveAttackInput dial `useGiantAncestryHillsTumble?: boolean`.
+  - Three validation blocks now collapse to one-line calls of `validateGoliathAncestry(...)`. Hill's Tumble adds a 4th-line precondition: target size ≤ Large via the existing `creatureSize` derive + `isLargeOrSmaller` helper (reused from slice 446).
+  - Hit-time arm: when set, calls `applyRiderCondition('prone')` (mirror of slice 556's Frost's Chill condition application). No damage component — Hill's Tumble doesn't deal extra damage.
+  - Tail emits `ResourceSpent(giant-ancestry, 1)` after the other two arms' resource events.
+  - Forwarded through planAttack's intent → resolveAttack mapping.
+
+**Tests** ([tests/unit/engine/slice-557-hills-tumble.test.ts](tests/unit/engine/slice-557-hills-tumble.test.ts), 6 cases): happy path (Prone applied to Medium target + ResourceSpent + attacker as source); Huge target (Hill Giant statblock) rejected pre-attack; non-Goliath rejected via shared helper; wrong ancestry rejected via shared helper; depleted resource rejected via shared helper; no-dial: no Prone + no ResourceSpent.
+
+**Audit:**
+- **Names:** `useGiantAncestryHillsTumble` mirrors siblings; helper name `validateGoliathAncestry` is intention-revealing.
+- **DRY:** the three-block validation collapses from ~36 lines (3 × 12) to ~9 lines (3 × 1-line helper calls). Cleanest refactor of the cohort.
+- **SRP:** helper does one thing (validate); each arm's dial does one thing (gate + emit).
+- **Magic numbers:** none new.
+- **at-threading:** unchanged.
+- **Mechanical outcomes asserted:** Prone applied with correct source attribution; Large-or-smaller gate works (Huge rejected); shared helper rejects across all 5 paths.
+
+**Pattern-check:** the Goliath cohort now has 4 of 6 arms wired (Cloud's Jaunt, Fire's Burn, Frost's Chill, Hill's Tumble). The 2 remaining (Stone's Endurance, Storm's Thunder) are **reaction-style** planners triggered post-DamageApplied, not attack-rider dials — they don't reuse the AttackIntent shape. They'll live as their own planner files (mirror of `planClouds Jaunt` / `planRage` shape) and consume 1 giant-ancestry + 1 reaction each. Both will reuse the shared `validateGoliathAncestry` helper for the species + ancestry + resource preconditions.
+
+---
+
 **Engine + content (slice 556): Goliath Frost's Chill — on-hit +1d6 Cold + -10 ft speed (3rd of 6-arm Giant Ancestry cohort)**
 
 Third arm of the Goliath Giant Ancestry sweep. Reuses the slice-555 attack-rider pattern (dial + validation + on-hit damage + on-hit resource consumption) and adds an on-hit ConditionApplied of a new `frosts-chill-slowed` condition that projects -10 ft walk speed with autoExpiry at start-of-attacker's-next-turn.
