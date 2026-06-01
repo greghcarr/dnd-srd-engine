@@ -4,6 +4,38 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 560): Human / Tiefling Medium-or-Small size choice**
+
+Closes the size-choice gap surfaced by the final L1 SRD compliance pass. RAW: both Human and Tiefling species offer a size choice at character creation ("Medium or Small"). Pre-slice both species were hardcoded to Medium; Small humans / tieflings were unreachable. The closure ships an `sizeOverride` field on Character, an OfferChoice on each species, and threads the override through `creatureSize` so downstream gates (slice-552 Heavy weapon Small-creature disadvantage) honor it automatically.
+
+RAW (SRD 5.2.1 Human): "Size: Medium or Small (your choice)."
+RAW (SRD 5.2.1 Tiefling): "Size: Medium or Small (your choice)."
+
+**Engine:**
+- [src/schemas/runtime/character.ts](src/schemas/runtime/character.ts): new optional `sizeOverride: Size` field on the Character schema. Additive + defaulted to undefined; old saves load unchanged.
+- [src/derive/creature-size.ts](src/derive/creature-size.ts): `creatureSize` now reads `character.sizeOverride` FIRST, before falling back to statblock → species → Medium. The override takes precedence over even monster statblocks (a Polymorphed Hill Giant who picked Small as a Human stays Small).
+- [src/engine/plan/attack.ts](src/engine/plan/attack.ts) (heavy-for-Small disadvantage gate): swapped the direct `species.size` read for `creatureSize(attacker, content)` so the override propagates. A Small Human Fighter with a Greatsword now correctly rolls with disadvantage.
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
+- Human species declares OfferChoice `human-size` with two options: `medium` / `small`.
+- Tiefling species declares OfferChoice `tiefling-size` with the same two options.
+
+**Consumer projection (documented):** the engine doesn't auto-apply the OfferChoice option to `sizeOverride` — no `SetSize` effect kind exists. The consumer (UI / character builder) reads the resolved choice and sets `character.sizeOverride` before committing the character. This is the same consumer-managed pattern as starting ability score increases (background ASI choices); the engine declares the choice + the projection mechanism, the consumer wires the resolved value.
+
+**Tests** ([tests/unit/engine/slice-560-human-tiefling-size.test.ts](tests/unit/engine/slice-560-human-tiefling-size.test.ts), 10 cases): pack declarations for both species; Human + Tiefling default to Medium without override; sizeOverride = Small / Medium project correctly; sizeOverride takes precedence over statblockId; Small Human + Small Tiefling with Greatsword roll with disadvantage; Medium Human with Greatsword does NOT (control).
+
+**Audit:**
+- **Names:** `sizeOverride` is intention-revealing — clearly distinguishes player choice from species / monster base size.
+- **DRY:** the heavy-for-Small check now goes through the canonical `creatureSize` derive (was: bypass + direct `species.size`). One read site, one source of truth.
+- **SRP:** schema field is one line; derive update is two lines; attack.ts update is two lines.
+- **Magic numbers:** none.
+- **at-threading:** N/A.
+- **Mechanical outcomes asserted:** schema parse with the override; derive returns correct size in all 5 precedence cases; downstream attack disadvantage gate fires when override = Small.
+
+**Pattern-check:** the OfferChoice has empty `effects: []` for both options — RAW size is a flat property, not an effect-stack contribution. Future species with similar size-flexibility (none in SRD currently) reuse this pattern. The consumer-projection convention is shared with background ASI choices (slice 466) and equipment-pack picks (deferred narrative).
+
+---
+
 **Engine (slice 559): Goliath Storm's Thunder — reaction 1d8 thunder to attacker; Giant Ancestry COHORT COMPLETE**
 
 Sixth and final arm of the Goliath Giant Ancestry sweep. Reaction-style planner mirror of `planStonesEndurance` but emits a damage chain at the attacker instead of a compensating Healed on the bearer. **All 6 Goliath Giant Ancestry options are now mechanically wired** (Cloud's Jaunt, Fire's Burn, Frost's Chill, Hill's Tumble, Stone's Endurance, Storm's Thunder); the L1 Goliath species plays end-to-end without consumer-side mechanical bookkeeping for any ancestry choice.

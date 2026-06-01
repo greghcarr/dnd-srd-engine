@@ -5,6 +5,7 @@ import {
   CharacterLevelSchema,
   DamageTypeSchema,
   ExhaustionLevelSchema,
+  SizeSchema,
   ULIDSchema,
 } from '../primitives.js';
 
@@ -122,6 +123,13 @@ export const CharacterSchema = z.object({
   name: z.string().min(1),
   playerId: z.string().optional(),
   speciesId: z.string(),
+  // Slice 560: optional size override for species that offer a size
+  // choice at character creation (RAW Human / Tiefling are Medium or
+  // Small). When set, `creatureSize` returns this in preference to
+  // the species's base size. Additive + defaulted to undefined, so
+  // old saves load unchanged and characters without a choice fall
+  // back to species size as before.
+  sizeOverride: SizeSchema.optional(),
   backgroundId: z.string(),
   classes: z.array(ClassEnrollmentSchema).min(1),
   abilityScores: AbilityScoresSchema,

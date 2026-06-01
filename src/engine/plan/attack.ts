@@ -705,13 +705,13 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     return chooseDamageAbility(attacker, weaponDef) === 'STR';
   })();
   // RAW PHB Equipment: "Small creatures have Disadvantage with Heavy
-  // weapons." Look up the attacker's species → size; if Small AND
-  // weapon has the `heavy` property, contribute disadvantage.
+  // weapons." Look up the attacker's effective size (via creatureSize
+  // derive — picks up slice-560's `sizeOverride` for Human/Tiefling
+  // Medium-or-Small choices, plus monster statblock sizes for NPCs);
+  // if Small AND weapon has the `heavy` property, contribute disadvantage.
   const heavyForSmall = ((): boolean => {
     if (!weaponDef.properties.includes('heavy')) return false;
-    const species = content.species.get(attacker.speciesId);
-    if (!species) return false;
-    return species.size === 'Small';
+    return creatureSize(attacker, content) === 'Small';
   })();
   // RAW PHB ch.1 "Ranged Attacks in Close Combat": ranged attacks have
   // disadvantage if a hostile creature who isn't Incapacitated is

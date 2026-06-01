@@ -7,6 +7,10 @@
   "derivedFrom": "D&D SRD 5.2 (CC BY 4.0)",
   "species": [
     { "id": "human", "name": "Human", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common"], "traits": [
+      { "kind": "OfferChoice", "choiceId": "human-size", "prompt": "Choose your size (RAW Human: Medium or Small).", "oneOf": 1, "when": "onAcquire", "options": [
+        { "id": "medium", "label": "Medium (default)", "effects": [] },
+        { "id": "small", "label": "Small (~3 ft tall)", "effects": [] }
+      ] },
       { "kind": "OfferChoice", "choiceId": "human-skillful", "prompt": "Choose a skill to gain proficiency in (Human Skillful).", "oneOf": 1, "when": "onAcquire", "options": [
         { "id": "acrobatics", "label": "Acrobatics", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "acrobatics", "level": "proficient" }] },
         { "id": "animal-handling", "label": "Animal Handling", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "animal-handling", "level": "proficient" }] },
@@ -74,6 +78,10 @@
       { "kind": "Custom", "handlerId": "halfling-naturally-stealthy" }
     ] },
     { "id": "tiefling", "name": "Tiefling", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "infernal"], "traits": [
+      { "kind": "OfferChoice", "choiceId": "tiefling-size", "prompt": "Choose your size (RAW Tiefling: Medium or Small).", "oneOf": 1, "when": "onAcquire", "options": [
+        { "id": "medium", "label": "Medium (default)", "effects": [] },
+        { "id": "small", "label": "Small (~3 ft tall)", "effects": [] }
+      ] },
       { "kind": "GrantSense", "sense": "darkvision", "range": 60 },
       { "kind": "GrantSpell", "spellId": "thaumaturgy", "preparation": "at-will", "spellcastingAbility": "CHA" },
       { "kind": "OfferChoice", "choiceId": "tiefling-fiendish-legacy", "prompt": "Choose a Fiendish Legacy (L1 benefit).", "oneOf": 1, "when": "onAcquire", "options": [

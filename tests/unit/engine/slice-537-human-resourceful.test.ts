@@ -36,7 +36,8 @@ describe('Human Resourceful (slice 537)', () => {
   it('human retains its other traits (no regression)', () => {
     const sp = PACK.species.find((s) => s.id === 'human')!;
     const kinds = sp.traits.map((t) => t.kind);
-    // Pre-existing: Skillful (OfferChoice), Versatile (OfferChoice slice 533)
-    expect(kinds.filter((k) => k === 'OfferChoice')).toHaveLength(2);
+    // Pre-existing: Skillful (OfferChoice), Versatile (OfferChoice slice 533).
+    // Slice 560 added human-size (OfferChoice for Medium / Small).
+    expect(kinds.filter((k) => k === 'OfferChoice')).toHaveLength(3);
   });
 });

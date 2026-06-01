@@ -10,10 +10,15 @@ const LARGE_OR_SMALLER: ReadonlySet<Size> = new Set<Size>(['Tiny', 'Small', 'Med
 // Large or larger creature has Advantage on this save").
 const LARGE_OR_LARGER: ReadonlySet<Size> = new Set<Size>(['Large', 'Huge', 'Gargantuan']);
 
-// A character's creature size: the monster statblock's size when the
-// character is a monster instance, else the species size, else Medium
-// (the 5e default when neither is known).
+// A character's creature size:
+// 1. `character.sizeOverride` (slice 560: Human / Tiefling "Medium or
+//    Small" choice) takes precedence — consumer sets this at character
+//    creation when the species offers a size choice.
+// 2. The monster statblock's size when the character is a monster instance.
+// 3. The species size.
+// 4. Medium (the 5e default when neither is known).
 export const creatureSize = (character: Character, content: ResolvedContent): Size => {
+  if (character.sizeOverride !== undefined) return character.sizeOverride;
   if (character.statblockId !== undefined) {
     const monster = content.monsters.get(character.statblockId);
     if (monster !== undefined) return monster.size;
