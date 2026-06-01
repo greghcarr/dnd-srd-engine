@@ -312,6 +312,14 @@ export interface AttackIntent {
   // mirrors the slice-467 Savage Attacker shape — pre-validate, fire
   // at damage-roll site, emit a marker event so reducers can track.
   readonly useGiantAncestryFiresBurn?: boolean;
+  // Slice 556: Goliath Giant Ancestry → Frost's Chill opt-in. RAW:
+  // "When you hit a target with an attack roll and deal damage to it,
+  // you can also deal 1d6 Cold damage to that target and reduce its
+  // Speed by 10 feet until the start of your next turn." Same dial
+  // shape as Fire's Burn; the speed reduction lands as a temporary
+  // condition (`frosts-chill-slowed`) sourced by the attacker so its
+  // autoExpiry fires on the attacker's next turn-start.
+  readonly useGiantAncestryFrostsChill?: boolean;
   // Slice 491: consumer-supplied per-attack fact for "the attacker
   // moved 20+ feet straight toward this target immediately before the
   // hit." Canonical user: Boar Gore ("If the target is a Medium or
@@ -415,6 +423,8 @@ export interface ResolveAttackInput {
   readonly useSavageAttacker?: boolean;
   // Slice 555: see AttackIntent.useGiantAncestryFiresBurn doc comment above.
   readonly useGiantAncestryFiresBurn?: boolean;
+  // Slice 556: see AttackIntent.useGiantAncestryFrostsChill doc comment above.
+  readonly useGiantAncestryFrostsChill?: boolean;
   // Slice 491: see AttackIntent.chargedAtTarget doc comment above.
   readonly chargedAtTarget?: boolean;
   // Slice 494: see AttackIntent.abilityOverride doc comment above.
@@ -590,6 +600,24 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     if (ancestry !== 'fires-burn') {
       throw new Error(
         `${attacker.name} did not choose Fire's Burn as their Giant Ancestry (current: ${ancestry ?? 'unresolved'})`,
+      );
+    }
+    const ancestryRes = attacker.resources.find((r) => r.resourceId === GIANT_ANCESTRY_RESOURCE_ID);
+    if (ancestryRes === undefined || ancestryRes.current <= 0) {
+      throw new Error(
+        `${attacker.name} has no Giant Ancestry uses remaining (regain all on a Long Rest)`,
+      );
+    }
+  }
+  // Slice 556: Frost's Chill validation (mirror of Fire's Burn).
+  if (input.useGiantAncestryFrostsChill === true) {
+    if (attacker.speciesId !== GOLIATH_SPECIES_ID) {
+      throw new Error(`${attacker.name} is not a Goliath (Frost's Chill is a Goliath Giant Ancestry option)`);
+    }
+    const ancestry = findGoliathAncestryChoice(attacker, state);
+    if (ancestry !== 'frosts-chill') {
+      throw new Error(
+        `${attacker.name} did not choose Frost's Chill as their Giant Ancestry (current: ${ancestry ?? 'unresolved'})`,
       );
     }
     const ancestryRes = attacker.resources.find((r) => r.resourceId === GIANT_ANCESTRY_RESOURCE_ID);
@@ -1243,6 +1271,12 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   const firesBurnRoll = input.useGiantAncestryFiresBurn === true
     ? rollExtraDamageDice('1d10', 'fire', rng, critical)
     : undefined;
+  // Slice 556: Goliath Frost's Chill rider — RAW +1d6 Cold damage
+  // on hit. The speed-reduction condition is applied separately
+  // below via the events tail; only the damage roll lives here.
+  const frostsChillRoll = input.useGiantAncestryFrostsChill === true
+    ? rollExtraDamageDice('1d6', 'cold', rng, critical)
+    : undefined;
 
   const damageRolled: DamageRolledEvent = {
     id: newEventId() as ULID,
@@ -1256,6 +1290,7 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
       ...(extraDamageRoll === undefined ? [] : [extraDamageRoll]),
       ...onHitRiderRolls,
       ...(firesBurnRoll === undefined ? [] : [firesBurnRoll]),
+      ...(frostsChillRoll === undefined ? [] : [frostsChillRoll]),
     ],
     critical,
     causedByEventId: attackRolled.id,
@@ -1303,6 +1338,12 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   if (firesBurnRoll !== undefined) {
     const fbTotal = firesBurnRoll.rolls.reduce((s, v) => s + v, 0) + firesBurnRoll.modifier;
     rawComponents.push({ amount: Math.max(0, fbTotal), type: firesBurnRoll.type });
+  }
+  // Slice 556: fold Frost's Chill cold damage into rawComponents
+  // (mitigation applies — cold resistance halves it per RAW).
+  if (frostsChillRoll !== undefined) {
+    const fcTotal = frostsChillRoll.rolls.reduce((s, v) => s + v, 0) + frostsChillRoll.modifier;
+    rawComponents.push({ amount: Math.max(0, fcTotal), type: frostsChillRoll.type });
   }
   const attackIsMagical = isMagicWeaponAttack(
     weaponInstance,
@@ -1454,11 +1495,31 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     if (rider.destroy !== undefined && hpWithin(rider.destroy.hpThreshold)) destroyTarget();
   }
 
+  // Slice 556: Frost's Chill applies the speed-reduction condition on
+  // hit (reuses the same applyRiderCondition helper above so the
+  // autoExpiry on the condition lifts the slow at the start of the
+  // attacker's next turn — the condition's sourceCharacterId is set
+  // to the attacker, matching how `expiresOnRound + turnStart` resolves).
+  if (frostsChillRoll !== undefined) {
+    applyRiderCondition('frosts-chill-slowed');
+  }
+
   // Slice 555: Fire's Burn consumes 1 giant-ancestry use ONLY on hit
   // (RAW "When you hit a target with an attack roll and deal damage
   // to it"). The miss path returns early at line 1038-1040, so this
   // branch is reached only when hit=true.
   const firesBurnResource: ReadonlyArray<Event> = firesBurnRoll !== undefined
+    ? [{
+        id: newEventId() as ULID,
+        at,
+        type: 'ResourceSpent',
+        characterId: input.attackerId as ULID,
+        resourceId: GIANT_ANCESTRY_RESOURCE_ID,
+        amount: 1,
+      }]
+    : [];
+  // Slice 556: Frost's Chill same — 1 use of giant-ancestry on hit.
+  const frostsChillResource: ReadonlyArray<Event> = frostsChillRoll !== undefined
     ? [{
         id: newEventId() as ULID,
         at,
@@ -1478,6 +1539,7 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     ...savageAttackerEvent,
     damageApplied,
     ...firesBurnResource,
+    ...frostsChillResource,
     ...damageTriggers,
     ...onHitRiderEvents,
     ...intercept.extraEvents,
@@ -1616,6 +1678,7 @@ export const planAttack = (
     ...(intent.cunningStrike !== undefined ? { cunningStrike: intent.cunningStrike } : {}),
     ...(intent.useSavageAttacker === true ? { useSavageAttacker: true } : {}),
     ...(intent.useGiantAncestryFiresBurn === true ? { useGiantAncestryFiresBurn: true } : {}),
+    ...(intent.useGiantAncestryFrostsChill === true ? { useGiantAncestryFrostsChill: true } : {}),
     ...(intent.chargedAtTarget === true ? { chargedAtTarget: true } : {}),
     ...(intent.abilityOverride !== undefined ? { abilityOverride: intent.abilityOverride } : {}),
     at,

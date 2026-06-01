@@ -156,8 +156,9 @@ describe("Goliath Fire's Burn (slice 555)", () => {
     expect(fireRoll!.expression).toBe('1d10');
     expect(fireRoll!.rolls.length).toBeGreaterThanOrEqual(1);
     // ResourceSpent emitted
-    const resourceSpent = result!.events.find((e): e is { type: string; resourceId: string } =>
-      (e as { type: string }).type === 'ResourceSpent') as { resourceId: string } | undefined;
+    const resourceSpent = result!.events.find(
+      (e) => (e as { type: string }).type === 'ResourceSpent',
+    ) as { resourceId: string } | undefined;
     expect(resourceSpent).toBeDefined();
     expect(resourceSpent!.resourceId).toBe('giant-ancestry');
   });

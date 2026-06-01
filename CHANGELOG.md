@@ -4,6 +4,38 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 556): Goliath Frost's Chill — on-hit +1d6 Cold + -10 ft speed (3rd of 6-arm Giant Ancestry cohort)**
+
+Third arm of the Goliath Giant Ancestry sweep. Reuses the slice-555 attack-rider pattern (dial + validation + on-hit damage + on-hit resource consumption) and adds an on-hit ConditionApplied of a new `frosts-chill-slowed` condition that projects -10 ft walk speed with autoExpiry at start-of-attacker's-next-turn.
+
+RAW (SRD 5.2.1 Goliath, Frost's Chill): "When you hit a target with an attack roll and deal damage to it, you can also deal 1d6 Cold damage to that target and reduce its Speed by 10 feet until the start of your next turn."
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)): new `frosts-chill-slowed` condition. Non-stackable, `autoExpiry: { afterRounds: 1, trigger: turnStart }`, effects: `[{ ModifySpeed walk add -10 }]`. The autoExpiry fires at the start of the source's next turn — RAW says "your next turn" (attacker's); the slice-484 `applyRiderCondition` helper sets `sourceCharacterId = attacker`, so the autoExpiry's turnStart trigger resolves to exactly that boundary.
+
+**Engine** ([src/engine/plan/attack.ts](src/engine/plan/attack.ts)):
+- New AttackIntent + ResolveAttackInput dial `useGiantAncestryFrostsChill?: boolean`.
+- Pre-validation block: same Goliath species + ancestry-choice + giant-ancestry resource > 0 shape as Fire's Burn (slice 555).
+- Damage-roll site: rolls 1d6 cold via `rollExtraDamageDice`. Folded into damageRolled.rolls + the mitigation pipeline.
+- After the existing onHit rider loop, calls the existing `applyRiderCondition('frosts-chill-slowed')` helper — this stamps autoExpiry + sourceCharacterId correctly, mirror of how spell-rider conditions land.
+- Tail: emits `ResourceSpent(giant-ancestry, 1)` after `firesBurnResource` (parallel arm).
+- Forwarded through planAttack's intent → resolveAttack mapping.
+
+**Doc-count guards:** conditions 133 → 134 (118 → 119 mechanic-rider, 116 → 117 with effects). Updated [docs/getting-started.md](docs/getting-started.md) + [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md) + [docs/status.md](docs/status.md) (both rows). Coverage snapshot updated (one intentional addition: `frosts-chill-slowed`).
+
+**Tests** ([tests/unit/engine/slice-556-frosts-chill.test.ts](tests/unit/engine/slice-556-frosts-chill.test.ts), 5 cases): condition shape (in-pack, -10 walk add, autoExpiry 1/turnStart); happy path (cold roll in damageRolled + ResourceSpent + ConditionApplied with attacker as source + target as target); non-Goliath rejected; wrong ancestry rejected; without dial: no rider arm fires.
+
+**Audit:**
+- **Names:** `useGiantAncestryFrostsChill` mirrors `useGiantAncestryFiresBurn`. Condition id `frosts-chill-slowed` mirrors existing `*-active` / `*-slowed` patterns.
+- **DRY:** the dial → validate → roll → emit-resource shape is now used twice (Fire's Burn + Frost's Chill); slice 557 (Hill's Tumble) makes 3 — at the third sibling I'll extract a shared `validateGoliathAncestry(option, attacker, state)` helper. Today each block is ~12 lines and reads clearly inline.
+- **SRP:** validation + damage roll + condition application + resource consumption are each independent ~5-line edits.
+- **Magic numbers:** `'1d6'` and `'cold'` inline (RAW values). `-10` lives in the condition definition.
+- **at-threading:** unchanged.
+- **Mechanical outcomes asserted:** cold roll on hit; condition applied with autoExpiry stamping; ResourceSpent; absence on miss + no-flag; rejection paths.
+
+**Pattern-check:** the Goliath cohort now has 3 of 6 arms wired (Cloud's Jaunt, Fire's Burn, Frost's Chill). The slice-484 `applyRiderCondition` helper proved its reuse — Frost's Chill's autoExpiry stamping is identical to spell-rider conditions, no new mechanism. Slice 557 (Hill's Tumble) will reuse the same helper for applying Prone.
+
+---
+
 **Engine (slice 555): Goliath Fire's Burn — on-hit +1d10 Fire damage (2nd of 6-arm Giant Ancestry cohort)**
 
 Second arm of the Goliath Giant Ancestry sweep. Wires via the slice-467 Savage Attacker pattern: AttackIntent dial + pre-validation + on-hit damage rider + on-hit resource consumption.
