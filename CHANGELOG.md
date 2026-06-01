@@ -4,6 +4,31 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 552): Reach property extends opportunity-attack threat to 10 ft**
+
+Closes the reach-OA drift from the final L1 SRD compliance pass. RAW (SRD 5.2.1 Reach): "This weapon adds 5 feet to your reach when you attack with it, as well as when determining your reach for Opportunity Attacks with it." Pre-slice the movement planner hardcoded a 5-ft threat range for every reactor regardless of equipped weapon, so a Halberd / Glaive / Lance / Pike / Whip wielder could never threaten OAs at their RAW 10-ft range. The mover always treated the reach-weapon enemy as if they had no reach — effectively giving free movement through their threat zone.
+
+**Engine** ([src/engine/plan/movement.ts](src/engine/plan/movement.ts), `planMove` OA emission loop ~line 283): per-reactor reach now reads from the reactor's equipped main-hand weapon. If the reactor's main-hand weapon is a melee weapon with the `reach` property, threat range = 10 ft; otherwise defaults to 5 ft. The lookup is `state.itemInstances[mainHandId]` → `content.items.get(definitionId)`.
+
+**Documented design decisions:**
+- **Main-hand only.** Off-hand reach is unusual (a reach weapon is typically heavy / two-handed); deferred until a canonical user appears.
+- **Per-reactor computation.** Each combatant in the OA-emission loop computes their own reach independently; mixed reach + non-reach reactors in the same encounter all work correctly.
+- **Default 5 ft for unarmed.** A reactor with no equipped main-hand weapon falls back to 5 ft (RAW: unarmed strike is 5 ft).
+
+**Tests** ([tests/unit/engine/slice-552-reach-oa-threat.test.ts](tests/unit/engine/slice-552-reach-oa-threat.test.ts), 5 cases): Halberd reactor at 10 ft → mover to 15 ft provokes OA (was unreachable pre-slice); Halberd reactor at 5 ft → mover to 10 ft does NOT provoke (still in 10-ft reach); Longsword reactor at 10 ft → mover to 15 ft does NOT provoke (was never in 5-ft reach — control case); Longsword reactor at 5 ft → mover to 10 ft provokes (standard 5-ft OA — control case); unarmed reactor defaults to 5 ft.
+
+**Audit:**
+- **Names:** `DEFAULT_MELEE_REACH` + `REACH_PROPERTY_RANGE` constants extracted (the prior code had only `MELEE_REACH = 5` inline).
+- **DRY:** the reach lookup is a small inline block; mirror of the slice-549 weapon-property fact pattern (read instance → def → check property). Below the abstraction threshold for now; could extract `effectiveMeleeReach(character, state, content)` if a third caller appears.
+- **SRP:** OA detection loop gains a reach derivation; everything else unchanged.
+- **Magic numbers:** `5` and `10` extracted to constants.
+- **at-threading:** unchanged (no new events emitted).
+- **Mechanical outcomes asserted:** reach weapon extends threat (positive); default 5-ft unchanged (control); unarmed defaults to 5 ft.
+
+**Pattern-check:** the final L1 audit also flagged Heavy-weapon Small-creature disadvantage and the Loading property cap as unwired — verified BOTH were already wired (attack.ts:649 `heavyForSmall` and attack.ts:1514 `weaponIsLoading`). Slice 556 will add a brief audit-clarification CHANGELOG note for those. So the only verified unwired weapon-property concern was Reach, which this slice closes.
+
+---
+
 **Content (slice 551): Forest Gnome Speak with Animals — per-rest cap closure**
 
 Closes an at-will over-grant surfaced by the final L1 SRD compliance pass. RAW caps Forest Gnome's Speak with Animals at PB free uses per long rest; the pack wired it as `at-will` (infinite). One-line content fix moves the preparation to `oncePerLongRest` — closer to RAW, erring toward stinginess (1 use per rest vs RAW PB uses) rather than the prior unbounded over-grant.

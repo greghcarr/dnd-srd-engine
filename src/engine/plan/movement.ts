@@ -283,22 +283,47 @@ export const planMove = (
   if (!combatant.turnUsage.disengaged && !withinNoProvokeBudget && !suppressOpportunityForFlyby) {
     const fromPos = combatant.position;
     const toPos = intent.to;
-    const MELEE_REACH = 5;
+    // Slice 552: the reactor's effective melee threat range. Default
+    // is 5 ft; bumps to 10 ft when the reactor's equipped main-hand
+    // weapon carries the `reach` property (Glaive / Halberd / Lance /
+    // Pike / Whip per SRD 5.2.1). Pre-slice this was hardcoded to 5,
+    // so reach-weapon wielders couldn't threaten OAs at their RAW
+    // reach. Recomputed per reactor inside the loop.
+    const DEFAULT_MELEE_REACH = 5;
+    const REACH_PROPERTY_RANGE = 10;
     const enc = state.encounters[encounterId];
     if (enc) {
       for (const other of enc.combatants) {
         if (other.combatantId === intent.combatantId) continue;
         if (!other.position) continue;
+        const reactorChar = state.characters[other.combatantId];
+        // Compute this reactor's effective melee reach from their
+        // main-hand weapon (if any). Off-hand isn't checked: a creature
+        // with reach in off-hand only would be unusual; deferred until
+        // a canonical user appears.
+        let reactorReach = DEFAULT_MELEE_REACH;
+        const mhId = reactorChar?.equipped?.mainHand;
+        if (mhId !== undefined) {
+          const mhInstance = state.itemInstances[mhId];
+          const mhDef = mhInstance !== undefined
+            ? content.items.get(mhInstance.definitionId)
+            : undefined;
+          if (mhDef?.itemKind === 'weapon'
+            && mhDef.attackKind === 'melee'
+            && mhDef.properties.includes('reach')) {
+            reactorReach = REACH_PROPERTY_RANGE;
+          }
+        }
         const wasInReach =
           Math.max(Math.abs(other.position.x - fromPos.x), Math.abs(other.position.y - fromPos.y)) <=
-          MELEE_REACH;
+          reactorReach;
         const stillInReach =
           Math.max(Math.abs(other.position.x - toPos.x), Math.abs(other.position.y - toPos.y)) <=
-          MELEE_REACH;
+          reactorReach;
         if (!wasInReach || stillInReach) continue;
-        const reactorChar = state.characters[other.combatantId];
         // Unconscious / Incapacitated / Stunned / Paralyzed / Petrified
-        // creatures can't take reactions.
+        // creatures can't take reactions (reactorChar resolved above for
+        // reach lookup).
         if (!reactorChar || findActorBlockingCondition(reactorChar) !== undefined) continue;
         // Reaction already spent this round → no opportunity.
         if (other.turnUsage.reactionUsedThisRound) continue;
