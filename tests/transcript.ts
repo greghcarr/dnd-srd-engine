@@ -243,6 +243,8 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       return `_(${event.triggerId.split(':').slice(1).join(':')} triggers for ${characterName(stateBefore, event.characterId)})_`;
     case 'ActionEconomyConsumed':
       return `_(${characterName(stateBefore, event.combatantId)} consumes ${event.kind})_`;
+    case 'ActionReadied':
+      return `**${characterName(stateBefore, event.combatantId)}** readies an action (trigger: ${event.trigger}).`;
     case 'RecklessAttackActivated':
       return `**${characterName(stateBefore, event.combatantId)}** attacks recklessly.`;
     case 'StunningStrikeAttempted':

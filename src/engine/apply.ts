@@ -73,6 +73,7 @@ import {
 import { applyTriggerFired } from './reducers/triggers.js';
 import {
   applyActionEconomyConsumed,
+  applyActionReadied,
   applyRecklessAttackActivated,
   applyStunningStrikeAttempted,
   applySavageAttackerUsed,
@@ -332,6 +333,9 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
         break;
       case 'ActionEconomyConsumed':
         applyActionEconomyConsumed(draft, event);
+        break;
+      case 'ActionReadied':
+        applyActionReadied(draft, event);
         break;
       case 'RecklessAttackActivated':
         applyRecklessAttackActivated(draft, event);

@@ -2,6 +2,7 @@ import type { Draft } from 'immer';
 import type { CampaignState } from '../../schemas/runtime/campaign.js';
 import type {
   ActionEconomyConsumedEvent,
+  ActionReadiedEvent,
   RecklessAttackActivatedEvent,
   StunningStrikeAttemptedEvent,
   SavageAttackerUsedEvent,
@@ -64,6 +65,23 @@ export const resetActionForActionSurge = (
   combatant: { turnUsage: { actionUsed: boolean } },
 ): void => {
   combatant.turnUsage.actionUsed = false;
+};
+
+// Slice 572: RAW PHB 2024 Ready action. The planner has already emitted
+// ActionEconomyConsumed { kind: 'action' } to consume the Action; this
+// reducer just records the trigger description on the combatant's
+// turnUsage. The Reaction stays available — RAW: "lets you act using
+// your Reaction before the start of your next turn." TurnStarted
+// clears the readiedAction along with the other per-turn flags.
+export const applyActionReadied = (
+  state: Draft<CampaignState>,
+  event: ActionReadiedEvent,
+): void => {
+  const encounter = state.encounters[event.encounterId];
+  invariant(encounter !== undefined, `Encounter ${event.encounterId} not found`);
+  const combatant = encounter.combatants.find((c) => c.combatantId === event.combatantId);
+  invariant(combatant !== undefined, `Combatant ${event.combatantId} not in encounter`);
+  combatant.turnUsage.readiedAction = { trigger: event.trigger };
 };
 
 export const applyRecklessAttackActivated = (
