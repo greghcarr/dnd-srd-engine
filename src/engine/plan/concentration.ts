@@ -27,6 +27,9 @@ const CONCENTRATION_DC_DIVISOR = 2;
 const totalOfComponents = (components: ReadonlyArray<DamageComponent>): number =>
   components.reduce((sum, c) => sum + c.amount, 0);
 
+const concentrationDC = (damageTaken: number): number =>
+  Math.max(CONCENTRATION_MIN_DC, Math.floor(damageTaken / CONCENTRATION_DC_DIVISOR));
+
 /**
  * Predicts whether the given mitigated damage will reduce the target's
  * current HP to zero or below, after temp HP absorbs first. Mirrors the
@@ -51,6 +54,11 @@ const damageWouldDropTo0 = (
  * event chain as the damage that downed it.
  *
  * Returns at most one event. Callers append it after `DamageApplied`.
+ *
+ * Slice 601: prefer `planConcentrationOnDamage` for the full RAW path —
+ * it ALSO rolls the per-damage CON save that this helper omits. Kept as
+ * the unconscious-only variant for tests and the rare call site that
+ * has no RNG available.
  */
 export const planConcentrationBreakOnDrop = (
   target: Character,
@@ -72,15 +80,115 @@ export const planConcentrationBreakOnDrop = (
   return [broken];
 };
 
+/**
+ * RAW 2024 PHB Concentration (slice 601):
+ *
+ * > Whenever you take damage while you are concentrating on a spell,
+ * > you must make a Constitution saving throw to maintain your
+ * > concentration. The DC equals 10 or half the damage you take
+ * > (rounded down), whichever number is higher. If you take damage
+ * > from multiple sources, such as an arrow and a dragon's breath,
+ * > you make a separate saving throw for each source of damage.
+ *
+ * Plus:
+ *
+ * > You also lose concentration on a spell if you are incapacitated
+ * > or if you die.
+ *
+ * This helper handles both:
+ *   1. would-drop-to-0 → immediately emit `ConcentrationBroken (unconscious)`,
+ *      no save needed (RAW: 0 HP → Unconscious → ends concentration).
+ *   2. non-fatal damage → roll the per-damage CON save vs DC max(10, half).
+ *      On failure also emit `ConcentrationBroken (failedSave)`.
+ *
+ * Callers append the returned events after their `DamageApplied`. The
+ * save uses the standard `computeSavingThrow` derivation (so Bless /
+ * Bane / War Caster advantage / Eldritch Mind's "advantage on CON
+ * saves to maintain concentration" / Halfling Luck reroll all wire
+ * automatically through the same path the explicit
+ * `planCheckConcentration` planner uses).
+ *
+ * Damage of 0 (full immunity, full resistance + roll of 1, etc.)
+ * returns no events — RAW: no damage taken, no save.
+ */
+export const planConcentrationOnDamage = (
+  state: CampaignState,
+  content: ResolvedContent,
+  rng: RNG,
+  target: Character,
+  mitigated: ReadonlyArray<DamageComponent>,
+  causedByEventId: ULID,
+  at: string,
+): ReadonlyArray<Event> => {
+  if (target.concentrationEffectId === undefined) return [];
+  const total = totalOfComponents(mitigated);
+  if (total <= 0) return [];
+
+  if (damageWouldDropTo0(target, mitigated)) {
+    const broken: ConcentrationBrokenEvent = {
+      id: newEventId() as ULID,
+      at,
+      type: 'ConcentrationBroken',
+      effectInstanceId: target.concentrationEffectId,
+      casterId: target.id as ULID,
+      reason: 'unconscious',
+      causedByEventId,
+    };
+    return [broken];
+  }
+
+  const dc = concentrationDC(total);
+  const saveDerivation = computeSavingThrow({
+    character: target,
+    itemInstances: state.itemInstances,
+    content,
+    ability: 'CON',
+    characters: state.characters,
+    isConcentrationCheck: true,
+  });
+  const rolls: number[] = [rollDie(D20_SIDES, rng)];
+  const d20 = applyHalflingLuckFromFlag(rolls[0]!, saveDerivation.hasHalflingLuck, rolls, rng);
+  const saveBonus = rollSaveBonusDice(saveDerivation.bonusDice, rng);
+  const bonus = saveDerivation.total + saveBonus.total;
+  const totalRoll = d20 + bonus;
+  const success = totalRoll >= dc;
+
+  const save: SaveRolledEvent = {
+    id: newEventId() as ULID,
+    at,
+    type: 'SaveRolled',
+    targetId: target.id as ULID,
+    ability: 'CON',
+    dc,
+    d20: rolls,
+    used: 'none',
+    bonus,
+    total: totalRoll,
+    success,
+    breakdown: [...saveDerivation.breakdown, ...saveBonus.breakdown],
+  };
+  const events: Event[] = [save];
+
+  if (!success) {
+    events.push({
+      id: newEventId() as ULID,
+      at,
+      type: 'ConcentrationBroken',
+      effectInstanceId: target.concentrationEffectId,
+      casterId: target.id as ULID,
+      reason: 'failedSave',
+      causedByEventId: save.id,
+    } satisfies ConcentrationBrokenEvent);
+  }
+  return events;
+};
+
 export interface CheckConcentrationIntent {
   readonly type: 'CheckConcentration';
   readonly characterId: string;
   readonly damageTaken: number;
   readonly at?: string;
 }
-
-const concentrationDC = (damageTaken: number): number =>
-  Math.max(CONCENTRATION_MIN_DC, Math.floor(damageTaken / CONCENTRATION_DC_DIVISOR));
 
 export const planCheckConcentration = (
   state: CampaignState,

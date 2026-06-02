@@ -63,7 +63,7 @@ import { dispatchTriggers } from '../triggers/dispatch.js';
 import { buildEffectStack } from '../../derive/effect-stack.js';
 import { isImmuneToCondition } from '../../derive/condition-immunity.js';
 import { isHealingBlocked } from '../../derive/healing-block.js';
-import { planConcentrationBreakOnDrop } from './concentration.js';
+import { planConcentrationOnDamage } from './concentration.js';
 import { assertActorCanAct } from './_actor-state.js';
 import { parseSpellDurationMinutes } from '../../internal/spell-duration.js';
 import {
@@ -608,7 +608,7 @@ const planAttackMechanic = (
     events.push(damageApplied);
     events.push(...intercept.extraEvents);
     events.push(
-      ...planConcentrationBreakOnDrop(target, intercept.components, damageApplied.id, at),
+      ...planConcentrationOnDamage(state, content, rng, target, intercept.components, damageApplied.id, at),
     );
     // Slice 516: dispatch OnEvent triggers on the spell-attack
     // DamageApplied so per-spell on-hit riders fire (canonical user:
@@ -852,7 +852,7 @@ const planSaveMechanic = (
         events.push(damageApplied);
         events.push(...intercept.extraEvents);
         events.push(
-          ...planConcentrationBreakOnDrop(target, intercept.components, damageApplied.id, at),
+          ...planConcentrationOnDamage(state, content, rng, target, intercept.components, damageApplied.id, at),
         );
       }
     }
@@ -1399,7 +1399,7 @@ const planHpThresholdMechanic = (
     };
     events.push(damageApplied);
     events.push(...intercept.extraEvents);
-    events.push(...planConcentrationBreakOnDrop(target, intercept.components, damageApplied.id, at));
+    events.push(...planConcentrationOnDamage(state, content, rng, target, intercept.components, damageApplied.id, at));
   }
   return events;
 };

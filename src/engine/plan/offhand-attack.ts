@@ -24,7 +24,7 @@ import { isMagicWeaponAttack } from '../../derive/magicality.js';
 import { canUseWeaponMastery } from '../../derive/weapon-mastery.js';
 import { buildEffectStack } from '../../derive/effect-stack.js';
 import { applyAll } from '../apply.js';
-import { planConcentrationBreakOnDrop } from './concentration.js';
+import { planConcentrationOnDamage } from './concentration.js';
 import { D20_SIDES, NAT_20, NAT_1 } from '../../internal/constants.js';
 import type { ULID } from '../ids-utils.js';
 import { assertActorCanAct } from './_actor-state.js';
@@ -251,7 +251,10 @@ export const planOffHandAttack = (
     components: intercept.components,
     causedByEventId: damageRolled.id,
   };
-  const concentrationBreak = planConcentrationBreakOnDrop(
+  const concentrationBreak = planConcentrationOnDamage(
+    state,
+    content,
+    rng,
     target,
     intercept.components,
     damageApplied.id,

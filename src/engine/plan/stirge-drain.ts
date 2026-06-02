@@ -37,7 +37,7 @@ import { nowIso } from '../../internal/clock.js';
 import { rollDie } from '../../rng/dice.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
-import { planConcentrationBreakOnDrop } from './concentration.js';
+import { planConcentrationOnDamage } from './concentration.js';
 import type { ULID } from '../ids-utils.js';
 
 export const STIRGE_ATTACHED_CONDITION_ID = 'stirge-attached';
@@ -122,7 +122,7 @@ export const planStirgeDrain = (
   };
   events.push(damageApplied);
   events.push(...intercept.extraEvents);
-  events.push(...planConcentrationBreakOnDrop(target, intercept.components, damageApplied.id, at));
+  events.push(...planConcentrationOnDamage(state, content, rng, target, intercept.components, damageApplied.id, at));
   return events;
 };
 

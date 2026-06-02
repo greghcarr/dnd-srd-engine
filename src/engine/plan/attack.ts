@@ -44,7 +44,7 @@ import {
   duplicateAC as computeDuplicateAC,
   type MirrorImageState,
 } from '../../derive/mirror-image.js';
-import { planConcentrationBreakOnDrop } from './concentration.js';
+import { planConcentrationOnDamage } from './concentration.js';
 import { dispatchTriggers } from '../triggers/dispatch.js';
 import { applyAll } from '../apply.js';
 import { D20_SIDES, NAT_20, NAT_1 } from '../../internal/constants.js';
@@ -1430,7 +1430,10 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     // attacks; the spell / trap damage emitters already set it.
     sourceCharacterId: input.attackerId as ULID,
   };
-  const concentrationBreak = planConcentrationBreakOnDrop(
+  const concentrationBreak = planConcentrationOnDamage(
+    state,
+    content,
+    rng,
     target,
     intercept.components,
     damageApplied.id,

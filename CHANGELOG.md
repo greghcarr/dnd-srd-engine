@@ -4,6 +4,42 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 601): auto-trigger CON save on every DamageApplied to a concentrating creature**
+
+The slice 600 fuzz-replay viewer surfaced this gap end-to-end across 15 battles: Bless, Hex, Hunter's Mark, Faerie Fire and every other concentration spell stayed up indefinitely under chip damage because the engine never rolled the per-damage CON save RAW requires. The planner existed ([src/engine/plan/concentration.ts](src/engine/plan/concentration.ts) `planCheckConcentration`, slice 515) but was only callable explicitly, not wired into the damage path. Only the drop-to-0 unconscious break path fired automatically.
+
+**RAW** (2024 PHB Concentration): "Whenever you take damage while you are concentrating on a spell, you must make a Constitution saving throw to maintain your concentration. The DC equals 10 or half the damage you take (rounded down), whichever number is higher. If you take damage from multiple sources, such as an arrow and a dragon's breath, you make a separate saving throw for each source of damage."
+
+**Changes:**
+
+- New helper [`planConcentrationOnDamage`](src/engine/plan/concentration.ts) ([src/engine/plan/concentration.ts](src/engine/plan/concentration.ts)) — supersedes `planConcentrationBreakOnDrop` at every damage emission site. Single entry point that:
+  - If `damageWouldDropTo0` → emits `ConcentrationBroken (reason='unconscious')` (legacy path, kept verbatim).
+  - Else if non-fatal damage → rolls a CON save through the standard `computeSavingThrow` derivation (`isConcentrationCheck: true` so Eldritch Mind / War Caster / Bless / Bane / Halfling Luck wire through automatically) and emits a `SaveRolled` event. On failure, also emits `ConcentrationBroken (reason='failedSave')` chained off the save's id.
+  - Damage of 0 (full immunity / resistance to 0) returns no events — RAW: no damage, no save.
+- Wired all 8 emission sites: [src/engine/plan/attack.ts:1433](src/engine/plan/attack.ts#L1433), [src/engine/plan/cast-spell.ts](src/engine/plan/cast-spell.ts) (3 sites: spell-attack hit, save-half damage, fatal interception), [src/engine/plan/weapon-mastery.ts:260](src/engine/plan/weapon-mastery.ts#L260) (graze), [src/engine/plan/offhand-attack.ts:254](src/engine/plan/offhand-attack.ts#L254), [src/engine/plan/stirge-drain.ts:125](src/engine/plan/stirge-drain.ts#L125), [src/engine/plan/lands-aid.ts:191](src/engine/plan/lands-aid.ts#L191), [src/engine/plan/falling.ts:131](src/engine/plan/falling.ts#L131).
+- [src/engine/plan/falling.ts](src/engine/plan/falling.ts) `planFalling` signature gained an `rng: RNG` parameter (was the only damage emitter without one); the `engine.plan.falling` factory at [src/engine/index.ts:874](src/engine/index.ts#L874) supplies it from its closure, so no consumer-facing change.
+- `planConcentrationBreakOnDrop` kept as the unconscious-only variant for tests and the rare call site without RNG. The new helper is now canonical for damage emitters.
+
+**Tests:** new [tests/unit/engine/slice-601-concentration-save-on-damage.test.ts](tests/unit/engine/slice-601-concentration-save-on-damage.test.ts) (4 cases): non-fatal damage emits exactly one CON save with DC = max(10, half); failed save emits `ConcentrationBroken (failedSave)` chained to the save id; successful save emits no Broken event; fatal damage skips the save and emits Broken (unconscious) directly. Existing [tests/unit/engine/plan-concentration-on-drop.test.ts](tests/unit/engine/plan-concentration-on-drop.test.ts) updated: the "stays conscious" case now also filters seeds to successful CON saves before asserting no break (previously the assertion would trip on rare failed-save seeds).
+
+**Verification:** fuzz seed=2010 now emits four CON saves across the battle, one of which fails and breaks the warlock's Hex mid-fight — exactly the RAW-correct outcome the slice-600 review flagged as missing. Full suite green (480 files, 3250 tests, 173 unrelated skips), tsc clean.
+
+**Audit:**
+- **Names:** `planConcentrationOnDamage` parallels the existing `planConcentrationBreakOnDrop` and `planCheckConcentration`; intent-revealing.
+- **DRY:** the new helper consolidates the unconscious-break path with the save-roll path that was duplicated across `planCheckConcentration`'s body. The DC calculation moved to a single private `concentrationDC` referenced by both call sites.
+- **SRP:** one helper, one job (handle every concentration consequence of one damage event).
+- **Magic numbers:** `CONCENTRATION_MIN_DC = 10` and `CONCENTRATION_DC_DIVISOR = 2` were already extracted (slice 515); no new literals.
+- **at-threading:** every site passes through the surrounding planner's `at`.
+- **Mechanical outcomes asserted:** the new test pins DC math, save-fail → Broken event linkage, save-success → no Broken event, and the drop-to-0 skip path.
+
+**Pattern-check** (filter shape: "every site that emits DamageApplied to a character that could be concentrating"): swept `grep -rn "type: 'DamageApplied'" src/engine/` → 14 emission sites. 8 already called `planConcentrationBreakOnDrop` and are now upgraded. The other 6 emit damage in contexts where concentration breaks aren't applicable: `planTickAura` (the caster's own aura damaging targets — the targets aren't concentrating on the caster's spell; their own concentration on something else would need a separate trigger but the aura damage path here is symmetric; deferred as future), `planTickRecurring` (same shape), `planTickMovementDamage` (same), `planResolveSavingThrow` damage emission for area spells already routes through the cast-spell.ts site, plus two interceptFatalDamage paths that emit ExcessDamage as a label not real damage. Of the 6 deferred, the 3 `Tick*` planners are worth a follow-up slice — they apply damage to creatures that may be concentrating (e.g. a wizard taking Spirit Guardians aura damage from a hostile cleric while concentrating on Hex). Tracked here as **Open follow-up.**
+
+**Open follow-ups:**
+- Wire `planConcentrationOnDamage` into the three aura-tick planners (`planTickAura`, `planTickRecurring`, `planTickMovementDamage`) so a concentrating creature taking Spirit Guardians / Cloud of Daggers / Spike Growth damage gets the same auto-save the direct-damage path now provides.
+- Multi-source-per-event RAW separation: a single attack that emits multiple `DamageComponent` entries (1d8 piercing + 1d6 hex necrotic) currently rolls one CON save against the total. RAW: separate saves per source. Engine fix needs the helper to iterate components rather than total them; deferred since the practical impact is small (one DC vs two, usually the same outcome at low damages).
+
+---
+
 **Tooling (slice 600): web demo becomes a fuzz-replay viewer (combat-sandbox retired, map removed)**
 
 The web demo's old shape (user clicks Attack / Move / Dash / Dodge buttons on the active combatant's row, plus a small grid map, plus the event inspector) didn't scale with the engine. Every new planner or condition or class feature wanted its own toolbar button; the four hand-built scenarios couldn't surface emergent-interaction bugs the way the combat-fuzz tool already does (slices 585-598). The "interactive sandbox" framing also competed with the doc-routing the README's quick start now does better (slice 599: `examples/02-combat-encounter` for code, `combat-fuzz` for CLI battles).

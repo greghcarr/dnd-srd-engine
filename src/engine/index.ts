@@ -871,7 +871,7 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
       return { events: planMultiattack(state, content, rng, { type: 'Multiattack', ...intent }) };
     },
     falling(state, intent) {
-      return { events: planFalling(state, content, { type: 'Falling', ...intent }) };
+      return { events: planFalling(state, content, rng, { type: 'Falling', ...intent }) };
     },
     grapple(state, intent) {
       return { events: planGrapple(state, content, rng, { type: 'Grapple', ...intent }) };

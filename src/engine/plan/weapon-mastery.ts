@@ -16,7 +16,7 @@ import type { WeaponMasteryActivatedEvent } from '../../schemas/events/weapon-ma
 import type { ConditionAppliedEvent, DamageAppliedEvent } from '../../schemas/events/combat.js';
 import type { CombatantMovedEvent } from '../../schemas/events/movement.js';
 import type { SaveRolledEvent } from '../../schemas/events/checks.js';
-import { planConcentrationBreakOnDrop } from './concentration.js';
+import { planConcentrationOnDamage } from './concentration.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { isMagicWeaponAttack } from '../../derive/magicality.js';
@@ -257,7 +257,7 @@ export const planWeaponMastery = (
         events.push(grazeDamage);
         events.push(...intercept.extraEvents);
         events.push(
-          ...planConcentrationBreakOnDrop(target, grazeDamage.components, grazeDamage.id, at),
+          ...planConcentrationOnDamage(state, content, rng, target, grazeDamage.components, grazeDamage.id, at),
         );
       }
       break;
