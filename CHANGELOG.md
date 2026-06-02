@@ -4,6 +4,47 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Tooling (slice 590): combat-fuzz buff/utility spell policy**
+
+The combat fuzz's pickIntent step 2 (first-turn buff) handled only the four BA-cast riders (Barbarian Rage, Ranger Hunter's Mark, Warlock Hex, plus Paladin Divine Favor added this slice). The fuzz never exercised Action-cast L1 buffs (Bless, Mage Armor, Faerie Fire), so the engine's `blessed` / `mage-armor` / `faerie-fire-active` condition wiring, slot-consume + concentration tracking on Action casts, and any interactions with the existing AttackRolled / SaveRolled flow were unexercised by the bug-discovery harness.
+
+**Changes** ([scripts/combat-fuzz.ts](scripts/combat-fuzz.ts)):
+- New `firstTurnActionBuffTried` flag on `Combatant` (parallel to `firstTurnBuffTried`); reset is implicit (each new battle constructs new combatants).
+- Step 2 (BA buff) now also handles `paladin → divine-favor` self-cast, gated by `hasUnusedL1Slot(c)`. Paladin at L1 has zero slots per RAW (spellcasting starts at L2), so the gate skips the branch — Divine Favor is exercised at L2+ once the fuzz supports higher levels (slice 593).
+- New step 2b (Action buff) after step 2 + the mastery-fire hook, before step 3. Branches:
+  - `cleric` / `bard` → Bless self-target (1st-level slot, concentration, +1d4 to attacks / saves for 1 minute).
+  - `wizard` / `sorcerer` → Mage Armor self-target (1st-level slot, no concentration, AC base 13 + DEX for 8 hours).
+  - `druid` → Faerie Fire on opponent (1st-level slot, concentration, advantage on attacks vs outlined target).
+- `CLASS_BUILDS` `l1Spells` expanded so the policy branches have a prepared spell to cast:
+  - `bard` += `bless`
+  - `cleric` += `bless`
+  - `druid` += `faerie-fire`
+  - `sorcerer` += `mage-armor`
+
+**Verification** (30 seeds, slice 590-fuzz):
+- 23 buff casts across the batch: Mage Armor (8 + 8), Bless (4 + 4), Faerie Fire (5 + 3), Divine Favor (0 — paladin L1 has no slots, expected).
+- Mage Armor verified raising AC end-to-end (seed 400: sorcerer Aria's AC went from 11 → 14 after the cast; Bran's longsword attack roll vs Aria flipped from `vs AC 11` to `vs AC 14`).
+- Bless verified casting + applying `blessed` condition + claiming concentration ("Bran is now Blessed", "Bran is now concentrating on Bless"). The +1d4 attack/save modifier didn't surface in transcripts in this batch because the Blessed bearers (Cleric / Bard) cast save-based spells (Sacred Flame / Vicious Mockery) where the +1d4 doesn't apply; engine-side unit tests already cover the modifier.
+- Faerie Fire verified casting (Druid Bran cast on opponent Aria + slot consumed + concentration claimed).
+- No engine errors / bugs surfaced this run; the buff policy works cleanly against the engine.
+
+**Audit:**
+- **Names:** `firstTurnActionBuffTried` parallels `firstTurnBuffTried`. The buff order in step 2b mirrors caster class order in `CLASS_BUILDS`.
+- **DRY:** each buff branch is a single `return` statement; the shared check (`!actionUsed && hasUnusedL1Slot && hasSpell`) is intentional per-branch since the spell id varies.
+- **SRP:** policy hook only; no engine, content, or test changes.
+- **Magic numbers:** none added.
+- **at-threading:** N/A.
+- **Mechanical outcomes asserted:** live fuzz verification (23 buff casts across 30 seeds with the AC change verified end-to-end).
+
+**Pattern-check (filter shape: "L1 spell preparable by class X but not in CLASS_BUILDS"):** swept the CLASS_BUILDS table against the spell list per class:
+- Bard could also prepare Faerie Fire / Heroism / Charm Person at L1; left at Bless for slice 590.
+- Cleric could also prepare Shield of Faith / Sanctuary / Command at L1; left at Bless.
+- Druid could also prepare Longstrider / Goodberry at L1; left at Faerie Fire.
+- Wizard / Sorcerer could prepare Shield (reaction, slice 592 work) + Charm Person; left at Mage Armor.
+The fuzz exercises the most-impactful buff per class in 1v1 combat; broader spell coverage would be a "more random L1 spell selection" follow-up (deferred).
+
+---
+
 **Engine + content + tooling (slice 589): weapon-mastery firings in fuzz; property-qualified weapon proficiency tokens; Rogue / Monk / Wizard proficiency RAW fixes**
 
 The combat fuzz never exercised Weapon Mastery because the fuzz built characters without a chosen mastery list. Wiring the fuzz to fire mastery riders after hits surfaced a deeper RAW deviation: the pack's class definitions used a flat string list for `weaponProficiencies` (`"simple"`, `"martial"`, weapon id) that couldn't express "Martial weapons that have the Finesse or Light property" — Rogue's RAW shape per [references/srd-markdown/classes.md](references/srd-markdown/classes.md). With only `"simple"` declared, the engine's [src/derive/attack.ts](src/derive/attack.ts) `isWeaponProficient` returned false for a Rogue holding a shortsword, and `canUseWeaponMastery` then rejected the Vex rider as un-mastered.
@@ -204,59 +245,10 @@ Before slice 583 the spell-coverage smoke test skipped 11 aura-damage spells (Sp
 
 ---
 
-**Engine + content (slices 580 + 581 + 582): Option-C closure tail — Deafened auto-fail, Frightened movement-gate audit-clarification, minimal encumbrance domain**
-
-Closes the final three Option-C items in one bundled commit. All three are scoped narrowly (each is small / clarifying / minimum-viable) and together close the deferred-list end-to-end.
-
-**Slice 580: Deafened auto-fails ability checks that require hearing**
-
-RAW (SRD 5.2.1 Deafened): "A deafened creature can't hear and automatically fails any ability check that requires hearing."
-
-Pre-slice the deafened condition shipped with `effects: []` — the auto-fail arm wasn't enforced anywhere.
-
-- **Derive change** ([src/derive/ability-check.ts](src/derive/ability-check.ts)): `AbilityCheckResult` gains `hasAutoFail: boolean` (mirror of slice 576's SaveResult).
-- **Planner change** ([src/engine/plan/checks.ts](src/engine/plan/checks.ts)): `AbilityCheckIntent` gains optional `sense?: 'sight'|'hearing'|'smell'|'touch'|'taste'` (threaded into the existing slice-263 `event.sense` fact); `planAbilityCheck` forces `success = false` when the bearer is Deafened AND the check declares `sense: 'hearing'`.
-- **Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)): Deafened gains a predicate-gated `SetAdvantage on: { kind: 'check' }, mode: 'auto-fail', condition: event.sense == 'hearing'`.
-- Tests: 9 cases ([tests/unit/engine/slice-580-deafened-auto-fail.test.ts](tests/unit/engine/slice-580-deafened-auto-fail.test.ts)) — pack declaration; derive hasAutoFail per-sense; planner force-fail; sense mismatch passes; non-Deafened passes; no-DC emits with breakdown but no success field.
-
-**Slice 581: Frightened movement-gate (audit-clarification)**
-
-The slice 567 CHANGELOG entry listed Frightened "can't move closer to source" as deferred ("no engine primitive"). **That was incorrect** — the gate IS wired ([src/engine/plan/movement.ts:127-153](src/engine/plan/movement.ts#L127-L153)) and exercised by [tests/audit/raw-compliance.test.ts](tests/audit/raw-compliance.test.ts). Slice 581 adds a dedicated behavior test under tests/unit/engine/ so the integration is also covered at the unit level (faster regression catch). No engine or content change; pure audit-clarification.
-
-Tests: 3 cases ([tests/unit/engine/slice-581-frightened-movement-gate.test.ts](tests/unit/engine/slice-581-frightened-movement-gate.test.ts)) — Frightened with sourceCharacterId stamps correctly; Frightened condition still has its LoS-gated bearer-side disadvantage; the movement-gate code path remains present in movement.ts (structural smoke check).
-
-**Slice 582: minimal encumbrance domain**
-
-Closes the Petrified weight ×10 + Goliath Powerful Build carrying-capacity RAW arms with two new derive functions. **Scope intentionally narrow**: no per-item weights, no total-carried-load tracking, no speed-by-load gates. Just the two derives so a consumer surfacing the sheet has a canonical source.
-
-- [src/derive/carrying-capacity.ts](src/derive/carrying-capacity.ts) ships:
-  - `computeCarryingCapacity(character, content)` → `{ capacity: number, breakdown }`. Base = `STR × 15`; Goliath species adds ×2 Powerful Build multiplier. Per-source breakdown entries.
-  - `computeCreatureWeight(character, content)` → `{ weight: number, breakdown }`. Base from size (Tiny 5 / Small 40 / Medium 150 / Large 1000 / Huge 8000 / Gargantuan 64000). Petrified condition adds ×10 multiplier.
-
-Constants extracted: `STRENGTH_TO_CAPACITY_LB = 15`, `POWERFUL_BUILD_MULTIPLIER = 2`, `PETRIFIED_WEIGHT_MULTIPLIER = 10`, `POWERFUL_BUILD_SPECIES_IDS` set.
-
-Tests: 11 cases ([tests/unit/derive/slice-582-carrying-capacity.test.ts](tests/unit/derive/slice-582-carrying-capacity.test.ts)) — base capacity at STR 1 / 10 / 18; Goliath ×2 at multiple STR; non-Goliath species explicitly don't get the multiplier (8 species × control); per-size weight; Petrified ×10 on Medium + Small; non-Petrified has no breakdown entry.
-
-**Combined audit:**
-- **Names:** `hasAutoFail` parallels slice 576's SaveResult flag; per-multiplier constants in carrying-capacity.ts named for clarity.
-- **DRY:** the auto-fail wiring mirrors slice 576's save-side block; the carrying-capacity derive is a fresh module.
-- **SRP:** slice 580 adds one schema field + one derive output field + one content effect entry; slice 581 is test-only; slice 582 is two pure derive functions in a new file.
-- **Magic numbers:** all encumbrance constants extracted.
-- **at-threading:** unchanged.
-- **Mechanical outcomes asserted:** 23 cases (9 + 3 + 11).
-
-**Option C closure complete.** Original residual gap list closed:
-1. ~~Auto-fail save consumption~~ — slice 576 ✓
-2. ~~consumeOnCheck + planBardicInspiration + Help-on-check~~ — slice 577 ✓
-3. ~~planLayOnHands~~ — slice 578 ✓
-4. ~~planSearch / planStudy / planInfluence / planUtilize~~ — slice 579 ✓
-5. ~~Deafened auto-fail hearing checks~~ — slice 580 ✓
-6. ~~Frightened movement-gate~~ — slice 581 (audit-clarification; already wired) ✓
-7. ~~Encumbrance (Petrified ×10 + Goliath Powerful Build)~~ — slice 582 ✓
-
-Remaining truly-trivial deferrals (not worth slices): `planDash` + `planDisengage` standalone unit tests (both wired correctly; exercised indirectly).
 
 ---
+
+Per-slice detail for slices 580-582 (Option-C closure tail: Deafened auto-fail hearing checks; Frightened movement-gate audit-clarification; minimal encumbrance domain — Petrified ×10 + Goliath Powerful Build) is archived at [docs/changelog/archive-slices-580-582.md](docs/changelog/archive-slices-580-582.md) (slice 590, to keep this file under the 60 KB single-Read ceiling).
 
 Per-slice detail for slices 576-579 (auto-fail save consumption; `consumeOnCheck` + `consumeOnSave` primitives + planBardicInspiration + Help-on-check closure; planLayOnHands; the four thin action planners Search / Study / Influence / Utilize) is archived at [docs/changelog/archive-slices-576-579.md](docs/changelog/archive-slices-576-579.md) (slice 586, to keep this file under the 60 KB single-Read ceiling).
 

@@ -72,7 +72,7 @@ const CLASS_BUILDS: ReadonlyArray<ClassBuild> = [
     primary: 'CHA', secondary: 'DEX',
     weaponId: 'rapier', armorId: 'leather-armor',
     cantrips: ['vicious-mockery'],
-    l1Spells: ['cure-wounds', 'healing-word'],
+    l1Spells: ['cure-wounds', 'healing-word', 'bless'],
     resources: [{ resourceId: 'bardic-inspiration', current: 4, max: 4 }],
   },
   {
@@ -80,14 +80,14 @@ const CLASS_BUILDS: ReadonlyArray<ClassBuild> = [
     primary: 'WIS', secondary: 'STR',
     weaponId: 'mace', armorId: 'chain-shirt',
     cantrips: ['sacred-flame'],
-    l1Spells: ['cure-wounds', 'guiding-bolt'],
+    l1Spells: ['cure-wounds', 'guiding-bolt', 'bless'],
   },
   {
     classId: 'druid',
     primary: 'WIS', secondary: 'CON',
     weaponId: 'scimitar', armorId: 'leather-armor',
     cantrips: ['produce-flame'],
-    l1Spells: ['cure-wounds', 'entangle'],
+    l1Spells: ['cure-wounds', 'entangle', 'faerie-fire'],
   },
   {
     classId: 'fighter',
@@ -128,7 +128,7 @@ const CLASS_BUILDS: ReadonlyArray<ClassBuild> = [
     primary: 'CHA', secondary: 'CON',
     weaponId: 'dagger',
     cantrips: ['fire-bolt', 'ray-of-frost'],
-    l1Spells: ['magic-missile', 'shield'],
+    l1Spells: ['magic-missile', 'shield', 'mage-armor'],
     resources: [{ resourceId: 'innate-sorcery', current: 2, max: 2 }],
   },
   {
@@ -302,9 +302,13 @@ const buildL1 = (name: string, rngFloat: () => number, pack: Pack): BuiltCharact
 
 interface Combatant {
   readonly built: BuiltCharacter;
-  // Tracks whether the first-turn buff (Rage, Hunter's Mark) has been
-  // attempted, to avoid retrying every turn after a failure.
+  // Tracks whether the first-turn BA buff (Rage, Hunter's Mark, Hex,
+  // Divine Favor) has been attempted, to avoid retrying every turn.
   firstTurnBuffTried?: boolean;
+  // Slice 590: tracks whether the first-turn Action buff (Bless,
+  // Mage Armor, Faerie Fire) has been attempted. Separate from BA
+  // since Action buffs replace the turn's damaging cantrip / attack.
+  firstTurnActionBuffTried?: boolean;
   // Tracks whether the once-per-LR Innate Sorcery / Lay on Hands
   // self-heal has been used, so the policy doesn't loop on it.
   innateSorceryActivated?: boolean;
@@ -381,6 +385,12 @@ const pickIntent = (
     if (classId === 'warlock' && c.preparedSpells.includes('hex')) {
       return { type: 'CastSpell', characterId: c.id, spellId: 'hex', slotLevel: 1, targetIds: [oppId], casterChoice: { kind: 'variant', value: 'STR' } };
     }
+    // Slice 590: Paladin Divine Favor (BA, 1st-level slot, self-target,
+    // concentration). +1d4 radiant damage on weapon hits for 1 minute —
+    // turn-1 buff that pairs with the longsword Sap mastery rider.
+    if (classId === 'paladin' && c.preparedSpells.includes('divine-favor') && hasUnusedL1Slot(c)) {
+      return { type: 'CastSpell', characterId: c.id, spellId: 'divine-favor', slotLevel: 1, targetIds: [c.id] };
+    }
     // Sorcerer Innate Sorcery is intentionally allowlisted out of
     // the performIntent dispatch (see tests/audit/planner-wiring.test.ts —
     // "Special-cast / placed-entity / multi-arg spell planners"
@@ -388,6 +398,28 @@ const pickIntent = (
     // the policy skips Innate Sorcery; sorcerers just cast Fire Bolt
     // every turn. A future fuzz revision can route allowlisted
     // planners through their direct engine.plan.X calls.
+  }
+
+  // Slice 590: first-turn Action buff. Replaces the turn's damaging
+  // cantrip / attack with a buff cast. Fires once per battle (gated by
+  // firstTurnActionBuffTried) so the bearer eventually deals damage.
+  // Each branch picks the buff most useful in a 1v1: Bless self-target
+  // for Cleric / Bard (+1d4 attack + saves, concentration); Mage Armor
+  // self-target for Wizard / Sorcerer (no concentration, 8 hr AC 13+DEX);
+  // Faerie Fire on opponent for Druid (advantage on attacks vs target,
+  // concentration, replaces Entangle which is positional).
+  if (!active.firstTurnActionBuffTried && !cb.turnUsage.actionUsed) {
+    active.firstTurnActionBuffTried = true;
+    if (classId === 'paladin') {
+      // Paladin's BA branch above already handles Divine Favor; the
+      // Action slot stays available for an attack.
+    } else if ((classId === 'cleric' || classId === 'bard') && c.preparedSpells.includes('bless') && hasUnusedL1Slot(c)) {
+      return { type: 'CastSpell', characterId: c.id, spellId: 'bless', slotLevel: 1, targetIds: [c.id] };
+    } else if ((classId === 'wizard' || classId === 'sorcerer') && c.preparedSpells.includes('mage-armor') && hasUnusedL1Slot(c)) {
+      return { type: 'CastSpell', characterId: c.id, spellId: 'mage-armor', slotLevel: 1, targetIds: [c.id] };
+    } else if (classId === 'druid' && c.preparedSpells.includes('faerie-fire') && hasUnusedL1Slot(c)) {
+      return { type: 'CastSpell', characterId: c.id, spellId: 'faerie-fire', slotLevel: 1, targetIds: [oppId] };
+    }
   }
 
   // Slice 589: between buff and action, fire a queued WeaponMastery
