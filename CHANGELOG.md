@@ -4,6 +4,53 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Tooling (slice 597): combat-fuzz monster variety — 10 L1-appropriate statblocks**
+
+Slice 596 introduced `--vs monster` mode with a single Wolf as the only opposing monster, leaving the rest of the engine's L1-CR statblock surface unexercised. The pack has 14+ monsters at CR ≤ 1 with already-wired natural-weapon items; slice 597 picks 10 with diverse trait coverage and adds them to `MONSTER_OPTIONS`.
+
+**Changes** ([scripts/combat-fuzz.ts](scripts/combat-fuzz.ts)): `MONSTER_OPTIONS` expanded from 1 → 10 entries:
+
+| Monster | CR | Weapon | Key trait surfaced |
+|---|---|---|---|
+| Wolf | 1/4 | wolf-bite | Ally-adjacent attack advantage; onHit Prone for Medium-or-smaller |
+| Venomous Snake | 1/8 | venomous-snake-bite | Poison rider + CON-save Poisoned |
+| Giant Centipede | 1/4 | giant-centipede-bite | Poison damage rider + Poisoned-on-fail |
+| Imp | 1 | imp-sting | Poison rider; built-in Invisibility (statblock trait) |
+| Boar | 1/4 | boar-gore | Bloodied Fury rider when reduced low |
+| Mastiff | 1/8 | mastiff-bite | onHit Knock Prone for Medium-or-smaller |
+| Worg | 1/2 | worg-bite | Pack Tactics (ally-adjacent advantage) |
+| Pseudodragon | 1/4 | pseudodragon-bite | Magic Resistance + Sting poison |
+| Giant Spider | 1 | giant-spider-bite | 2d6 poison rider + Web condition |
+| Cockatrice | 1/2 | cockatrice-bite | Petrified-on-fail save rider |
+
+Each entry maps an `id → weaponId → ClassBuild` (with the natural weapon as the wielded item). The fuzz tool's `buildMonster` already mirrors the engine's [src/engine/triggers/dispatch.ts:485-546](src/engine/triggers/dispatch.ts#L485-L546) `fireSpawnCreature` path; the slice 597 work is pure data expansion.
+
+**Verification** (15 seeds at 1v1 + 10 seeds at 2v2 vs monster):
+- 5 different monster types appeared across the 15-seed 1v1 batch (worg, wolf, giant-spider, giant-centipede, boar — 3 each from the random pick).
+- 2v2 vs monster mode confirmed working (10 battles complete; Pack Tactics now meaningful since Worg/Wolf opponents can have a second monster ally adjacent).
+- Trait verification:
+  - Giant Spider's bite emits `1d8 piercing + 2d6 poison` (seed 1101: "8 damage from Beast (2 piercing + 6 poison)" — mitigation applied) — 2-component damage chain.
+  - Vex mastery fires correctly on Rogue → Worg attack (seed 1102: round 1 hit, "Mastery: Vex against Beast", round 2 attack shows `[advantage]` from vexing-active).
+  - Full RAW Wolf Bite onHit Prone still verified from slice 596 (Aria is now Prone).
+- Full suite green: 479 test files, 3246 passing, 173 unrelated skips.
+
+**Audit:**
+- **Names:** unchanged from slice 596 (`MONSTER_OPTIONS` shape, `buildMonster` signature, `--vs monster` flag).
+- **DRY:** all 10 entries share the same `classBuild: { classId: 'companion', ... }` shape; only the per-monster primary/secondary ability + weapon id differs.
+- **SRP:** tooling-data change only; no engine, content, schema, or test changes.
+- **Magic numbers:** none added; HP / AC / abilities all read from each statblock.
+- **at-threading:** N/A.
+- **Mechanical outcomes asserted:** live fuzz verification (5 monster types appearing; trait-rich damage chains verified; 2v2 vs monster mode unblocking Pack Tactics).
+
+**Pattern-check (filter shape: "L1-CR monsters in the pack with natural-weapon items the fuzz could spawn"):** swept the pack for monster ids where a matching `-bite` / `-sting` / `-gore` / `-claw` / `-slam` natural-weapon item exists. Found:
+- Already in `MONSTER_OPTIONS`: wolf, venomous-snake, giant-centipede, imp, boar, mastiff, worg, pseudodragon, giant-spider, cockatrice ✓
+- Available but deferred (CR > 1): dire-wolf, brown-bear (CR 1/2; could include), ghoul (CR 1; has paralysis save), ettercap (CR 2), couatl (CR 4), wyvern (CR 6), merrow (CR 2)
+- Monsters that use STANDARD weapons (not natural): goblin (scimitar + shortbow), skeleton (shortsword + shortbow), bandit (scimitar + light-crossbow), kobold (dagger) — these need a different build path that equips a regular weapon to a monster snapshot; deferred to a follow-up if needed.
+
+L1 SRD monster coverage went from **~7% (1 of ~15) → ~67% (10 of ~15)** in this slice.
+
+---
+
 **Tooling (slice 596): combat-fuzz PC vs Monster mode**
 
 The fuzz only ever fought PC vs PC, leaving the engine's monster-statblock combat surface entirely unexercised. The ~370 SRD monster statblocks (and their traits: natural weapons with `onHit` riders, multiattack actions, breath-weapon recharge, Pack Tactics, Magic Resistance, Aura damage, Spawn Creature, etc.) live-tested only in narrow unit-test fixtures pre-slice. Slice 596 lets the fuzz spawn a low-CR monster on the opposing team.

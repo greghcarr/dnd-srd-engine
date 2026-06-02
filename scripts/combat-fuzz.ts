@@ -280,15 +280,33 @@ const speciesGrantedResources = (
 
 // Slice 596: low-CR monsters the fuzz can spawn as L1-appropriate
 // opponents. Each entry maps a statblock id to a natural-weapon item
-// the engine has wired (wolf-bite, etc.) so the monster can attack via
-// the standard plan.attack path. Monsters with no natural weapon get
-// undefined and fall back to the fuzz's no-attack policy.
-const MONSTER_OPTIONS: ReadonlyArray<{ id: string; weaponId: string | undefined; classBuild: ClassBuild }> = [
-  {
-    id: 'wolf',
-    weaponId: 'wolf-bite',
-    classBuild: { classId: 'companion', primary: 'STR', secondary: 'DEX', weaponId: 'wolf-bite', cantrips: [], l1Spells: [] },
-  },
+// the engine has wired so the monster can attack via the standard
+// plan.attack path.
+// Slice 597: expanded from 1 → 10 monsters covering CR 1/8 → CR 1.
+// Each monster's traits (Pack Tactics, Bloodied Fury, Magic Resistance,
+// Web, Knock Prone onHit, poison riders, etc.) fire passively via the
+// engine's effect-stack derivation when the monster attacks.
+const MONSTER_OPTIONS: ReadonlyArray<{ id: string; weaponId: string; classBuild: ClassBuild }> = [
+  { id: 'wolf', weaponId: 'wolf-bite',
+    classBuild: { classId: 'companion', primary: 'STR', secondary: 'DEX', weaponId: 'wolf-bite', cantrips: [], l1Spells: [] } },
+  { id: 'venomous-snake', weaponId: 'venomous-snake-bite',
+    classBuild: { classId: 'companion', primary: 'DEX', secondary: 'CON', weaponId: 'venomous-snake-bite', cantrips: [], l1Spells: [] } },
+  { id: 'giant-centipede', weaponId: 'giant-centipede-bite',
+    classBuild: { classId: 'companion', primary: 'DEX', secondary: 'CON', weaponId: 'giant-centipede-bite', cantrips: [], l1Spells: [] } },
+  { id: 'imp', weaponId: 'imp-sting',
+    classBuild: { classId: 'companion', primary: 'DEX', secondary: 'INT', weaponId: 'imp-sting', cantrips: [], l1Spells: [] } },
+  { id: 'boar', weaponId: 'boar-gore',
+    classBuild: { classId: 'companion', primary: 'STR', secondary: 'CON', weaponId: 'boar-gore', cantrips: [], l1Spells: [] } },
+  { id: 'mastiff', weaponId: 'mastiff-bite',
+    classBuild: { classId: 'companion', primary: 'STR', secondary: 'DEX', weaponId: 'mastiff-bite', cantrips: [], l1Spells: [] } },
+  { id: 'worg', weaponId: 'worg-bite',
+    classBuild: { classId: 'companion', primary: 'STR', secondary: 'CON', weaponId: 'worg-bite', cantrips: [], l1Spells: [] } },
+  { id: 'pseudodragon', weaponId: 'pseudodragon-bite',
+    classBuild: { classId: 'companion', primary: 'DEX', secondary: 'CHA', weaponId: 'pseudodragon-bite', cantrips: [], l1Spells: [] } },
+  { id: 'giant-spider', weaponId: 'giant-spider-bite',
+    classBuild: { classId: 'companion', primary: 'DEX', secondary: 'STR', weaponId: 'giant-spider-bite', cantrips: [], l1Spells: [] } },
+  { id: 'cockatrice', weaponId: 'cockatrice-bite',
+    classBuild: { classId: 'companion', primary: 'DEX', secondary: 'CON', weaponId: 'cockatrice-bite', cantrips: [], l1Spells: [] } },
 ];
 
 // Build a Character snapshot from a monster statblock + equip the
