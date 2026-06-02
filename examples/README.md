@@ -3,6 +3,7 @@
 Small runnable examples showing how to consume the engine. Each example is a single TypeScript file you can run with `tsx`:
 
 ```sh
+npx tsx examples/00-quickstart/index.ts
 npx tsx examples/01-character-sheet/index.ts
 npx tsx examples/02-combat-encounter/index.ts
 npx tsx examples/03-save-and-load/index.ts

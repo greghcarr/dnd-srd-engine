@@ -28,6 +28,32 @@ npm test
 
 The `--recurse-submodules` flag pulls in the SRD 5.2.1 markdown at `references/srd-markdown/` (CC-BY-4.0, sourced from [`greghcarr/dnd-5e-srd-markdown`](https://github.com/greghcarr/dnd-5e-srd-markdown)). If you forgot the flag, run `git submodule update --init --recursive` afterward. The markdown is the canonical source of truth for SRD rules text; contributors authoring or auditing content slices need it.
 
+**See it run a real combat in 5 seconds:**
+
+```sh
+npx tsx examples/02-combat-encounter/index.ts
+```
+
+Output:
+
+```
+After Alyx's swing:
+  Goblin A HP: 8/15
+Replay equivalent: true
+apply() is RNG-free: OK
+```
+
+That single command builds two L3 fighters, runs an encounter, resolves one weapon attack, and proves the event log replays byte-for-byte. The other examples (`examples/00-quickstart/`, `examples/01-character-sheet/`, `examples/03-save-and-load/`) cover sheet derivation and save/load. Each is a single 20-80 line file — read them inline if you prefer reading to running.
+
+**Want to watch random battles?** The combat-fuzz CLI generates seeded markdown transcripts of L1-L5 PCs (and optionally monsters) fighting each other. Useful for seeing the engine exercise itself across hundreds of class/species/spell interactions:
+
+```sh
+npx tsx scripts/combat-fuzz.ts --count 10 --seed 1 --level 3 --mode 2v2 --out /tmp/fuzz
+# wrote 10 transcripts + index.md to /tmp/fuzz
+```
+
+Flags: `--level 1..5`, `--mode 1v1|2v2`, `--vs pc|monster`, `--rest none|short|long`. See [scripts/combat-fuzz.ts](scripts/combat-fuzz.ts).
+
 Then import from `src/` (or a local path alias) the same shapes the planned public API surfaced:
 
 <!-- typecheck -->
@@ -52,6 +78,14 @@ campaign = commit(campaign, [
 const sheet = engine.derive.character(campaign.state, alyx.id);
 console.log(`${alyx.name}: AC ${sheet.ac.total}, HP ${sheet.hp.current}/${sheet.hp.max}`);
 ```
+
+That snippet shows the shortest "engine is alive" path: load the starter pack, build a character, derive their sheet. The next step depends on what you want to do:
+
+- **I want to walk through my first attack + save/load (15 min, copy-paste runnable):** [docs/getting-started.md](docs/getting-started.md).
+- **I want runnable code I can read or run right now:** [examples/](examples/) (four small scripts, each one file).
+- **I want to understand events / plan-commit / why the API has this shape:** [docs/concepts.md](docs/concepts.md).
+- **I'm looking up a specific symbol:** [docs/api-overview.md](docs/api-overview.md).
+- **I'm extending the engine (houserules, new content, custom planners):** [docs/recipes.md](docs/recipes.md) for patterns, then [CLAUDE.md](CLAUDE.md) for the working manual.
 
 ## What lives in this repo
 

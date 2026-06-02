@@ -4,6 +4,34 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Docs (slice 599): README quick-start closes the loop on a real combat + adds post-import routing**
+
+The previous README onboarding path stopped short. Its `<!-- typecheck -->` snippet built a character and printed a sheet, then dropped the reader into the repo structure table — no "see a combat" verification, no clear next-step routing for someone who'd just imported the library. A reader could clone the repo, run `npm test`, and still not see the engine actually resolve a combat without spelunking the examples directory.
+
+**Changes** ([README.md](README.md), [examples/README.md](examples/README.md)):
+- New "See it run a real combat in 5 seconds" subsection in Quick start: a single `npx tsx examples/02-combat-encounter/index.ts` invocation with the verbatim expected output (HP drop + replay-equivalent + RNG-free apply). Closes the "is this engine actually alive?" loop in the first scroll. The example was already runnable; the README just didn't advertise it.
+- New "Want to watch random battles?" subsection: `combat-fuzz` CLI invocation with the flag matrix (`--level`, `--mode`, `--vs`, `--rest`) the slices 585-598 cycle built. Surfaces the engine's exhaustive battle-simulator without burying it in the script directory.
+- New "Where do I go from here?" routing block right after the TS snippet: 5 bulleted reader-personas (tutorial → getting-started, runnable code → examples/, mental model → concepts, symbol lookup → api-overview, extending → recipes + CLAUDE.md). Mirrors the existing Documentation table at line ~92 but lives at the point a reader who just read the snippet would actually be looking for guidance.
+- [examples/README.md](examples/README.md): added `00-quickstart` to the `npx tsx` run block — previously listed only 01/02/03 even though the directory exists.
+
+**Verification:**
+- `npx tsx examples/02-combat-encounter/index.ts` produces the README's quoted output verbatim (verified pre-commit).
+- `npx tsx examples/00-quickstart/index.ts` produces `Alyx: AC 12, HP 26/26` (the README snippet's expected output line).
+- `npx tsx scripts/combat-fuzz.ts --count 1 --seed 7` writes a battle transcript.
+- doc-size + doc-links + doc-examples audits all green (the existing `<!-- typecheck -->` block remained untouched; the new content is prose + shell + a non-typechecked code-fence quote of program output).
+
+**Audit:**
+- **Names:** N/A (pure doc additions).
+- **DRY:** the new bullets reference existing docs by file path; no content duplication.
+- **SRP:** README onboarding flow only; engine / content / tests / fuzz unchanged.
+- **Magic numbers:** N/A.
+- **at-threading:** N/A.
+- **Mechanical outcomes asserted:** doc audits green; quoted example output verified by actually running the command pre-edit.
+
+**Pattern-check (filter shape: "docs that promise a thing but stop short of showing it"):** swept the top of README for other dropped-loops. The "Try it in your browser" link is concrete + actionable; the "Usage (preview)" section's `attack` / `castSpell` / `levelUp` snippets are honest about being preview shapes (the "Quick start" snippet is the only one that runs end-to-end); the "Documentation" routing table at line ~92 is structurally identical to the new bullets but lives below repo-structure — both are useful (one for orientation, one as catalog). Sweep clean.
+
+---
+
 **Tooling (slice 598): combat-fuzz Bonus-Action policy slot — species + class L1 BAs**
 
 The fuzz policy's first-turn buff slot (step 2 in `pickIntent`) handled only four BA-cast spell-buffs (Rage, Hunter's Mark, Hex, Divine Favor) and the cantrip-attack action loop. The L1 species + class **bonus-action features** — Orc Adrenaline Rush, Dwarf Stonecunning, Dragonborn Breath Weapon, Sorcerer Innate Sorcery, Bard Bardic Inspiration — were all granted as resources on the character but never invoked by the fuzz's bug-discovery loop.
