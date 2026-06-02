@@ -200,12 +200,17 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       );
       return `Damage rolled${event.critical ? ' (critical, doubled dice)' : ''}: ${parts.join(', ')}.`;
     }
-    case 'SaveRolled':
-      return `**${characterName(stateBefore, event.targetId)}** ${event.ability} save: d20(${event.d20[0]}) + ${event.bonus}${formatBreakdown(event.breakdown)} = ${event.total} vs DC ${event.dc} -> ${event.success ? 'success' : 'failure'}.`;
+    case 'SaveRolled': {
+      const saveAdvLabel = event.used === 'none' ? '' : ` [${event.used}]`;
+      const saveRollLabel = event.d20.length === 2 ? `${event.d20[0]}/${event.d20[1]}` : `${event.d20[0]}`;
+      return `**${characterName(stateBefore, event.targetId)}** ${event.ability} save${saveAdvLabel}: d20(${saveRollLabel}) + ${event.bonus}${formatBreakdown(event.breakdown)} = ${event.total} vs DC ${event.dc} -> ${event.success ? 'success' : 'failure'}.`;
+    }
     case 'AbilityCheckRolled': {
       const label = event.skill !== undefined ? event.skill : `${event.ability} check`;
+      const checkAdvLabel = event.used === 'none' ? '' : ` [${event.used}]`;
+      const checkRollLabel = event.d20.length === 2 ? `${event.d20[0]}/${event.d20[1]}` : `${event.d20[0]}`;
       const dcLine = event.dc !== undefined ? ` vs DC ${event.dc} -> ${event.success === true ? 'success' : 'failure'}` : '';
-      return `**${characterName(stateBefore, event.characterId)}** ${label}: d20(${event.d20[0]}) + ${event.bonus}${formatBreakdown(event.breakdown)} = ${event.total}${dcLine}.`;
+      return `**${characterName(stateBefore, event.characterId)}** ${label}${checkAdvLabel}: d20(${checkRollLabel}) + ${event.bonus}${formatBreakdown(event.breakdown)} = ${event.total}${dcLine}.`;
     }
     case 'LevelUpResolved': {
       const hpLabel = event.hpRoll !== undefined ? `rolled d? = ${event.hpRoll}, total +${event.hpGained}` : `average, +${event.hpGained}`;

@@ -4,6 +4,26 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Tests (slice 587): SaveRolled / AbilityCheckRolled transcript advantage display**
+
+Closes a slice-585 fuzz-tool finding: in the second 15-battle batch (seeds 200-214), seed 200's transcript showed `Bran WIS save: d20(2) + 4 (...) = 23 vs DC 12 -> success` — apparent math bug. The engine was correct: Bran the gnome druid had Gnomish Cunning (advantage on INT/WIS/CHA saves vs magic), rolled `[2, 19]`, used the 19. The transcript formatter at [tests/transcript.ts:204](tests/transcript.ts#L204) (`SaveRolled`) and the parallel `AbilityCheckRolled` branch only stringified `event.d20[0]` and ignored `event.used`, so the second die and the advantage label both disappeared.
+
+**Fix:** mirror the existing `AttackRolled` formatter shape on both branches — `d20.length === 2 ? '${event.d20[0]}/${event.d20[1]}' : '${event.d20[0]}'` for the roll, and ` [advantage]` / ` [disadvantage]` after the roll-name when `event.used !== 'none'`. Normal (non-adv/disadv) rolls keep the existing `d20(X)` shape so unaffected snapshots don't move.
+
+**Tests:** new [tests/unit/transcript-advantage-display.test.ts](tests/unit/transcript-advantage-display.test.ts) (5 cases) pins `d20(X/Y)` + `[advantage]` on a save with adv, `[disadvantage]` on a save with disadv, the unchanged single-die shape on a normal save, and parallel coverage for `AbilityCheckRolled` with both a skill and a bare ability check. Full suite green (3239 passing, 173 unrelated skips) — no existing golden transcript needed re-snapshotting, confirming no in-tree scenario currently exercises an adv/disadv save or check (which is itself a small coverage gap, separately worth a future scenario slice).
+
+**Audit:**
+- **Names:** `saveAdvLabel` / `saveRollLabel` and `checkAdvLabel` / `checkRollLabel` keep the AttackRolled `advLabel` / `rollLabel` naming axis.
+- **DRY:** three branches now compute the same two locals. A shared helper (`d20Display(event)` returning `{ rollLabel, advLabel }`) would save ~6 lines across the three sites; declined — the formatters are intentionally flat and the duplicated lines read as the canonical pattern at each site.
+- **SRP:** test-file change; one branch each in two switch arms; no engine, schema, or content change.
+- **Magic numbers:** none added.
+- **at-threading:** N/A.
+- **Mechanical outcomes asserted:** 5 transcript-shape cases.
+
+**Pattern-check (filter shape: "rolls with `event.used` + 1-or-2 `event.d20` whose formatter drops the second die"):** grepped `tests/transcript.ts` for `event.d20[0]` outside of the AttackRolled branch — two matches, both fixed above. `DamageRolled`, `BreathWeaponRecharged`, `HitDieSpent`, and the various "rolled X" lines emit a single die without any advantage axis, so no other formatter is in this family. Sweep clean.
+
+---
+
 **Engine (slice 586): dispatch OnEvent triggers on spell-attack `AttackRolled`**
 
 Closes the slice 585 finding. `planAttackMechanic` in [cast-spell.ts](src/engine/plan/cast-spell.ts) emitted `AttackRolled` for spell attacks (Eldritch Blast, Fire Bolt, Ray of Frost, Chill Touch, etc.) WITHOUT calling `dispatchTriggers`. The weapon-attack path at [src/engine/plan/attack.ts:1101](src/engine/plan/attack.ts#L1101) always did. Result: target-side attack-triggered riders (Hex's 1d6 necrotic, Hunter's Mark's 1d6 force, etc.) fired on weapon swings but were silently dropped on spell-attack hits.
