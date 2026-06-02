@@ -2,7 +2,6 @@ import { createEngineHost, type EngineHost } from './engine-host.js';
 import { mountCombatSandbox, type CombatSandbox } from './modes/combat-sandbox.js';
 import { mountEventInspector, type EventInspector } from './modes/event-inspector.js';
 import { mountGridView, type GridView } from './modes/grid-view.js';
-import { mountRulesLab, type RulesLab } from './modes/rules-lab.js';
 import { mountPendingChoiceResolver, type PendingChoiceResolver } from './ui/pending-choice.js';
 import { SCENARIOS, type DemoScenario, type DemoSession } from './scenarios/index.js';
 
@@ -20,7 +19,6 @@ const sandboxRoot = document.getElementById('combat-sandbox-root');
 const gridRoot = document.getElementById('grid-view-root');
 const inspectorRoot = document.getElementById('event-inspector-root');
 const choiceRoot = document.getElementById('pending-choice-root');
-const rulesLabRoot = document.getElementById('rules-lab-root');
 const scenarioSelect = document.getElementById('scenario-select') as HTMLSelectElement | null;
 const scenarioHint = document.getElementById('scenario-hint') as HTMLParagraphElement | null;
 
@@ -195,14 +193,6 @@ async function boot(): Promise<void> {
     }
   };
   mountPanels();
-  // Rules Lab is stateless w.r.t. the campaign — mount once, persists
-  // across Reset clicks. Each Run-audit click rebuilds engines from
-  // scratch using the loaded starter pack.
-  let rulesLab: RulesLab | undefined;
-  if (rulesLabRoot) {
-    rulesLab = mountRulesLab({ starter, root: rulesLabRoot, onStatus: setStatus });
-  }
-  void rulesLab;
   renderReady(session);
 
   const reset = (newSeed: number, newScenarioId: string): void => {
