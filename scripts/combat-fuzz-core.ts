@@ -616,11 +616,16 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
     return cursor / 233280;
   };
 
-  const teamNames = (base: 'Aria' | 'Bran'): string[] =>
+  // Slice 606: monsters wear the "Beast" name so the transcript reads
+  // unambiguously in `--vs monster` mode. Pre-slice the core-extraction
+  // refactor (slice 600) lost the slice-596 "Beast" naming and used
+  // "Bran" for both PC and monster opposing teams, making spell-cast vs
+  // bite events look identical.
+  const teamNames = (base: 'Aria' | 'Bran' | 'Beast'): string[] =>
     teamSize === 1 ? [base] : Array.from({ length: teamSize }, (_, i) => `${base}-${i + 1}`);
   const teamA: BuiltCharacter[] = teamNames('Aria').map((n) => buildL1(n, rngFloat, pack));
   const teamB: BuiltCharacter[] = vs === 'monster'
-    ? teamNames('Bran').map((n) => buildMonster(n, pack, rngFloat))
+    ? teamNames('Beast').map((n) => buildMonster(n, pack, rngFloat))
     : teamNames('Bran').map((n) => buildL1(n, rngFloat, pack));
 
   const now = (offsetSec = 0): string => new Date(Date.UTC(2026, 0, 1, 0, 0, offsetSec)).toISOString();

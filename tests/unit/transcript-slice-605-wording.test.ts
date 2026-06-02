@@ -94,8 +94,6 @@ describe('slice 605: transcript wording', () => {
         casterId: caster.id,
         preventedHit: true,
         triggeringAttackEventId: '01HTESTATTACK00000000000000',
-        triggeringAttackTotal: 15,
-        originalAC: 11,
       },
     ];
     const rendered = formatTranscript(events, CONTENT);
@@ -119,9 +117,7 @@ describe('slice 605: transcript wording', () => {
         type: 'ShieldCast',
         casterId: caster.id,
         preventedHit: false,
-        triggeringAttackEventId: '01HTESTATTACK00000000000001',
-        triggeringAttackTotal: 22,
-        originalAC: 14,
+        triggeringAttackEventId: '01HTESTATTACK00000000000002',
       },
     ];
     const rendered = formatTranscript(events, CONTENT);

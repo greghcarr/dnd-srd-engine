@@ -4,6 +4,18 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Fix (slice 606): restore "Beast" name for monster opponents (slice-600 regression)**
+
+The slice-600 core-extraction refactor (`scripts/combat-fuzz.ts` → `combat-fuzz-core.ts`) silently lost the slice-596 monster-naming distinction: both PC and monster opposing teams ended up named "Bran", so `--vs monster` battles read like PC battles in the transcripts and the web demo. Caught by the slice-600 observer review.
+
+**Fix** ([scripts/combat-fuzz-core.ts:619-627](scripts/combat-fuzz-core.ts#L619-L627)): `teamNames` type extended to include `'Beast'`, and the `vs === 'monster'` branch now uses `'Beast'` again. Type-only change beyond the literal swap; no other code path touches the name.
+
+**Verification:** `npx tsx scripts/combat-fuzz.ts --count 1 --seed 2000 --vs monster` produces "**Beast** appears (giant-spider, 26/26 HP)" + "Final HP: Beast 26/26" / "Winner: Beast". Pre-slice the same run showed "Bran appears (giant-spider, ...)" — same monster statblock, mislabeled. Full suite green.
+
+**Audit (trivial fix):** N/A — one-character file edit (`Bran` → `Beast`). Includes a fix to the slice-605 test file's `ShieldCast` event literals which carried three speculative fields (`triggeringAttackTotal`, `originalAC`, plus a duplicate id) not on the event schema — caught by tsc when re-typechecking after this slice. Test still pins the same wording branches.
+
+---
+
 **Tooling (slice 605): transcript wording — Relentless Endurance + Shield post-hit**
 
 Two cosmetic-but-misleading transcript lines the slice-600 fuzz audit surfaced:
