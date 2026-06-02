@@ -522,6 +522,20 @@ const planAttackMechanic = (
     };
     events.push(attackEvent);
 
+    // Mirrors the weapon-attack AttackRolled dispatch in planAttack so
+    // attack-triggered riders (Hex, Hunter's Mark) fire on spell-attack
+    // hits. The DamageApplied dispatch below covers damage-side
+    // triggers (Repelling Blast) but not riders gated on event.hit.
+    events.push(
+      ...dispatchTriggers({
+        state: applyAll(state, events),
+        content,
+        rng,
+        event: attackEvent,
+        at,
+      }),
+    );
+
     // Evoker L3 Potent Cantrip: a damaging cantrip that misses the attack
     // still deals half damage (no crit, no additional effect). A plain
     // miss skips the target entirely.
