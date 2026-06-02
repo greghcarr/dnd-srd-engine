@@ -403,9 +403,10 @@ describe('pack integrity: wired spells do not apply effect-less conditions', () 
     // Engine-hardcoded base RAW conditions (mechanics live in engine code,
     // not in the condition's effects array):
     'charmed',
-    'deafened',
     'exhaustion',
     'incapacitated',
+    // (Slice 580 added a hearing-gated auto-fail to `deafened`, so it's
+    // no longer effect-less. Removed from this allowlist.)
     // Engine-read markers (the mechanic lives in a planner / the attack
     // resolver / an id-keyed allowlist, not in the effects array):
     'guided', // consumed by planConsumeGuidance (rolls the d4)

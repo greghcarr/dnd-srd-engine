@@ -158,6 +158,7 @@ exports[`feature-coverage matrix: conditions > wired conditions catalog is stabl
   "cursed-attacks-active",
   "cursed-vulnerable-active",
   "darkvision-active",
+  "deafened",
   "death-dog-disease-active",
   "death-ward-active",
   "divine-favor-active",

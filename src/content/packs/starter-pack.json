@@ -8507,9 +8507,17 @@
     {
       "id": "deafened",
       "name": "Deafened",
+      "description": "RAW (SRD 5.2.1 Deafened): 'A deafened creature can't hear and automatically fails any ability check that requires hearing.' Slice 580 wires this via a predicate-gated SetAdvantage on { kind: 'check' } with mode 'auto-fail', condition: event.sense == 'hearing'. The check planner threads the consumer-supplied `sense` field into the facts map (slice 263 wiring); when set to 'hearing' and the bearer is Deafened, computeAbilityCheck returns hasAutoFail = true and the planner forces success = false. Default behavior (no sense supplied or sense != 'hearing') is unchanged: the bearer rolls normally.",
       "stackable": false,
       "endsOn": [],
-      "effects": []
+      "effects": [
+        {
+          "kind": "SetAdvantage",
+          "on": { "kind": "check" },
+          "mode": "auto-fail",
+          "condition": { "kind": "eq", "path": "event.sense", "value": "hearing" }
+        }
+      ]
     },
     {
       "id": "frightened",

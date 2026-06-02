@@ -23,6 +23,13 @@ export interface AbilityCheckResult {
   // stack). When true and the chosen d20 of the check is a natural 1,
   // the planner rerolls once and uses the new die per RAW.
   readonly hasHalflingLuck: boolean;
+  // Slice 580: auto-fail flag (RAW user: Deafened auto-fails ability
+  // checks that require hearing). The pack carries SetAdvantage
+  // entries with mode: 'auto-fail' gated on event.sense; the
+  // EffectAccumulator tracks them via autoFail per ability/skill;
+  // this exposes the flag to planAbilityCheck so the d20 + modifiers
+  // are bypassed and the check emits as a forced failure.
+  readonly hasAutoFail: boolean;
 }
 
 export interface ComputeAbilityCheckInput {
@@ -197,6 +204,13 @@ export const computeAbilityCheck = (input: ComputeAbilityCheckInput): AbilityChe
     hasAdvantage: adv.advantage && !adv.disadvantage,
     hasDisadvantage: adv.disadvantage && !adv.advantage,
     hasHalflingLuck: effects.hasHalflingLuck(),
+    // Slice 580: auto-fail (RAW user: Deafened auto-fails ability
+    // checks that require hearing). Mirror of slice 576's save-side
+    // hasAutoFail. The EffectAccumulator merges autoFail from both
+    // the skill target and the underlying ability target — the
+    // existing slice 265 merge above already handles this for adv +
+    // disadv; we mirror it here for autoFail.
+    hasAutoFail: adv.autoFail,
   };
 };
 

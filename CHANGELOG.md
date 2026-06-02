@@ -4,6 +4,60 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slices 580 + 581 + 582): Option-C closure tail — Deafened auto-fail, Frightened movement-gate audit-clarification, minimal encumbrance domain**
+
+Closes the final three Option-C items in one bundled commit. All three are scoped narrowly (each is small / clarifying / minimum-viable) and together close the deferred-list end-to-end.
+
+**Slice 580: Deafened auto-fails ability checks that require hearing**
+
+RAW (SRD 5.2.1 Deafened): "A deafened creature can't hear and automatically fails any ability check that requires hearing."
+
+Pre-slice the deafened condition shipped with `effects: []` — the auto-fail arm wasn't enforced anywhere.
+
+- **Derive change** ([src/derive/ability-check.ts](src/derive/ability-check.ts)): `AbilityCheckResult` gains `hasAutoFail: boolean` (mirror of slice 576's SaveResult).
+- **Planner change** ([src/engine/plan/checks.ts](src/engine/plan/checks.ts)): `AbilityCheckIntent` gains optional `sense?: 'sight'|'hearing'|'smell'|'touch'|'taste'` (threaded into the existing slice-263 `event.sense` fact); `planAbilityCheck` forces `success = false` when the bearer is Deafened AND the check declares `sense: 'hearing'`.
+- **Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)): Deafened gains a predicate-gated `SetAdvantage on: { kind: 'check' }, mode: 'auto-fail', condition: event.sense == 'hearing'`.
+- Tests: 9 cases ([tests/unit/engine/slice-580-deafened-auto-fail.test.ts](tests/unit/engine/slice-580-deafened-auto-fail.test.ts)) — pack declaration; derive hasAutoFail per-sense; planner force-fail; sense mismatch passes; non-Deafened passes; no-DC emits with breakdown but no success field.
+
+**Slice 581: Frightened movement-gate (audit-clarification)**
+
+The slice 567 CHANGELOG entry listed Frightened "can't move closer to source" as deferred ("no engine primitive"). **That was incorrect** — the gate IS wired ([src/engine/plan/movement.ts:127-153](src/engine/plan/movement.ts#L127-L153)) and exercised by [tests/audit/raw-compliance.test.ts](tests/audit/raw-compliance.test.ts). Slice 581 adds a dedicated behavior test under tests/unit/engine/ so the integration is also covered at the unit level (faster regression catch). No engine or content change; pure audit-clarification.
+
+Tests: 3 cases ([tests/unit/engine/slice-581-frightened-movement-gate.test.ts](tests/unit/engine/slice-581-frightened-movement-gate.test.ts)) — Frightened with sourceCharacterId stamps correctly; Frightened condition still has its LoS-gated bearer-side disadvantage; the movement-gate code path remains present in movement.ts (structural smoke check).
+
+**Slice 582: minimal encumbrance domain**
+
+Closes the Petrified weight ×10 + Goliath Powerful Build carrying-capacity RAW arms with two new derive functions. **Scope intentionally narrow**: no per-item weights, no total-carried-load tracking, no speed-by-load gates. Just the two derives so a consumer surfacing the sheet has a canonical source.
+
+- [src/derive/carrying-capacity.ts](src/derive/carrying-capacity.ts) ships:
+  - `computeCarryingCapacity(character, content)` → `{ capacity: number, breakdown }`. Base = `STR × 15`; Goliath species adds ×2 Powerful Build multiplier. Per-source breakdown entries.
+  - `computeCreatureWeight(character, content)` → `{ weight: number, breakdown }`. Base from size (Tiny 5 / Small 40 / Medium 150 / Large 1000 / Huge 8000 / Gargantuan 64000). Petrified condition adds ×10 multiplier.
+
+Constants extracted: `STRENGTH_TO_CAPACITY_LB = 15`, `POWERFUL_BUILD_MULTIPLIER = 2`, `PETRIFIED_WEIGHT_MULTIPLIER = 10`, `POWERFUL_BUILD_SPECIES_IDS` set.
+
+Tests: 11 cases ([tests/unit/derive/slice-582-carrying-capacity.test.ts](tests/unit/derive/slice-582-carrying-capacity.test.ts)) — base capacity at STR 1 / 10 / 18; Goliath ×2 at multiple STR; non-Goliath species explicitly don't get the multiplier (8 species × control); per-size weight; Petrified ×10 on Medium + Small; non-Petrified has no breakdown entry.
+
+**Combined audit:**
+- **Names:** `hasAutoFail` parallels slice 576's SaveResult flag; per-multiplier constants in carrying-capacity.ts named for clarity.
+- **DRY:** the auto-fail wiring mirrors slice 576's save-side block; the carrying-capacity derive is a fresh module.
+- **SRP:** slice 580 adds one schema field + one derive output field + one content effect entry; slice 581 is test-only; slice 582 is two pure derive functions in a new file.
+- **Magic numbers:** all encumbrance constants extracted.
+- **at-threading:** unchanged.
+- **Mechanical outcomes asserted:** 23 cases (9 + 3 + 11).
+
+**Option C closure complete.** Original residual gap list closed:
+1. ~~Auto-fail save consumption~~ — slice 576 ✓
+2. ~~consumeOnCheck + planBardicInspiration + Help-on-check~~ — slice 577 ✓
+3. ~~planLayOnHands~~ — slice 578 ✓
+4. ~~planSearch / planStudy / planInfluence / planUtilize~~ — slice 579 ✓
+5. ~~Deafened auto-fail hearing checks~~ — slice 580 ✓
+6. ~~Frightened movement-gate~~ — slice 581 (audit-clarification; already wired) ✓
+7. ~~Encumbrance (Petrified ×10 + Goliath Powerful Build)~~ — slice 582 ✓
+
+Remaining truly-trivial deferrals (not worth slices): `planDash` + `planDisengage` standalone unit tests (both wired correctly; exercised indirectly).
+
+---
+
 **Engine (slice 579): four thin action planners — Search / Study / Influence / Utilize**
 
 Closes the four deferred-by-design L1 actions from the deep audit's missing-planner list. Each is a thin wrapper around `planAbilityCheck` that adds the action-economy consumption RAW prescribes. Pre-slice the consumer had to manually bundle `ActionEconomyConsumed { kind: 'action' }` + `planAbilityCheck` — workable but error-prone.
@@ -170,73 +224,6 @@ The remaining engine gaps (auto-fail save consumption; planSearch / planStudy / 
 
 ---
 
-**Engine (slice 572): planReady — the L1 Ready action**
-
-Closes the second of the six missing L1 action planners (slice 571 shipped Help). Pre-slice the Ready action had no engine path: a combatant could not declare a trigger-and-response that consumes their Action for the turn.
-
-RAW (PHB 2024 ch.7 Ready action): "You take the Ready action to wait for a particular circumstance before acting. ... This lets you act using your Reaction before the start of your next turn. First, you decide what perceivable circumstance will trigger your reaction."
-
-**New event** ([src/schemas/events/action-economy.ts](src/schemas/events/action-economy.ts)): `ActionReadied { encounterId, combatantId, trigger: string }`. Registered in [src/schemas/events/index.ts](src/schemas/events/index.ts) (import, union, type name, public re-export).
-
-**New runtime field** ([src/schemas/runtime/encounter.ts](src/schemas/runtime/encounter.ts)): `TurnUsage.readiedAction?: { trigger: string }`. Stamped by the reducer; cleared by `applyTurnStarted` when the combatant's next turn begins (RAW: "before the start of your next turn"). Additive defaulted-to-undefined — no SCHEMA_VERSION bump, no migration (Zod default loads old saves).
-
-**Reducer** ([src/engine/reducers/action-economy.ts](src/engine/reducers/action-economy.ts)): new `applyActionReadied` stamps `turnUsage.readiedAction`. The Reaction is NOT pre-consumed (RAW: the Reaction fires when the trigger occurs, and the consumer's subsequent reactive planner consumes it). Wired into [src/engine/apply.ts](src/engine/apply.ts) switch.
-
-**Planner** ([src/engine/plan/ready.ts](src/engine/plan/ready.ts)): `planReady({ combatantId, trigger })`. Validates `assertActorCanAct`, encounter context (must be on combatant's turn), action not already used, non-empty trigger. Emits `ActionEconomyConsumed { kind: 'action' }` + `ActionReadied { trigger }`.
-
-**Out of scope (future engine surface)**: trigger-and-execute machinery. When the trigger fires, the consumer calls the existing reactive planners (planAttack, planCastSpell, etc.) themselves, consuming the Reaction at that point. The readied-spell Concentration semantic (RAW: "holding onto the spell's magic requires Concentration") is consumer-managed via the existing planCastSpell concentration path.
-
-**Wiring**: [src/engine/plan/index.ts](src/engine/plan/index.ts) (re-export), [src/engine/index.ts](src/engine/index.ts) (Engine.plan.ready), [src/engine/conveniences.ts](src/engine/conveniences.ts) (`Ready` dispatch — planner-wiring audit's `performIntent` requirement), [tests/transcript.ts](tests/transcript.ts) (formatEvent ActionReadied line).
-
-**Tests** ([tests/unit/engine/slice-572-ready.test.ts](tests/unit/engine/slice-572-ready.test.ts), 8 cases): on-turn Ready emits ActionEconomyConsumed + ActionReadied; post-commit turnUsage.readiedAction carries the trigger; Reaction stays available; readiedAction clears at next TurnStarted; off-turn Ready throws; out-of-encounter Ready throws; double-Action-use throws; empty trigger throws; Incapacitated combatant throws.
-
-**Audit:**
-- **Names:** `ActionReadied` mirrors `ActionEconomyConsumed` / `RecklessAttackActivated` event-name convention; `readiedAction` on turnUsage mirrors `recklessAttackActive` / `noProvokeMovementUpToFeet` per-turn-state convention.
-- **DRY:** the planner is a one-purpose 90-line file; the reducer is 9 lines; no shared helper because the surface area is small.
-- **SRP:** schema + reducer + planner each in their own file; existing TurnStarted clears the new field alongside the other per-turn flags.
-- **Magic numbers:** none.
-- **at-threading:** single `nowIso()` per planner pass-through to both emitted events.
-- **Mechanical outcomes asserted:** 8 cases covering both happy paths and 5 negative gates.
-
-**Pattern-check:** Ready is the second of 6 missing L1 actions. The remaining 4 (Search, Study, Influence, Utilize) are largely thin wrappers over `planAbilityCheck` (Search = WIS check; Study = INT check; Influence = CHA check with target-set DC; Utilize = object interaction). Deferred to future slices — lower impact, similar shape.
-
----
-
-**Engine + content (slice 571): planHelp — the L1 Help action, both modes**
-
-Closes one of the six missing L1 action planners surfaced by the deep audit. Pre-slice Help was a documented gap: a Helper had no engine path to confer Advantage on an ally's check or distract a foe for an ally's attack. Slice 571 ships `planHelp` with both RAW modes.
-
-RAW (PHB 2024 ch.7 Help action):
-- **Help (Attack)**: "You momentarily distract a foe within 5 feet of you. The next attack roll one of your allies makes against that foe before the start of your next turn has Advantage on the attack roll."
-- **Help (Ability Check)**: "You momentarily help another creature do something. ... The creature has Advantage on that ability check."
-
-**Planner** ([src/engine/plan/help.ts](src/engine/plan/help.ts)): `planHelp({ helperId, targetId, mode: 'attack' | 'check' })`. Validates the helper isn't Incapacitated (`assertActorCanAct`); rejects self-help; consumes the helper's Action when invoked in an active encounter on their turn; emits `ConditionApplied` for the appropriate condition with `sourceCharacterId = helper.id` and `expiresOnRound = currentRound + 1, expiryTrigger: 'turnEnd'`. Out-of-encounter use bypasses the action gate (RAW: skill checks happen outside combat too).
-
-**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)):
-- **`helped-against-active`** (Attack mode): `GrantAdvantageToAttackers` + `consumeOnIncomingAttack: true` + `autoExpiry { afterRounds: 1, trigger: 'turnEnd' }`. The first attack against the foe consumes the condition; the autoExpiry sweeps any unused condition at the helper's next-turn-end (matching "before the start of your next turn").
-- **`helped-on-check-active`** (Ability Check mode): `SetAdvantage { on: { kind: 'check' }, mode: 'advantage' }` (wildcard ability) + `autoExpiry { afterRounds: 1, trigger: 'turnEnd' }`. The bearer gets Advantage on any ability check until expiry.
-
-**Documented RAW deviations:**
-- The Ability Check mode does NOT enforce "consumed on the first check" — the engine has no `consumeOnCheck` primitive yet (the existing `consumeOnAttack` / `consumeOnIncomingAttack` are attack-side only). A future engine slice can add parity; the impact is bounded (the autoExpiry sweeps at turn-end, so multiple checks within one round get advantage instead of just the first).
-- The 5-foot proximity gate for Attack mode is consumer-managed (the engine doesn't track positions).
-- The "helper must be proficient in the chosen skill" gate (Ability Check mode) is consumer-managed (the planner doesn't require a skill id).
-
-**Wiring**: [src/engine/plan/index.ts](src/engine/plan/index.ts) (re-export), [src/engine/index.ts](src/engine/index.ts) (Engine.plan.help + planHelp import), [src/engine/conveniences.ts](src/engine/conveniences.ts) (`Help` dispatch entry — planner-wiring audit's `performIntent` requirement).
-
-**Tests** ([tests/unit/engine/slice-571-help.test.ts](tests/unit/engine/slice-571-help.test.ts), 8 cases): pack declarations for both conditions; Attack mode applies the condition with `sourceCharacterId = helper`, ally's first attack rolls with Advantage, the condition is consumed on the first incoming attack so the second attack doesn't get the bonus; Check mode applies the condition, ally's ability check rolls with Advantage; helping yourself throws; an Incapacitated helper throws.
-
-**Doc-count updates**: conditions 140 → 142 (rider 125 → 127); updated in [docs/getting-started.md](docs/getting-started.md), [docs/status.md](docs/status.md) (×2 rows), [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md). Coverage snapshot ([tests/coverage/__snapshots__/features.test.ts.snap](tests/coverage/__snapshots__/features.test.ts.snap)) gains the two new conditions in the wired-catalog list.
-
-**Audit:**
-- **Names:** `helped-against-active` mirrors the existing `<verb>ed-<gate>-active` convention (e.g. `vexing-active`, `hexed-STR-active`); `helped-on-check-active` is verbose but unambiguous about the gate (check vs attack).
-- **DRY:** the two conditions follow the slice-571 pattern of a one-shot advantage with autoExpiry — no shared helper because the two condition entries are 1 JSON object each and inlining is clearest.
-- **SRP:** planner is one file, ~70 lines; two new content entries; the existing `consumeOnIncomingAttack` reducer (slice 484) and `autoExpiry` sweep (slice 269) consume the conditions without engine change.
-- **Magic numbers:** none.
-- **at-threading:** single `nowIso()` per planner pass-through; the encounter-round read is one resolution; `expiresOnRound` stamped once.
-- **Mechanical outcomes asserted:** 8 cases — pack declarations + per-mode condition application + consume-on-first-incoming-attack + Advantage on first ally attack + Advantage on first ability check + self-help / Incapacitated-helper negative controls.
-
-**Pattern-check:** Help is the simplest of the missing L1 actions — the next 5 (Ready, Search, Study, Influence, Utilize) follow similar planner shapes but each needs its own RAW-specific wiring (Ready needs reaction-window state; Search / Study are largely AbilityCheck wrappers with a category; Influence is a CHA-check wrapper with target-specific DC). Slice 572 ships Ready; the other four are lower-impact and deferred to future slices.
-
 ---
 
 ---
@@ -244,6 +231,8 @@ RAW (PHB 2024 ch.7 Help action):
 ---
 **Pattern-check:** the original `hexed-active` design baked the assumption "one chosen ability per cast" into the consumer side as out-of-band metadata. Slice 367 had already solved this exact pattern for Bestow Curse via per-ability conditions + casterChoosesVariant. Slice 565 applies the slice-367 pattern to Hex, closing the parallel. Future spells with "caster picks an ability at cast time" RAW (e.g. variants of Boon-style spells) reuse the same shape. The doc-counts audit's conditions-count guard caught the +5 net change (135 → 140) and the rider sub-count (120 → 125) automatically; both updated in [docs/getting-started.md](docs/getting-started.md), [docs/status.md](docs/status.md) (twice — overview row + dimension row), and [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md).
 
+
+Per-slice detail for slices 571-572 (planHelp — both Attack + Ability Check modes; planReady) is archived at [docs/changelog/archive-slices-571-572.md](docs/changelog/archive-slices-571-572.md) (slice 582, to keep this file under the 60 KB single-Read ceiling).
 
 Per-slice detail for slices 569-570 (Exhaustion attack-roll + Speed penalties — PHB 2024 unified d20-Tests semantic; Incapacitated → concentration-break on apply) is archived at [docs/changelog/archive-slices-569-570.md](docs/changelog/archive-slices-569-570.md) (slice 578, to keep this file under the 60 KB single-Read ceiling).
 

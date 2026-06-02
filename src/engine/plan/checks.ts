@@ -151,6 +151,13 @@ export interface AbilityCheckIntent {
   // side `savePreventsCondition`; semantics in
   // [src/derive/ability-check.ts](../../derive/ability-check.ts).
   readonly endingCondition?: string;
+  // Slice 580: the in-fiction sense this check relies on. Threads
+  // into computeAbilityCheck's `event.sense` fact (slice 263 wiring),
+  // which gates Deafened's auto-fail-on-hearing-check arm and the
+  // existing sense-specific advantage entries (Eyes of the Eagle).
+  // Undefined = consumer didn't specify; sense-gated entries don't
+  // fire.
+  readonly sense?: 'sight' | 'hearing' | 'smell' | 'touch' | 'taste';
   readonly at?: string;
 }
 
@@ -171,6 +178,7 @@ export const planAbilityCheck = (
     ...(intent.endingCondition !== undefined
       ? { endingCondition: intent.endingCondition }
       : {}),
+    ...(intent.sense !== undefined ? { sense: intent.sense } : {}),
     pendingChoices: state.pendingChoices,
     characters: state.characters,
   });
@@ -194,6 +202,17 @@ export const planAbilityCheck = (
   }
   const total = d20 + derivation.total;
   const at = intent.at ?? nowIso();
+  // Slice 580: RAW auto-fail (Deafened auto-fails ability checks
+  // requiring hearing). Mirror of slice 576's save-side wiring: the
+  // d20 + modifiers are computed normally (transcripts show the roll)
+  // but when a DC is supplied, `success` is forced to false. The
+  // breakdown gains an 'auto-fail' source entry.
+  const autoFailBreakdown = derivation.hasAutoFail
+    ? [{ source: 'auto-fail', value: 0 }]
+    : [];
+  const successField = intent.dc !== undefined
+    ? { dc: intent.dc, success: derivation.hasAutoFail ? false : total >= intent.dc }
+    : {};
   const event: AbilityCheckRolledEvent = {
     id: newEventId() as ULID,
     at,
@@ -201,12 +220,12 @@ export const planAbilityCheck = (
     characterId: intent.characterId,
     ability: intent.ability,
     ...(intent.skill !== undefined ? { skill: intent.skill } : {}),
-    ...(intent.dc !== undefined ? { dc: intent.dc, success: total >= intent.dc } : {}),
+    ...successField,
     d20: rolls,
     used,
     bonus: derivation.total,
     total,
-    breakdown: [...derivation.breakdown],
+    breakdown: [...derivation.breakdown, ...autoFailBreakdown],
   };
   // Slice 577: "Next ability check" one-shot consume — mirror of
   // consumeOnAttack at the AbilityCheckRolled site. The bearer's
