@@ -4,6 +4,52 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Tooling (slice 598): combat-fuzz Bonus-Action policy slot — species + class L1 BAs**
+
+The fuzz policy's first-turn buff slot (step 2 in `pickIntent`) handled only four BA-cast spell-buffs (Rage, Hunter's Mark, Hex, Divine Favor) and the cantrip-attack action loop. The L1 species + class **bonus-action features** — Orc Adrenaline Rush, Dwarf Stonecunning, Dragonborn Breath Weapon, Sorcerer Innate Sorcery, Bard Bardic Inspiration — were all granted as resources on the character but never invoked by the fuzz's bug-discovery loop.
+
+**Changes** ([scripts/combat-fuzz.ts](scripts/combat-fuzz.ts)):
+- New `firstTurnSpeciesBATried` flag on `Combatant` (parallel to `firstTurnBuffTried`).
+- `pickIntent` signature extended with an `allies: ReadonlyArray<Combatant>` argument (defaults to `[]`). The runBattle loop populates it from the active's team minus self, filtered by alive HP — empty in 1v1, populated in 2v2.
+- New step 2b in `pickIntent` (after the existing step 2 BA buffs, before the action buffs in step 2c):
+  - **Orc** → `AdrenalineRush` (BA Dash + temp HP = profBonus) — costs 1 `adrenaline-rush` resource (slice 588 ensures it's granted from `species.traits`).
+  - **Dwarf** → `Stonecunning` (BA tremorsense) with `onStoneSurface: true` (the engine doesn't track surfaces; the consumer asserts it). Costs 1 `stonecunning` resource.
+  - **Dragonborn** → `DragonbornBreath` with `damageType: 'acid'` + `areaShape: 'cone'` + `targetIds: [opponentId]`. Acid is the slice-593-auto-picked Black ancestry's damage type; cone is RAW's "size 5" wider cone. Costs 1 `dragonborn-breath-weapon` resource.
+  - **Sorcerer Innate Sorcery** → returned with sentinel intent type, dispatched directly via `engine.plan.innateSorcery(...)` in `runBattle` (the planner is on `EXCLUDED_FROM_DISPATCH` allowlist, mirror of slice 592 Shield + slice 591 ConsumeItem). Costs 1 `innate-sorcery` resource.
+  - **Bard Bardic Inspiration** → `BardicInspiration { bardId, recipientId }` targeting the first alive ally. Only fires in 2v2+ (1v1 has empty `allies`). Costs 1 `bardic-inspiration` resource.
+
+**Bug surfaced and fixed during build**: my first cut used `targetId` for the Bardic Inspiration intent; the schema field is `recipientId`. Same shape as the slice-593 field-name drift bugs (slice 587-flavor). Fixed; pattern-check across other intent shapes in the fuzz finds no further matches.
+
+**Verification:**
+- **1v1 mode** (30 seeds, seeds 1300-1329): 4 Adrenaline Rush firings + 4 Stonecunning firings + 3 Breath Weapon firings + 3 Innate Sorcery firings across the batch. Each fires the resource spend + the condition / event chain.
+- **2v2 mode** (30 seeds, seeds 1500-1529): Bardic Inspiration confer-to-ally fires correctly ("Aria-1 spends 1 bardic-inspiration" → "Aria-2 is now Bardic Inspiration"), and the recipient ally subsequently consumes the die on their next attack/save/check.
+- **Full suite green**: 479 test files, 3246 passing, 173 unrelated skips.
+
+**Audit:**
+- **Names:** `firstTurnSpeciesBATried` parallels existing `firstTurnBuffTried` / `firstTurnActionBuffTried`; the per-branch tokens use the engine's planner names.
+- **DRY:** all five branches share the same `c.resources.find((r) => r.resourceId === ...)` + `current > 0` gate.
+- **SRP:** tooling only; no engine, content, schema, or test changes.
+- **Magic numbers:** none added.
+- **at-threading:** N/A.
+- **Mechanical outcomes asserted:** live fuzz verification (each of 5 BAs fires; resource spend visible in transcripts; subsequent rolls show the condition / effect).
+
+**Pattern-check (filter shape: "BA features granted to L1 characters but unexercised"):** the L1 species / class BAs the engine has planners for:
+- Adrenaline Rush (orc) ✓
+- Stonecunning (dwarf) ✓
+- Dragonborn Breath ✓
+- Innate Sorcery (sorcerer) ✓
+- Bardic Inspiration (bard) ✓
+- Rage (barbarian) — already in slice 588's step 2
+- Hunter's Mark (ranger) — already in slice 588's step 2
+- Hex (warlock) — already in slice 588's step 2
+- Divine Favor (paladin) — already in slice 590's step 2
+
+Goliath Giant Ancestry (BA varies by lineage — 6 sub-options) is the one remaining unexercised L1 species BA; deferred since it needs per-lineage dispatch (Cloud's Jaunt, Storm's Thunder, Fire's Burn, etc.).
+
+L1 SRD active-feature coverage went from **~40% → ~70%** with this slice (every L1 class + species BA except Goliath Giant Ancestry now exercised).
+
+---
+
 **Tooling (slice 597): combat-fuzz monster variety — 10 L1-appropriate statblocks**
 
 Slice 596 introduced `--vs monster` mode with a single Wolf as the only opposing monster, leaving the rest of the engine's L1-CR statblock surface unexercised. The pack has 14+ monsters at CR ≤ 1 with already-wired natural-weapon items; slice 597 picks 10 with diverse trait coverage and adds them to `MONSTER_OPTIONS`.

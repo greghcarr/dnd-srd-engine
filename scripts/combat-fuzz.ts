@@ -453,6 +453,10 @@ interface Combatant {
   // Mage Armor, Faerie Fire) has been attempted. Separate from BA
   // since Action buffs replace the turn's damaging cantrip / attack.
   firstTurnActionBuffTried?: boolean;
+  // Slice 598: tracks whether the first-turn species / class BA
+  // (Adrenaline Rush, Stonecunning, Breath Weapon, Innate Sorcery,
+  // Bardic Inspiration) has been attempted.
+  firstTurnSpeciesBATried?: boolean;
   // Tracks whether the once-per-LR Innate Sorcery / Lay on Hands
   // self-heal has been used, so the policy doesn't loop on it.
   innateSorceryActivated?: boolean;
@@ -472,6 +476,7 @@ const pickIntent = (
   state: Campaign['state'],
   active: Combatant,
   opponent: Combatant,
+  allies: ReadonlyArray<Combatant> = [],
 ): { readonly type: string } & Record<string, unknown> | null => {
   const c = state.characters[active.built.character.id]!;
   const oppId = opponent.built.character.id;
@@ -551,13 +556,64 @@ const pickIntent = (
     if (classId === 'paladin' && c.preparedSpells.includes('divine-favor') && hasUnusedL1Slot(c)) {
       return { type: 'CastSpell', characterId: c.id, spellId: 'divine-favor', slotLevel: 1, targetIds: [c.id] };
     }
-    // Sorcerer Innate Sorcery is intentionally allowlisted out of
-    // the performIntent dispatch (see tests/audit/planner-wiring.test.ts —
-    // "Special-cast / placed-entity / multi-arg spell planners"
-    // category). The fuzz tool routes everything via performIntent so
-    // the policy skips Innate Sorcery; sorcerers just cast Fire Bolt
-    // every turn. A future fuzz revision can route allowlisted
-    // planners through their direct engine.plan.X calls.
+    // Slice 598: Innate Sorcery (sorcerer L1 BA, self-buff: advantage
+    // on the bearer's own spell attacks and increases their spell DC
+    // by +1 for 1 minute). Costs 1 innate-sorcery resource. The
+    // planner is allowlisted out of performIntent — see
+    // tests/audit/planner-wiring.test.ts EXCLUDED_FROM_DISPATCH
+    // "Special-cast" category. Returned with a sentinel type that
+    // runBattle dispatches directly via engine.plan.innateSorcery.
+    if (classId === 'sorcerer') {
+      const res = c.resources.find((r) => r.resourceId === 'innate-sorcery');
+      if (res && res.current > 0) {
+        return { type: 'InnateSorcery', characterId: c.id };
+      }
+    }
+  }
+
+  // Slice 598: first-turn species / class BA. Fires once per battle
+  // (gated by firstTurnSpeciesBATried). Species traits that grant a
+  // bonus-action: Orc Adrenaline Rush (Dash + temp HP), Dwarf
+  // Stonecunning (BA tremorsense, needs onStoneSurface hint), Dragonborn
+  // Breath Weapon (cone/line save + damage). Class BAs not yet covered
+  // by step 2: Bardic Inspiration (confer die to ally — only meaningful
+  // when allies are present, slice 595 2v2 mode).
+  if (!active.firstTurnSpeciesBATried && !cb.turnUsage.bonusActionUsed) {
+    active.firstTurnSpeciesBATried = true;
+    const speciesId = c.speciesId;
+    if (speciesId === 'orc') {
+      const res = c.resources.find((r) => r.resourceId === 'adrenaline-rush');
+      if (res && res.current > 0) {
+        return { type: 'AdrenalineRush', orcId: c.id };
+      }
+    }
+    if (speciesId === 'dwarf') {
+      const res = c.resources.find((r) => r.resourceId === 'stonecunning');
+      if (res && res.current > 0) {
+        return { type: 'Stonecunning', dwarfId: c.id, onStoneSurface: true };
+      }
+    }
+    if (speciesId === 'dragonborn') {
+      const res = c.resources.find((r) => r.resourceId === 'dragonborn-breath-weapon');
+      if (res && res.current > 0) {
+        // Auto-picked Black ancestry => acid; cone shape per RAW (first
+        // option). 5x5 cone width = 15 ft.
+        return {
+          type: 'DragonbornBreath',
+          dragonbornId: c.id,
+          damageType: 'acid',
+          areaShape: 'cone',
+          targetIds: [oppId],
+        };
+      }
+    }
+    if (classId === 'bard' && allies.length > 0) {
+      const res = c.resources.find((r) => r.resourceId === 'bardic-inspiration');
+      const ally = allies.find((a) => state.characters[a.built.character.id]!.hp.current > 0);
+      if (res && res.current > 0 && ally !== undefined) {
+        return { type: 'BardicInspiration', bardId: c.id, recipientId: ally.built.character.id };
+      }
+    }
   }
 
   // Slice 590: first-turn Action buff. Replaces the turn's damaging
@@ -796,7 +852,15 @@ const runBattle = (seed: number, pack: Pack, level: number, rest: 'none' | 'shor
     // Drain actions until policy says nothing left.
     let actions = 0;
     while (actions < 4) {
-      const intent = pickIntent(campaign.state, active, opponent);
+      // Slice 598: thread the active's living allies into pickIntent
+      // so Bardic Inspiration can pick a recipient (only meaningful
+      // in 2v2 mode; in 1v1 the array is empty).
+      const activeTeam = teamAIds.has(active.built.character.id) ? teamA : teamB;
+      const allies = activeTeam
+        .filter((pc) => pc.character.id !== active.built.character.id
+          && campaign.state.characters[pc.character.id]!.hp.current > 0)
+        .map((pc) => combatants[pc.character.id]!);
+      const intent = pickIntent(campaign.state, active, opponent, allies);
       if (intent === null) break;
       try {
         // Slice 591: ConsumeItem is allowlisted out of the
@@ -809,6 +873,14 @@ const runBattle = (seed: number, pack: Pack, level: number, rest: 'none' | 'shor
             characterId: intent.characterId as string,
             instanceId: intent.instanceId as string,
             ...(intent.targetId !== undefined ? { targetId: intent.targetId as string } : {}),
+          });
+          campaign = commit(campaign, events);
+        } else if (intent.type === 'InnateSorcery') {
+          // Slice 598: InnateSorcery is allowlisted out of performIntent
+          // (Special-cast / placed-entity / multi-arg spell planners
+          // category). Route directly to engine.plan.innateSorcery.
+          const { events } = engine.plan.innateSorcery(campaign.state, {
+            characterId: intent.characterId as string,
           });
           campaign = commit(campaign, events);
         } else {
