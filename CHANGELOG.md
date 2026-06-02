@@ -4,6 +4,35 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Tooling (slice 585): combat-fuzz CLI — random L1 battles + transcripts for human review**
+
+New `scripts/combat-fuzz.ts` CLI that drives random L1 1v1 battles to completion and writes markdown transcripts to disk. Catches **emergent-interaction** bugs the unit + golden tests don't cover — condition interactions mid-cast, reaction-window timing, action-economy edge cases — exactly the class of bug deterministic tests miss.
+
+**Architecture**:
+- **Random L1 builder**: standard array {15,14,13,12,10,8} assigned to per-class primary/secondary; random species + background; class-appropriate weapon + armor (longsword/chain-mail Fighter, greataxe/leather Barbarian, longbow/studded-leather Ranger, dagger Sorcerer, etc.); class-appropriate cantrips + L1 spells; class-keyed resources (Rage, Second Wind, Lay on Hands, Hunter's Mark, etc.).
+- **Class-aware action policy** (`pickIntent`): low-HP self-heal first (Lay on Hands / Second Wind / Cure Wounds); first-turn buff (Rage / Hunter's Mark / Hex with random ability variant); damaging cantrip for casters; weapon attack for martial. Returns null when there's nothing left to do on the turn.
+- **Battle runner**: cast → advance → repeat until one combatant ≤ 0 HP or 20-round cap. Uses the existing `performIntent` dispatch; throws are silently caught (the turn just ends).
+- **Output**: per-seed `seed-NNNN.md` files + an `index.md` summary, default to `/tmp/combat-fuzz/`. Transcript via the existing `formatTranscript()`.
+
+**CLI**: `npx tsx scripts/combat-fuzz.ts [--count N] [--seed S] [--out DIR]`. Defaults: 5 battles, seed 1, `/tmp/combat-fuzz/`.
+
+**Found by the first 15-battle run** (slice 586 closes these):
+- **Hex (and Hunter's Mark) damage rider doesn't fire on spell-attack hits.** Verified across seeds 103 / 105 / 114 (warlock casts Hex, then EB hits the Hexed target — no extra 1d6 necrotic emitted). The bug is isolated to spell attacks: `planAttack` (weapon attacks) dispatches triggers on AttackRolled ([src/engine/plan/attack.ts:1101](src/engine/plan/attack.ts#L1101)), but `planAttackMechanic` ([src/engine/plan/cast-spell.ts:500-523](src/engine/plan/cast-spell.ts#L500-L523)) emits AttackRolled WITHOUT a corresponding dispatch. Ranger Hunter's Mark on a longbow swing DOES fire (seed 102: weapon attack), confirming the gap is spell-attack-only.
+
+**Scope limit**: Sorcerer's Innate Sorcery is currently allowlisted out of the `performIntent` dispatch (see [tests/audit/planner-wiring.test.ts:93](tests/audit/planner-wiring.test.ts#L93) — "Special-cast / placed-entity / multi-arg spell planners" category). The fuzz routes everything via `performIntent` so the policy skips Innate Sorcery; sorcerers just cast Fire Bolt every turn. A future fuzz revision can route allowlisted planners through their direct `engine.plan.X` calls.
+
+**Audit:**
+- **Names:** `ClassBuild` / `BuiltCharacter` / `Combatant` mirror the existing planner-side naming axis.
+- **DRY:** the per-class `CLASS_BUILDS` table is the single source of truth for character roster construction; the policy walks it by `classId`.
+- **SRP:** one tooling file (~330 lines); zero engine, content, or test changes.
+- **Magic numbers:** `MAX_ROUNDS = 20`, `STANDARD_ARRAY = [15,14,13,12,10,8]`, hit-die-by-class table all extracted.
+- **at-threading:** synthetic ISO timestamps stamped sequentially per event (deterministic transcripts).
+- **Mechanical outcomes asserted:** N/A (tooling; output is for human review).
+
+**Pattern-check:** the fuzz tool's value is **bug discovery**, not regression prevention — it doesn't run in CI. Each run produces fresh seeds + fresh transcripts; the human reviewer (me, in this case) reads them and surfaces issues. The slice 586 Hex-spell-attack bug is the first such finding.
+
+---
+
 **Web (slice 584): remove the Rules Lab mode from the demo app**
 
 The browser demo (`web/`) previously shipped a "Rules Lab" mode — a click-to-run RAW-compliance verifier that re-executed the engine's audit probes against the loaded starter pack and rendered pass/fail rows for visitor inspection. Slice 584 removes it entirely.

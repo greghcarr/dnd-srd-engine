@@ -1,0 +1,511 @@
+// Combat fuzz simulator (slice 585) — drives random L1 1v1 battles
+// to completion and writes markdown transcripts to disk for human
+// review. Surfaces emergent-interaction bugs the unit + golden
+// tests don't cover (condition interactions mid-cast, reaction
+// windows in the wrong slot, action-economy edge cases, etc.).
+//
+// Run: npx tsx scripts/combat-fuzz.ts [--count N] [--seed S] [--out DIR]
+//
+// Each battle:
+//   1. Builds two random L1 characters (class × species × background
+//      × equipment, with class-appropriate spell selections).
+//   2. Creates an encounter, rolls initiative, starts combat.
+//   3. Loop: on each turn pick an action via a class-aware policy,
+//      attempt it; if it throws, fall back to a simpler action.
+//      Advance the turn.
+//   4. Stops when one combatant drops to ≤ 0 HP OR a round cap
+//      elapses (default 20 rounds).
+//   5. Emits a markdown transcript via formatTranscript().
+
+import { writeFileSync, mkdirSync } from 'node:fs';
+import { resolve } from 'node:path';
+import {
+  createEngine,
+  loadStarterPack,
+  seededRNG,
+  newCharacterId,
+  newItemInstanceId,
+  newEventId,
+  CharacterSchema,
+  type Character,
+  type ContentPack,
+} from '../src/index.js';
+import { commit, type Campaign } from '../src/engine/commit.js';
+import { resolveContent } from '../src/content/pack.js';
+import { performIntent } from '../src/engine/conveniences.js';
+import { formatTranscript } from '../tests/transcript.js';
+import type { ItemInstance } from '../src/schemas/runtime/item-instance.js';
+import type { Event } from '../src/schemas/events/index.js';
+
+const MAX_ROUNDS = 20;
+const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8] as const;
+const SPECIES = ['human', 'elf', 'dwarf', 'halfling', 'tiefling', 'dragonborn', 'gnome', 'goliath', 'orc'] as const;
+const BACKGROUNDS = ['acolyte', 'criminal', 'sage', 'soldier'] as const;
+
+type AbilityScore = 'STR' | 'DEX' | 'CON' | 'INT' | 'WIS' | 'CHA';
+type Pack = ContentPack;
+
+// Per-class build spec: which ability gets the 15, what weapon / armor
+// they start with, what cantrips + L1 spells they prepare, what
+// resources they need (Rage uses, Bardic Inspiration die count, etc.).
+interface ClassBuild {
+  readonly classId: string;
+  readonly primary: AbilityScore;
+  readonly secondary: AbilityScore;
+  readonly weaponId: string;
+  readonly armorId?: string;
+  readonly cantrips: ReadonlyArray<string>;
+  readonly l1Spells: ReadonlyArray<string>;
+  readonly resources?: ReadonlyArray<{ resourceId: string; current: number; max: number }>;
+}
+
+const CLASS_BUILDS: ReadonlyArray<ClassBuild> = [
+  {
+    classId: 'barbarian',
+    primary: 'STR', secondary: 'CON',
+    weaponId: 'greataxe', armorId: 'leather-armor',
+    cantrips: [], l1Spells: [],
+    resources: [{ resourceId: 'rage', current: 2, max: 2 }],
+  },
+  {
+    classId: 'bard',
+    primary: 'CHA', secondary: 'DEX',
+    weaponId: 'rapier', armorId: 'leather-armor',
+    cantrips: ['vicious-mockery'],
+    l1Spells: ['cure-wounds', 'healing-word'],
+    resources: [{ resourceId: 'bardic-inspiration', current: 4, max: 4 }],
+  },
+  {
+    classId: 'cleric',
+    primary: 'WIS', secondary: 'STR',
+    weaponId: 'mace', armorId: 'chain-shirt',
+    cantrips: ['sacred-flame'],
+    l1Spells: ['cure-wounds', 'guiding-bolt'],
+  },
+  {
+    classId: 'druid',
+    primary: 'WIS', secondary: 'CON',
+    weaponId: 'scimitar', armorId: 'leather-armor',
+    cantrips: ['produce-flame'],
+    l1Spells: ['cure-wounds', 'entangle'],
+  },
+  {
+    classId: 'fighter',
+    primary: 'STR', secondary: 'CON',
+    weaponId: 'longsword', armorId: 'chain-mail',
+    cantrips: [], l1Spells: [],
+    resources: [{ resourceId: 'second-wind', current: 2, max: 2 }],
+  },
+  {
+    classId: 'monk',
+    primary: 'DEX', secondary: 'WIS',
+    weaponId: 'shortsword',
+    cantrips: [], l1Spells: [],
+  },
+  {
+    classId: 'paladin',
+    primary: 'STR', secondary: 'CHA',
+    weaponId: 'longsword', armorId: 'chain-mail',
+    cantrips: [], l1Spells: ['divine-favor', 'searing-smite'],
+    resources: [{ resourceId: 'lay-on-hands', current: 5, max: 5 }],
+  },
+  {
+    classId: 'ranger',
+    primary: 'DEX', secondary: 'WIS',
+    weaponId: 'longbow', armorId: 'studded-leather',
+    cantrips: [],
+    l1Spells: ['hunters-mark', 'cure-wounds'],
+    resources: [{ resourceId: 'hunters-mark', current: 2, max: 2 }],
+  },
+  {
+    classId: 'rogue',
+    primary: 'DEX', secondary: 'INT',
+    weaponId: 'shortsword', armorId: 'leather-armor',
+    cantrips: [], l1Spells: [],
+  },
+  {
+    classId: 'sorcerer',
+    primary: 'CHA', secondary: 'CON',
+    weaponId: 'dagger',
+    cantrips: ['fire-bolt', 'ray-of-frost'],
+    l1Spells: ['magic-missile', 'shield'],
+    resources: [{ resourceId: 'innate-sorcery', current: 2, max: 2 }],
+  },
+  {
+    classId: 'warlock',
+    primary: 'CHA', secondary: 'CON',
+    weaponId: 'dagger', armorId: 'leather-armor',
+    cantrips: ['eldritch-blast'],
+    l1Spells: ['hex'],
+  },
+  {
+    classId: 'wizard',
+    primary: 'INT', secondary: 'DEX',
+    weaponId: 'quarterstaff',
+    cantrips: ['fire-bolt'],
+    l1Spells: ['magic-missile', 'mage-armor', 'shield'],
+  },
+];
+
+const pickRandom = <T>(arr: ReadonlyArray<T>, r: number): T => arr[Math.floor(r * arr.length)]!;
+
+// Distribute STANDARD_ARRAY across abilities, prioritizing primary +
+// secondary. Remaining 4 abilities get the lower values in declared
+// order.
+const assignAbilityScores = (build: ClassBuild): Record<AbilityScore, number> => {
+  const all: AbilityScore[] = ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'];
+  const others = all.filter((a) => a !== build.primary && a !== build.secondary);
+  const scores: Record<AbilityScore, number> = { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 };
+  scores[build.primary] = STANDARD_ARRAY[0]!;
+  scores[build.secondary] = STANDARD_ARRAY[1]!;
+  others.forEach((a, i) => {
+    scores[a] = STANDARD_ARRAY[2 + i] ?? 10;
+  });
+  return scores;
+};
+
+interface BuiltCharacter {
+  readonly character: Character;
+  readonly weaponInstance: ItemInstance;
+  readonly armorInstance?: ItemInstance;
+  readonly build: ClassBuild;
+}
+
+const buildL1 = (name: string, rngFloat: () => number): BuiltCharacter => {
+  const build = pickRandom(CLASS_BUILDS, rngFloat());
+  const speciesId = pickRandom(SPECIES, rngFloat());
+  const backgroundId = pickRandom(BACKGROUNDS, rngFloat());
+  const abilities = assignAbilityScores(build);
+  // L1 HP = max(hitDie) + CON mod. Approximate hitDie from class
+  // (d12 / d10 / d8 / d6) by lookup.
+  const hitDieByClass: Readonly<Record<string, number>> = {
+    barbarian: 12, fighter: 10, paladin: 10, ranger: 10,
+    bard: 8, cleric: 8, druid: 8, monk: 8, rogue: 8, warlock: 8,
+    sorcerer: 6, wizard: 6,
+  };
+  const conMod = Math.floor((abilities.CON - 10) / 2);
+  const hpMax = (hitDieByClass[build.classId] ?? 8) + conMod;
+
+  const weaponInstance: ItemInstance = {
+    id: newItemInstanceId(),
+    definitionId: build.weaponId,
+    quantity: 1,
+    attuned: false,
+    identifiedByCharacterIds: [],
+  };
+  const armorInstance: ItemInstance | undefined = build.armorId !== undefined
+    ? {
+      id: newItemInstanceId(),
+      definitionId: build.armorId,
+      quantity: 1,
+      attuned: false,
+      identifiedByCharacterIds: [],
+    }
+    : undefined;
+
+  const character = CharacterSchema.parse({
+    id: newCharacterId(),
+    name,
+    speciesId,
+    backgroundId,
+    classes: [{ classId: build.classId, level: 1, hitDiceRemaining: 1 }],
+    abilityScores: abilities,
+    hp: { current: hpMax, max: hpMax, temp: 0 },
+    inventory: [weaponInstance.id, ...(armorInstance ? [armorInstance.id] : [])],
+    equipped: {
+      mainHand: weaponInstance.id,
+      ...(armorInstance ? { armor: armorInstance.id } : {}),
+      attuned: [],
+    },
+    knownSpells: [...build.cantrips, ...build.l1Spells],
+    preparedSpells: [...build.cantrips, ...build.l1Spells],
+    ...(build.resources ? { resources: [...build.resources] } : {}),
+  });
+
+  return { character, weaponInstance, armorInstance, build };
+};
+
+interface Combatant {
+  readonly built: BuiltCharacter;
+  // Tracks whether the first-turn buff (Rage, Hunter's Mark) has been
+  // attempted, to avoid retrying every turn after a failure.
+  firstTurnBuffTried?: boolean;
+  // Tracks whether the once-per-LR Innate Sorcery / Lay on Hands
+  // self-heal has been used, so the policy doesn't loop on it.
+  innateSorceryActivated?: boolean;
+}
+
+// Action policy: returns the next intent for the active combatant,
+// given the campaign state and the opponent. Returns null when the
+// combatant has nothing to do this turn (skip to TurnEnded). Always
+// safe to call multiple times per turn: action first, then bonus
+// action, then nothing.
+const pickIntent = (
+  state: Campaign['state'],
+  active: Combatant,
+  opponent: Combatant,
+): { readonly type: string } & Record<string, unknown> | null => {
+  const c = state.characters[active.built.character.id]!;
+  const oppId = opponent.built.character.id;
+  const oppC = state.characters[oppId];
+  if (!oppC || oppC.hp.current <= 0) return null;
+  if (c.hp.current <= 0) return null;
+  const encounter = state.encounters[state.activeEncounterId!]!;
+  const cb = encounter.combatants.find((x) => x.combatantId === c.id)!;
+  const build = active.built.build;
+  const classId = build.classId;
+
+  const lowHp = c.hp.current < c.hp.max / 2;
+
+  // 1. Self-heal when low (BA or Action). Tried first since it
+  // breaks the attack loop on the brink.
+  if (lowHp) {
+    if (classId === 'paladin' && !cb.turnUsage.bonusActionUsed) {
+      const pool = c.resources.find((r) => r.resourceId === 'lay-on-hands');
+      if (pool && pool.current >= 3) {
+        return { type: 'LayOnHands', paladinId: c.id, targetId: c.id, mode: 'heal', amount: Math.min(pool.current, 5) };
+      }
+    }
+    if (classId === 'fighter' && !cb.turnUsage.bonusActionUsed) {
+      const sw = c.resources.find((r) => r.resourceId === 'second-wind');
+      if (sw && sw.current > 0) {
+        return { type: 'SecondWind', fighterId: c.id };
+      }
+    }
+    if ((classId === 'cleric' || classId === 'druid' || classId === 'bard') && !cb.turnUsage.actionUsed) {
+      // Cast cure-wounds on self
+      if (c.preparedSpells.includes('cure-wounds')) {
+        return { type: 'CastSpell', characterId: c.id, spellId: 'cure-wounds', slotLevel: 1, targetIds: [c.id] };
+      }
+    }
+  }
+
+  // 2. First-turn buff (BA).
+  if (!active.firstTurnBuffTried && !cb.turnUsage.bonusActionUsed) {
+    active.firstTurnBuffTried = true;
+    if (classId === 'barbarian') {
+      const rage = c.resources.find((r) => r.resourceId === 'rage');
+      if (rage && rage.current > 0) {
+        return { type: 'Rage', barbarianId: c.id };
+      }
+    }
+    if (classId === 'ranger') {
+      const huntersMark = c.resources.find((r) => r.resourceId === 'hunters-mark');
+      if (huntersMark && huntersMark.current > 0) {
+        return { type: 'CastSpell', characterId: c.id, spellId: 'hunters-mark', slotLevel: 1, targetIds: [oppId], useFreeCast: true };
+      }
+    }
+    if (classId === 'warlock' && c.preparedSpells.includes('hex')) {
+      return { type: 'CastSpell', characterId: c.id, spellId: 'hex', slotLevel: 1, targetIds: [oppId], casterChoice: { kind: 'variant', value: 'STR' } };
+    }
+    // Sorcerer Innate Sorcery is intentionally allowlisted out of
+    // the performIntent dispatch (see tests/audit/planner-wiring.test.ts —
+    // "Special-cast / placed-entity / multi-arg spell planners"
+    // category). The fuzz tool routes everything via performIntent so
+    // the policy skips Innate Sorcery; sorcerers just cast Fire Bolt
+    // every turn. A future fuzz revision can route allowlisted
+    // planners through their direct engine.plan.X calls.
+  }
+
+  // 3. Action: cast a damaging cantrip if caster, else attack.
+  if (!cb.turnUsage.actionUsed) {
+    if (build.cantrips.includes('eldritch-blast')) {
+      return { type: 'CastSpell', characterId: c.id, spellId: 'eldritch-blast', slotLevel: 0, targetIds: [oppId] };
+    }
+    if (build.cantrips.includes('fire-bolt')) {
+      return { type: 'CastSpell', characterId: c.id, spellId: 'fire-bolt', slotLevel: 0, targetIds: [oppId] };
+    }
+    if (build.cantrips.includes('sacred-flame')) {
+      return { type: 'CastSpell', characterId: c.id, spellId: 'sacred-flame', slotLevel: 0, targetIds: [oppId] };
+    }
+    if (build.cantrips.includes('vicious-mockery')) {
+      return { type: 'CastSpell', characterId: c.id, spellId: 'vicious-mockery', slotLevel: 0, targetIds: [oppId] };
+    }
+    if (build.cantrips.includes('produce-flame')) {
+      return { type: 'CastSpell', characterId: c.id, spellId: 'produce-flame', slotLevel: 0, targetIds: [oppId] };
+    }
+    // Martial fallback: attack with main-hand weapon.
+    return {
+      type: 'Attack',
+      attackerId: c.id,
+      targetId: oppId,
+      weaponInstanceId: active.built.weaponInstance.id,
+    };
+  }
+
+  return null;
+};
+
+const runBattle = (seed: number, pack: Pack): { events: ReadonlyArray<Event>; finalState: Campaign['state']; winner: string | null; rounds: number } => {
+  const engine = createEngine({ contentPacks: [pack], rng: seededRNG(seed) });
+  // Per-battle RNG used for character generation; separate from the
+  // engine RNG so the build doesn't drift from the action seed.
+  let cursor = seed * 13 + 7;
+  const rngFloat = (): number => {
+    cursor = (cursor * 9301 + 49297) % 233280;
+    return cursor / 233280;
+  };
+
+  // Loop until the two characters land on different classes (more
+  // varied transcripts) — caps at a few attempts to avoid stalls.
+  let pcA = buildL1('Aria', rngFloat);
+  let pcB = buildL1('Bran', rngFloat);
+  for (let i = 0; i < 8 && pcA.build.classId === pcB.build.classId; i++) {
+    pcB = buildL1('Bran', rngFloat);
+  }
+
+  const now = (offsetSec = 0): string => new Date(Date.UTC(2026, 0, 1, 0, 0, offsetSec)).toISOString();
+  let eventCounter = 0;
+  const nextAt = (): string => now(eventCounter++);
+
+  let campaign = engine.createCampaign({ name: `fuzz-${seed}` });
+  const setupEvents: Event[] = [
+    { id: newEventId(), at: nextAt(), type: 'ItemAcquired', instance: pcA.weaponInstance } as Event,
+    ...(pcA.armorInstance ? [{ id: newEventId(), at: nextAt(), type: 'ItemAcquired', instance: pcA.armorInstance } as Event] : []),
+    { id: newEventId(), at: nextAt(), type: 'ItemAcquired', instance: pcB.weaponInstance } as Event,
+    ...(pcB.armorInstance ? [{ id: newEventId(), at: nextAt(), type: 'ItemAcquired', instance: pcB.armorInstance } as Event] : []),
+    { id: newEventId(), at: nextAt(), type: 'CharacterCreated', snapshot: pcA.character } as Event,
+    { id: newEventId(), at: nextAt(), type: 'CharacterCreated', snapshot: pcB.character } as Event,
+  ];
+  campaign = commit(campaign, setupEvents);
+
+  const enc = engine.plan.createEncounter(campaign.state, {
+    combatantIds: [pcA.character.id, pcB.character.id],
+    name: 'Fuzz arena',
+  });
+  campaign = commit(campaign, enc.events);
+  campaign = commit(campaign, engine.plan.rollInitiative(campaign.state, { encounterId: enc.encounterId }).events);
+  campaign = commit(campaign, engine.plan.startEncounter(campaign.state, { encounterId: enc.encounterId }).events);
+  campaign = commit(campaign, engine.plan.beginFirstTurn(campaign.state, { encounterId: enc.encounterId }).events);
+
+  const combatants: Record<string, Combatant> = {
+    [pcA.character.id]: { built: pcA },
+    [pcB.character.id]: { built: pcB },
+  };
+
+  let rounds = 1;
+  let winner: string | null = null;
+  while (rounds < MAX_ROUNDS) {
+    const encState = campaign.state.encounters[enc.encounterId]!;
+    const activeCb = encState.combatants[encState.activeIndex]!;
+    const active = combatants[activeCb.combatantId]!;
+    const opponent = combatants[pcA.character.id === activeCb.combatantId ? pcB.character.id : pcA.character.id]!;
+
+    // Active dead → advance turn (death save loop handled by engine).
+    const activeChar = campaign.state.characters[activeCb.combatantId]!;
+    if (activeChar.hp.current <= 0) {
+      try {
+        campaign = commit(campaign, engine.plan.advanceTurn(campaign.state, { encounterId: enc.encounterId }).events);
+      } catch {
+        break;
+      }
+      rounds = campaign.state.encounters[enc.encounterId]?.round ?? rounds;
+      continue;
+    }
+
+    // Drain actions until policy says nothing left.
+    let actions = 0;
+    while (actions < 4) {
+      const intent = pickIntent(campaign.state, active, opponent);
+      if (intent === null) break;
+      try {
+        campaign = performIntent(engine, campaign, intent);
+      } catch {
+        // Action failed (e.g., a resource was consumed earlier in
+        // the loop). Stop trying for this turn.
+        break;
+      }
+      actions += 1;
+      // Stop if opponent is dead.
+      if (campaign.state.characters[opponent.built.character.id]!.hp.current <= 0) {
+        winner = active.built.character.id;
+        break;
+      }
+    }
+
+    if (winner !== null) break;
+
+    // Advance turn.
+    try {
+      campaign = commit(campaign, engine.plan.advanceTurn(campaign.state, { encounterId: enc.encounterId }).events);
+    } catch {
+      break;
+    }
+    const newRound = campaign.state.encounters[enc.encounterId]?.round ?? rounds;
+    if (newRound > rounds) rounds = newRound;
+  }
+
+  return { events: campaign.events, finalState: campaign.state, winner, rounds };
+};
+
+const summarize = (
+  pack: Pack,
+  seed: number,
+  result: ReturnType<typeof runBattle>,
+): string => {
+  const lines: string[] = [];
+  lines.push(`# Combat fuzz seed=${seed}`);
+  lines.push('');
+  const pcs = Object.values(result.finalState.characters);
+  for (const pc of pcs) {
+    const cls = pc.classes[0]?.classId ?? 'unknown';
+    lines.push(`- **${pc.name}** — ${cls} ${pc.speciesId} (${pc.backgroundId}). Final HP: ${pc.hp.current}/${pc.hp.max}.`);
+  }
+  lines.push('');
+  if (result.winner !== null) {
+    const w = result.finalState.characters[result.winner]!;
+    lines.push(`**Winner**: ${w.name} (in ${result.rounds} rounds).`);
+  } else {
+    lines.push(`**No winner** after ${MAX_ROUNDS} rounds.`);
+  }
+  lines.push('');
+  lines.push('## Transcript');
+  lines.push('');
+  lines.push(formatTranscript(result.events, resolveContent([pack])));
+  return lines.join('\n');
+};
+
+const parseArgs = (argv: ReadonlyArray<string>): { count: number; seed: number; out: string } => {
+  let count = 5;
+  let seed = 1;
+  let out = '/tmp/combat-fuzz';
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === '--count') count = Number(argv[++i] ?? count);
+    else if (a === '--seed') seed = Number(argv[++i] ?? seed);
+    else if (a === '--out') out = argv[++i] ?? out;
+  }
+  return { count, seed, out };
+};
+
+const main = (): void => {
+  const { count, seed, out } = parseArgs(process.argv.slice(2));
+  mkdirSync(out, { recursive: true });
+  const pack = loadStarterPack();
+  const indexLines: string[] = [`# Combat fuzz run — ${count} battles, seeds ${seed}..${seed + count - 1}`, ''];
+  for (let i = 0; i < count; i++) {
+    const s = seed + i;
+    try {
+      const result = runBattle(s, pack);
+      const fileName = `seed-${String(s).padStart(4, '0')}.md`;
+      const filePath = resolve(out, fileName);
+      const summary = summarize(pack, s, result);
+      writeFileSync(filePath, summary, 'utf8');
+      const winnerName = result.winner !== null
+        ? result.finalState.characters[result.winner]!.name
+        : '(no winner)';
+      indexLines.push(`- [${fileName}](./${fileName}) — winner: ${winnerName}, ${result.rounds} rounds`);
+      process.stdout.write(`seed=${s} → ${fileName} (winner: ${winnerName}, ${result.rounds} rounds)\n`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const fileName = `seed-${String(s).padStart(4, '0')}.error.txt`;
+      writeFileSync(resolve(out, fileName), `error during battle:\n${msg}\n`, 'utf8');
+      indexLines.push(`- [${fileName}](./${fileName}) — **error**: ${msg}`);
+      process.stdout.write(`seed=${s} → ERROR: ${msg}\n`);
+    }
+  }
+  writeFileSync(resolve(out, 'index.md'), indexLines.join('\n'), 'utf8');
+  process.stdout.write(`\nWrote ${count} transcripts + index.md to ${out}\n`);
+};
+
+main();
