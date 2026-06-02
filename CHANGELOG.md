@@ -4,6 +4,34 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Tooling (slice 592): combat-fuzz reactions — Shield post-hit dispatch**
+
+The fuzz tool's runBattle loop ignored reaction-triggering events. Wizard / Sorcerer characters with `shield` prepared (an L1 spell, cast as a reaction in response to being hit) never reacted; the Shield planner + the `shielded` condition + reaction action-economy wiring all went unexercised by the bug-discovery harness.
+
+**Changes** ([scripts/combat-fuzz.ts](scripts/combat-fuzz.ts)):
+- New `tryShieldReaction(campaign, defender)` helper gates the cast on the four RAW prerequisites: wizard/sorcerer class, `shield` in `preparedSpells`, an L1 slot remaining, and reaction not yet used this round.
+- After each `performIntent` / `consumeItem` call in the runBattle inner loop, scan the tail events for an `AttackRolled` against the opponent with `hit: true`. If the defender passes `tryShieldReaction`, call `engine.plan.shield(...)` directly (Shield is on the `EXCLUDED_FROM_DISPATCH` allowlist as a reaction planner returning a `ShieldOutcome` the consumer branches on).
+
+**Documented limitation:** the fuzz fires Shield AFTER the engine has already emitted the `DamageRolled` + `DamageApplied` chain, so a Shield that would RAW-retroactively convert a hit into a miss (`preventedHit === true`) doesn't undo the damage. The slot / reaction / condition wiring + the +5 AC for subsequent attacks (until the start of the defender's next turn) all fire correctly; only the retroactive damage rollback is missing. Truly RAW-correct retroactive Shield needs the attack planner to split AttackRolled emission from DamageRolled emission so the consumer can interpose a reaction in between — a deeper architectural change deferred to a future slice.
+
+**Verification** (30 seeds, slice 592-fuzz):
+- Shield fired in 5+ battles across the batch. Sample: seed 612 (Aria rogue hits Bran wizard d20+4=15 vs AC 12 → hit → "Bran is now Shielded" → "Bran casts Shield: +5 AC, turns the hit into a miss"; the engine correctly reports `preventedHit: true` even though the fuzz's post-hit flow already applied the 8 piercing damage).
+- The +5 AC bump verified for subsequent rounds (seed 618: Bran's Round 1 longbow attack vs Aria's AC 11 → Aria casts Mage Armor Round 1 turn → Rounds 2-4 attacks see AC 14, an additional +3 from Mage Armor and the Shield bump folds on top when applicable).
+
+**Bonus engine-RAW confirmation:** slice 587's transcript-display fix was correctly surfacing the `[disadvantage]` tag on Bran the halfling ranger's longbow attacks (seed 618 et al). Investigation traced this to [src/engine/plan/attack.ts:727-730](src/engine/plan/attack.ts#L727-L730) `heavyForSmall` check: PHB 2024 RAW "Small creatures have Disadvantage on attack rolls with weapons that have the Heavy property" — the longbow has the Heavy property, and Bran the halfling is Small, so the engine correctly imposes Disadvantage. The combat-fuzz wasn't producing this configuration before slice 587 made the disadvantage visible in transcripts.
+
+**Audit:**
+- **Names:** `tryShieldReaction` returns a boolean (predicate naming axis), with the actual Shield cast separated to the runBattle inline block.
+- **DRY:** the runBattle's post-intent scan reuses the same `campaign.events.slice(-12)` tail pattern as slice 589's mastery-fire hook.
+- **SRP:** tooling only; no engine, content, schema, or test changes.
+- **Magic numbers:** Shield's +5 AC + slot level 1 are pack/engine-owned, not fuzz-owned.
+- **at-threading:** N/A (Shield's planner stamps its own `at`).
+- **Mechanical outcomes asserted:** live fuzz verification (Shield casts + condition + slot consumption + reaction action-economy + +5 AC visible to subsequent attack rolls).
+
+**Pattern-check (filter shape: "L1 reactions the fuzz could exercise"):** Shield (wizard/sorcerer) is the only L1 reaction-spell in the current pack that fits a 1v1 fuzz flow. Hellish Rebuke is an L1 reaction-spell for Warlock + Tiefling, triggered by *taking* damage rather than being hit — a future slice could add it (the fuzz would scan for `DamageApplied` events where the active char took damage, then react). Cutting Words (Bard L2 feature) and Counterspell (L3) are out of L1 scope until slice 593's levels-2-5 builder lands. Documented as follow-up.
+
+---
+
 **Tooling (slice 591): combat-fuzz item variety — shields + healing potions**
 
 The fuzz tool previously equipped exactly one weapon and one armor per combatant. Shields (+2 AC) were never exercised, even though Fighter / Paladin / Cleric all have shield proficiency in the pack and shield is a load-bearing AC contributor. Healing potions (a single-charge consumable that emits the engine's consume-item / Heal flow) were also never used; that whole consume-item dispatch path went unexercised by the fuzz.

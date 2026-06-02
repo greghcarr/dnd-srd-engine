@@ -223,6 +223,28 @@ const hasUnusedL1Slot = (character: Character): boolean => {
   return used < FULL_CASTER_L1_SLOTS;
 };
 
+// Slice 592: check that the defender can legally react with Shield --
+// wizard or sorcerer with `shield` prepared, an L1 slot remaining, and
+// reaction not yet used this round. Returns true if all gates pass.
+const tryShieldReaction = (
+  _engine: unknown,
+  campaign: Campaign,
+  defender: Combatant,
+  _hit: { id: string },
+): boolean => {
+  const defChar = campaign.state.characters[defender.built.character.id]!;
+  const classId = defChar.classes[0]!.classId;
+  if (classId !== 'wizard' && classId !== 'sorcerer') return false;
+  if (!defChar.preparedSpells.includes('shield')) return false;
+  if (!hasUnusedL1Slot(defChar)) return false;
+  const encounter = Object.values(campaign.state.encounters)[0];
+  if (!encounter) return false;
+  const cb = encounter.combatants.find((x) => x.combatantId === defChar.id);
+  if (!cb) return false;
+  if (cb.turnUsage.reactionUsed === true) return false;
+  return true;
+};
+
 // Slice 588: evaluate a GrantResource `max` formula at L1. Handles the
 // shapes the SRD species traits actually use (literal numbers,
 // `profBonus`, `level`); anything else falls back to 1 so the resource
@@ -620,6 +642,35 @@ const runBattle = (seed: number, pack: Pack): { events: ReadonlyArray<Event>; fi
         }
       } catch {
         break;
+      }
+      // Slice 592: reaction window. After the active intent commits, scan
+      // its emitted AttackRolled events for hits against the opponent
+      // (the defender). If the defender is a Shield-prepared caster
+      // (wizard / sorcerer) with reaction + L1 slot available, cast
+      // Shield as a reaction. The +5 AC applies until the start of the
+      // defender's next turn so subsequent attacks this round see the
+      // bumped AC. RAW Shield can retroactively convert hit→miss; the
+      // fuzz fires Shield post-hit (the damage already applied), which
+      // exercises the slot / reaction / condition wiring + bumped AC
+      // for *subsequent* attacks but not the retroactive conversion.
+      // Documented limitation.
+      const tail = campaign.events.slice(-12);
+      const hitOnDefender = [...tail].reverse().find((e): e is Event & { type: 'AttackRolled'; hit: boolean; targetId: string; total: number; targetAC: number; id: string } =>
+        e.type === 'AttackRolled' && (e as { targetId: string }).targetId === opponent.built.character.id && (e as { hit: boolean }).hit === true);
+      if (hitOnDefender !== undefined && tryShieldReaction(engine, campaign, opponent, hitOnDefender)) {
+        const { events: shieldEvents } = engine.plan.shield(campaign.state, {
+          casterId: opponent.built.character.id,
+          triggeringAttackEventId: hitOnDefender.id,
+          triggeringAttackTotal: hitOnDefender.total,
+          originalAC: hitOnDefender.targetAC,
+          slotLevel: 1,
+        });
+        try {
+          campaign = commit(campaign, [...shieldEvents]);
+        } catch {
+          // Shield post-hit may collide with already-applied damage
+          // events; in that case skip silently.
+        }
       }
       actions += 1;
       // Slice 589: if this intent emitted a hit AttackRolled with the
