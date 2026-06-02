@@ -1927,6 +1927,34 @@ export const planCastSpell = (
     if (ct === 'reaction') return 'reaction';
     return 'long';
   })();
+  // Slice 603: RAW Produce Flame / Spiritual Weapon shape. The spell's
+  // castingTime says "Bonus Action" — that BA produces the persistent
+  // effect (flame in hand / floating weapon). To actually MAKE THE
+  // ATTACK on the same turn, RAW requires a separate Magic Action:
+  // "Until the spell ends, you can take a Magic action to hurl fire at
+  // a creature." Pre-slice the engine collapsed BA cast + Magic-action
+  // hurl into one BA, letting Druids effectively get a free spell
+  // attack alongside their full Action.
+  //
+  // The fix detects this shape by content shape — BA cast + attack
+  // mechanic + non-instantaneous duration — and treats the cast as
+  // consuming BOTH a BA AND an Action (when targets are supplied so
+  // the planner is actually firing the hurl). This is a stopgap that
+  // gets the action economy right without splitting the cast into two
+  // separate planners (proper RAW would be: cast emits a persistent
+  // effect, a follow-up `MagicAction` intent rolls the hurl).
+  //
+  // Casters who want to cast PF purely for the light (no attack) can
+  // still do so by supplying no targetIds — the targets check below
+  // gates the implicit Action consumption.
+  const hasAttackMechanic = spell.mechanicalEffects.some((m) => m.kind === 'attack');
+  const hasNonInstantaneousDuration =
+    spell.duration.trim().toLowerCase() !== 'instantaneous';
+  const consumesImplicitMagicAction =
+    castingTimeKind === 'bonusAction'
+    && hasAttackMechanic
+    && hasNonInstantaneousDuration
+    && intent.targetIds.length > 0;
   const encounter = state.activeEncounterId ? state.encounters[state.activeEncounterId] : undefined;
   const casterCombatant =
     encounter?.combatants.find((c) => c.combatantId === intent.characterId) ?? undefined;
@@ -1944,6 +1972,11 @@ export const planCastSpell = (
     if (castingTimeKind === 'reaction' && casterCombatant.turnUsage.reactionUsedThisRound) {
       throw new Error(
         `${character.name} cannot cast ${spell.name}: reaction already used this round`,
+      );
+    }
+    if (consumesImplicitMagicAction && casterCombatant.turnUsage.actionUsed) {
+      throw new Error(
+        `${character.name} cannot hurl ${spell.name}: action already used this turn (RAW: a BA cast + Magic action hurl requires both unspent)`,
       );
     }
   }
@@ -1983,6 +2016,16 @@ export const planCastSpell = (
         encounterId: encounter.id,
         combatantId: intent.characterId,
         kind: economyKind,
+      });
+    }
+    if (consumesImplicitMagicAction) {
+      events.push({
+        id: newEventId() as ULID,
+        at,
+        type: 'ActionEconomyConsumed',
+        encounterId: encounter.id,
+        combatantId: intent.characterId,
+        kind: 'action',
       });
     }
   }

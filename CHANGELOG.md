@@ -4,6 +4,41 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 603): BA-cast spells with an attack mechanic consume BA + Action (Produce Flame action-economy fix)**
+
+The slice 600 fuzz audit's third real bug: Produce Flame's `castingTime: "Bonus Action"` cost only a BA in the engine, leaving the caster's Action free even when they immediately rolled the hurl-attack on the same turn. RAW PF: BA cast produces the flame (utility/light, persists 10 min), and a SEPARATE Magic action is required to hurl. Pre-slice, druids/Pact-of-Tome warlocks effectively got a free spell attack with their BA while keeping their full Action available.
+
+**RAW** (SRD 5.2.1 Produce Flame): "Casting Time: Bonus Action ... Until the spell ends, you can take a Magic action to hurl fire at a creature."
+
+**Changes** ([src/engine/plan/cast-spell.ts:1929-1985](src/engine/plan/cast-spell.ts#L1929)): detect the shape by content, not by spell id — `castingTime === 'Bonus Action'` AND `mechanicalEffects` contains an `attack` mechanic AND `duration !== 'Instantaneous'` AND the cast has at least one target id. When all four hold, the cast simulates "BA cast + Magic-action hurl in one turn" and consumes BOTH economy slots:
+- Pre-check: throws if Action already used (rejection path mirrors the existing BA / Reaction rejection wording).
+- Emits TWO `ActionEconomyConsumed` events after `SpellCastDeclared`: one with `kind: 'bonusAction'` (the cast), one with `kind: 'action'` (the hurl).
+- Light-only cast (no targetIds) consumes ONLY the BA — RAW: cast without hurl is fine (the flame is utility).
+
+Detection by content shape catches Produce Flame today and any future spell of the same shape (Spiritual Weapon will hit this when added) without per-spell wiring. This is a stopgap; proper RAW would split the cast (emits persistent effect) from the hurl (separate `MagicAction` intent rolls the attack). Tracked as a future refactor — the stopgap gets the action economy right without surfacing new intent types or breaking the existing single-call `castSpell` consumer API.
+
+**Tests** ([tests/unit/engine/slice-603-produce-flame-action-economy.test.ts](tests/unit/engine/slice-603-produce-flame-action-economy.test.ts), 3 cases): hurl-with-target emits BOTH `bonusAction` + `action`; Action-already-used throws; targetless cast emits ONLY `bonusAction` (light-only).
+
+**Verification:** fuzz seed=2010 now shows "_(Aria consumes bonusAction)_" + "_(Aria consumes action)_" on every PF turn, where pre-slice only the BA marker fired. The CON save and `[advantage]` from slices 601-602 also chain through correctly. Full suite green (482 files, 3256 tests, 173 unrelated skips).
+
+**Audit:**
+- **Names:** `hasAttackMechanic`, `hasNonInstantaneousDuration`, `consumesImplicitMagicAction` are intent-revealing locals matching the RAW vocabulary.
+- **DRY:** detection conditional is a single boolean computed once and read twice (precondition check + event emission). No duplication.
+- **SRP:** the new block sits inside cast-spell's existing action-economy section; no new responsibility added — it extends the same "check then emit" pattern that already handles the four castingTime kinds.
+- **Magic numbers:** none added.
+- **at-threading:** both new events use the same `at` as the surrounding cast.
+- **Mechanical outcomes asserted:** the new test pins the three branches (both-consumed, action-already-used rejection, targetless-only-BA).
+
+**Pattern-check** (filter shape: "spells whose attack mechanic is rolled by the cast planner but should cost a separate Action"): swept `grep -A 15 '"castingTime": "Bonus Action"' src/content/packs/starter-pack.json` for spells with `mechanicalEffects.kind: 'attack'`. Found:
+- `produce-flame` ✓ (this slice)
+- That's the only currently-wired one. `spiritual-weapon` is on the future-wiring list (would benefit automatically). All other BA-cast spells in the pack (Healing Word, Hex, Hunter's Mark, Bardic Inspiration consume, Sanctuary, etc.) either have non-attack mechanics or instantaneous-then-condition shape, so the slice 603 gate correctly skips them.
+
+**Open follow-ups:**
+- **Split cast vs hurl into two intents**: the proper RAW model is `cast` (BA, emits persistent effect, no attack) and `hurl` (Magic action, requires the persistent effect, rolls the spell attack). This would let a caster cast PF on T1 (BA only) and hurl on T2-T100 within the 10-minute duration. The stopgap collapses to "cast and hurl on the same turn" which is the common case but not the only legal play. Tracked.
+- **Aura-tick concentration saves (carryover from slice 601)**: the `planTickAura` / `planTickRecurring` / `planTickMovementDamage` paths still don't trigger the slice-601 CON save on the target. Once split, the same `planConcentrationOnDamage` helper plugs in.
+
+---
+
 **Engine (slice 602): spell attacks consult target's effect stack for Advantage / Disadvantage**
 
 The slice 600 fuzz audit's second real bug: spell attacks (Eldritch Blast, Fire Bolt, Produce Flame, etc.) ignored every target-side condition that grants attackers Advantage. Faerie Fire'd / Restrained / Paralyzed / Unconscious targets all got attacked with a bare d20 because [src/engine/plan/cast-spell.ts](src/engine/plan/cast-spell.ts) rolled `d20 = rollDie(D20_SIDES, rng)` with no advantage logic, while [src/engine/plan/attack.ts:700](src/engine/plan/attack.ts#L700) (weapon attacks) consulted the full target effect stack. The condition data was wired correctly; only weapon attacks read it.
