@@ -54,6 +54,9 @@ interface ClassBuild {
   readonly secondary: AbilityScore;
   readonly weaponId: string;
   readonly armorId?: string;
+  // Slice 591: equip a shield (+2 AC) for classes that are proficient
+  // with shields AND wield a one-handed primary weapon.
+  readonly useShield?: boolean;
   readonly cantrips: ReadonlyArray<string>;
   readonly l1Spells: ReadonlyArray<string>;
   readonly resources?: ReadonlyArray<{ resourceId: string; current: number; max: number }>;
@@ -79,6 +82,7 @@ const CLASS_BUILDS: ReadonlyArray<ClassBuild> = [
     classId: 'cleric',
     primary: 'WIS', secondary: 'STR',
     weaponId: 'mace', armorId: 'chain-shirt',
+    useShield: true,
     cantrips: ['sacred-flame'],
     l1Spells: ['cure-wounds', 'guiding-bolt', 'bless'],
   },
@@ -93,6 +97,7 @@ const CLASS_BUILDS: ReadonlyArray<ClassBuild> = [
     classId: 'fighter',
     primary: 'STR', secondary: 'CON',
     weaponId: 'longsword', armorId: 'chain-mail',
+    useShield: true,
     cantrips: [], l1Spells: [],
     resources: [{ resourceId: 'second-wind', current: 2, max: 2 }],
   },
@@ -106,6 +111,7 @@ const CLASS_BUILDS: ReadonlyArray<ClassBuild> = [
     classId: 'paladin',
     primary: 'STR', secondary: 'CHA',
     weaponId: 'longsword', armorId: 'chain-mail',
+    useShield: true,
     cantrips: [], l1Spells: ['divine-favor', 'searing-smite'],
     resources: [{ resourceId: 'lay-on-hands', current: 5, max: 5 }],
   },
@@ -168,6 +174,13 @@ interface BuiltCharacter {
   readonly character: Character;
   readonly weaponInstance: ItemInstance;
   readonly armorInstance?: ItemInstance;
+  // Slice 591: shield item if build.useShield is set. Equipped to
+  // character.equipped.shield; +2 AC contribution flows through the
+  // existing AC derive.
+  readonly shieldInstance?: ItemInstance;
+  // Slice 591: a single healing potion in the inventory. The policy's
+  // step 1 (low-HP self-heal) drinks it when no other heal path exists.
+  readonly potionInstance: ItemInstance;
   readonly build: ClassBuild;
 }
 
@@ -267,6 +280,26 @@ const buildL1 = (name: string, rngFloat: () => number, pack: Pack): BuiltCharact
       identifiedByCharacterIds: [],
     }
     : undefined;
+  const shieldInstance: ItemInstance | undefined = build.useShield === true
+    ? {
+      id: newItemInstanceId(),
+      definitionId: 'shield',
+      quantity: 1,
+      attuned: false,
+      identifiedByCharacterIds: [],
+    }
+    : undefined;
+  // Slice 591: a single healing potion. Drinking heals 2d4+2 HP via
+  // the engine's onConsume pipeline; the fuzz tool gives every
+  // combatant one to exercise the consume-item flow as a backstop
+  // self-heal.
+  const potionInstance: ItemInstance = {
+    id: newItemInstanceId(),
+    definitionId: 'healing-potion',
+    quantity: 1,
+    attuned: false,
+    identifiedByCharacterIds: [],
+  };
 
   const character = CharacterSchema.parse({
     id: newCharacterId(),
@@ -276,10 +309,16 @@ const buildL1 = (name: string, rngFloat: () => number, pack: Pack): BuiltCharact
     classes: [{ classId: build.classId, level: 1, hitDiceRemaining: 1 }],
     abilityScores: abilities,
     hp: { current: hpMax, max: hpMax, temp: 0 },
-    inventory: [weaponInstance.id, ...(armorInstance ? [armorInstance.id] : [])],
+    inventory: [
+      weaponInstance.id,
+      ...(armorInstance ? [armorInstance.id] : []),
+      ...(shieldInstance ? [shieldInstance.id] : []),
+      potionInstance.id,
+    ],
     equipped: {
       mainHand: weaponInstance.id,
       ...(armorInstance ? { armor: armorInstance.id } : {}),
+      ...(shieldInstance ? { shield: shieldInstance.id } : {}),
       attuned: [],
     },
     knownSpells: [...build.cantrips, ...build.l1Spells],
@@ -297,7 +336,7 @@ const buildL1 = (name: string, rngFloat: () => number, pack: Pack): BuiltCharact
     weaponMasteries: MASTERY_CLASSES.has(build.classId) ? [build.weaponId] : [],
   });
 
-  return { character, weaponInstance, armorInstance, build };
+  return { character, weaponInstance, armorInstance, shieldInstance, potionInstance, build };
 };
 
 interface Combatant {
@@ -363,6 +402,22 @@ const pickIntent = (
       // went silent for 4 rounds in fuzz seed 210).
       if (c.preparedSpells.includes('cure-wounds') && hasUnusedL1Slot(c)) {
         return { type: 'CastSpell', characterId: c.id, spellId: 'cure-wounds', slotLevel: 1, targetIds: [c.id] };
+      }
+    }
+    // Slice 591: every combatant has a single healing potion as a
+    // backstop. Drink it (Bonus Action per PHB 2024 self-drink rule)
+    // when none of the class-specific heals matched above. Consumes
+    // the bonus action; the engine's consume-item planner emits Heal +
+    // ItemConsumed events.
+    if (!cb.turnUsage.bonusActionUsed) {
+      const potion = state.itemInstances[active.built.potionInstance.id];
+      if (potion !== undefined && potion.quantity > 0) {
+        return {
+          type: 'ConsumeItem',
+          characterId: c.id,
+          instanceId: active.built.potionInstance.id,
+          targetId: c.id,
+        };
       }
     }
   }
@@ -492,11 +547,17 @@ const runBattle = (seed: number, pack: Pack): { events: ReadonlyArray<Event>; fi
   const nextAt = (): string => now(eventCounter++);
 
   let campaign = engine.createCampaign({ name: `fuzz-${seed}` });
+  const acquire = (instance: ItemInstance): Event =>
+    ({ id: newEventId(), at: nextAt(), type: 'ItemAcquired', instance }) as Event;
   const setupEvents: Event[] = [
-    { id: newEventId(), at: nextAt(), type: 'ItemAcquired', instance: pcA.weaponInstance } as Event,
-    ...(pcA.armorInstance ? [{ id: newEventId(), at: nextAt(), type: 'ItemAcquired', instance: pcA.armorInstance } as Event] : []),
-    { id: newEventId(), at: nextAt(), type: 'ItemAcquired', instance: pcB.weaponInstance } as Event,
-    ...(pcB.armorInstance ? [{ id: newEventId(), at: nextAt(), type: 'ItemAcquired', instance: pcB.armorInstance } as Event] : []),
+    acquire(pcA.weaponInstance),
+    ...(pcA.armorInstance ? [acquire(pcA.armorInstance)] : []),
+    ...(pcA.shieldInstance ? [acquire(pcA.shieldInstance)] : []),
+    acquire(pcA.potionInstance),
+    acquire(pcB.weaponInstance),
+    ...(pcB.armorInstance ? [acquire(pcB.armorInstance)] : []),
+    ...(pcB.shieldInstance ? [acquire(pcB.shieldInstance)] : []),
+    acquire(pcB.potionInstance),
     { id: newEventId(), at: nextAt(), type: 'CharacterCreated', snapshot: pcA.character } as Event,
     { id: newEventId(), at: nextAt(), type: 'CharacterCreated', snapshot: pcB.character } as Event,
   ];
@@ -542,7 +603,21 @@ const runBattle = (seed: number, pack: Pack): { events: ReadonlyArray<Event>; fi
       const intent = pickIntent(campaign.state, active, opponent);
       if (intent === null) break;
       try {
-        campaign = performIntent(engine, campaign, intent);
+        // Slice 591: ConsumeItem is allowlisted out of the
+        // performIntent dispatch (see tests/audit/planner-wiring.test.ts
+        // EXCLUDED_FROM_DISPATCH "Items / inventory" category). Route
+        // directly to engine.plan.consumeItem; the result events still
+        // flow through commit + reducer as normal.
+        if (intent.type === 'ConsumeItem') {
+          const { events } = engine.plan.consumeItem(campaign.state, {
+            characterId: intent.characterId as string,
+            instanceId: intent.instanceId as string,
+            ...(intent.targetId !== undefined ? { targetId: intent.targetId as string } : {}),
+          });
+          campaign = commit(campaign, events);
+        } else {
+          campaign = performIntent(engine, campaign, intent);
+        }
       } catch {
         break;
       }

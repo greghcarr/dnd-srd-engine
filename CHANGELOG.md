@@ -4,6 +4,32 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Tooling (slice 591): combat-fuzz item variety — shields + healing potions**
+
+The fuzz tool previously equipped exactly one weapon and one armor per combatant. Shields (+2 AC) were never exercised, even though Fighter / Paladin / Cleric all have shield proficiency in the pack and shield is a load-bearing AC contributor. Healing potions (a single-charge consumable that emits the engine's consume-item / Heal flow) were also never used; that whole consume-item dispatch path went unexercised by the fuzz.
+
+**Changes** ([scripts/combat-fuzz.ts](scripts/combat-fuzz.ts)):
+- New `useShield: boolean` flag on `ClassBuild`. Set for `cleric`, `fighter`, `paladin` (all wield one-handed weapons + have shield proficiency in the pack). When set, `buildL1` creates a `shield` `ItemInstance` and equips it to `character.equipped.shield`. The engine's existing AC derive folds in the +2 unchanged.
+- Every combatant now also gets a single `healing-potion` ItemInstance in inventory. The policy's step 1 (low-HP self-heal) drinks it via a new `ConsumeItem` intent when no class-specific heal path matched (consumes Bonus Action).
+- New runBattle branch: `ConsumeItem` is on the `EXCLUDED_FROM_DISPATCH` allowlist (see [tests/audit/planner-wiring.test.ts:101](tests/audit/planner-wiring.test.ts#L101) "Items / inventory" category — called directly, not via `performIntent`). The fuzz detects the intent type and routes to `engine.plan.consumeItem(...)` directly; commit + reducer flow is unchanged.
+
+**Verification** (20 seeds, slice 591-fuzz):
+- Shields verified raising AC end-to-end. Seed 501: Aria the goliath cleric in chain shirt (base 13, DEX cap 2) + shield equipped → AC 16 (= 13 + 1 DEX-mod + 2 shield). Without the shield, the AC would have been 14; the fuzz's Bran-Rogue attack rolls show all attacks tested against AC 16, confirming the +2.
+- Healing potion verified mid-battle (seed 500: "Bran healed 6 from item:healing-potion. (HP 4 -> 10)"). The engine emits the Heal event with the rolled 2d4+2 amount (rolled 4 + 2 here); HP capped at the character's max where applicable.
+- Full suite green: 479 test files, 3246 passing, 173 unrelated skips.
+
+**Audit:**
+- **Names:** `useShield` parallels the existing class-spec flags; `shieldInstance` / `potionInstance` on `BuiltCharacter` mirror `weaponInstance` / `armorInstance`.
+- **DRY:** the `acquire()` helper consolidates the 6 ItemAcquired event builders into one closure; net -3 lines despite adding shield + potion handling.
+- **SRP:** tooling only; no engine, content, schema, or test changes.
+- **Magic numbers:** healing-potion's 2d4+2 lives in the pack content (`onConsume`); the fuzz doesn't hardcode the heal amount.
+- **at-threading:** N/A.
+- **Mechanical outcomes asserted:** live fuzz verification (shield +2 AC verified; healing potion consume + heal verified).
+
+**Pattern-check (filter shape: "fuzz combatants miss inventory slots the engine has wiring for"):** the equipped surfaces are `mainHand`, `offHand`, `armor`, `shield`, `attuned`. Pre-slice fuzz used only `mainHand` + `armor`; slice 591 adds `shield`. `offHand` (two-weapon fighting / Nick mastery) and `attuned` (magic-item attunement) remain unexercised, deferred to a later slice. The inventory-side gaps remaining: scrolls, healer's kit (planUseHealersKit exists from slice 546 but the policy doesn't yet trigger it), wands, magic-weapon enchantment overlays (`weapon-plus-1` is in the pack as `magicWeaponEnchantmentId` overlay, untouched by the fuzz).
+
+---
+
 **Tooling (slice 590): combat-fuzz buff/utility spell policy**
 
 The combat fuzz's pickIntent step 2 (first-turn buff) handled only the four BA-cast riders (Barbarian Rage, Ranger Hunter's Mark, Warlock Hex, plus Paladin Divine Favor added this slice). The fuzz never exercised Action-cast L1 buffs (Bless, Mage Armor, Faerie Fire), so the engine's `blessed` / `mage-armor` / `faerie-fire-active` condition wiring, slot-consume + concentration tracking on Action casts, and any interactions with the existing AttackRolled / SaveRolled flow were unexercised by the bug-discovery harness.
