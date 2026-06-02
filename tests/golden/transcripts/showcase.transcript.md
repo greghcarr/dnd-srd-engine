@@ -120,7 +120,7 @@ _(sneak-attack triggers for Vex)_
 
 Damage rolled: 1d4=[4]+4 piercing.
 
-**Goblin Scout A** takes 8 damage from **Vex** (8 piercing). (HP 4 -> -4)
+**Goblin Scout A** takes 8 damage from **Vex** (8 piercing). (HP 4 -> 0)
 
 _(nick triggers for Vex)_
 
@@ -128,7 +128,7 @@ _(nick triggers for Vex)_
 
 Damage rolled: 1d4=[4]+0 piercing.
 
-**Goblin Scout A** takes 4 damage (4 piercing). (HP -4 -> -8)
+**Goblin Scout A** takes 4 damage (4 piercing).
 
 End of Vex's turn.
 
@@ -230,15 +230,15 @@ Slot consumed: 3rd-level.
 
 **Goblin Scout A** DEX save: d20(4) + 2 = 6 vs DC 15 -> failure.
 
-**Goblin Scout A** takes 29 damage from **Mira** (29 fire). (HP -8 -> -14)
+**Goblin Scout A** takes 29 damage from **Mira** (29 fire).
 
 **Goblin Scout B** DEX save: d20(4) + 2 = 6 vs DC 15 -> failure.
 
-**Goblin Scout B** takes 29 damage from **Mira** (29 fire). (HP 6 -> -12)
+**Goblin Scout B** takes 29 damage from **Mira** (29 fire). (HP 6 -> 0)
 
 **Goblin Shaman** DEX save: d20(18) + 2 = 20 vs DC 15 -> success.
 
-**Goblin Shaman** takes 14 damage from **Mira** (14 fire). (HP 8 -> -6)
+**Goblin Shaman** takes 14 damage from **Mira** (14 fire). (HP 8 -> 0)
 
 End of Mira's turn.
 
@@ -528,7 +528,7 @@ Damage rolled: 2d6=[6,5]+6 slashing.
 
 Damage rolled: 2d6=[6,1]+6 slashing.
 
-**Alyx** takes 13 damage from **Stoneheart, the Young Red** (13 slashing). (HP 2 -> -11)
+**Alyx** takes 13 damage from **Stoneheart, the Young Red** (13 slashing). (HP 2 -> 0)
 
 **Stoneheart, the Young Red** attacks **Alyx**: d20(3) + 10 = 13 vs AC 15 -> miss.
 
@@ -542,7 +542,7 @@ _(Brother Cassius consumes bonusAction)_
 
 Slot consumed: 1st-level.
 
-**Alyx** healed 8 from healing-word. (HP -11 -> 8)
+**Alyx** healed 8 from healing-word. (HP 0 -> 8)
 
 _(Brother Cassius consumes action)_
 

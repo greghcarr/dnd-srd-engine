@@ -4,6 +4,39 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Tooling (slice 604): transcript clamps HP displays at 0 (RAW: HP minimum is 0)**
+
+The slice 600 fuzz audit flagged this across 7 of 15 transcripts: "Final HP: -7/9", "(HP 5 -> -3)", etc. Internal HP can go signed because the engine uses the post-damage value to compute the instant-death threshold (excess damage >= max HP → instant death per PHB Damage at 0 HP). But the user-facing transcript shouldn't leak that internal value — RAW HP minimum is 0; "-7/9" reads as if the engine has a bug.
+
+**Changes:**
+- [tests/transcript.ts](tests/transcript.ts) `hpChange` helper now wraps both sides with a new `displayHp(value) = Math.max(0, value)` clamp before formatting, and elides the "(HP X -> Y)" parenthetical when both sides clamp to the same value (e.g. "0 -> -2" both clamp to 0, no delta to show; the "takes N damage" line stays).
+- [scripts/combat-fuzz.ts](scripts/combat-fuzz.ts) `summarize` clamps the "Final HP: X/Y" line the same way.
+- Engine state stays unchanged — `character.hp.current` still tracks the signed value internally for instant-death detection (`interceptFatalDamage` reads it). The clamp is presentation-only.
+
+**Tests** ([tests/unit/transcript-hp-clamp.test.ts](tests/unit/transcript-hp-clamp.test.ts), 2 cases): non-fatal-then-fatal damage chain renders as "HP 5 -> 0" (not "HP 5 -> -3"); subsequent heal renders as "HP 0 -> 6" (not "HP -3 -> 6").
+
+**Snapshot updates:** 4 golden transcripts touched ([s1-damage-to-zero-revive](tests/golden/transcripts/s1-damage-to-zero-revive.transcript.md), [s9-opportunity-attack](tests/golden/transcripts/s9-opportunity-attack.transcript.md), [s29-resurrection](tests/golden/transcripts/s29-resurrection.transcript.md), [showcase](tests/golden/transcripts/showcase.transcript.md)) — every "HP X -> -Y" pair regenerated with the clamp. Diffs reviewed: cleanly intentional, no semantic loss (the "takes N damage" line still shows the raw damage value).
+
+**Verification:** fuzz seed=2009 shows "(HP 8 -> 0)" and "Final HP: 0/8" where pre-slice they showed "(HP 8 -> -1)" and "Final HP: -1/8". Full suite green (483 files, 3258 tests, 173 unrelated skips).
+
+**Audit (presentation slice):**
+- **Names:** `displayHp` is intent-revealing; mirrors the implicit convention that "display" prefixes indicate presentation-side transforms.
+- **DRY:** one helper, two call sites (transcript hpChange + CLI summary).
+- **SRP:** transcript formatter still has one job (render an event stream); the new helper sits at the same level as `formatBreakdown` etc.
+- **Magic numbers:** none. `Math.max(0, value)` is the RAW floor.
+- **Mechanical outcomes asserted:** the new test pins the clamp on both before/after edges of the parenthetical and the heal-from-below-zero edge.
+
+**Pattern-check** (filter shape: "every place that prints `character.hp.current` to a user-facing surface"): swept all `.hp.current` accesses across `tests/transcript.ts`, `scripts/combat-fuzz.ts`, `scripts/combat-fuzz-core.ts`, `web/`, `examples/`:
+- `tests/transcript.ts` CharacterCreated formatter: prints `c.hp.current/c.hp.max` at character creation, never negative there ✓ (no clamp needed).
+- `tests/transcript.ts` DamageApplied / Healed: clamped via `hpChange` ✓ (this slice).
+- `scripts/combat-fuzz.ts` summarize Final HP: clamped ✓ (this slice).
+- `scripts/combat-fuzz-core.ts`: all reads are policy comparisons (`hp.current <= 0`, `hp.current < hp.max/2`) — not user-facing strings, no change needed.
+- `web/modes/fuzz-replay.ts` initiative panel HP display: reads `ch.hp.current` for the "X/Y HP" string — same gap, same `Math.max(0, value)` fix applied in this slice (single-line edit; not worth a separate slice).
+
+All user-facing HP printouts now clamp; engine internals unchanged.
+
+---
+
 **Engine (slice 603): BA-cast spells with an attack mechanic consume BA + Action (Produce Flame action-economy fix)**
 
 The slice 600 fuzz audit's third real bug: Produce Flame's `castingTime: "Bonus Action"` cost only a BA in the engine, leaving the caster's Action free even when they immediately rolled the hurl-attack on the same turn. RAW PF: BA cast produces the flame (utility/light, persists 10 min), and a SEPARATE Magic action is required to hurl. Pre-slice, druids/Pact-of-Tome warlocks effectively got a free spell attack with their BA while keeping their full Action available.

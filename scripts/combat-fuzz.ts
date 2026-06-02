@@ -39,7 +39,9 @@ const summarize = (
   const pcs = Object.values(result.campaign.state.characters);
   for (const pc of pcs) {
     const cls = pc.classes[0]?.classId ?? 'unknown';
-    lines.push(`- **${pc.name}** — ${cls} ${pc.speciesId} (${pc.backgroundId}). Final HP: ${pc.hp.current}/${pc.hp.max}.`);
+    // Slice 604: clamp displayed HP at 0 — RAW minimum is 0, the engine
+    // tracks signed values only for the instant-death threshold calc.
+    lines.push(`- **${pc.name}** — ${cls} ${pc.speciesId} (${pc.backgroundId}). Final HP: ${Math.max(0, pc.hp.current)}/${pc.hp.max}.`);
   }
   lines.push('');
   if (result.winner !== null) {

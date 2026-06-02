@@ -176,7 +176,7 @@ export const mountFuzzReplay = (opts: FuzzReplayOptions): FuzzReplay => {
       `;
       li.querySelector('.combatant-name')!.textContent = ch?.name ?? entry.combatantId;
       li.querySelector('.combatant-hp')!.textContent = ch
-        ? `${ch.hp.current}/${ch.hp.max}${ch.hp.temp > 0 ? ` (+${ch.hp.temp})` : ''} HP`
+        ? `${Math.max(0, ch.hp.current)}/${ch.hp.max}${ch.hp.temp > 0 ? ` (+${ch.hp.temp})` : ''} HP`
         : '? HP';
       li.querySelector('.combatant-pos')!.textContent = pos;
       li.querySelector('.combatant-initiative')!.textContent = `init ${entry.initiative}`;

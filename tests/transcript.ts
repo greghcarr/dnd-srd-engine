@@ -46,10 +46,21 @@ const encounterLabel = (state: CampaignState, id: string): string => {
   return name !== undefined ? `"${name}"` : 'the encounter';
 };
 
+// Slice 604: RAW HP minimum is 0 (PHB Damage at 0 HP: "When you take
+// damage that would reduce your HP to 0, you have any remaining damage
+// carried over to determine instant death, but your HP becomes 0").
+// The engine tracks the post-damage signed value internally so the
+// instant-death threshold (excess >= max HP) can be computed; the
+// transcript clamps every HP display at 0 so a reader doesn't see
+// "-7/9" and wonder if the engine has a bug.
+const displayHp = (value: number): number => Math.max(0, value);
+
 const hpChange = (before: number | undefined, after: number | undefined): string => {
   if (before === undefined || after === undefined) return '';
-  if (before === after) return '';
-  return ` (HP ${before} -> ${after})`;
+  const beforeShown = displayHp(before);
+  const afterShown = displayHp(after);
+  if (beforeShown === afterShown) return '';
+  return ` (HP ${beforeShown} -> ${afterShown})`;
 };
 
 // Render a roll's component breakdown next to the flat bonus so a reader
