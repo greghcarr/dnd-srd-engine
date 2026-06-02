@@ -4,6 +4,34 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Tooling (slice 588): combat-fuzz hardening — species resource grants + slot-availability fallback**
+
+Closes the two fuzz-tool gaps surfaced by the second 15-battle run (seeds 200-214):
+
+**1. Species-granted resources weren't populated.** The CLASS_BUILDS table seeded only class-granted resources (Rage, Second Wind, Lay on Hands, ...) into the L1 character. Species traits like Orc Relentless Endurance, Dwarven Stonecunning, Dragonborn Breath Weapon, and Goliath Giant Ancestry — all wired as `GrantResource` declarations on `species.traits` — were silently dropped, so the engine's `PreventFatalDamageConsumingResource` intercept ([src/derive/fatal-damage-intercept.ts:170-188](src/derive/fatal-damage-intercept.ts#L170-L188)) found the effect on Orc Aria but no matching entry in `character.resources`, and she died at -1 HP in seed 207. New helpers in [scripts/combat-fuzz.ts](scripts/combat-fuzz.ts): `speciesGrantedResources(pack, speciesId)` walks `species.traits` and emits a `{ resourceId, current: max, max }` per `GrantResource` trait; `evalL1ResourceMax` evaluates the `max` field at L1 (handles literal numbers, `{ kind: 'profBonus' }` → 2, `{ kind: 'level' }` → 1, defensive fallback to 1 for shapes the species traits don't currently use). `buildL1` now takes the pack and merges class + species resources at character construction.
+
+**2. Cure Wounds spam after slot exhaustion left druid silent for 4 rounds.** The policy's low-HP branch unconditionally returned a `cure-wounds` intent with `slotLevel: 1` for druid / cleric / bard, even when all L1 slots were spent. The engine threw "No spell slots of level 1 available"; the runBattle catch silently broke the turn loop; the druid did nothing in seed 210 rounds 8-11. New helper `hasUnusedL1Slot(character)` gates the branch behind `(character.spellSlotsUsed['1'] ?? 0) < 2` for full casters (bard, cleric, druid, sorcerer, wizard). With the gate, slot-exhausted casters fall through to step 3 (damaging cantrip / weapon attack).
+
+**Verification** (same seed range, post-slice):
+- Seed 207: Orc Aria takes Hex 3 necrotic + EB 4 force (scaled from 6 by the fatal-damage intercept to land HP at 1), Relentless Endurance fires, transcript line: "**Aria** spends 1 relentless-endurance." Aria survives the round. (Pre-slice: dropped to -1, no intercept, immediate death.)
+- Seed 210: Druid Bran now casts Produce Flame in every non-cure round including rounds 4-6 + 8-9 (slot-exhausted). 9 Produce-Flame casts + 2 Cure-Wounds across the battle. Pre-slice: 5 silent rounds, no fallback.
+
+**Audit:**
+- **Names:** `speciesGrantedResources`, `evalL1ResourceMax`, `hasUnusedL1Slot` are declarative; `FUZZ_L1_PROF_BONUS`, `FUZZ_L1_LEVEL`, `FULL_CASTER_L1_SLOTS`, `FULL_CASTER_CLASSES` are constants for the L1-only assumption.
+- **DRY:** the species-merge is one append (`...speciesGrantedResources(pack, speciesId)`) into the existing `resources:` field.
+- **SRP:** one tooling file changed; no engine, schema, content, or test change.
+- **Magic numbers:** L1 prof-bonus (2), L1 level (1), full-caster L1 slot count (2), defensive `evalL1ResourceMax` fallback (1) — all extracted as named constants.
+- **at-threading:** N/A (fuzz tool stamps synthetic timestamps per event).
+- **Mechanical outcomes asserted:** verification is the live fuzz transcripts (seeds 207 + 210 above), consistent with how slice 585 introduced the tool.
+
+**Pattern-check (filter shape: "buildL1 silently drops content-pack-granted state"):** the only L1 character state surfaces are `abilityScores`, `hp`, `inventory` + `equipped`, `knownSpells` + `preparedSpells`, `resources`, `appliedConditions`. Background `originFeatId` is not yet walked (e.g. Alert grants the `alert` feat, no resource at L1; Magic Initiate origin feats grant once-per-long-rest spell entries via `usedFreeCastSpellIds`, also no resource). Re-grepped `src/content/packs/starter-pack.json` for `"originFeatId"` + the feats those map to (Savage Attacker, Alert, Magic Initiate Wizard, Magic Initiate Cleric) — none of the four grant a resource the fuzz tool's policy reads, so background coverage isn't load-bearing for surfacing bugs today. Tracking as a deferred row if a future feat granting a combat-resource (e.g. Lucky's `luck` pool) is added.
+
+**Remaining known fuzz-tool gaps** (cosmetic, not bug-hiding):
+- The policy's step 3 (action: cantrip / weapon) still re-fires after a successful Produce-Flame cast (transcript-invisible "bonus action already used" throw, caught silently) — bounded to 1 wasted iteration per turn.
+- Innate Sorcery is allowlisted out of the `performIntent` dispatch ([tests/audit/planner-wiring.test.ts:93](tests/audit/planner-wiring.test.ts#L93)); sorcerers still just cast Fire Bolt every turn.
+
+---
+
 **Tests (slice 587): SaveRolled / AbilityCheckRolled transcript advantage display**
 
 Closes a slice-585 fuzz-tool finding: in the second 15-battle batch (seeds 200-214), seed 200's transcript showed `Bran WIS save: d20(2) + 4 (...) = 23 vs DC 12 -> success` — apparent math bug. The engine was correct: Bran the gnome druid had Gnomish Cunning (advantage on INT/WIS/CHA saves vs magic), rolled `[2, 19]`, used the 19. The transcript formatter at [tests/transcript.ts:204](tests/transcript.ts#L204) (`SaveRolled`) and the parallel `AbilityCheckRolled` branch only stringified `event.d20[0]` and ignored `event.used`, so the second die and the advantage label both disappeared.

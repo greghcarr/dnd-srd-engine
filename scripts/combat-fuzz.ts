@@ -171,7 +171,54 @@ interface BuiltCharacter {
   readonly build: ClassBuild;
 }
 
-const buildL1 = (name: string, rngFloat: () => number): BuiltCharacter => {
+// Slice 588: at L1 the proficiency bonus is +2 and class level is 1.
+// Species GrantResource declarations use simple formulas (`profBonus`,
+// `level`) or literal numbers; we evaluate against these L1 values.
+const FUZZ_L1_PROF_BONUS = 2;
+const FUZZ_L1_LEVEL = 1;
+
+// Slice 588: classes in CLASS_BUILDS that get 2 L1 slots (full casters).
+// The half-casters (paladin, ranger) get zero slots at L1 in RAW; we
+// don't track those here because the CLASS_BUILDS table doesn't put a
+// slot-costing spell in their l1Spells list (Ranger uses Hunter's Mark
+// via the free-cast resource path; Paladin's self-heal is Lay on Hands,
+// not a slot spell).
+const FULL_CASTER_L1_SLOTS = 2;
+const FULL_CASTER_CLASSES = new Set(['bard', 'cleric', 'druid', 'sorcerer', 'wizard']);
+
+const hasUnusedL1Slot = (character: Character): boolean => {
+  if (!FULL_CASTER_CLASSES.has(character.classes[0]!.classId)) return false;
+  const used = character.spellSlotsUsed['1'] ?? 0;
+  return used < FULL_CASTER_L1_SLOTS;
+};
+
+// Slice 588: evaluate a GrantResource `max` formula at L1. Handles the
+// shapes the SRD species traits actually use (literal numbers,
+// `profBonus`, `level`); anything else falls back to 1 so the resource
+// at least exists (no silent zero-grant).
+const evalL1ResourceMax = (max: number | { kind: string; [k: string]: unknown }): number => {
+  if (typeof max === 'number') return max;
+  if (max.kind === 'profBonus') return FUZZ_L1_PROF_BONUS;
+  if (max.kind === 'level') return FUZZ_L1_LEVEL;
+  return 1;
+};
+
+const speciesGrantedResources = (
+  pack: Pack,
+  speciesId: string,
+): ReadonlyArray<{ resourceId: string; current: number; max: number }> => {
+  const species = pack.species?.find((s) => s.id === speciesId);
+  if (species === undefined) return [];
+  const out: Array<{ resourceId: string; current: number; max: number }> = [];
+  for (const trait of species.traits) {
+    if (trait.kind !== 'GrantResource') continue;
+    const max = evalL1ResourceMax(trait.max as number | { kind: string; [k: string]: unknown });
+    out.push({ resourceId: trait.resourceId, current: max, max });
+  }
+  return out;
+};
+
+const buildL1 = (name: string, rngFloat: () => number, pack: Pack): BuiltCharacter => {
   const build = pickRandom(CLASS_BUILDS, rngFloat());
   const speciesId = pickRandom(SPECIES, rngFloat());
   const backgroundId = pickRandom(BACKGROUNDS, rngFloat());
@@ -219,7 +266,11 @@ const buildL1 = (name: string, rngFloat: () => number): BuiltCharacter => {
     },
     knownSpells: [...build.cantrips, ...build.l1Spells],
     preparedSpells: [...build.cantrips, ...build.l1Spells],
-    ...(build.resources ? { resources: [...build.resources] } : {}),
+    // Slice 588: merge class-granted (Rage, Second Wind, ...) with
+    // species-granted (Orc Relentless Endurance, Dwarven Stonecunning,
+    // Dragonborn Breath Weapon, Goliath Giant Ancestry) so species
+    // traits gated on resource availability actually fire.
+    resources: [...(build.resources ?? []), ...speciesGrantedResources(pack, speciesId)],
   });
 
   return { character, weaponInstance, armorInstance, build };
@@ -273,8 +324,11 @@ const pickIntent = (
       }
     }
     if ((classId === 'cleric' || classId === 'druid' || classId === 'bard') && !cb.turnUsage.actionUsed) {
-      // Cast cure-wounds on self
-      if (c.preparedSpells.includes('cure-wounds')) {
+      // Cast cure-wounds on self. Slice 588: only when an L1 slot is
+      // actually available; otherwise fall through so the turn doesn't
+      // burn on a guaranteed throw (pre-slice the slot-exhausted druid
+      // went silent for 4 rounds in fuzz seed 210).
+      if (c.preparedSpells.includes('cure-wounds') && hasUnusedL1Slot(c)) {
         return { type: 'CastSpell', characterId: c.id, spellId: 'cure-wounds', slotLevel: 1, targetIds: [c.id] };
       }
     }
@@ -348,10 +402,10 @@ const runBattle = (seed: number, pack: Pack): { events: ReadonlyArray<Event>; fi
 
   // Loop until the two characters land on different classes (more
   // varied transcripts) — caps at a few attempts to avoid stalls.
-  let pcA = buildL1('Aria', rngFloat);
-  let pcB = buildL1('Bran', rngFloat);
+  let pcA = buildL1('Aria', rngFloat, pack);
+  let pcB = buildL1('Bran', rngFloat, pack);
   for (let i = 0; i < 8 && pcA.build.classId === pcB.build.classId; i++) {
-    pcB = buildL1('Bran', rngFloat);
+    pcB = buildL1('Bran', rngFloat, pack);
   }
 
   const now = (offsetSec = 0): string => new Date(Date.UTC(2026, 0, 1, 0, 0, offsetSec)).toISOString();
