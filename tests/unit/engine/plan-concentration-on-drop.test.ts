@@ -16,6 +16,7 @@ import {
 import type { CharacterCreatedEvent } from '../../../src/schemas/events/progression.js';
 import type { ConcentrationStartedEvent } from '../../../src/schemas/events/concentration.js';
 import type { DamageAppliedEvent } from '../../../src/schemas/events/combat.js';
+import type { SaveRolledEvent } from '../../../src/schemas/events/checks.js';
 
 const seedConcentratingTarget = (opts: { targetHp: number; rng?: ReturnType<typeof seededRNG> }) => {
   const rng = opts.rng ?? seededRNG(42);
@@ -124,8 +125,7 @@ describe('plan.attack: concentration breaks on drop to 0 HP', () => {
       const total = damage.components.reduce((s, c) => s + c.amount, 0);
       if (total >= 200) continue;
       const conSave = events.find(
-        (e): e is { type: 'SaveRolled'; ability: string; success: boolean } =>
-          e.type === 'SaveRolled' && (e as { ability?: string }).ability === 'CON',
+        (e): e is SaveRolledEvent => e.type === 'SaveRolled' && e.ability === 'CON',
       );
       if (conSave === undefined || !conSave.success) continue;
       const broken = events.find((e) => e.type === 'ConcentrationBroken');

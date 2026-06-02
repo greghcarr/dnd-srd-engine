@@ -64,7 +64,7 @@ import { buildEffectStack } from '../../derive/effect-stack.js';
 import { isImmuneToCondition } from '../../derive/condition-immunity.js';
 import { isHealingBlocked } from '../../derive/healing-block.js';
 import { planConcentrationOnDamage } from './concentration.js';
-import { assertActorCanAct } from './_actor-state.js';
+import { assertActorCanAct, findActorBlockingCondition } from './_actor-state.js';
 import { parseSpellDurationMinutes } from '../../internal/spell-duration.js';
 import {
   CANTRIP_LEVEL,
@@ -491,7 +491,91 @@ const planAttackMechanic = (
       content,
       characters: state.characters,
     });
-    const d20 = rollDie(D20_SIDES, rng);
+    // Slice 602: spell attacks now consult the target's effect stack
+    // for advantage/disadvantage contributions exactly like weapon
+    // attacks do. RAW (2024 PHB Spellcasting): "If you cast a spell
+    // that has an attack roll, follow the rules for an attack roll."
+    // Faerie Fire's "Attack rolls against an affected creature have
+    // Advantage" is the canonical user — pre-slice it only fired for
+    // weapon attacks because cast-spell.ts rolled a bare d20 here.
+    // Same scope as the target-side branch of planAttack: the three
+    // accumulator queries (grantsAdvantageToAttackers,
+    // imposesDisadvantageOnAttackers, cancelsAdvantageOnAttackers) plus
+    // ranged-spell-in-melee disadvantage. Predicate facts mirror
+    // attack.ts so the same content-side conditions wire through both
+    // paths uniformly.
+    const targetEffects = buildEffectStack({
+      character: target,
+      content,
+      itemInstances: state.itemInstances,
+      pendingChoices: state.pendingChoices,
+    });
+    const targetSideAttackerFacts = new Map<string, unknown>([
+      ['event.attackKind', mechanic.attackKind],
+    ]);
+    const targetGrantsAdvantage = targetEffects.grantsAdvantageToAttackers(targetSideAttackerFacts);
+    const targetBearerFacts = new Map<string, unknown>([
+      ['bearerHasIncapacitated', findActorBlockingCondition(target) !== undefined],
+    ]);
+    const targetCancelsAdvantage = targetEffects.cancelsAdvantageOnAttackers(targetBearerFacts);
+    const attackerSideFacts = new Map<string, unknown>([
+      ['event.attackKind', mechanic.attackKind],
+      ['event.isOpportunityAttack', false],
+      ['bearer.hasIncapacitated', findActorBlockingCondition(target) !== undefined],
+      ['bearer.speedZero', target.speedFeet === 0],
+      ['bearer.canSeeAttacker', undefined],
+    ]);
+    const targetImposesDisadvantage = targetEffects.imposesDisadvantageOnAttackers(attackerSideFacts);
+
+    // RAW (PHB Ranged Attacks in Close Combat): "Aiming a ranged
+    // attack is more difficult when a foe is next to you. When you
+    // make a ranged attack roll with a weapon, a spell, or some
+    // other means, you have Disadvantage on the roll if you are
+    // within 5 feet of an enemy who can see you and who isn't
+    // Incapacitated." Mirrors the planAttack `rangedInMelee` check
+    // (slice 537+); applies to ranged SPELL attacks too.
+    const rangedSpellInMelee = ((): boolean => {
+      if (mechanic.attackKind !== 'ranged') return false;
+      if (!state.activeEncounterId) return false;
+      const enc = state.encounters[state.activeEncounterId];
+      if (!enc) return false;
+      const casterCb = enc.combatants.find((c) => c.combatantId === intent.characterId);
+      const casterPos = casterCb?.position;
+      if (!casterPos) return false;
+      return enc.combatants.some((other) => {
+        if (other.combatantId === intent.characterId) return false;
+        const otherPos = other.position;
+        if (!otherPos) return false;
+        const ch = state.characters[other.combatantId];
+        if (!ch) return false;
+        if (findActorBlockingCondition(ch) !== undefined) return false;
+        const dx = Math.abs(otherPos.x - casterPos.x);
+        const dy = Math.abs(otherPos.y - casterPos.y);
+        return Math.max(dx, dy) <= 5;
+      });
+    })();
+
+    const effectivelyGrantsAdvantage = !targetCancelsAdvantage && targetGrantsAdvantage;
+    const effectivelyImposesDisadvantage = targetImposesDisadvantage || rangedSpellInMelee;
+    let advantage: 'none' | 'advantage' | 'disadvantage' = 'none';
+    if (effectivelyGrantsAdvantage && effectivelyImposesDisadvantage) {
+      advantage = 'none';
+    } else if (effectivelyGrantsAdvantage) {
+      advantage = 'advantage';
+    } else if (effectivelyImposesDisadvantage) {
+      advantage = 'disadvantage';
+    }
+
+    const d20Rolls: number[] = [rollDie(D20_SIDES, rng)];
+    if (advantage !== 'none') {
+      d20Rolls.push(rollDie(D20_SIDES, rng));
+    }
+    const d20 =
+      advantage === 'advantage'
+        ? Math.max(...d20Rolls)
+        : advantage === 'disadvantage'
+          ? Math.min(...d20Rolls)
+          : d20Rolls[0]!;
     const total = d20 + attackBonus.total;
     const isCrit = d20 === NAT_20;
     const isMiss = d20 === NAT_1;
@@ -504,8 +588,8 @@ const planAttackMechanic = (
       attackerId: intent.characterId,
       targetId,
       weaponInstanceId: intent.spellId as ULID,
-      d20: [d20],
-      used: 'none',
+      d20: d20Rolls,
+      used: advantage,
       attackBonus: attackBonus.total,
       total,
       targetAC: targetAC.total,

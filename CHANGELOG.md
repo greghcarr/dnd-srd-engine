@@ -4,6 +4,44 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 602): spell attacks consult target's effect stack for Advantage / Disadvantage**
+
+The slice 600 fuzz audit's second real bug: spell attacks (Eldritch Blast, Fire Bolt, Produce Flame, etc.) ignored every target-side condition that grants attackers Advantage. Faerie Fire'd / Restrained / Paralyzed / Unconscious targets all got attacked with a bare d20 because [src/engine/plan/cast-spell.ts](src/engine/plan/cast-spell.ts) rolled `d20 = rollDie(D20_SIDES, rng)` with no advantage logic, while [src/engine/plan/attack.ts:700](src/engine/plan/attack.ts#L700) (weapon attacks) consulted the full target effect stack. The condition data was wired correctly; only weapon attacks read it.
+
+**RAW** (2024 PHB Spellcasting): "If you cast a spell that has an attack roll, follow the rules for an attack roll." Faerie Fire: "Attack rolls against an affected creature or object have Advantage if the attacker can see it." Restrained / Paralyzed / Unconscious / Prone-within-5-ft all impose the same `GrantAdvantageToAttackers` shape.
+
+**Changes** ([src/engine/plan/cast-spell.ts:485-583](src/engine/plan/cast-spell.ts#L485)): the spell-attack roll path now builds the target's effect stack and queries three accessors before rolling, mirroring the weapon-attack branch:
+- `targetEffects.grantsAdvantageToAttackers(facts)` — Faerie Fire, Restrained, Paralyzed, Unconscious, Prone-within-5ft (melee), Reckless Attack target side.
+- `targetEffects.cancelsAdvantageOnAttackers(facts)` — Rogue L18 Elusive.
+- `targetEffects.imposesDisadvantageOnAttackers(facts)` — Dodge, Blur, Invisible (per-attacker).
+- New `rangedSpellInMelee` check: ranged spell attacks within 5 ft of a non-incapacitated enemy roll with Disadvantage (PHB Ranged Attacks in Close Combat — explicit RAW for spells too).
+- 2024 cancellation rule: Advantage + Disadvantage → roll with neither.
+- Halfling Luck / Bless +1d4 / War Caster spell-attack advantage are NOT wired here — they're the same pre-slice gap on the spell-attack path and need their own follow-up (tracked).
+
+Predicate facts mirror `attack.ts` exactly (`event.attackKind`, `bearer.hasIncapacitated`, `bearer.speedZero`, `bearer.canSeeAttacker`) so the same content-side condition gates wire through both paths uniformly.
+
+The `AttackRolled` event now stamps `d20: [r1, r2]` and `used: 'advantage' | 'disadvantage'` correctly for spell attacks, so the transcript surfaces "**Bran** attacks **Aria** [advantage]: d20(15/5) + 4 = 19 vs AC 12 -> hit." (verified against fuzz seed=2008 post-slice — pre-slice the same hit showed a bare `d20(15)`).
+
+**Tests** ([tests/unit/engine/slice-602-spell-attack-advantage.test.ts](tests/unit/engine/slice-602-spell-attack-advantage.test.ts), 3 cases): Faerie Fire'd target → Advantage; unaffected target → bare d20; Faerie Fire + Dodge cancel → bare d20. Uses the starter pack (not TEST_PACK) because TEST_PACK's stubbed `restrained` / `paralyzed` conditions don't carry `GrantAdvantageToAttackers` — surfaced this gap during build (test-pack stubs are a known scope deviation, not in slice scope).
+
+**Verification:** fuzz seed=2008 now shows every Faerie Fired attack rolling with advantage; full suite green (481 files, 3253 tests, 173 unrelated skips).
+
+**Audit:**
+- **Names:** new locals `targetEffects`, `targetGrantsAdvantage`, `targetCancelsAdvantage`, `targetImposesDisadvantage`, `rangedSpellInMelee`, `effectivelyGrantsAdvantage`, `effectivelyImposesDisadvantage`, `d20Rolls` mirror attack.ts exactly (`d20Rolls` renamed from `rolls` to avoid the downstream collision with the damage-rolls variable).
+- **DRY:** the inline duplication is intentional for this slice — attack.ts has 350+ lines of attack-roll machinery with weapon-only facts (mastery, fighting-style, weapon-property gates) that don't translate, so a shared helper would need a richer signature than a slice-602 scope justifies. Tracked as future refactor.
+- **SRP:** the spell-attack path stays one responsibility (roll the attack); the new section is a focused "compute advantage state from target effects" block.
+- **Magic numbers:** `5` (ranged-in-melee threshold) extracted to a comment (already a magic value in attack.ts; tracked as global cleanup).
+- **at-threading:** no events emitted by the new section; advantage state is computed inline and stamped on the existing `AttackRolled` event.
+- **Mechanical outcomes asserted:** the new test pins three cases (Advantage applied, no-condition baseline, cancellation rule).
+
+**Pattern-check** (filter shape: "every place that rolls a d20 against a target without consulting target-side advantage conditions"): swept `grep -rn "rollDie(D20_SIDES" src/engine/` → 28 sites. Already-correct: `attack.ts`, `offhand-attack.ts`, `weapon-mastery.ts`, `opportunity-attack.ts` (all weapon-attack paths). The 6 spell-attack target-loops at [cast-spell.ts:485](src/engine/plan/cast-spell.ts#L485), [:795](src/engine/plan/cast-spell.ts#L795), [:1027](src/engine/plan/cast-spell.ts#L1027), [:1086](src/engine/plan/cast-spell.ts#L1086), [:1175](src/engine/plan/cast-spell.ts#L1175), [:1232](src/engine/plan/cast-spell.ts#L1232) — only the first (`attackTargetIds`) is an actual attack-roll site; the others are save-roll sites (target makes a save vs spell DC; advantage on the SAVE side is a different code path and already correct via `computeSavingThrow`'s consultation of the target's effect stack). Other sites: `concentration.ts` (CON save, advantage already handled via `computeSavingThrow`), `init.ts` (initiative; advantage from Alert handled separately). All other d20-roll sites are save-side, not attack-side. **Sweep clean** for attack-roll target-advantage gaps. The save-side parallel for spells already works — slice 602 closes the attack-side gap.
+
+**Open follow-ups:**
+- **Spell-attack advantage from attacker side**: Halfling Luck (reroll on natural 1), Bless +1d4, War Caster advantage on opportunity-attack spells, Reckless Attack (melee-spell-attack), Faerie Fire's "attacker can see it" gate (which the engine doesn't yet model line-of-sight for). All are weapon-only today; same shape as slice 602 but on the attacker-side effect stack. Tracked for a follow-up slice.
+- **Shared `resolveAttackRoll` helper**: the inline duplication between attack.ts (350 lines) and cast-spell.ts (the slice-602 50-line block) is the boundary between "focused fix" and "premature abstraction". Once the attacker-side spell-attack work above lands and the duplication is 100+ lines, extracting a shared helper that takes per-attack-kind config becomes worth the refactor. Defer until then.
+
+---
+
 **Engine (slice 601): auto-trigger CON save on every DamageApplied to a concentrating creature**
 
 The slice 600 fuzz-replay viewer surfaced this gap end-to-end across 15 battles: Bless, Hex, Hunter's Mark, Faerie Fire and every other concentration spell stayed up indefinitely under chip damage because the engine never rolled the per-damage CON save RAW requires. The planner existed ([src/engine/plan/concentration.ts](src/engine/plan/concentration.ts) `planCheckConcentration`, slice 515) but was only callable explicitly, not wired into the damage path. Only the drop-to-0 unconscious break path fired automatically.
