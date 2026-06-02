@@ -78,6 +78,11 @@ import {
   planHelp,
   planReady,
   planBardicInspiration,
+  planLayOnHands,
+  planSearch,
+  planStudy,
+  planInfluence,
+  planUtilize,
   planCloudsJaunt,
   planStonesEndurance,
   planStormsThunder,
@@ -228,6 +233,11 @@ import {
   type HelpIntent,
   type ReadyIntent,
   type BardicInspirationIntent,
+  type LayOnHandsIntent,
+  type SearchIntent,
+  type StudyIntent,
+  type InfluenceIntent,
+  type UtilizeIntent,
   type CloudsJauntIntent,
   type StonesEnduranceIntent,
   type StonesEnduranceOutcome,
@@ -401,6 +411,11 @@ export interface Engine {
     help(state: CampaignState, intent: Omit<HelpIntent, 'type'>): PlanResult;
     ready(state: CampaignState, intent: Omit<ReadyIntent, 'type'>): PlanResult;
     bardicInspiration(state: CampaignState, intent: Omit<BardicInspirationIntent, 'type'>): PlanResult;
+    layOnHands(state: CampaignState, intent: Omit<LayOnHandsIntent, 'type'>): PlanResult;
+    search(state: CampaignState, intent: Omit<SearchIntent, 'type'>): PlanResult;
+    study(state: CampaignState, intent: Omit<StudyIntent, 'type'>): PlanResult;
+    influence(state: CampaignState, intent: Omit<InfluenceIntent, 'type'>): PlanResult;
+    utilize(state: CampaignState, intent: Omit<UtilizeIntent, 'type'>): PlanResult;
     cloudsJaunt(state: CampaignState, intent: Omit<CloudsJauntIntent, 'type'>): PlanResult;
     stonesEndurance(
       state: CampaignState,
@@ -773,6 +788,21 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     bardicInspiration(state, intent) {
       return { events: planBardicInspiration(state, content, { type: 'BardicInspiration', ...intent }) };
+    },
+    layOnHands(state, intent) {
+      return { events: planLayOnHands(state, content, { type: 'LayOnHands', ...intent }) };
+    },
+    search(state, intent) {
+      return { events: planSearch(state, content, rng, { type: 'Search', ...intent }) };
+    },
+    study(state, intent) {
+      return { events: planStudy(state, content, rng, { type: 'Study', ...intent }) };
+    },
+    influence(state, intent) {
+      return { events: planInfluence(state, content, rng, { type: 'Influence', ...intent }) };
+    },
+    utilize(state, intent) {
+      return { events: planUtilize(state, content, rng, { type: 'Utilize', ...intent }) };
     },
     cloudsJaunt(state, intent) {
       return { events: planCloudsJaunt(state, content, { type: 'CloudsJaunt', ...intent }) };

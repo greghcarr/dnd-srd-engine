@@ -116,7 +116,7 @@ describe('Auto-fail save consumption (slice 576)', () => {
       expect(save).toBeDefined();
       expect(save!.success).toBe(false);
       // Breakdown surfaces the reason.
-      expect(save!.breakdown.some((b) => b.source === 'auto-fail')).toBe(true);
+      expect(save!.breakdown?.some((b) => b.source === 'auto-fail')).toBe(true);
     });
 
     it('Paralyzed DEX save auto-fails', () => {

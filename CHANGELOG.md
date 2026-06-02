@@ -4,6 +4,69 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 579): four thin action planners — Search / Study / Influence / Utilize**
+
+Closes the four deferred-by-design L1 actions from the deep audit's missing-planner list. Each is a thin wrapper around `planAbilityCheck` that adds the action-economy consumption RAW prescribes. Pre-slice the consumer had to manually bundle `ActionEconomyConsumed { kind: 'action' }` + `planAbilityCheck` — workable but error-prone.
+
+RAW (PHB 2024 ch.7 Actions):
+- **Search**: "make a Wisdom check to discern something that isn't obvious" — Insight / Medicine / Perception / Survival.
+- **Study**: "make an Intelligence check to study your memory, a book, a clue, or another source of knowledge" — Arcana / History / Investigation / Nature / Religion.
+- **Influence**: "urge a monster to do something" — CHA check via Animal Handling / Deception / Intimidation / Performance / Persuasion.
+- **Utilize**: "when an object requires your action for its use" — STR / DEX / INT check depending on the object.
+
+**Shared helper** ([src/engine/plan/_action-check.ts](src/engine/plan/_action-check.ts)): `planActionCheck` factors the common skeleton — `assertActorCanAct`, encounter / on-turn gate, action-already-used check, `ActionEconomyConsumed { kind: 'action' }` emission, delegation to `planAbilityCheck` with shared `at`. Each of the four planners is a ~50-line file that supplies an ability default + a sensible skill default + the action label for error messages.
+
+**Per-planner shapes** ([src/engine/plan/search.ts](src/engine/plan/search.ts), [study.ts](src/engine/plan/study.ts), [influence.ts](src/engine/plan/influence.ts), [utilize.ts](src/engine/plan/utilize.ts)):
+- `planSearch({ characterId, skill?: Skill, dc?: number })` — defaults to WIS + perception.
+- `planStudy({ characterId, skill?, dc? })` — defaults to INT + investigation.
+- `planInfluence({ characterId, skill?, dc? })` — defaults to CHA + persuasion.
+- `planUtilize({ characterId, ability?: AbilityScore, skill?, dc? })` — defaults to STR + no skill (object-specific).
+
+**Wiring**: [src/engine/plan/index.ts](src/engine/plan/index.ts) (4 re-exports), [src/engine/index.ts](src/engine/index.ts) (4 imports + 4 interface methods + 4 impls), [src/engine/conveniences.ts](src/engine/conveniences.ts) (4 `Search/Study/Influence/Utilize` dispatch entries).
+
+**Tests** ([tests/unit/engine/slice-579-thin-action-planners.test.ts](tests/unit/engine/slice-579-thin-action-planners.test.ts), 11 cases): per-planner default ability + skill + DC; per-planner skill override (RAW alternative); shared validation (double-Action throws; Incapacitated throws; out-of-encounter use bypasses the action-economy event).
+
+**Audit:**
+- **Names:** the 4 planners follow `plan<ActionName>` naming convention; `_action-check.ts` is private (underscore-prefixed file naming); `ActionCheckIntent` mirrors `AbilityCheckIntent` shape.
+- **DRY:** the shared `planActionCheck` helper eliminates the 4-line action-consume boilerplate. 4 planner files each ~30-50 lines (the file is mostly the RAW comment).
+- **SRP:** one shared helper + four planner files + four wirings. Zero schema or content changes.
+- **Magic numbers:** none.
+- **at-threading:** `planActionCheck` resolves `at` once (`intent.at ?? nowIso()`) and passes through to both `ActionEconomyConsumed` and the delegated `planAbilityCheck` call (via the `at` field on AbilityCheckIntent — slice 539's per-intent override).
+- **Mechanical outcomes asserted:** 11 cases (4 planners × default/override + 3 shared-validation).
+
+**Pattern-check:** `planActionCheck` consolidates a pattern duplicated in 10+ planners (each carries the action-economy consume block inline). Future refactor optional; existing inline patterns aren't broken.
+
+---
+
+**Engine (slice 578): planLayOnHands — Paladin L1 BA heal-or-cure-poison**
+
+Closes the Paladin L1 deferred-planner gap from the deep audit. Pre-slice the pack granted the `lay-on-hands` resource (`max: 5 × paladin level`, `recharge: 'longRest'`) but no planner existed to spend it. The consumer had to manually emit ResourceSpent + Healed; the BA gate, the pool validation, and the cure-poison mode were unreachable.
+
+RAW (PHB 2024 Paladin L1, Lay On Hands):
+> "You have a pool of healing power that replenishes when you finish a Long Rest. With that pool, you can restore a total number of Hit Points equal to five times your Paladin level. As a Bonus Action, you can touch a creature (which could be yourself) and draw power from the pool of healing to restore a number of Hit Points to that creature, up to the maximum amount remaining in the pool. You can also expend 5 Hit Points from the pool of healing power to remove the Poisoned condition from the creature; those points don't also restore Hit Points to the creature."
+
+**Planner** ([src/engine/plan/lay-on-hands.ts](src/engine/plan/lay-on-hands.ts)): `planLayOnHands({ paladinId, targetId, mode: 'heal' | 'cure-poison', amount? })`. Validates `assertActorCanAct`, Paladin class membership, lay-on-hands resource sufficiency, mode-specific constraints (heal needs `amount >= 1`; cure-poison needs pool >= 5 AND target carries `poisoned`). Touch range consumer-managed (engine doesn't track positions). Consumes 1 Bonus Action (in-encounter on Paladin's turn).
+
+**Event emission:**
+- Mode `heal`: ActionEconomyConsumed(bonusAction) + ResourceSpent(amount) + Healed(amount).
+- Mode `cure-poison`: ActionEconomyConsumed(bonusAction) + ResourceSpent(5) + ConditionRemoved(poisoned). **No Healed event** — RAW: "those points don't also restore Hit Points."
+
+**Wiring**: [src/engine/plan/index.ts](src/engine/plan/index.ts), [src/engine/index.ts](src/engine/index.ts) (interface + import + impl), [src/engine/conveniences.ts](src/engine/conveniences.ts) (`LayOnHands` dispatch).
+
+**Tests** ([tests/unit/engine/slice-578-lay-on-hands.test.ts](tests/unit/engine/slice-578-lay-on-hands.test.ts), 9 cases): heal flows (heal another, heal self, over-pool throws, zero-amount throws); cure-poison flows (removes condition without Healed, insufficient pool throws, non-poisoned target throws to prevent waste); non-Paladin throws; Incapacitated Paladin can't use it.
+
+**Audit:**
+- **Names:** `LayOnHandsMode = 'heal' | 'cure-poison'` is the intent's discriminant; `CURE_POISON_COST = 5` extracted as a constant.
+- **DRY:** the two modes share the validation prologue (Paladin, resource, target) but diverge in event emission. Not factored further — each mode is ~8 lines.
+- **SRP:** one planner file (~150 lines); no schema or content changes (the resource is already granted by the existing Paladin L1 feature).
+- **Magic numbers:** `CURE_POISON_COST = 5` extracted; the pool max (5 × Paladin level) is set by the existing GrantResource declaration in the pack.
+- **at-threading:** single `nowIso()` per planner; all emitted events share the same `at`.
+- **Mechanical outcomes asserted:** 9 cases covering both modes + 5 negative paths.
+
+**Pattern-check:** Lay on Hands is the canonical "pool-spend BA heal" planner shape. Future similar features (a homebrew "Channel Divinity: heal pool") would reuse the same skeleton. The cure-poison mode's "no Healed event" RAW arm is a subtle correctness point — earlier audits had assumed naive `ResourceSpent + Healed(5)` which would over-grant HP.
+
+---
+
 **Engine + content (slice 577): consumeOnCheck + consumeOnSave primitives, planBardicInspiration, Help (Ability Check) closure**
 
 Closes three deferred items in one slice — all three coupled because the new primitives unblock the Bardic Inspiration die and incidentally fix the slice-571 Help-on-check RAW deviation.
@@ -176,72 +239,13 @@ RAW (PHB 2024 ch.7 Help action):
 
 ---
 
-**Engine (slice 570): Incapacitated → concentration-break on apply**
-
-Closes the last load-bearing engine drift surfaced by the deep audit's combat-mechanics agent. Pre-slice the engine cleared concentration in two places:
-1. HP-drop-to-0 in `applyDamageApplied` ([src/engine/reducers/combat.ts:104-117](src/engine/reducers/combat.ts#L104-L117)) — handles falling Unconscious from damage.
-2. Planners that explicitly emit `ConcentrationBroken` events (`planConcentrationBreakOnDrop`, etc.).
-
-Neither path triggers when a concentrating caster receives an Incapacitated-composing condition via non-damage source: Hold Person → `paralyzed`, Power Word Stun → `power-word-stunned-active`, Hideous Laughter → `hideous-laughter-active`, plain `incapacitated`, or any of `stunned` / `petrified` / `held-paralyzed-active` / `unconscious` applied without an HP-drop.
-
-RAW (PHB 2024 ch.7 Concentration): "Your Concentration ends if you become Incapacitated or die."
-
-**Reducer wiring** ([src/engine/reducers/combat.ts](src/engine/reducers/combat.ts)):
-- New local `INCAPACITATING_CONDITIONS` set — mirror of [`ACTION_BLOCKING_CONDITIONS`](src/engine/plan/_actor-state.ts#L32) in the planner side. Held as a separate const to avoid a planner-to-reducer import (layers stay separate; slice 582's condition-behavior audit will pin the parity).
-- `applyConditionApplied` adds a post-push hook: when the applied condition's id is in the set AND the character has `concentrationEffectId !== undefined`, the existing `clearConcentrationEffect` helper is called. Non-incapacitating conditions and non-concentrating bearers are no-ops.
-
-**Tests** ([tests/unit/reducers/slice-570-incapacitated-concentration-break.test.ts](tests/unit/reducers/slice-570-incapacitated-concentration-break.test.ts), 12 cases): each of the 8 incapacitating-condition ids clears concentration on a concentrating bearer; non-incapacitating conditions (`poisoned`, `frightened`) leave concentration intact; applying paralyzed to a non-concentrating character is a clean no-op; exhaustion (not in the set; tracked via its own field) leaves concentration intact.
-
-**Audit:**
-- **Names:** `INCAPACITATING_CONDITIONS` parallels the planner-side `ACTION_BLOCKING_CONDITIONS` axis; the comment block explicitly notes the parity requirement.
-- **DRY:** the same set lives in two places (reducer + planner). Resolving the duplication requires either (a) hoisting to a shared module (`src/internal/`) or (b) re-exporting from one side. Both add a cross-layer dependency more invasive than a 2-line `if` check; deferred to slice 582 where the broader condition-behavior audit will rationalize the constants.
-- **SRP:** one new const + one new `if` block in the existing apply-condition reducer. No new event kind, no new reducer file.
-- **Magic numbers:** none.
-- **at-threading:** N/A (reducer is RNG-free; the `clearConcentrationEffect` helper is pure state mutation).
-- **Mechanical outcomes asserted:** 8 incapacitating-condition coverage (per-id), 2 non-incapacitating control, 2 boundary (no-concentration + exhaustion).
-
-**Pattern-check:** the audit agent's "concentration breaks only on HP drop" finding was the canonical use of this slice. The future slice 582 will sweep `INCAPACITATING_CONDITIONS` vs `ACTION_BLOCKING_CONDITIONS` for parity (currently identical; any drift becomes a CI failure under that audit).
-
----
-
-**Engine (slice 569): Exhaustion attack-roll + Speed penalties — PHB 2024 unified d20-Tests semantic**
-
-Closes a real L1 RAW drift surfaced by the deep audit. Pre-slice the engine applied the -2-per-level exhaustion penalty to ability checks ([src/derive/ability-check.ts:147](src/derive/ability-check.ts#L147)) and saving throws ([src/derive/save.ts:124-126](src/derive/save.ts#L124-L126)), but the **attack-roll** and **Speed** arms of the 2024 RAW were unwired. An exhausted character's to-hit was unaffected; their movement was unchanged.
-
-RAW PHB 2024 Exhaustion ([references/srd-markdown/rules-glossary.md](references/srd-markdown/rules-glossary.md)):
-- "You take a -2 penalty to all D20 Tests for every level of Exhaustion." (D20 Tests = checks + saves + attack rolls.)
-- "Your Speed decreases by 5 feet for every level of Exhaustion."
-- Level 6 = death (already wired in the apply-condition reducer via `EXHAUSTION_MAX`).
-
-**Constants** ([src/internal/constants.ts](src/internal/constants.ts)): two new sibling constants alongside the legacy `EXHAUSTION_SAVE_PENALTY_PER_LEVEL`:
-- `EXHAUSTION_ATTACK_PENALTY_PER_LEVEL = -2`
-- `EXHAUSTION_SPEED_PENALTY_PER_LEVEL = -5`
-
-The pre-2024-unification names stay (the values are identical, but distinct names make the per-dimension wiring greppable for future maintenance / partial reverts).
-
-**Attack-roll wiring** ([src/derive/attack.ts](src/derive/attack.ts)): `computeAttackBonus` adds an `exhaustion` breakdown entry when `character.exhaustion > 0`, mirroring the existing pattern in [ability-check.ts](src/derive/ability-check.ts) and [save.ts](src/derive/save.ts). Penalty applied after all weapon bonuses and effect-stack modifiers — the breakdown is independently visible for sheet display.
-
-**Speed wiring** ([src/derive/speed.ts](src/derive/speed.ts)): `getEffectiveSpeedForMode` applies the exhaustion penalty AFTER all `op: 'set' / 'add' / 'multiply'` modifiers and the natural-vs-set precedence resolution — RAW: the penalty stacks on the final value. Applies to ALL movement modes (walk / fly / swim / climb / burrow); a zero-speed (Grappled / Restrained / Unconscious) is unaffected because the existing `if (zeroSet) return 0` short-circuits earlier. Final `Math.max(0, scaled + exhaustionPenalty)` clamps so a high-exhaustion character can't go negative on Speed.
-
-**Tests** ([tests/unit/derive/slice-569-exhaustion-attack-speed.test.ts](tests/unit/derive/slice-569-exhaustion-attack-speed.test.ts), 11 cases):
-- Attack: exhaustion 0 / 1 / 3 / 5 yielding -0 / -2 / -6 / -10 modifier; penalty exposed in breakdown; can push net bonus negative.
-- Speed: exhaustion 0 / 1 / 3 / 6 yielding 30 / 25 / 15 / 0 ft walk; Goliath base 35 with exhaustion 2 yielding 25; non-walk modes follow same penalty (fly stays 0 for no-fly-source case after penalty); Grappled (Speed 0) stays 0.
-
-**Audit:**
-- **Names:** the two new constants follow the slice-7 `EXHAUSTION_<dimension>_PENALTY_PER_LEVEL` naming axis.
-- **DRY:** all three derive sites (ability-check, save, attack) share the `if (character.exhaustion > 0)` + breakdown-push shape. Speed's wiring is one final `Math.max(0, scaled + exhaustionPenalty)` line. Not factored into a shared helper because each site computes against its own breakdown shape; the duplication is two lines per site.
-- **SRP:** constants split per-dimension; each derive site applies its own dimension's constant.
-- **Magic numbers:** all three penalty magnitudes extracted to named constants in [src/internal/constants.ts](src/internal/constants.ts).
-- **at-threading:** N/A (pure derivation; no event emission).
-- **Mechanical outcomes asserted:** 11 cases — per-level attack penalty progression, per-level speed reduction (walk + non-walk + boundary), Grappled-zero clamp.
-
-**Pattern-check:** the existing check + save sites were ad-hoc wirings of the same RAW family (slice 7's pre-2024 SAVE_PENALTY name predates the 2024 D20-Test unification). The three derive sites are now mechanically symmetric; the constant naming reflects that. Future modifiers to D20 Tests (e.g., a homebrew "Curse of the Sluggard: -1 to all D20 Tests") would land in the same three derive sites with a similar per-dimension constant.
-
 ---
 
 ---
 **Pattern-check:** the original `hexed-active` design baked the assumption "one chosen ability per cast" into the consumer side as out-of-band metadata. Slice 367 had already solved this exact pattern for Bestow Curse via per-ability conditions + casterChoosesVariant. Slice 565 applies the slice-367 pattern to Hex, closing the parallel. Future spells with "caster picks an ability at cast time" RAW (e.g. variants of Boon-style spells) reuse the same shape. The doc-counts audit's conditions-count guard caught the +5 net change (135 → 140) and the rider sub-count (120 → 125) automatically; both updated in [docs/getting-started.md](docs/getting-started.md), [docs/status.md](docs/status.md) (twice — overview row + dimension row), and [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md).
 
+
+Per-slice detail for slices 569-570 (Exhaustion attack-roll + Speed penalties — PHB 2024 unified d20-Tests semantic; Incapacitated → concentration-break on apply) is archived at [docs/changelog/archive-slices-569-570.md](docs/changelog/archive-slices-569-570.md) (slice 578, to keep this file under the 60 KB single-Read ceiling).
 
 Per-slice detail for slices 567-568 (condition effect-list completeness sweep + three attack-resolution gates: within-5-ft auto-crit, Prone asymmetric attacker advantage, Grappled non-grappler disadvantage) is archived at [docs/changelog/archive-slices-567-568.md](docs/changelog/archive-slices-567-568.md) (slice 576, to keep this file under the 60 KB single-Read ceiling).
 
