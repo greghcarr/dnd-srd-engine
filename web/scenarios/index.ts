@@ -2,9 +2,12 @@
 //
 // Each entry: { id, title, description, hint, build(opts?) → DemoSession }.
 // The CI replay test (tests/integration/web-scenarios.test.ts) loops
-// over this list, so adding a new scenario file means dropping it
-// here and CI auto-covers it. The demo's scenario-picker reads the
-// same list and renders one option per entry.
+// over this list. Slice 600 retired the demo's scenario-picker (the
+// demo now shows fuzz-generated battles instead), so these scenarios
+// are now test fixtures only — kept here so the integration test still
+// exercises the hand-authored regression cases (Frightened source
+// tracking, Misty Step destination occupancy, concentration auto-clear
+// on 0 HP).
 
 import type { Campaign, ContentPack, Engine } from 'dnd-srd-engine';
 import { loadStarterPack } from 'dnd-srd-engine/starter-pack';
@@ -17,7 +20,7 @@ export interface DemoSession {
   readonly engine: Engine;
   readonly campaign: Campaign;
   readonly encounterId: string;
-  /** logical-name → character-id, used by the combat-sandbox row labels */
+  /** logical-name → character-id, used by tests to look up combatants by role. */
   readonly combatants: Readonly<Record<string, string>>;
   readonly seed: number;
 }

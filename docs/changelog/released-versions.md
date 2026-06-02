@@ -52,7 +52,7 @@ Class-features matrix: 36 wired / 12 stub → **48 wired / 0 stub** at L1–7. S
 
 - **Rules Lab in the web demo.** 19 showcase probes grouped by category; one-click "Run audit" runs them against a fresh engine + scenario and reports pass / fail per row. Source: `web/audit/probes.ts`, `web/modes/rules-lab.ts`. (Removed in slice 584.)
 - **Scenario gallery in the web demo.** Frightened Halfling (source-tracked movement restriction), Misty Step Occupied (occupancy-check rejection), Concentrating Wizard at 1 HP (concentration auto-clear on drop), in addition to the original Goblin Skirmish. URL hash includes `#scenario=<id>&seed=<n>`. Source: [web/scenarios/](../../web/scenarios). CI replay test at [tests/integration/web-scenarios.test.ts](../../tests/integration/web-scenarios.test.ts) covers headline actions per scenario.
-- **Map panel in the web demo.** A small grid view between Combat Sandbox and Event Inspector showing each combatant token at their position with initials and color; auto-fits the actor bounds. Source: [web/modes/grid-view.ts](../../web/modes/grid-view.ts).
+- **Map panel in the web demo.** A small grid view between Combat Sandbox and Event Inspector showing each combatant token at their position with initials and color; auto-fits the actor bounds. Source: `web/modes/grid-view.ts`. (Removed in slice 600.)
 - **Trustworthiness roadmap at [docs/trustworthiness-roadmap.md](../../docs/trustworthiness-roadmap.md)** framing the four-tier path from alpha to "trustworthy for unsupervised tabletop play": Tier 1 close audit, Tier 2 extend audit, Tier 3 content stubs, Tier 4 real SRD pack.
 
 ### Changed
