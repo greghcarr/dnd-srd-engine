@@ -94,6 +94,13 @@ export const planSave = (
     : [];
   const bonus = derivation.total + saveBonus.total + coverBonus;
   const total = d20 + bonus;
+  // Slice 576: RAW auto-fail (Paralyzed / Stunned / Petrified /
+  // Unconscious force-fail STR + DEX saves). Mirror of the wiring in
+  // _save-roll.ts so both save paths behave identically.
+  const success = derivation.hasAutoFail ? false : total >= intent.dc;
+  const autoFailBreakdown = derivation.hasAutoFail
+    ? [{ source: 'auto-fail', value: 0 }]
+    : [];
   const event: SaveRolledEvent = {
     id: newEventId() as ULID,
     at: intent.at ?? nowIso(),
@@ -105,8 +112,13 @@ export const planSave = (
     used,
     bonus,
     total,
-    success: total >= intent.dc,
-    breakdown: [...derivation.breakdown, ...saveBonus.breakdown, ...coverBreakdown],
+    success,
+    breakdown: [
+      ...derivation.breakdown,
+      ...saveBonus.breakdown,
+      ...coverBreakdown,
+      ...autoFailBreakdown,
+    ],
   };
   return [event];
 };

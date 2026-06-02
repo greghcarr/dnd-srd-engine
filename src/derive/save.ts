@@ -26,6 +26,13 @@ export interface SaveResult {
   // stack). When true and the chosen d20 of the save is a natural 1,
   // the planner rerolls once and uses the new die per RAW.
   readonly hasHalflingLuck: boolean;
+  // Slice 576: auto-fail flag (RAW: Paralyzed / Stunned / Petrified /
+  // Unconscious auto-fail STR + DEX saves). The pack carries
+  // SetAdvantage entries with mode: 'auto-fail'; the EffectAccumulator
+  // tracks them via `autoFail` per ability; this exposes the flag to
+  // the save planner so the d20 + modifiers are bypassed and the save
+  // emits as a forced failure.
+  readonly hasAutoFail: boolean;
 }
 
 export interface ComputeSaveInput {
@@ -179,5 +186,11 @@ export const computeSavingThrow = (input: ComputeSaveInput): SaveResult => {
     // pure derivation); the planner that rolls the save rolls these too
     // and folds them into the SaveRolled total + breakdown.
     bonusDice: effects.bonusDiceFor(target, facts),
+    // Slice 576: auto-fail (RAW: Paralyzed / Stunned / Petrified /
+    // Unconscious auto-fail STR + DEX). The EffectAccumulator already
+    // tracks `autoFail` per ability via SetAdvantage mode: 'auto-fail'
+    // entries — slice 567's pack-declaration tests verified the data
+    // shape. This exposes the flag so the save planner can force-fail.
+    hasAutoFail: adv.autoFail,
   };
 };

@@ -98,7 +98,16 @@ export const rollSaveAgainstDC = (input: RollSaveInput): SaveRollResult | undefi
     : [];
   const bonus = derivation.total + saveBonus.total + coverBonus;
   const total = usedD20 + bonus;
-  const success = total >= input.dc;
+  // Slice 576: RAW auto-fail (Paralyzed / Stunned / Petrified /
+  // Unconscious force-fail STR + DEX saves). The d20 + modifiers are
+  // computed normally so the rolled values still appear on the event
+  // (transcript visibility); the `success` is forced to false. The
+  // breakdown gets an `'auto-fail'` source entry so a sheet display
+  // can show the reason.
+  const success = derivation.hasAutoFail ? false : total >= input.dc;
+  const autoFailBreakdown = derivation.hasAutoFail
+    ? [{ source: 'auto-fail', value: 0 }]
+    : [];
   const event: SaveRolledEvent = {
     id: newEventId() as ULID,
     at: input.at,
@@ -112,7 +121,12 @@ export const rollSaveAgainstDC = (input: RollSaveInput): SaveRollResult | undefi
     total,
     success,
     ...(input.causedByEventId !== undefined ? { causedByEventId: input.causedByEventId } : {}),
-    breakdown: [...derivation.breakdown, ...saveBonus.breakdown, ...coverBreakdown],
+    breakdown: [
+      ...derivation.breakdown,
+      ...saveBonus.breakdown,
+      ...coverBreakdown,
+      ...autoFailBreakdown,
+    ],
   };
   return { event, success };
 };
