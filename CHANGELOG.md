@@ -4,6 +4,46 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Tests (slice 583): spell-coverage harness — `aura-damage` expectation kind**
+
+Converts 9 of the previously-skipped `aura-damage` spell-coverage entries from `it.skip` to `it` by extending the harness with a new `kind: 'aura-damage'` expectation. Each aura-damage spell now exercises the full cast → tickAura → assert chain rather than being acknowledged-but-untested.
+
+Before slice 583 the spell-coverage smoke test skipped 11 aura-damage spells (Spirit Guardians, Entangle, Grease, Cloud of Daggers, Flaming Sphere, Stinking Cloud, Black Tentacles, Wall of Fire, Blade Barrier, Wall of Ice, Wall of Thorns) on the rationale "fires via engine.plan.tickAura per-turn, not on cast." Each was tested elsewhere (Spirit Guardians by [tests/unit/engine/plan-tick-aura.test.ts](tests/unit/engine/plan-tick-aura.test.ts); the rest by ad-hoc planners) but appeared as a `skip` in the canonical per-spell coverage matrix. Slice 583 moves them into the matrix.
+
+**Harness change** ([tests/unit/engine/spell-coverage.test.ts](tests/unit/engine/spell-coverage.test.ts)):
+- New `Expectation` union member: `{ kind: 'aura-damage', castingClass: 'cleric'|'druid'|'wizard', slotLevel: number, expectsSave: boolean, expectsDamage: boolean }`.
+- New `buildDruid` fixture (mirrors `buildCleric` / `buildWizard`) for druid-list aura spells (Entangle, Flaming Sphere, Wall of Thorns).
+- New harness branch (before the existing `it()` body) that runs cast + commit + `engine.plan.tickAura` and asserts:
+  - Cast emits `SpellCastDeclared` + `SpellSlotConsumed` + `ConcentrationStarted`; NO `SaveRolled` / `DamageApplied` (those fire only on tick).
+  - Tick emits `SaveRolled` when `expectsSave` is true.
+  - Tick emits `DamageApplied` when `expectsDamage` is true (every aura with `halfOnSuccess: true` or no save emits damage every tick).
+
+**Per-spell conversions** (9 entries flipped from `kind: 'skip'` to `kind: 'aura-damage'`):
+- `spirit-guardians` (cleric L3, save+damage)
+- `entangle` (druid L1, save-only — condition-on-fail; halfOnSuccess: false)
+- `flaming-sphere` (druid L2, save+damage)
+- `stinking-cloud` (wizard L3, save-only — condition-on-fail)
+- `black-tentacles` (wizard L4, save+damage)
+- `wall-of-fire` (wizard L4, save+damage)
+- `blade-barrier` (cleric L6, save+damage)
+- `wall-of-ice` (wizard L6, save+damage)
+- `wall-of-thorns` (druid L6, save+damage)
+
+**Entries that stay skipped (with rationale)**:
+- `grease`: non-concentration aura. `planTickAura` requires the caster's concentration effect, but Grease's 1-minute duration doesn't concentrate. RAW Grease is an "on-enter zone" (creature entering DEX-saves or falls prone); the engine doesn't yet model on-enter triggers for non-concentration zones. Updated skip reason to document the deferral.
+- `cloud-of-daggers`: was already skip-listed but `cloud-of-daggers` isn't actually in the starter pack (the `every shipped spell has an entry in SPELL_EXPECTATIONS` audit only iterates over `ALL_SPELL_IDS`, so the dead-code entry was harmless). Kept as documentation; not iterated.
+
+**Test count delta**:
+- Before: 182 skipped across the full suite (181 spell-coverage + 1 srd-drift content-missing case).
+- After: 173 skipped (172 + 1).
+- Net: **9 fewer skipped tests, 9 more passing tests**, no engine or content changes.
+
+**Audit:** test-only; one new expectation kind + one new fixture (`buildDruid`) + one harness branch + 9 per-spell entry conversions. No schema / content / engine changes. RAW slot levels documented per entry. 9 cast-and-tick chains asserted.
+
+**Pattern-check:** future dedicated-planner skips (planShield / planCounterspell) could similarly convert with a delegated assertion, but those already have dedicated tests so the value-per-conversion is lower; deferred.
+
+---
+
 **Engine + content (slices 580 + 581 + 582): Option-C closure tail — Deafened auto-fail, Frightened movement-gate audit-clarification, minimal encumbrance domain**
 
 Closes the final three Option-C items in one bundled commit. All three are scoped narrowly (each is small / clarifying / minimum-viable) and together close the deferred-list end-to-end.

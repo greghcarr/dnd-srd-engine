@@ -43,6 +43,21 @@ type Expectation =
   | { kind: 'destroy' }
   | { kind: 'zone' }
   | { kind: 'create-item'; minItems: number }
+  // Slice 583: aura-damage spells (Spirit Guardians, Cloud of
+  // Daggers, etc.) — cast emits ConcentrationStarted only, the
+  // mechanical action fires via engine.plan.tickAura per-turn. The
+  // harness casts the spell with the appropriate caster class +
+  // slot level, then calls tickAura against a target and asserts
+  // the expected event chain (SaveRolled when the aura carries a
+  // save; DamageApplied when the aura emits damage regardless of
+  // save outcome — halfOnSuccess: true or no save at all).
+  | {
+      kind: 'aura-damage';
+      castingClass: 'cleric' | 'druid' | 'wizard';
+      slotLevel: number;
+      expectsSave: boolean;
+      expectsDamage: boolean;
+    }
   | { kind: 'skip'; reason: string };
 
 const SPELL_EXPECTATIONS: Record<string, Expectation> = {
@@ -83,7 +98,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'bane': { kind: 'save' },
   'sleep': { kind: 'hp-pool-knockout' },
   'web': { kind: 'save' },
-  'spirit-guardians': { kind: 'skip', reason: 'aura-damage mechanic: cast itself emits only ConcentrationStarted; damage fires via engine.plan.tickAura per-turn' },
+  'spirit-guardians': { kind: 'aura-damage', castingClass: 'cleric', slotLevel: 3, expectsSave: true, expectsDamage: true },
   // Buffs / utility spells with simple shapes not yet wired.
   'aid': { kind: 'heal' },
   'polymorph': { kind: 'skip', reason: 'has dedicated planPolymorph (not planCastSpell)' },
@@ -133,14 +148,14 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'disguise-self': { kind: 'skip', reason: 'illusion utility, narrative only' },
   'divine-favor': { kind: 'buff', conditionId: 'divine-favor-active' },
   'ensnaring-strike': { kind: 'save' },
-  'entangle': { kind: 'skip', reason: 'aura-damage mechanic (STR save → restrained, no damage); fires via engine.plan.tickAura on enter / per-turn, not on cast. RAW difficult-terrain side-effect isn\'t expressed.' },
+  'entangle': { kind: 'aura-damage', castingClass: 'druid', slotLevel: 1, expectsSave: true, expectsDamage: false },
   'expeditious-retreat': { kind: 'skip', reason: 'bonus-action speed buff, narrative only' },
   'false-life': { kind: 'temp-hp' },
   'feather-fall': { kind: 'buff', conditionId: 'feather-falling-active' },
   'find-familiar': { kind: 'summon' },
   'fog-cloud': { kind: 'zone' },
   'goodberry': { kind: 'create-item', minItems: 10 },
-  'grease': { kind: 'skip', reason: 'aura-damage mechanic (DEX save → prone, no damage); fires via engine.plan.tickAura on enter, not on cast. RAW difficult-terrain side-effect isn\'t expressed.' },
+  'grease': { kind: 'skip', reason: 'non-concentration aura: planTickAura requires the caster\'s concentration effect, but Grease ends without concentration (RAW 1-minute duration with no concentration). An "on-enter zone" planner that fires the save on a consumer-supplied entry event is the proper RAW shape; deferred.' },
   'heroism': { kind: 'buff', conditionId: 'heroic-active' },
   'hex': { kind: 'buff', conditionId: 'hexed-STR-active', casterChoice: { kind: 'variant', value: 'STR' } },
   'hunters-mark': { kind: 'skip', reason: 'has dedicated planHuntersMark (concentration mark, not planCastSpell)' },
@@ -175,7 +190,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'barkskin': { kind: 'buff', conditionId: 'barkskin-active' },
   'blur': { kind: 'buff', conditionId: 'blurred-active' },
   'calm-emotions': { kind: 'save', casterChoice: { kind: 'variant', value: 'suppress' } },
-  'cloud-of-daggers': { kind: 'skip', reason: 'aura-damage mechanic (no save, 4d4 slashing auto-damage); fires via engine.plan.tickAura per-turn / on-enter, not on cast' },
+  'cloud-of-daggers': { kind: 'aura-damage', castingClass: 'wizard', slotLevel: 2, expectsSave: false, expectsDamage: true },
   'continual-flame': { kind: 'skip', reason: 'utility (creates flame); no combat-event side' },
   'cordon-of-arrows': { kind: 'trap' },
   'darkness': { kind: 'zone' },
@@ -187,7 +202,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'enthrall': { kind: 'save' },
   'find-steed': { kind: 'summon' },
   'find-traps': { kind: 'skip', reason: 'divination utility; detection mechanic not modeled' },
-  'flaming-sphere': { kind: 'skip', reason: 'aura-damage mechanic (DEX save 2d6 fire, half on success); fires via engine.plan.tickAura at end of caster turn against adjacent creatures. RAW mobile-sphere movement is consumer-side.' },
+  'flaming-sphere': { kind: 'aura-damage', castingClass: 'druid', slotLevel: 2, expectsSave: true, expectsDamage: true },
   'gentle-repose': { kind: 'skip', reason: 'utility ritual (preserves corpse), narrative only' },
   'gust-of-wind': { kind: 'save' },
   'knock': { kind: 'skip', reason: 'utility (opens lock), narrative only' },
@@ -247,7 +262,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'speak-with-dead': { kind: 'skip', reason: 'utility (question corpse), narrative only' },
   'speak-with-plants': { kind: 'skip', reason: 'utility (talk to plants), narrative only' },
   'spirit-shroud': { kind: 'buff', conditionId: 'spirit-shroud-cold-active', casterChoice: { kind: 'variant', value: 'cold' } },
-  'stinking-cloud': { kind: 'skip', reason: 'aura-damage mechanic (condition-only via conditionOnFail: poisoned); fires via engine.plan.tickAura per-turn, not on cast' },
+  'stinking-cloud': { kind: 'aura-damage', castingClass: 'wizard', slotLevel: 3, expectsSave: true, expectsDamage: false },
   'thunder-step': { kind: 'skip', reason: 'has dedicated planThunderStep (action, teleport caster + ally, AoE thunder damage on origin)' },
   'tongues': { kind: 'skip', reason: 'utility (language understanding), narrative only' },
   'water-breathing': { kind: 'buff', conditionId: 'water-breathing-active' },
@@ -285,7 +300,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'arcane-eye': { kind: 'skip', reason: 'has dedicated planArcaneEye (places a mobile Sensor entity with darkvision 30; caster moves it on a bonus action via planMoveSensor)' },
   'aura-of-life': { kind: 'skip', reason: 'paladin aura that holds allies above half-HP-floor + revives at 0 HP; sub-floor health mechanic not modeled' },
   'banishment': { kind: 'skip', reason: 'CHA save banishes target to another plane; cross-plane travel + return-on-concentration-drop not modeled' },
-  'black-tentacles': { kind: 'skip', reason: 'aura-damage mechanic (DEX save 3d6 bludgeoning + conditionOnFail: restrained); fires via engine.plan.tickAura on enter / per-turn, not on cast' },
+  'black-tentacles': { kind: 'aura-damage', castingClass: 'wizard', slotLevel: 4, expectsSave: true, expectsDamage: true },
   'compulsion': { kind: 'skip', reason: 'forced movement on WIS save with recurring re-save; recurring-save area mechanic not modeled' },
   'confusion': { kind: 'save' },
   'control-water': { kind: 'skip', reason: 'water-shape utility; terrain primitive not modeled' },
@@ -305,7 +320,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'secret-chest': { kind: 'skip', reason: 'extradimensional storage utility; ethereal-stash primitive not modeled' },
   'stone-shape': { kind: 'skip', reason: 'utility shaping of stone; terrain primitive not modeled' },
   'stoneskin': { kind: 'buff', conditionId: 'stoneskin-active' },
-  'wall-of-fire': { kind: 'skip', reason: 'aura-damage mechanic (DEX save 5d8 fire, half on success); fires via engine.plan.tickAura per-turn, not on cast. RAW side-selectable damage isn\'t expressed.' },
+  'wall-of-fire': { kind: 'aura-damage', castingClass: 'wizard', slotLevel: 4, expectsSave: true, expectsDamage: true },
   // PHB 2024 L5 spells with wired mechanics
   'cloudkill': { kind: 'save' },
   'cone-of-cold': { kind: 'save' },
@@ -355,7 +370,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'mass-suggestion': { kind: 'save' },
   'sunbeam': { kind: 'save' },
   // PHB 2024 L6 spells shipped schema-only; see docs/starter-pack-gaps.md.
-  'blade-barrier': { kind: 'skip', reason: 'aura-damage mechanic (DEX save 6d10 slashing); fires via engine.plan.tickAura per-turn, not on cast' },
+  'blade-barrier': { kind: 'aura-damage', castingClass: 'cleric', slotLevel: 6, expectsSave: true, expectsDamage: true },
   'conjure-fey': { kind: 'skip', reason: 'CR-6+ fey summon with subclass-flavored statblock; advanced summon primitive not modeled' },
   'contingency': { kind: 'skip', reason: 'pre-stored conditional spell; conditional-cast primitive not modeled' },
   'create-undead': { kind: 'skip', reason: 'creates ghoul / ghast servitors; undead-creation primitive not modeled' },
@@ -371,8 +386,8 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'planar-ally': { kind: 'skip', reason: 'requests aid from an other-planar entity; DM-resolution + cross-plane summon not modeled' },
   'programmed-illusion': { kind: 'skip', reason: 'long-duration triggered illusion; illusion + trigger primitive not modeled' },
   'true-seeing': { kind: 'buff', conditionId: 'true-seeing-active' },
-  'wall-of-ice': { kind: 'skip', reason: 'aura-damage mechanic (DEX save 10d6 cold, half on success); fires via engine.plan.tickAura per-turn, not on cast. RAW persistent terrain block-passage isn\'t expressed.' },
-  'wall-of-thorns': { kind: 'skip', reason: 'aura-damage mechanic (DEX save 7d8 piercing, half on success); fires via engine.plan.tickAura per-turn, not on cast. RAW difficult-terrain side-effect isn\'t expressed.' },
+  'wall-of-ice': { kind: 'aura-damage', castingClass: 'wizard', slotLevel: 6, expectsSave: true, expectsDamage: true },
+  'wall-of-thorns': { kind: 'aura-damage', castingClass: 'druid', slotLevel: 6, expectsSave: true, expectsDamage: true },
   'wind-walk': { kind: 'buff', conditionId: 'wind-walking-active' },
   'word-of-recall': { kind: 'skip', reason: 'instant teleport to a designated sanctuary; teleport-network primitive not modeled' },
   // PHB 2024 L7 spells with wired mechanics
@@ -461,6 +476,22 @@ const buildCleric = (preparedSpells: string[]): Character =>
     preparedSpells,
   });
 
+// Slice 583: Druid caster for aura-damage spells on the Druid spell
+// list (entangle, flaming-sphere, wall-of-thorns). Mirrors the cleric
+// build with the Druid class + WIS-keyed scores.
+const buildDruid = (preparedSpells: string[]): Character =>
+  CharacterSchema.parse({
+    id: newCharacterId(),
+    name: 'Spell Tester',
+    speciesId: 'human',
+    backgroundId: 'soldier',
+    classes: [{ classId: 'druid', level: 19, hitDiceRemaining: 19 }],
+    abilityScores: { STR: 10, DEX: 14, CON: 14, INT: 10, WIS: 18, CHA: 10 },
+    hp: { current: 35, max: 35, temp: 0 },
+    featsTaken: ['savage-attacker'],
+    preparedSpells,
+  });
+
 const buildTarget = (): Character =>
   CharacterSchema.parse({
     id: newCharacterId(),
@@ -491,6 +522,59 @@ describe('spell coverage: each shipped spell emits the expected event kinds when
     if (expectation === undefined) continue;
     if (expectation.kind === 'skip') {
       it.skip(`${spellId}: ${expectation.reason}`, () => {});
+      continue;
+    }
+
+    // Slice 583: aura-damage spells use a distinct flow — cast (which
+    // emits only ConcentrationStarted) then call tickAura with a
+    // target. Assertions check that the aura mechanic fires (SaveRolled
+    // when configured; DamageApplied when the aura emits damage on
+    // every tick — auto-damage zones like Cloud of Daggers, or
+    // halfOnSuccess: true zones like Spirit Guardians).
+    if (expectation.kind === 'aura-damage') {
+      it(`${spellId}: cast emits ConcentrationStarted; tickAura emits the expected event chain`, () => {
+        const spell = PACK.spells.find((s) => s.id === spellId)!;
+        const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(1) });
+        const caster = expectation.castingClass === 'cleric'
+          ? buildCleric([spellId])
+          : expectation.castingClass === 'druid'
+            ? buildDruid([spellId])
+            : buildWizard([spellId]);
+        const target = buildTarget();
+        let campaign = engine.createCampaign({ name: `aura-${spellId}` });
+        campaign = commit(campaign, [
+          { id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: caster } satisfies CharacterCreatedEvent,
+          { id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: target } satisfies CharacterCreatedEvent,
+        ]);
+        // Cast the spell (concentration; emits ConcentrationStarted).
+        const castEvents = engine.plan.castSpell(campaign.state, {
+          characterId: caster.id,
+          spellId,
+          slotLevel: expectation.slotLevel,
+          targetIds: [caster.id],
+        }).events as ReadonlyArray<Event>;
+        const castTypes = castEvents.map((e) => e.type);
+        expect(castTypes).toContain('SpellCastDeclared');
+        expect(castTypes).toContain('SpellSlotConsumed');
+        expect(castTypes).toContain('ConcentrationStarted');
+        // Damage / save / condition events fire only on the tick, not
+        // on cast.
+        expect(castTypes).not.toContain('SaveRolled');
+        expect(castTypes).not.toContain('DamageApplied');
+        campaign = commit(campaign, castEvents);
+        // Now tick the aura against the target.
+        const tickEvents = engine.plan.tickAura(campaign.state, {
+          casterId: caster.id,
+          targetIds: [target.id],
+        }).events as ReadonlyArray<Event>;
+        const tickTypes = tickEvents.map((e) => e.type);
+        if (expectation.expectsSave) {
+          expect(tickTypes, `${spellId}: expected SaveRolled from tickAura`).toContain('SaveRolled');
+        }
+        if (expectation.expectsDamage) {
+          expect(tickTypes, `${spellId}: expected DamageApplied from tickAura`).toContain('DamageApplied');
+        }
+      });
       continue;
     }
 
