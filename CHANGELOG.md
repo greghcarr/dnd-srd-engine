@@ -4,6 +4,32 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Tooling (slice 594): combat-fuzz out-of-combat rest cycles**
+
+The fuzz tool ran each battle in isolation, ending after one combatant dropped. The engine's rest planners (`planLongRest` / `planShortRest`) and the post-battle `planEndEncounter` were never exercised by the fuzz, leaving resource recharge + HP regen on long rest + hit-die spending on short rest unexercised at the live-combat scale.
+
+**Changes** ([scripts/combat-fuzz.ts](scripts/combat-fuzz.ts)):
+- New `--rest <none|short|long>` CLI flag (default `none`). When set, after the battle ends the fuzz:
+  1. Calls `engine.plan.endEncounter` with the proper outcome (`'victory'` if a winner emerged, else `'fled'`) — pre-slice the fuzz left the encounter dangling, so `endEncounter`'s `Outcome` enforcement never fired.
+  2. Performs the chosen rest on the SURVIVING characters (HP > 0) — RAW dead characters can't rest.
+  3. Transcripts surface the new tail events naturally: `## Encounter ends: victory.` / `## Long rest begins (Bran)` / `Long rest ends.`
+
+**Verification** (5 seeds at level 3 with `--rest long`):
+- Seed 800 + 804: Bran wins, Aria dies. Encounter ends `victory` (Bran's perspective). Bran takes a long rest (Aria skipped — dead). Long rest events emit.
+- Seed 802: 20-round cap with no winner. Encounter ends `fled`. Both survive; both rest.
+
+**Audit:**
+- **Names:** `rest: 'none' | 'short' | 'long'` matches the CLI flag values; `survivors` is intent-revealing.
+- **DRY:** survivor filter is one `.filter(...).map(...)` chain.
+- **SRP:** tooling only; no engine, content, schema, or test changes.
+- **Magic numbers:** none added.
+- **at-threading:** the rest planners stamp their own `at`.
+- **Mechanical outcomes asserted:** live fuzz verification (rest events surface; survivor filter works).
+
+**Pattern-check (filter shape: "engine planners on the EXCLUDED_FROM_DISPATCH list that the fuzz could exercise"):** the rest planners are on the allowlist as "Travel / rest / resurrection / attack follow-ups" category. Now exercised by `--rest`. Remaining allowlisted planners the fuzz still doesn't exercise: `rest`, `forcedMarch`, `resurrect`, `cleave` (Cleave is mastery-class + 2nd target — needs slice 595's 2v2 to land), the various trigger-style planners (`dodge`, `sanctuaryWardSave`, `protection`, etc.) that the fuzz policy doesn't model, plus the equipment / sensor / transformation / summon planners which are out of L1-5 combat scope. Documented as future work.
+
+---
+
 **Tooling (slice 593): combat-fuzz levels 2-5 via engine level-up**
 
 The fuzz tool built every character at L1, leaving the engine's per-level scaling — Extra Attack at L5, half-caster spellcasting starting at L2, full-caster slot progression L1→L5, subclass features at L3, Action Surge at L2, Channel Divinity at L2 — entirely unexercised by the bug-discovery harness. Slice 593 adds a `--level N` CLI flag (1-5) and walks both characters through `engine.plan.levelUp` from L1 to the target level after creation.

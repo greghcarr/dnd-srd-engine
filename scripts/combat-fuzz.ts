@@ -608,7 +608,7 @@ const levelUpTo = (
   return camp;
 };
 
-const runBattle = (seed: number, pack: Pack, level: number): { events: ReadonlyArray<Event>; finalState: Campaign['state']; winner: string | null; rounds: number } => {
+const runBattle = (seed: number, pack: Pack, level: number, rest: 'none' | 'short' | 'long' = 'none'): { events: ReadonlyArray<Event>; finalState: Campaign['state']; winner: string | null; rounds: number } => {
   const engine = createEngine({ contentPacks: [pack], rng: seededRNG(seed) });
   // Per-battle RNG used for character generation; separate from the
   // engine RNG so the build doesn't drift from the action seed.
@@ -794,6 +794,26 @@ const runBattle = (seed: number, pack: Pack, level: number): { events: ReadonlyA
     if (newRound > rounds) rounds = newRound;
   }
 
+  // Slice 594: after battle ends, optionally perform a post-battle rest
+  // on the SURVIVING characters (HP > 0). End the encounter first
+  // (RAW: you can't rest in combat). The rest planner emits the
+  // recharge events for resources / slots and the HP regen for long
+  // rests; the transcript surfaces them naturally via formatEvent.
+  if (rest !== 'none') {
+    try {
+      campaign = commit(campaign, engine.plan.endEncounter(campaign.state, { encounterId: enc.encounterId, outcome: winner !== null ? 'victory' : 'fled' }).events);
+      const survivors = [pcA, pcB]
+        .filter((pc) => campaign.state.characters[pc.character.id]!.hp.current > 0)
+        .map((pc) => pc.character.id);
+      if (survivors.length > 0) {
+        const restPlan = rest === 'long'
+          ? engine.plan.longRest(campaign.state, { participantIds: survivors })
+          : engine.plan.shortRest(campaign.state, { participantIds: survivors });
+        campaign = commit(campaign, restPlan.events);
+      }
+    } catch { /* end-encounter / rest threw; transcript truncates at battle end */ }
+  }
+
   return { events: campaign.events, finalState: campaign.state, winner, rounds };
 };
 
@@ -829,28 +849,33 @@ const parseArgs = (argv: ReadonlyArray<string>): { count: number; seed: number; 
   let seed = 1;
   let out = '/tmp/combat-fuzz';
   let level = 1;
+  let rest: 'none' | 'short' | 'long' = 'none';
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--count') count = Number(argv[++i] ?? count);
     else if (a === '--seed') seed = Number(argv[++i] ?? seed);
     else if (a === '--out') out = argv[++i] ?? out;
     else if (a === '--level') level = Math.max(1, Math.min(FUZZ_MAX_LEVEL, Number(argv[++i] ?? level)));
+    else if (a === '--rest') {
+      const v = (argv[++i] ?? 'none') as 'none' | 'short' | 'long';
+      rest = v === 'short' || v === 'long' ? v : 'none';
+    }
   }
-  return { count, seed, out, level };
+  return { count, seed, out, level, rest };
 };
 
 const main = (): void => {
-  const { count, seed, out, level } = parseArgs(process.argv.slice(2));
+  const { count, seed, out, level, rest } = parseArgs(process.argv.slice(2));
   mkdirSync(out, { recursive: true });
   const pack = loadStarterPack();
   const indexLines: string[] = [
-    `# Combat fuzz run — ${count} battles, seeds ${seed}..${seed + count - 1} (level ${level})`,
+    `# Combat fuzz run — ${count} battles, seeds ${seed}..${seed + count - 1} (level ${level}${rest !== 'none' ? `, post-battle ${rest} rest` : ''})`,
     '',
   ];
   for (let i = 0; i < count; i++) {
     const s = seed + i;
     try {
-      const result = runBattle(s, pack, level);
+      const result = runBattle(s, pack, level, rest);
       const fileName = `seed-${String(s).padStart(4, '0')}.md`;
       const filePath = resolve(out, fileName);
       const summary = summarize(pack, s, result);
