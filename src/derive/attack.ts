@@ -52,6 +52,12 @@ const chooseAttackAbility = (character: Character, weapon: Weapon): 'STR' | 'DEX
   return 'STR';
 };
 
+// Recognized property-qualified proficiency tokens: a class can declare
+// e.g. "martial-light" (any martial weapon with the Light property) or
+// "martial-finesse" (any martial weapon with the Finesse property).
+// RAW shape for Monk ("Simple + Martial light") and Rogue ("Simple +
+// Martial finesse-or-light"). Extensible to any "<category>-<property>"
+// combination the content needs without enumerating weapons one by one.
 export const isWeaponProficient = (
   character: Character,
   weapon: Weapon,
@@ -60,9 +66,16 @@ export const isWeaponProficient = (
   for (const enrollment of character.classes) {
     const cls = content.classes.get(enrollment.classId);
     if (!cls) continue;
-    if (cls.weaponProficiencies.includes(weapon.id)) return true;
-    if (cls.weaponProficiencies.includes(weapon.category)) return true;
-    if (cls.weaponProficiencies.includes('all')) return true;
+    for (const token of cls.weaponProficiencies) {
+      if (token === weapon.id) return true;
+      if (token === weapon.category) return true;
+      if (token === 'all') return true;
+      const prefix = `${weapon.category}-`;
+      if (token.startsWith(prefix)) {
+        const requiredProperty = token.substring(prefix.length);
+        if (weapon.properties?.some((p) => p === requiredProperty)) return true;
+      }
+    }
   }
   return false;
 };

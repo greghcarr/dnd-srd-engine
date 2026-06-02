@@ -4,6 +4,39 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content + tooling (slice 589): weapon-mastery firings in fuzz; property-qualified weapon proficiency tokens; Rogue / Monk / Wizard proficiency RAW fixes**
+
+The combat fuzz never exercised Weapon Mastery because the fuzz built characters without a chosen mastery list. Wiring the fuzz to fire mastery riders after hits surfaced a deeper RAW deviation: the pack's class definitions used a flat string list for `weaponProficiencies` (`"simple"`, `"martial"`, weapon id) that couldn't express "Martial weapons that have the Finesse or Light property" — Rogue's RAW shape per [references/srd-markdown/classes.md](references/srd-markdown/classes.md). With only `"simple"` declared, the engine's [src/derive/attack.ts](src/derive/attack.ts) `isWeaponProficient` returned false for a Rogue holding a shortsword, and `canUseWeaponMastery` then rejected the Vex rider as un-mastered.
+
+**Engine** ([src/derive/attack.ts:55-79](src/derive/attack.ts#L55-L79)): `isWeaponProficient` now recognizes property-qualified category tokens of the shape `"<category>-<property>"` (e.g. `"martial-light"`, `"martial-finesse"`). The token matches a weapon whose category equals `<category>` AND whose `properties` array contains `<property>`. The existing three forms (exact weapon id, plain category, `"all"`) are preserved. The extension is non-invasive: classes that don't use the new tokens behave identically.
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)): three pre-existing RAW deviations fixed in the same sweep:
+- **Rogue**: `["simple"]` → `["simple", "martial-finesse", "martial-light"]`. RAW per SRD 5.2.1: "Simple weapons and Martial weapons that have the Finesse or Light property." Pre-fix, Rogue attacks with a shortsword / rapier / scimitar / whip / hand crossbow rolled at -2 vs RAW (missing the +2 proficiency) and the engine refused weapon-mastery use on those weapons.
+- **Monk**: `["simple"]` → `["simple", "martial-light"]`. RAW: "Simple weapons and Martial weapons that have the Light property." Same shape as Rogue; affected shortsword / scimitar / hand crossbow.
+- **Wizard**: `[]` → `["simple"]`. RAW: "Simple weapons." The empty list was an outright omission. Pre-fix, a Wizard with a quarterstaff (a simple weapon) attacked without proficiency; the slice-494 True Strike test had codified this drift into its expectation (attackBonus +4 instead of the RAW +6); that test's comment + expectation are updated in this slice to reflect RAW.
+
+**Tooling — fuzz weapon-mastery firings** ([scripts/combat-fuzz.ts](scripts/combat-fuzz.ts)):
+- `MASTERY_CLASSES` (Fighter, Barbarian, Paladin, Ranger, Rogue per RAW) and a `WEAPON_MASTERY` table mapping fuzz weapons → mastery properties (`longsword` → Sap, `shortsword` / `rapier` → Vex, `longbow` → Slow). Cleave / Nick / Push / Topple / Graze are skipped: Cleave needs a second target, Nick an off-hand weapon, Push the encounter position layer, Topple is on weapons no fuzz class wields, Graze fires on miss for two-handed greatswords / glaives the fuzz also doesn't wield.
+- `buildL1` now sets `character.weaponMasteries: [build.weaponId]` for mastery classes, bypassing the `chooseWeaponMasteries` planner (the choose path is exercised by [tests/golden/s23-weapon-mastery.test.ts](tests/golden/s23-weapon-mastery.test.ts); the fuzz just needs the resulting state).
+- The runBattle inner loop, after each `Attack` intent by a mastery-class actor wielding a known-mastery weapon, scans the tail of `campaign.events` for the matching `AttackRolled` and (if hit) queues `pendingMasteryFire` on the active Combatant. The next `pickIntent` call returns a `WeaponMastery` intent (free rider — no extra action-economy spend); the engine's `canUseWeaponMastery` gate already validated the weapon-character-mastery triple at build time. Verified end-to-end across 20 seeds: Sap fires on Fighter / Paladin longsword hits, Slow on Ranger longbow hits, Vex on Rogue shortsword hits.
+
+**Tests:**
+- [tests/unit/derive/slice-589-property-qualified-proficiency.test.ts](tests/unit/derive/slice-589-property-qualified-proficiency.test.ts) (7 cases): Rogue + Monk + Wizard proficiency truth table including the negative cases (Rogue NOT proficient with greataxe; Monk NOT proficient with rapier; Wizard NOT proficient with any martial weapon).
+- [tests/unit/engine/slice-494-true-strike.test.ts](tests/unit/engine/slice-494-true-strike.test.ts) updated: the test had hardcoded the pre-fix Wizard-no-proficiency drift into its `expect(attack?.attackBonus).toBe(4)` assertion; updated to `.toBe(6)` (INT +4 + prof +2) with a corrected comment. The +5 True-Strike-override delta is still proven (+6 with override vs +1 without).
+- Full suite green: 479 test files, 3246 passing, 173 unrelated skips.
+
+**Audit:**
+- **Names:** `martial-finesse` / `martial-light` follow the kebab-case category-property axis; `MASTERY_CLASSES` / `WEAPON_MASTERY` parallel `FULL_CASTER_CLASSES` from slice 588.
+- **DRY:** the engine extension at `isWeaponProficient` consolidates the previous three `.includes()` calls into a single token loop; ~5 lines added net.
+- **SRP:** engine adds one feature to one helper; content fixes three class declarations; fuzz adds one policy hook + one runBattle scan. Three layers, but all unified by the same end-to-end behavior (Rogue Vex on shortsword fires).
+- **Magic numbers:** none added.
+- **at-threading:** N/A (the fuzz mastery intent inherits the planner's `at`).
+- **Mechanical outcomes asserted:** 7 proficiency cases + 4 True-Strike cases + live fuzz verification (Sap / Slow / Vex firings across 20 seeds).
+
+**Pattern-check (filter shape: "class weapon proficiency strings deviate from SRD body prose"):** swept all 12 starter-pack classes against [references/srd-markdown/classes.md](references/srd-markdown/classes.md). Three RAW deviations fixed (Rogue, Monk, Wizard); the other nine match SRD. The `srd-drift` audit at [tests/audit/srd-drift.test.ts](tests/audit/srd-drift.test.ts) covers table-detectable class facts (PB column, feature names per level) but not body-prose proficiency lists; those remain manual.
+
+---
+
 **Tooling (slice 588): combat-fuzz hardening — species resource grants + slot-availability fallback**
 
 Closes the two fuzz-tool gaps surfaced by the second 15-battle run (seeds 200-214):

@@ -93,12 +93,13 @@ describe('True Strike (slice 494)', () => {
     expect(attack).toBeDefined();
     expect(attack?.attackerId).toBe(wizard.id);
     expect(attack?.targetId).toBe(target.id);
-    // Wizard: INT 18 (+4), STR 8 (-1). 2024 Wizard has no weapon
-    // proficiencies in the pack, so attackBonus = ability mod only.
-    // With True Strike's abilityOverride: INT +4. Without it (normal
-    // quarterstaff attack), STR -1. The +5 delta proves the override
+    // Wizard: INT 18 (+4), STR 8 (-1). 2024 Wizard is proficient with
+    // Simple weapons (slice 589 fix to the pack), so attackBonus =
+    // ability mod + proficiency. With True Strike's abilityOverride:
+    // INT +4 + prof +2 = +6. Without it (normal quarterstaff attack),
+    // STR -1 + prof +2 = +1. The +5 delta still proves the override
     // landed.
-    expect(attack?.attackBonus).toBe(4);
+    expect(attack?.attackBonus).toBe(6);
   });
 
   it('a True Strike cast without weaponInstanceId throws', () => {

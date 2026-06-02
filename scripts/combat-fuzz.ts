@@ -177,6 +177,24 @@ interface BuiltCharacter {
 const FUZZ_L1_PROF_BONUS = 2;
 const FUZZ_L1_LEVEL = 1;
 
+// Slice 589: classes that get Weapon Mastery at L1 per PHB 2024.
+// Other classes can still equip a mastery-capable weapon but the
+// engine refuses any planWeaponMastery call (canUseWeaponMastery
+// gate at src/derive/weapon-mastery.ts).
+const MASTERY_CLASSES = new Set(['fighter', 'barbarian', 'paladin', 'ranger', 'rogue']);
+
+// Slice 589: per-weapon mastery property in the fuzz weapon list.
+// Drives the on-hit mastery-fire policy hook. Masteries that need a
+// second target (Cleave), an offhand weapon (Nick), or extra plumbing
+// the fuzz doesn't model (Push depends on combatant positions) are
+// excluded so the planner doesn't no-op silently.
+const WEAPON_MASTERY: Readonly<Record<string, 'Sap' | 'Vex' | 'Slow' | 'Topple'>> = {
+  longsword: 'Sap',
+  shortsword: 'Vex',
+  rapier: 'Vex',
+  longbow: 'Slow',
+};
+
 // Slice 588: classes in CLASS_BUILDS that get 2 L1 slots (full casters).
 // The half-casters (paladin, ranger) get zero slots at L1 in RAW; we
 // don't track those here because the CLASS_BUILDS table doesn't put a
@@ -271,6 +289,12 @@ const buildL1 = (name: string, rngFloat: () => number, pack: Pack): BuiltCharact
     // Dragonborn Breath Weapon, Goliath Giant Ancestry) so species
     // traits gated on resource availability actually fire.
     resources: [...(build.resources ?? []), ...speciesGrantedResources(pack, speciesId)],
+    // Slice 589: pre-master the wielded weapon for the 5 Weapon Mastery
+    // classes (Fighter / Barbarian / Paladin / Ranger / Rogue). At L1 the
+    // mastery budget is 3 for Fighter and 2 for the others, but the fuzz
+    // build only equips a single weapon so a single mastery suffices.
+    // Non-mastery classes get an empty list (engine guard refuses use).
+    weaponMasteries: MASTERY_CLASSES.has(build.classId) ? [build.weaponId] : [],
   });
 
   return { character, weaponInstance, armorInstance, build };
@@ -284,6 +308,11 @@ interface Combatant {
   // Tracks whether the once-per-LR Innate Sorcery / Lay on Hands
   // self-heal has been used, so the policy doesn't loop on it.
   innateSorceryActivated?: boolean;
+  // Slice 589: when set, the next pickIntent returns a WeaponMastery
+  // intent (Sap / Vex / Slow / Topple) keyed to a previously-landed
+  // attack. The runBattle loop populates this after each AttackRolled
+  // with hit=true, and pickIntent clears it after returning the intent.
+  pendingMasteryFire?: { mastery: string; weaponInstanceId: string; targetId: string };
 }
 
 // Action policy: returns the next intent for the active combatant,
@@ -359,6 +388,24 @@ const pickIntent = (
     // the policy skips Innate Sorcery; sorcerers just cast Fire Bolt
     // every turn. A future fuzz revision can route allowlisted
     // planners through their direct engine.plan.X calls.
+  }
+
+  // Slice 589: between buff and action, fire a queued WeaponMastery
+  // intent if the last attack landed. Fires as a free rider on the same
+  // attack-action (no extra action-economy spend); the engine's
+  // canUseWeaponMastery gate at src/derive/weapon-mastery.ts has
+  // already validated the weapon-character-mastery triple at build
+  // time.
+  if (active.pendingMasteryFire !== undefined) {
+    const fire = active.pendingMasteryFire;
+    delete active.pendingMasteryFire;
+    return {
+      type: 'WeaponMastery',
+      mastery: fire.mastery,
+      attackerId: c.id,
+      targetId: fire.targetId,
+      weaponInstanceId: fire.weaponInstanceId,
+    };
   }
 
   // 3. Action: cast a damaging cantrip if caster, else attack.
@@ -465,11 +512,36 @@ const runBattle = (seed: number, pack: Pack): { events: ReadonlyArray<Event>; fi
       try {
         campaign = performIntent(engine, campaign, intent);
       } catch {
-        // Action failed (e.g., a resource was consumed earlier in
-        // the loop). Stop trying for this turn.
         break;
       }
       actions += 1;
+      // Slice 589: if this intent emitted a hit AttackRolled with the
+      // active char's main weapon, queue the matching Weapon Mastery
+      // intent for the next pickIntent call. Mastery classes only —
+      // anyone else's planWeaponMastery would throw on the
+      // canUseWeaponMastery gate.
+      if (
+        intent.type === 'Attack'
+        && MASTERY_CLASSES.has(active.built.build.classId)
+      ) {
+        const weaponId = active.built.weaponInstance.definitionId;
+        const mastery = WEAPON_MASTERY[weaponId];
+        if (mastery !== undefined) {
+          const recent = campaign.events.slice(-12);
+          const atk = [...recent].reverse().find(
+            (e): e is Event & { type: 'AttackRolled'; hit: boolean; attackerId: string; weaponInstanceId?: string } =>
+              e.type === 'AttackRolled'
+              && (e as { attackerId: string }).attackerId === active.built.character.id,
+          );
+          if (atk?.hit === true) {
+            active.pendingMasteryFire = {
+              mastery,
+              weaponInstanceId: active.built.weaponInstance.id,
+              targetId: opponent.built.character.id,
+            };
+          }
+        }
+      }
       // Stop if opponent is dead.
       if (campaign.state.characters[opponent.built.character.id]!.hp.current <= 0) {
         winner = active.built.character.id;
