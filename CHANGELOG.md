@@ -4,6 +4,52 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Tooling (slice 593): combat-fuzz levels 2-5 via engine level-up**
+
+The fuzz tool built every character at L1, leaving the engine's per-level scaling — Extra Attack at L5, half-caster spellcasting starting at L2, full-caster slot progression L1→L5, subclass features at L3, Action Surge at L2, Channel Divinity at L2 — entirely unexercised by the bug-discovery harness. Slice 593 adds a `--level N` CLI flag (1-5) and walks both characters through `engine.plan.levelUp` from L1 to the target level after creation.
+
+**Changes** ([scripts/combat-fuzz.ts](scripts/combat-fuzz.ts)):
+- New `--level N` CLI flag (default 1, max `FUZZ_MAX_LEVEL` = 5).
+- New `drainPendingChoices(engine, campaign, characterId)` helper auto-resolves any pending `PendingChoice` by picking the first `oneOf` option ids per choice. Covers subclass selection at L3 (auto-picks first), Wizard Scholar's two-of-six skills at L2, Druid Primal Order at L1, Cleric Divine Order at L1, Fighter Fighting Style at L1 / L2, and every other multi-pick choice. Safety-bounded to 40 iterations.
+- New `levelUpTo(engine, campaign, characterId, classId, targetLevel)` calls `drainPendingChoices` first (background origin-feat choices left from CharacterCreated — e.g. Sage's Magic Initiate Wizard needs 2 cantrips picked before the L2 level-up can proceed), then walks `engine.plan.levelUp({hpStrategy: 'average'})` from L2 → targetLevel with `drainPendingChoices` after each rung.
+- `runBattle` now takes a `level` arg; if `> 1`, levels both characters before the encounter starts. Both calls wrapped in try/catch so a level-up failure leaves the character at whatever level was reached rather than aborting the battle.
+
+**Bugs surfaced and fixed during build** (all in the fuzz tool, none in the engine):
+1. **Reaction-tracking field-name typo (slice 592)**. The slice 592 `tryShieldReaction` helper checked `cb.turnUsage.reactionUsed === true` — the schema field is actually `reactionUsedThisRound`. The mismatch meant Shield would always be considered "reaction available," so multiple Shield casts could fire per round, eventually hitting "reaction already used this round" errors at the engine level. Fixed in this slice.
+2. **PendingChoice field-name typo**. The drain helper filtered `pendingChoices` by `p.characterId === characterId`, but the schema field is `forCharacterId`. The filter always returned undefined, so the drain loop never resolved any choice. Same shape as bug 1: my type assumption diverged from the actual schema. Fixed.
+3. **PendingChoice id-vs-choiceId confusion**. `ResolveChoiceIntent` takes `choiceId: PendingChoice.id`, not `pending.choiceId`. The drain helper tried `pending.choiceId` which is undefined. Fixed.
+4. **`oneOf` multi-pick choices**. The drain helper initially picked just `[pending.options[0].id]`, but choices with `oneOf: 2` (Scholar's two skills, Druid Magician's two cantrips, Wizard Sage's two cantrips, Bard's three skills, etc.) require all N selected at once. Fixed: `pending.options.slice(0, pickCount).map((o) => o.id)`.
+
+The first two are slice 587-shape bugs (schema-field-name drift in my own helper code; pattern-check sweep across other fuzz helpers found no further matches). Bugs 3-4 are more domain-specific to the choice-resolution API.
+
+**Verification** (15 seeds at level 5):
+- Aria druid halfling reached L5 with 38 HP (10 + 4×7 average HP per level — RAW d8 = avg 5 + CON-mod 2 = 7).
+- Bran wizard dwarf reached L5 with 27 HP (7 + 4×5 — d6 avg 4 + CON-mod 1 = 5).
+- All 15 battles completed successfully; no engine errors.
+- Battle lengths ranged 2-17 rounds (vs the 1-11 typical at L1), reflecting the higher HP totals.
+
+**Audit:**
+- **Names:** `drainPendingChoices` is verb-active and intent-revealing; `levelUpTo` mirrors `buildL1` naming.
+- **DRY:** the two helpers compose cleanly (`levelUpTo` calls `drainPendingChoices` at boundaries).
+- **SRP:** tooling only; no engine, content, schema, or test changes.
+- **Magic numbers:** `FUZZ_MAX_LEVEL = 5` extracted; the safety-bound 40 is local + documented.
+- **at-threading:** N/A.
+- **Mechanical outcomes asserted:** live fuzz verification (HP scaling per class verified; full battles completed at L5).
+
+**Pattern-check (filter shape: "my fuzz helper code that referenced an engine schema field by name"):** swept all my fuzz code that destructures or `.field` accesses engine state. The matches:
+- `c.resources.find((r) => r.resourceId === ...)` ✓ matches schema (resourceId).
+- `cb.turnUsage.actionUsed` ✓ matches schema.
+- `cb.turnUsage.bonusActionUsed` ✓ matches schema.
+- `cb.turnUsage.reactionUsedThisRound` ✓ (fixed this slice).
+- `character.preparedSpells.includes(...)` ✓ matches schema.
+- `character.spellSlotsUsed['1']` ✓ matches schema (string-keyed by slot level).
+- `pendingChoice.forCharacterId` ✓ (fixed this slice).
+- `pendingChoice.options[].id` ✓ matches schema.
+- `pendingChoice.oneOf` ✓ matches schema.
+No remaining shape mismatches surfaced.
+
+---
+
 **Tooling (slice 592): combat-fuzz reactions — Shield post-hit dispatch**
 
 The fuzz tool's runBattle loop ignored reaction-triggering events. Wizard / Sorcerer characters with `shield` prepared (an L1 spell, cast as a reaction in response to being hit) never reacted; the Shield planner + the `shielded` condition + reaction action-economy wiring all went unexercised by the bug-discovery harness.

@@ -41,6 +41,13 @@ const MAX_ROUNDS = 20;
 const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8] as const;
 const SPECIES = ['human', 'elf', 'dwarf', 'halfling', 'tiefling', 'dragonborn', 'gnome', 'goliath', 'orc'] as const;
 const BACKGROUNDS = ['acolyte', 'criminal', 'sage', 'soldier'] as const;
+// Slice 593: max character level the fuzz tool can build to. The
+// engine's level-up planner supports L1-L20 but the fuzz's level-up
+// helper auto-resolves only the choices needed to reach this cap
+// (subclass selection at L3 for half the classes; ASI/feat at L4
+// auto-picks an ability; no further choices L2-L5). Going beyond
+// L5 would need richer choice auto-resolution.
+const FUZZ_MAX_LEVEL = 5;
 
 type AbilityScore = 'STR' | 'DEX' | 'CON' | 'INT' | 'WIS' | 'CHA';
 type Pack = ContentPack;
@@ -241,7 +248,7 @@ const tryShieldReaction = (
   if (!encounter) return false;
   const cb = encounter.combatants.find((x) => x.combatantId === defChar.id);
   if (!cb) return false;
-  if (cb.turnUsage.reactionUsed === true) return false;
+  if (cb.turnUsage.reactionUsedThisRound === true) return false;
   return true;
 };
 
@@ -546,7 +553,62 @@ const pickIntent = (
   return null;
 };
 
-const runBattle = (seed: number, pack: Pack): { events: ReadonlyArray<Event>; finalState: Campaign['state']; winner: string | null; rounds: number } => {
+// Slice 593: walk the engine's level-up planner from L1 up to the
+// target level. Auto-resolves any ChoiceRequired event by picking the
+// first listed option, which covers subclass selection at L3 (Fighter
+// Champion, Paladin Devotion, etc.) + ASI/feat at L4 (the first option
+// in each list). Returns the new campaign with the leveled-up
+// character. Throws (and the caller falls back to L1) if level-up
+// fails at any rung.
+// Auto-resolve pending choices for a character by picking the first
+// `oneOf` option ids per choice. Safe-bounded to 20 iterations.
+const drainPendingChoices = (
+  engine: ReturnType<typeof createEngine>,
+  campaign: Campaign,
+  characterId: string,
+): Campaign => {
+  let camp = campaign;
+  for (let safety = 0; safety < 40; safety += 1) {
+    const pending = Object.values(camp.state.pendingChoices).find((p) => p.forCharacterId === characterId && p.resolution === undefined);
+    if (!pending) break;
+    const pickCount = pending.oneOf ?? 1;
+    const selected = pending.options.slice(0, pickCount).map((o) => o.id);
+    if (selected.length === 0) break;
+    try {
+      const choiceResult = engine.plan.resolveChoice(camp.state, {
+        characterId,
+        choiceId: pending.id,
+        selectedOptionIds: selected,
+      });
+      camp = commit(camp, choiceResult.events);
+    } catch {
+      break;
+    }
+  }
+  return camp;
+};
+
+const levelUpTo = (
+  engine: ReturnType<typeof createEngine>,
+  campaign: Campaign,
+  characterId: string,
+  classId: string,
+  targetLevel: number,
+): Campaign => {
+  // Slice 593: a freshly-created character may already have pending
+  // background / species / origin-feat choices (e.g. wizard sage's
+  // Magic Initiate cantrip pick). Drain those first or the L2 plan
+  // throws "Character has unresolved choices from a previous level-up."
+  let camp = drainPendingChoices(engine, campaign, characterId);
+  for (let lvl = 2; lvl <= targetLevel; lvl += 1) {
+    const result = engine.plan.levelUp(camp.state, { characterId, classId, hpStrategy: 'average' });
+    camp = commit(camp, result.events);
+    camp = drainPendingChoices(engine, camp, characterId);
+  }
+  return camp;
+};
+
+const runBattle = (seed: number, pack: Pack, level: number): { events: ReadonlyArray<Event>; finalState: Campaign['state']; winner: string | null; rounds: number } => {
   const engine = createEngine({ contentPacks: [pack], rng: seededRNG(seed) });
   // Per-battle RNG used for character generation; separate from the
   // engine RNG so the build doesn't drift from the action seed.
@@ -584,6 +646,19 @@ const runBattle = (seed: number, pack: Pack): { events: ReadonlyArray<Event>; fi
     { id: newEventId(), at: nextAt(), type: 'CharacterCreated', snapshot: pcB.character } as Event,
   ];
   campaign = commit(campaign, setupEvents);
+
+  // Slice 593: if a target level > 1 was requested, walk both
+  // characters up via engine.plan.levelUp. Each rung is auto-resolved
+  // (first option) for any ChoiceRequired events. On failure, fall
+  // back to whatever level was reached.
+  if (level > 1) {
+    try {
+      campaign = levelUpTo(engine, campaign, pcA.character.id, pcA.build.classId, level);
+    } catch { /* keep PC at whatever level was reached */ }
+    try {
+      campaign = levelUpTo(engine, campaign, pcB.character.id, pcB.build.classId, level);
+    } catch { /* keep PC at whatever level was reached */ }
+  }
 
   const enc = engine.plan.createEncounter(campaign.state, {
     combatantIds: [pcA.character.id, pcB.character.id],
@@ -753,24 +828,29 @@ const parseArgs = (argv: ReadonlyArray<string>): { count: number; seed: number; 
   let count = 5;
   let seed = 1;
   let out = '/tmp/combat-fuzz';
+  let level = 1;
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--count') count = Number(argv[++i] ?? count);
     else if (a === '--seed') seed = Number(argv[++i] ?? seed);
     else if (a === '--out') out = argv[++i] ?? out;
+    else if (a === '--level') level = Math.max(1, Math.min(FUZZ_MAX_LEVEL, Number(argv[++i] ?? level)));
   }
-  return { count, seed, out };
+  return { count, seed, out, level };
 };
 
 const main = (): void => {
-  const { count, seed, out } = parseArgs(process.argv.slice(2));
+  const { count, seed, out, level } = parseArgs(process.argv.slice(2));
   mkdirSync(out, { recursive: true });
   const pack = loadStarterPack();
-  const indexLines: string[] = [`# Combat fuzz run — ${count} battles, seeds ${seed}..${seed + count - 1}`, ''];
+  const indexLines: string[] = [
+    `# Combat fuzz run — ${count} battles, seeds ${seed}..${seed + count - 1} (level ${level})`,
+    '',
+  ];
   for (let i = 0; i < count; i++) {
     const s = seed + i;
     try {
-      const result = runBattle(s, pack);
+      const result = runBattle(s, pack, level);
       const fileName = `seed-${String(s).padStart(4, '0')}.md`;
       const filePath = resolve(out, fileName);
       const summary = summarize(pack, s, result);
