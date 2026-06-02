@@ -49,6 +49,7 @@ export const performIntent = (
     Rage: (i) => engine.plan.rage(campaign.state, i),
     Help: (i) => engine.plan.help(campaign.state, i),
     Ready: (i) => engine.plan.ready(campaign.state, i),
+    BardicInspiration: (i) => engine.plan.bardicInspiration(campaign.state, i),
     CloudsJaunt: (i) => engine.plan.cloudsJaunt(campaign.state, i),
     NimbleEscape: (i) => engine.plan.nimbleEscape(campaign.state, i),
     CunningAction: (i) => engine.plan.cunningAction(campaign.state, i),

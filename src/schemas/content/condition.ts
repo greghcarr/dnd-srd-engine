@@ -139,5 +139,16 @@ export const ConditionSchema = z.object({
   // Source-keyed wires are not currently used (any attacker consumes it);
   // can be added later if a future RAW shape needs it.
   consumeOnIncomingAttack: z.boolean().optional(),
+  // Slice 577: "Next ability check" one-shot conditions. Mirror of
+  // consumeOnAttack at the AbilityCheckRolled site. RAW users: Help
+  // (Ability Check mode) — `helped-on-check-active` confers Advantage
+  // on the next ability check and lifts; Bardic Inspiration (one of
+  // the three consume sites alongside attack + save).
+  consumeOnCheck: z.boolean().optional(),
+  // Slice 577: "Next saving throw" one-shot conditions. Mirror of
+  // consumeOnAttack at the SaveRolled site. RAW users: Bardic
+  // Inspiration (one of the three consume sites alongside attack +
+  // check).
+  consumeOnSave: z.boolean().optional(),
 });
 export type Condition = z.infer<typeof ConditionSchema>;

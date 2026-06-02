@@ -8453,11 +8453,28 @@
     {
       "id": "helped-on-check-active",
       "name": "Helped On Check (Help action, Ability Check mode)",
-      "description": "RAW (PHB 2024 ch.7 Help action, Ability Check mode): 'You momentarily help another creature do something. ... The creature has Advantage on that ability check.' Slice 571 wires this as a bearer-side SetAdvantage on check (wildcard ability) with autoExpiry afterRounds:1 turnEnd. RAW deviation: the engine does NOT enforce 'consumed on first check' (no consumeOnCheck primitive yet); the bearer carries advantage on ANY check until expiry. Future engine slice can add consumeOnCheck parity with consumeOnAttack.",
+      "description": "RAW (PHB 2024 ch.7 Help action, Ability Check mode): 'You momentarily help another creature do something. ... The creature has Advantage on that ability check.' Slice 571 wired the SetAdvantage + autoExpiry; slice 577 adds the consumeOnCheck arm so the condition lifts after the bearer's first ability check (RAW: 'that ability check' — singular).",
       "stackable": false,
+      "consumeOnCheck": true,
       "endsOn": [],
       "autoExpiry": { "afterRounds": 1, "trigger": "turnEnd" },
       "effects": [{ "kind": "SetAdvantage", "on": { "kind": "check" }, "mode": "advantage" }]
+    },
+    {
+      "id": "bearing-bardic-inspiration",
+      "name": "Bardic Inspiration",
+      "description": "RAW (PHB 2024 Bard L1 Bardic Inspiration): 'A creature with the die can roll it and add the number rolled to one ability check, attack roll, or saving throw it makes. The creature can wait until after it rolls the d20 before deciding to use the Bardic Inspiration die, but must decide before the GM says whether the roll succeeds or fails. Once the d20 is rolled, it's lost.' Slice 577 wires the die as an AddBonusDie 1d6 (L1 die) applied to all three roll targets (attack / save / check); the bearer's first use of ANY of the three consumes the condition (consumeOnAttack + consumeOnSave + consumeOnCheck). RAW 10-minute duration modeled as autoExpiry afterRounds:100 turnEnd (combat-effective infinity; a future cleanup can move to time-of-day if narrative tracking is desired).",
+      "stackable": false,
+      "consumeOnAttack": true,
+      "consumeOnSave": true,
+      "consumeOnCheck": true,
+      "endsOn": [],
+      "autoExpiry": { "afterRounds": 100, "trigger": "turnEnd" },
+      "effects": [
+        { "kind": "AddBonusDie", "target": "attack", "dice": "1d6" },
+        { "kind": "AddBonusDie", "target": { "kind": "save" }, "dice": "1d6" },
+        { "kind": "AddBonusDie", "target": { "kind": "check" }, "dice": "1d6" }
+      ]
     },
     {
       "id": "vexing-active",

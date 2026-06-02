@@ -101,9 +101,10 @@ export const planSave = (
   const autoFailBreakdown = derivation.hasAutoFail
     ? [{ source: 'auto-fail', value: 0 }]
     : [];
+  const at = intent.at ?? nowIso();
   const event: SaveRolledEvent = {
     id: newEventId() as ULID,
-    at: intent.at ?? nowIso(),
+    at,
     type: 'SaveRolled',
     targetId: intent.characterId,
     ability: intent.ability,
@@ -120,7 +121,21 @@ export const planSave = (
       ...autoFailBreakdown,
     ],
   };
-  return [event];
+  // Slice 577: "Next saving throw" one-shot consume — mirror of
+  // consumeOnAttack at the SaveRolled site. RAW user: Bardic
+  // Inspiration (one of three consume sites alongside attack + check).
+  const events: Event[] = [event];
+  for (const applied of character.appliedConditions) {
+    if (content.conditions.get(applied.conditionId)?.consumeOnSave !== true) continue;
+    events.push({
+      id: newEventId() as ULID,
+      at,
+      type: 'ConditionRemoved',
+      targetId: character.id as ULID,
+      conditionId: applied.conditionId,
+    });
+  }
+  return events;
 };
 
 export interface AbilityCheckIntent {
@@ -178,9 +193,10 @@ export const planAbilityCheck = (
     d20 = reroll;
   }
   const total = d20 + derivation.total;
+  const at = intent.at ?? nowIso();
   const event: AbilityCheckRolledEvent = {
     id: newEventId() as ULID,
-    at: intent.at ?? nowIso(),
+    at,
     type: 'AbilityCheckRolled',
     characterId: intent.characterId,
     ability: intent.ability,
@@ -192,5 +208,22 @@ export const planAbilityCheck = (
     total,
     breakdown: [...derivation.breakdown],
   };
-  return [event];
+  // Slice 577: "Next ability check" one-shot consume — mirror of
+  // consumeOnAttack at the AbilityCheckRolled site. The bearer's
+  // applied conditions with `consumeOnCheck: true` are removed after
+  // the check, so a one-shot rider (Help-on-check advantage; one of
+  // the three Bardic Inspiration consume sites) applies to exactly
+  // one check.
+  const events: Event[] = [event];
+  for (const applied of character.appliedConditions) {
+    if (content.conditions.get(applied.conditionId)?.consumeOnCheck !== true) continue;
+    events.push({
+      id: newEventId() as ULID,
+      at,
+      type: 'ConditionRemoved',
+      targetId: character.id as ULID,
+      conditionId: applied.conditionId,
+    });
+  }
+  return events;
 };

@@ -109,6 +109,7 @@ export { planUseHealersKit, type UseHealersKitIntent } from './use-healers-kit.j
 export { planRage, type RageIntent } from './rage.js';
 export { planHelp, type HelpIntent, type HelpMode } from './help.js';
 export { planReady, type ReadyIntent } from './ready.js';
+export { planBardicInspiration, type BardicInspirationIntent } from './bardic-inspiration.js';
 export { planCloudsJaunt, type CloudsJauntIntent } from './clouds-jaunt.js';
 export { planStonesEndurance, type StonesEnduranceIntent, type StonesEnduranceOutcome } from './stones-endurance.js';
 export { planStormsThunder, type StormsThunderIntent, type StormsThunderOutcome } from './storms-thunder.js';

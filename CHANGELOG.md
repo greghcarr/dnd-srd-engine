@@ -4,6 +4,40 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + content (slice 577): consumeOnCheck + consumeOnSave primitives, planBardicInspiration, Help (Ability Check) closure**
+
+Closes three deferred items in one slice — all three coupled because the new primitives unblock the Bardic Inspiration die and incidentally fix the slice-571 Help-on-check RAW deviation.
+
+**1. New condition primitives** ([src/schemas/content/condition.ts](src/schemas/content/condition.ts)):
+- `consumeOnCheck: boolean` — mirror of `consumeOnAttack` at the `AbilityCheckRolled` site. RAW user: Help (Ability Check mode) "advantage on THAT ability check"; Bardic Inspiration on a check.
+- `consumeOnSave: boolean` — mirror at the `SaveRolled` site. RAW user: Bardic Inspiration on a save.
+
+The existing `buildConsumeOnAttackRemovals` shape isn't shared; the consume-on-check and consume-on-save sites are simpler (no source-keying alternatives, no per-condition multi-target gating — bearers' rolls consume the condition regardless of source). Wired in [src/engine/plan/checks.ts](src/engine/plan/checks.ts) `planAbilityCheck` and `planSave`: post-roll, walk the bearer's `appliedConditions` and emit `ConditionRemoved` for any whose definition has the corresponding consume flag.
+
+**2. planBardicInspiration** ([src/engine/plan/bardic-inspiration.ts](src/engine/plan/bardic-inspiration.ts)): Bard L1 bonus-action confer-die-to-ally. Validates Bard class, non-self recipient, resource > 0; consumes 1 `bardic-inspiration` use + 1 Bonus Action (in-encounter on Bard's turn); emits `ConditionApplied` for `bearing-bardic-inspiration` on the recipient. The condition (also new in this slice) carries `consumeOnAttack + consumeOnSave + consumeOnCheck + autoExpiry { afterRounds: 100, trigger: 'turnEnd' }` (10-minute approximation of RAW duration) and three `AddBonusDie 1d6` entries (one per roll-target — attack / save / check). The first roll of any of the three consumes the condition (RAW: "Once the d20 is rolled, the die is lost").
+
+**Documented RAW deviation**: L1 die is fixed `1d6`; per-tier scaling (d8 at L5, d10 at L10, d12 at L15) is content-side and deferred — a future slice can add `bearing-bardic-inspiration-d8` etc. variants with OfferChoice over the Bard's level table. Also: sourceCharacterId intentionally omitted on the BI `ConditionApplied` event so the consume primitives treat it as Sap-style any-roll (not Vex-style source-keyed); transcript link to "who conferred" comes from the `ResourceSpent { characterId: bard }` companion event.
+
+**3. Help (Ability Check) consume closure** — slice 571 noted: "the engine does NOT enforce 'consumed on first check' (no consumeOnCheck primitive yet)." With the new primitive, [src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)'s `helped-on-check-active` gains `consumeOnCheck: true`. The bearer's first ability check now consumes the condition (RAW: "on THAT ability check" — singular).
+
+**Wiring**: [src/engine/plan/index.ts](src/engine/plan/index.ts) (re-export), [src/engine/index.ts](src/engine/index.ts) (Engine.plan.bardicInspiration + import + interface), [src/engine/conveniences.ts](src/engine/conveniences.ts) (`BardicInspiration` dispatch).
+
+**Tests** ([tests/unit/engine/slice-577-bardic-inspiration.test.ts](tests/unit/engine/slice-577-bardic-inspiration.test.ts), 10 cases): pack declarations for both conditions; planBardicInspiration confers + emits ResourceSpent + applies condition; self-confer / non-Bard / depleted-resource throw; consume on first attack / first save / first check; helped-on-check-active is consumed after first check (slice 571 deviation closed).
+
+**Doc counts**: conditions 142 → 143 (rider 127 → 128). Updated in getting-started.md / status.md (×2 rows) / starter-pack-gaps.md.
+
+**Audit:**
+- **Names:** `consumeOnCheck` / `consumeOnSave` mirror the existing `consumeOnAttack` / `consumeOnIncomingAttack` naming axis. `bearing-bardic-inspiration` matches the `bearing-X` convention used by other recipient-side buffs.
+- **DRY:** the three planners now each carry a small `for...of appliedConditions` post-roll consume block. Not factored into a shared helper because each planner's event-emission shape is different (AttackRolled emits in a chain; AbilityCheckRolled + SaveRolled emit standalone).
+- **SRP:** schema adds 2 optional fields; condition primitives wire is ~8 lines per planner; new planner is ~120 lines (Bardic Inspiration with the action-economy + resource + condition chain); new condition is one JSON object.
+- **Magic numbers:** none added. 100-round autoExpiry is a documented approximation (10 minutes), not a magic constant.
+- **at-threading:** single `nowIso()` per planner; the consume-removed events share the same `at`.
+- **Mechanical outcomes asserted:** 10 cases covering both primitives + all three consume sites + the slice-571 deviation.
+
+**Pattern-check:** `consumeOnCheck` / `consumeOnSave` complete the trio (attack / check / save) for one-shot riders. Future conditions following the slice-577 pattern (Inspiration, Divine Favor's "next attack," etc.) reuse these primitives. The slice-571 Help-on-check note in its CHANGELOG entry is now obsolete (deferred → closed); a future cleanup pass can revise that prose.
+
+---
+
 **Engine (slice 576): auto-fail save consumption — the load-bearing residual L1 RAW drift**
 
 Closes the only Medium-impact item from the post-closure audit. Pre-slice the pack carried `SetAdvantage { on: { kind:'save', ability:'STR'|'DEX' }, mode: 'auto-fail' }` entries on Paralyzed / Stunned / Petrified / Unconscious (verified by slice 567's pack-declaration tests). The `EffectAccumulator` ([src/effects/builder.ts:81](src/effects/builder.ts#L81)) tracked `autoFail` per ability. **But** [src/derive/save.ts:174-175](src/derive/save.ts#L174-L175) only exposed `hasAdvantage` / `hasDisadvantage`; neither save planner (`planSave` or `rollSaveAgainstDC`) consumed the auto-fail flag. A Stunned target rolling a STR save could still succeed — a real RAW deviation surfaced in slice 575's documentation block.
