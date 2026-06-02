@@ -4,6 +4,49 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Tooling (slice 596): combat-fuzz PC vs Monster mode**
+
+The fuzz only ever fought PC vs PC, leaving the engine's monster-statblock combat surface entirely unexercised. The ~370 SRD monster statblocks (and their traits: natural weapons with `onHit` riders, multiattack actions, breath-weapon recharge, Pack Tactics, Magic Resistance, Aura damage, Spawn Creature, etc.) live-tested only in narrow unit-test fixtures pre-slice. Slice 596 lets the fuzz spawn a low-CR monster on the opposing team.
+
+**Changes** ([scripts/combat-fuzz.ts](scripts/combat-fuzz.ts)):
+- New `--vs pc|monster` CLI flag (default `pc`). With `monster`, team B is built from `MONSTER_OPTIONS` (currently just the Wolf with `wolf-bite` natural weapon; structured for easy extension).
+- New `buildMonster(name, pack, rngFloat)` builds a `Character` snapshot from the pack's `MonsterStatblock` schema, mirroring [src/engine/triggers/dispatch.ts:485-546](src/engine/triggers/dispatch.ts#L485-L546) `fireSpawnCreature` (the canonical engine path for instantiating a monster mid-combat). HP = `statblock.hp.average`, AC = `statblock.ac`, ability scores + speed copied; the natural weapon is created as an `ItemInstance` and equipped main-hand so the standard `engine.plan.attack` chain fires.
+- `runBattle`'s teamB construction now branches on `vs`: PC mode builds `Bran[-1, -2]` via `buildL1`; monster mode builds `Beast[-1, -2]` via `buildMonster`. Symmetric with PC team size.
+- Monster classes (`companion`) aren't in the level-up table, so the existing `try/catch` around `levelUpTo` skips them silently — monsters stay at their statblock baseline.
+
+**Verification** (5 seeds at 1v1 vs wolf, seed 1000-1004):
+- Seed 1000: Wolf wins initiative (d20=20+2=22 vs Aria's 16+1=17), bites Aria for 8 piercing (1d6=6+2 STR-mod), HP 8→0, **Wolf Bite's RAW onHit Prone fires** ("**Aria** is now Prone."), Aria reactively casts Shield (slice 592 post-hit dispatch — documented limitation: damage already applied).
+- Seed 1004: Aria (paladin) one-shots the wolf with a longsword crit.
+- 3 of 5 battles won by Aria, 2 won by Beast.
+- Full suite green: 479 test files, 3246 passing, 173 unrelated skips.
+
+**Audit:**
+- **Names:** `vs: 'pc' | 'monster'` central control; `MONSTER_OPTIONS` follows `CLASS_BUILDS` shape; `buildMonster` parallels `buildL1`.
+- **DRY:** `buildMonster` shares `BuiltCharacter` shape with `buildL1`, so the runBattle setup loops work uniformly.
+- **SRP:** tooling only; no engine, content, schema, or test changes.
+- **Magic numbers:** none added; HP / AC / abilities all read from the pack statblock.
+- **at-threading:** N/A.
+- **Mechanical outcomes asserted:** live fuzz verification (Wolf Bite RAW + Prone onHit + reactive Shield all fire correctly).
+
+**Pattern-check (filter shape: "8 gaps from the user's slice 588 request — what's still untouched?"):** the 8 listed gaps are all now wired in the fuzz tool:
+1. **PC vs Monster** — slice 596 (this) ✓
+2. **Multi-combatant** — slice 595 (`--mode 2v2`) ✓
+3. **Reactions** — slice 592 (Shield post-hit) ✓
+4. **Items beyond basic 10** — slice 591 (shields + potions) ✓
+5. **Weapon Mastery exercise** — slice 589 (Sap / Vex / Slow firings) ✓
+6. **Levels 2-5** — slice 593 (`--level N`) ✓
+7. **Buff/utility spells** — slice 590 (Bless / Mage Armor / Faerie Fire / Divine Favor) ✓
+8. **Out-of-combat & time** — slice 594 (`--rest long|short`) ✓
+
+Real engine RAW bugs found and fixed during the 8-slice cycle:
+- **Slice 586**: spell-attack `AttackRolled` events didn't dispatch OnEvent triggers, silently dropping Hex / Hunter's Mark damage riders on Eldritch Blast / Fire Bolt / etc. hits.
+- **Slice 589**: Rogue / Monk / Wizard weapon proficiency content deviated from SRD body prose; engine extended with `<category>-<property>` token shape; pack corrected.
+- **Slice 587 + bonus**: transcript advantage display gap surfaced + a downstream RAW confirmation (Halfling + Heavy weapon → Disadvantage flowed through correctly once the display fix landed).
+
+Remaining fuzz-tool gaps not in the original 8 (deferred): retroactive Shield (RAW conversion of hit→miss requires splitting `AttackRolled` from damage emission in the attack planner — an architectural change); AoE policy targeting (the fuzz still picks one opponent per damage cantrip even in 2v2); reaction-spell coverage beyond Shield (Hellish Rebuke, Absorb Elements, Cutting Words at L2+, Counterspell at L3+); monster variety beyond the Wolf (Goblin, Skeleton, Kobold, Imp etc. — easy to add to `MONSTER_OPTIONS`); multi-classing; subclass-feature exercise (subclasses auto-pick first option which biases the fuzz towards one path per class).
+
+---
+
 **Tooling (slice 595): combat-fuzz 2v2 multi-combatant mode**
 
 The fuzz tool only ever ran 1v1 battles. Multi-combatant mechanics — initiative ordering across 4 actors, AoE save chains, Help action (2-PC adjacency), Sneak Attack adjacency, Bardic Inspiration to ally, Healing Word at range, and the simple "more bodies on the board, more emergent interactions" axis — were entirely unexercised. Slice 595 adds 2v2 support.

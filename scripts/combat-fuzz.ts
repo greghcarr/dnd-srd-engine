@@ -278,6 +278,64 @@ const speciesGrantedResources = (
   return out;
 };
 
+// Slice 596: low-CR monsters the fuzz can spawn as L1-appropriate
+// opponents. Each entry maps a statblock id to a natural-weapon item
+// the engine has wired (wolf-bite, etc.) so the monster can attack via
+// the standard plan.attack path. Monsters with no natural weapon get
+// undefined and fall back to the fuzz's no-attack policy.
+const MONSTER_OPTIONS: ReadonlyArray<{ id: string; weaponId: string | undefined; classBuild: ClassBuild }> = [
+  {
+    id: 'wolf',
+    weaponId: 'wolf-bite',
+    classBuild: { classId: 'companion', primary: 'STR', secondary: 'DEX', weaponId: 'wolf-bite', cantrips: [], l1Spells: [] },
+  },
+];
+
+// Build a Character snapshot from a monster statblock + equip the
+// natural weapon. Mirrors fireSpawnCreature in
+// src/engine/triggers/dispatch.ts (the canonical engine path for
+// instantiating a monster mid-combat).
+const buildMonster = (name: string, pack: Pack, rngFloat: () => number): BuiltCharacter => {
+  const choice = pickRandom(MONSTER_OPTIONS, rngFloat());
+  const statblock = pack.monsters?.find((m) => m.id === choice.id);
+  if (statblock === undefined) {
+    throw new Error(`Monster ${choice.id} not in pack`);
+  }
+  const weaponInstance: ItemInstance = {
+    id: newItemInstanceId(),
+    definitionId: choice.weaponId ?? 'dagger',
+    quantity: 1,
+    attuned: false,
+    identifiedByCharacterIds: [],
+  };
+  const potionInstance: ItemInstance = {
+    id: newItemInstanceId(),
+    definitionId: 'healing-potion',
+    quantity: 1,
+    attuned: false,
+    identifiedByCharacterIds: [],
+  };
+  const character = CharacterSchema.parse({
+    id: newCharacterId(),
+    name,
+    kind: 'creature',
+    speciesId: 'companion',
+    backgroundId: 'companion',
+    statblockId: statblock.id,
+    classes: [{ classId: 'companion', level: 1, hitDiceRemaining: 1 }],
+    abilityScores: statblock.abilityScores,
+    hp: { current: statblock.hp.average, max: statblock.hp.average, temp: 0 },
+    armorClass: statblock.ac,
+    speedFeet: statblock.speed.walk ?? 30,
+    inventory: [weaponInstance.id, potionInstance.id],
+    equipped: { mainHand: weaponInstance.id, attuned: [] },
+    knownSpells: [],
+    preparedSpells: [],
+    resources: [],
+  });
+  return { character, weaponInstance, potionInstance, build: choice.classBuild };
+};
+
 const buildL1 = (name: string, rngFloat: () => number, pack: Pack): BuiltCharacter => {
   const build = pickRandom(CLASS_BUILDS, rngFloat());
   const speciesId = pickRandom(SPECIES, rngFloat());
@@ -608,7 +666,7 @@ const levelUpTo = (
   return camp;
 };
 
-const runBattle = (seed: number, pack: Pack, level: number, rest: 'none' | 'short' | 'long' = 'none', teamSize = 1): { events: ReadonlyArray<Event>; finalState: Campaign['state']; winner: string | null; rounds: number } => {
+const runBattle = (seed: number, pack: Pack, level: number, rest: 'none' | 'short' | 'long' = 'none', teamSize = 1, vs: 'pc' | 'monster' = 'pc'): { events: ReadonlyArray<Event>; finalState: Campaign['state']; winner: string | null; rounds: number } => {
   const engine = createEngine({ contentPacks: [pack], rng: seededRNG(seed) });
   // Per-battle RNG used for character generation; separate from the
   // engine RNG so the build doesn't drift from the action seed.
@@ -623,7 +681,11 @@ const runBattle = (seed: number, pack: Pack, level: number, rest: 'none' | 'shor
   const teamNames = (base: 'Aria' | 'Bran'): string[] =>
     teamSize === 1 ? [base] : Array.from({ length: teamSize }, (_, i) => `${base}-${i + 1}`);
   const teamA: BuiltCharacter[] = teamNames('Aria').map((n) => buildL1(n, rngFloat, pack));
-  const teamB: BuiltCharacter[] = teamNames('Bran').map((n) => buildL1(n, rngFloat, pack));
+  // Slice 596: opposing team is one or more monsters when vs='monster',
+  // mirroring the PC team's size for symmetric encounters.
+  const teamB: BuiltCharacter[] = vs === 'monster'
+    ? teamNames('Beast').map((n) => buildMonster(n, pack, rngFloat))
+    : teamNames('Bran').map((n) => buildL1(n, rngFloat, pack));
 
   const now = (offsetSec = 0): string => new Date(Date.UTC(2026, 0, 1, 0, 0, offsetSec)).toISOString();
   let eventCounter = 0;
@@ -864,13 +926,14 @@ const summarize = (
   return lines.join('\n');
 };
 
-const parseArgs = (argv: ReadonlyArray<string>): { count: number; seed: number; out: string; level: number; rest: 'none' | 'short' | 'long'; teamSize: number } => {
+const parseArgs = (argv: ReadonlyArray<string>): { count: number; seed: number; out: string; level: number; rest: 'none' | 'short' | 'long'; teamSize: number; vs: 'pc' | 'monster' } => {
   let count = 5;
   let seed = 1;
   let out = '/tmp/combat-fuzz';
   let level = 1;
   let rest: 'none' | 'short' | 'long' = 'none';
   let teamSize = 1;
+  let vs: 'pc' | 'monster' = 'pc';
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--count') count = Number(argv[++i] ?? count);
@@ -883,23 +946,26 @@ const parseArgs = (argv: ReadonlyArray<string>): { count: number; seed: number; 
     } else if (a === '--mode') {
       const m = argv[++i] ?? '1v1';
       teamSize = m === '2v2' ? 2 : 1;
+    } else if (a === '--vs') {
+      const v = argv[++i] ?? 'pc';
+      vs = v === 'monster' ? 'monster' : 'pc';
     }
   }
-  return { count, seed, out, level, rest, teamSize };
+  return { count, seed, out, level, rest, teamSize, vs };
 };
 
 const main = (): void => {
-  const { count, seed, out, level, rest, teamSize } = parseArgs(process.argv.slice(2));
+  const { count, seed, out, level, rest, teamSize, vs } = parseArgs(process.argv.slice(2));
   mkdirSync(out, { recursive: true });
   const pack = loadStarterPack();
   const indexLines: string[] = [
-    `# Combat fuzz run — ${count} battles, seeds ${seed}..${seed + count - 1} (level ${level}${teamSize > 1 ? `, ${teamSize}v${teamSize}` : ''}${rest !== 'none' ? `, post-battle ${rest} rest` : ''})`,
+    `# Combat fuzz run — ${count} battles, seeds ${seed}..${seed + count - 1} (level ${level}${teamSize > 1 ? `, ${teamSize}v${teamSize}` : ''}${vs === 'monster' ? ', vs monster' : ''}${rest !== 'none' ? `, post-battle ${rest} rest` : ''})`,
     '',
   ];
   for (let i = 0; i < count; i++) {
     const s = seed + i;
     try {
-      const result = runBattle(s, pack, level, rest, teamSize);
+      const result = runBattle(s, pack, level, rest, teamSize, vs);
       const fileName = `seed-${String(s).padStart(4, '0')}.md`;
       const filePath = resolve(out, fileName);
       const summary = summarize(pack, s, result);
