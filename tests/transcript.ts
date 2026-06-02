@@ -152,8 +152,19 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       return `**${characterName(stateBefore, event.characterId)}** spends Heroic Inspiration${event.appliedTo !== undefined ? ` (${event.appliedTo})` : ''}.`;
     case 'CreatureDestroyed':
       return `**${characterName(stateBefore, event.targetId)}** is destroyed${event.sourceCharacterId !== undefined ? ` by **${characterName(stateBefore, event.sourceCharacterId)}**` : ''}.`;
-    case 'ResourceSpent':
-      return `**${characterName(stateBefore, event.characterId)}** spends ${event.amount} ${event.resourceId}.`;
+    case 'ResourceSpent': {
+      // Slice 605: when the resource being spent is the fatal-damage
+      // intercept resource (Relentless Endurance, etc.), surface the
+      // RAW outcome explicitly so a reader doesn't have to back-derive
+      // "why did Aria spend 1 relentless-endurance?" from the damage
+      // arithmetic. interceptFatalDamage scales the damage components
+      // to bring HP to 1; the user-facing line names the trait.
+      const who = characterName(stateBefore, event.characterId);
+      if (event.resourceId === 'relentless-endurance') {
+        return `**${who}**'s Relentless Endurance prevents the killing blow (drops to 1 HP).`;
+      }
+      return `**${who}** spends ${event.amount} ${event.resourceId}.`;
+    }
     case 'ResourceRestored':
       return `**${characterName(stateBefore, event.characterId)}** restores ${event.amount === 'all' ? 'all' : event.amount} ${event.resourceId}.`;
     case 'HitDieSpent':
@@ -479,9 +490,21 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       return `**${who}** identifies ${item}.`;
     }
     case 'ShieldCast': {
+      // Slice 605: Shield fires post-hit in the current engine (slice-592
+      // documented limitation: the attack planner doesn't yet split
+      // AttackRolled from damage emission, so a Shield-as-reaction can't
+      // retroactively undo damage on the triggering hit). The +5 AC bump
+      // still applies to subsequent attacks until the start of the
+      // caster's next turn. Wording was previously misleading: the old
+      // "turns the hit into a miss" branch was true mathematically (the
+      // bumped AC would have made the original attack miss) but the
+      // damage was already applied. New wording is honest about what
+      // actually happened.
       const who = characterName(stateBefore, event.casterId);
-      const outcome = event.preventedHit ? 'turns the hit into a miss' : 'the attack still lands';
-      return `**${who}** casts Shield: +5 AC, ${outcome}.`;
+      const outcome = event.preventedHit
+        ? '+5 AC (would have prevented this hit; damage already applied per post-hit Shield limitation)'
+        : '+5 AC for subsequent attacks (this attack still lands)';
+      return `**${who}** casts Shield: ${outcome}.`;
     }
     case 'GuidanceUsed': {
       const who = characterName(stateBefore, event.targetId);
