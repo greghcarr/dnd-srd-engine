@@ -608,7 +608,7 @@ const levelUpTo = (
   return camp;
 };
 
-const runBattle = (seed: number, pack: Pack, level: number, rest: 'none' | 'short' | 'long' = 'none'): { events: ReadonlyArray<Event>; finalState: Campaign['state']; winner: string | null; rounds: number } => {
+const runBattle = (seed: number, pack: Pack, level: number, rest: 'none' | 'short' | 'long' = 'none', teamSize = 1): { events: ReadonlyArray<Event>; finalState: Campaign['state']; winner: string | null; rounds: number } => {
   const engine = createEngine({ contentPacks: [pack], rng: seededRNG(seed) });
   // Per-battle RNG used for character generation; separate from the
   // engine RNG so the build doesn't drift from the action seed.
@@ -618,13 +618,12 @@ const runBattle = (seed: number, pack: Pack, level: number, rest: 'none' | 'shor
     return cursor / 233280;
   };
 
-  // Loop until the two characters land on different classes (more
-  // varied transcripts) — caps at a few attempts to avoid stalls.
-  let pcA = buildL1('Aria', rngFloat, pack);
-  let pcB = buildL1('Bran', rngFloat, pack);
-  for (let i = 0; i < 8 && pcA.build.classId === pcB.build.classId; i++) {
-    pcB = buildL1('Bran', rngFloat, pack);
-  }
+  // Slice 595: build teamSize PCs per side. Team A names suffixed -1, -2;
+  // Team B same. For teamSize=1 (default 1v1), names are bare "Aria" / "Bran".
+  const teamNames = (base: 'Aria' | 'Bran'): string[] =>
+    teamSize === 1 ? [base] : Array.from({ length: teamSize }, (_, i) => `${base}-${i + 1}`);
+  const teamA: BuiltCharacter[] = teamNames('Aria').map((n) => buildL1(n, rngFloat, pack));
+  const teamB: BuiltCharacter[] = teamNames('Bran').map((n) => buildL1(n, rngFloat, pack));
 
   const now = (offsetSec = 0): string => new Date(Date.UTC(2026, 0, 1, 0, 0, offsetSec)).toISOString();
   let eventCounter = 0;
@@ -633,35 +632,27 @@ const runBattle = (seed: number, pack: Pack, level: number, rest: 'none' | 'shor
   let campaign = engine.createCampaign({ name: `fuzz-${seed}` });
   const acquire = (instance: ItemInstance): Event =>
     ({ id: newEventId(), at: nextAt(), type: 'ItemAcquired', instance }) as Event;
-  const setupEvents: Event[] = [
-    acquire(pcA.weaponInstance),
-    ...(pcA.armorInstance ? [acquire(pcA.armorInstance)] : []),
-    ...(pcA.shieldInstance ? [acquire(pcA.shieldInstance)] : []),
-    acquire(pcA.potionInstance),
-    acquire(pcB.weaponInstance),
-    ...(pcB.armorInstance ? [acquire(pcB.armorInstance)] : []),
-    ...(pcB.shieldInstance ? [acquire(pcB.shieldInstance)] : []),
-    acquire(pcB.potionInstance),
-    { id: newEventId(), at: nextAt(), type: 'CharacterCreated', snapshot: pcA.character } as Event,
-    { id: newEventId(), at: nextAt(), type: 'CharacterCreated', snapshot: pcB.character } as Event,
-  ];
+  const setupEvents: Event[] = [];
+  for (const pc of [...teamA, ...teamB]) {
+    setupEvents.push(acquire(pc.weaponInstance));
+    if (pc.armorInstance) setupEvents.push(acquire(pc.armorInstance));
+    if (pc.shieldInstance) setupEvents.push(acquire(pc.shieldInstance));
+    setupEvents.push(acquire(pc.potionInstance));
+  }
+  for (const pc of [...teamA, ...teamB]) {
+    setupEvents.push({ id: newEventId(), at: nextAt(), type: 'CharacterCreated', snapshot: pc.character } as Event);
+  }
   campaign = commit(campaign, setupEvents);
 
-  // Slice 593: if a target level > 1 was requested, walk both
-  // characters up via engine.plan.levelUp. Each rung is auto-resolved
-  // (first option) for any ChoiceRequired events. On failure, fall
-  // back to whatever level was reached.
   if (level > 1) {
-    try {
-      campaign = levelUpTo(engine, campaign, pcA.character.id, pcA.build.classId, level);
-    } catch { /* keep PC at whatever level was reached */ }
-    try {
-      campaign = levelUpTo(engine, campaign, pcB.character.id, pcB.build.classId, level);
-    } catch { /* keep PC at whatever level was reached */ }
+    for (const pc of [...teamA, ...teamB]) {
+      try { campaign = levelUpTo(engine, campaign, pc.character.id, pc.build.classId, level); } catch { /* keep at current level */ }
+    }
   }
 
+  const allCharacterIds = [...teamA.map((pc) => pc.character.id), ...teamB.map((pc) => pc.character.id)];
   const enc = engine.plan.createEncounter(campaign.state, {
-    combatantIds: [pcA.character.id, pcB.character.id],
+    combatantIds: allCharacterIds,
     name: 'Fuzz arena',
   });
   campaign = commit(campaign, enc.events);
@@ -669,9 +660,29 @@ const runBattle = (seed: number, pack: Pack, level: number, rest: 'none' | 'shor
   campaign = commit(campaign, engine.plan.startEncounter(campaign.state, { encounterId: enc.encounterId }).events);
   campaign = commit(campaign, engine.plan.beginFirstTurn(campaign.state, { encounterId: enc.encounterId }).events);
 
-  const combatants: Record<string, Combatant> = {
-    [pcA.character.id]: { built: pcA },
-    [pcB.character.id]: { built: pcB },
+  const combatants: Record<string, Combatant> = {};
+  for (const pc of [...teamA, ...teamB]) {
+    combatants[pc.character.id] = { built: pc };
+  }
+  const teamAIds = new Set(teamA.map((pc) => pc.character.id));
+  const teamBIds = new Set(teamB.map((pc) => pc.character.id));
+
+  // Slice 595: select the opposing team's first-living combatant for
+  // the active actor's policy choices. Returns undefined if no living
+  // opponent remains (battle should end).
+  const chooseOpponent = (activeId: string): Combatant | undefined => {
+    const opposing = teamAIds.has(activeId) ? teamB : teamA;
+    const alive = opposing.find((pc) => campaign.state.characters[pc.character.id]!.hp.current > 0);
+    return alive !== undefined ? combatants[alive.character.id] : undefined;
+  };
+
+  // Battle ends when one team is fully downed.
+  const teamWiped = (): 'A' | 'B' | null => {
+    const aliveA = teamA.some((pc) => campaign.state.characters[pc.character.id]!.hp.current > 0);
+    const aliveB = teamB.some((pc) => campaign.state.characters[pc.character.id]!.hp.current > 0);
+    if (!aliveA) return 'B';
+    if (!aliveB) return 'A';
+    return null;
   };
 
   let rounds = 1;
@@ -680,7 +691,15 @@ const runBattle = (seed: number, pack: Pack, level: number, rest: 'none' | 'shor
     const encState = campaign.state.encounters[enc.encounterId]!;
     const activeCb = encState.combatants[encState.activeIndex]!;
     const active = combatants[activeCb.combatantId]!;
-    const opponent = combatants[pcA.character.id === activeCb.combatantId ? pcB.character.id : pcA.character.id]!;
+    const opponentSelected = chooseOpponent(activeCb.combatantId);
+    if (opponentSelected === undefined) {
+      const t = teamWiped();
+      if (t !== null) {
+        winner = t === 'A' ? teamA[0]!.character.id : teamB[0]!.character.id;
+      }
+      break;
+    }
+    const opponent = opponentSelected;
 
     // Active dead → advance turn (death save loop handled by engine).
     const activeChar = campaign.state.characters[activeCb.combatantId]!;
@@ -775,9 +794,10 @@ const runBattle = (seed: number, pack: Pack, level: number, rest: 'none' | 'shor
           }
         }
       }
-      // Stop if opponent is dead.
-      if (campaign.state.characters[opponent.built.character.id]!.hp.current <= 0) {
-        winner = active.built.character.id;
+      // Slice 595: stop if the entire opposing team is downed.
+      const t = teamWiped();
+      if (t !== null) {
+        winner = t === 'A' ? teamA[0]!.character.id : teamB[0]!.character.id;
         break;
       }
     }
@@ -802,7 +822,7 @@ const runBattle = (seed: number, pack: Pack, level: number, rest: 'none' | 'shor
   if (rest !== 'none') {
     try {
       campaign = commit(campaign, engine.plan.endEncounter(campaign.state, { encounterId: enc.encounterId, outcome: winner !== null ? 'victory' : 'fled' }).events);
-      const survivors = [pcA, pcB]
+      const survivors = [...teamA, ...teamB]
         .filter((pc) => campaign.state.characters[pc.character.id]!.hp.current > 0)
         .map((pc) => pc.character.id);
       if (survivors.length > 0) {
@@ -844,12 +864,13 @@ const summarize = (
   return lines.join('\n');
 };
 
-const parseArgs = (argv: ReadonlyArray<string>): { count: number; seed: number; out: string } => {
+const parseArgs = (argv: ReadonlyArray<string>): { count: number; seed: number; out: string; level: number; rest: 'none' | 'short' | 'long'; teamSize: number } => {
   let count = 5;
   let seed = 1;
   let out = '/tmp/combat-fuzz';
   let level = 1;
   let rest: 'none' | 'short' | 'long' = 'none';
+  let teamSize = 1;
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--count') count = Number(argv[++i] ?? count);
@@ -859,23 +880,26 @@ const parseArgs = (argv: ReadonlyArray<string>): { count: number; seed: number; 
     else if (a === '--rest') {
       const v = (argv[++i] ?? 'none') as 'none' | 'short' | 'long';
       rest = v === 'short' || v === 'long' ? v : 'none';
+    } else if (a === '--mode') {
+      const m = argv[++i] ?? '1v1';
+      teamSize = m === '2v2' ? 2 : 1;
     }
   }
-  return { count, seed, out, level, rest };
+  return { count, seed, out, level, rest, teamSize };
 };
 
 const main = (): void => {
-  const { count, seed, out, level, rest } = parseArgs(process.argv.slice(2));
+  const { count, seed, out, level, rest, teamSize } = parseArgs(process.argv.slice(2));
   mkdirSync(out, { recursive: true });
   const pack = loadStarterPack();
   const indexLines: string[] = [
-    `# Combat fuzz run — ${count} battles, seeds ${seed}..${seed + count - 1} (level ${level}${rest !== 'none' ? `, post-battle ${rest} rest` : ''})`,
+    `# Combat fuzz run — ${count} battles, seeds ${seed}..${seed + count - 1} (level ${level}${teamSize > 1 ? `, ${teamSize}v${teamSize}` : ''}${rest !== 'none' ? `, post-battle ${rest} rest` : ''})`,
     '',
   ];
   for (let i = 0; i < count; i++) {
     const s = seed + i;
     try {
-      const result = runBattle(s, pack, level, rest);
+      const result = runBattle(s, pack, level, rest, teamSize);
       const fileName = `seed-${String(s).padStart(4, '0')}.md`;
       const filePath = resolve(out, fileName);
       const summary = summarize(pack, s, result);

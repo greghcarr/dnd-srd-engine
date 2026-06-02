@@ -4,6 +4,36 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Tooling (slice 595): combat-fuzz 2v2 multi-combatant mode**
+
+The fuzz tool only ever ran 1v1 battles. Multi-combatant mechanics — initiative ordering across 4 actors, AoE save chains, Help action (2-PC adjacency), Sneak Attack adjacency, Bardic Inspiration to ally, Healing Word at range, and the simple "more bodies on the board, more emergent interactions" axis — were entirely unexercised. Slice 595 adds 2v2 support.
+
+**Changes** ([scripts/combat-fuzz.ts](scripts/combat-fuzz.ts)):
+- New `--mode 1v1|2v2` CLI flag (default `1v1`). `2v2` builds 2 PCs per side.
+- `runBattle` now constructs `teamA: BuiltCharacter[]` and `teamB: BuiltCharacter[]` arrays (1 entry each for 1v1, 2 each for 2v2). PC names suffixed `-1` / `-2` in 2v2 mode (e.g. `Aria-1`, `Aria-2`, `Bran-1`, `Bran-2`).
+- Setup events generated in a loop over all combatants (weapons + armor + shields + potions + character-created).
+- `createEncounter` takes all 4 combatant ids; the engine's initiative + turn-advancing logic handles the 4-combatant rotation unchanged.
+- New `chooseOpponent(activeId)` returns the first-living combatant on the opposing team (or undefined if the opposing team is wiped). Replaces the static `opponent = pcA.id === activeCb.combatantId ? pcB : pcA` lookup.
+- New `teamWiped()` returns the loser team (`'A'` / `'B'`) or `null` if both teams have living members. Replaces the per-attack "is opponent dead" check in the inner loop.
+- Survivor filter for slice 594's `--rest` flow now walks `[...teamA, ...teamB]`.
+
+**Verification** (5 seeds at 1v1 default + 5 seeds at 2v2):
+- 1v1 mode unchanged: 5 battles complete as before with single-character winners.
+- 2v2 mode: 4-combatant initiative roll (`Aria-2 (d20=16+1=17), Aria-1 (d20=13+2=15), Bran-1 (d20=14+1=15), Bran-2 (d20=12+3=15)`), all 4 take their turns in initiative order, battle ends when one team is wiped. Seed 900 sample: Aria-1 (wizard) + Aria-2 (barbarian) defeat Bran-1 (cleric) + Bran-2 (sorcerer) in 9 rounds. Winner field reports the first character on the winning team for index display.
+- Full suite green: 479 test files, 3246 passing, 173 unrelated skips.
+
+**Audit:**
+- **Names:** `teamA` / `teamB` / `teamAIds` / `teamBIds` / `teamWiped` / `chooseOpponent` follow the team-axis naming. `teamSize: 1 | 2` is the central control variable.
+- **DRY:** the setup-events / character-created / level-up loops all walk `[...teamA, ...teamB]` instead of duplicating per-PC inline.
+- **SRP:** tooling only; no engine, content, schema, or test changes.
+- **Magic numbers:** team-size domain (1, 2) extracted as `teamSize` parameter.
+- **at-threading:** N/A.
+- **Mechanical outcomes asserted:** live fuzz verification (4-combatant initiative + team-wipe logic verified end-to-end).
+
+**Pattern-check (filter shape: "1v1-only assumptions still embedded in the policy"):** swept `pickIntent` for `pcA.id` / `pcB.id` references — none remain (the helper takes `active` + `opponent` Combatants). The policy treats `opponent` as a single target per turn (it doesn't yet target multiple opponents, e.g. AoE on opposing team). AoE targeting is now meaningful in 2v2 but the policy still picks one opponent per damage cantrip. Documented as future work; the AoE planner (Sleep, Web, Burning Hands, etc.) already handles multi-target intents per its existing tests, so the gap is fuzz-side not engine-side.
+
+---
+
 **Tooling (slice 594): combat-fuzz out-of-combat rest cycles**
 
 The fuzz tool ran each battle in isolation, ending after one combatant dropped. The engine's rest planners (`planLongRest` / `planShortRest`) and the post-battle `planEndEncounter` were never exercised by the fuzz, leaving resource recharge + HP regen on long rest + hit-die spending on short rest unexercised at the live-combat scale.
