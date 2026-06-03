@@ -251,6 +251,26 @@ button:disabled {
   overflow-y: auto;
 }
 
+/* Slice 608: developer-tools <details> block — collapsed by default
+   so observers reading the event log aren't distracted by the engine-
+   internal Verify / Export / Import buttons. */
+.inspector-devtools {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+}
+.inspector-devtools > summary {
+  cursor: pointer;
+  color: #888;
+  padding: 0.1rem 0;
+  user-select: none;
+}
+.inspector-devtools > summary:hover {
+  color: inherit;
+}
+.inspector-devtools[open] > summary {
+  margin-bottom: 0.4rem;
+}
+
 .inspector-toolbar {
   display: flex;
   gap: 0.4rem;
@@ -309,6 +329,9 @@ button:disabled {
 
 .event-row.event-state-change {
   border-left-color: #2ea84f;
+  /* Slice 608: dial back state-change visibility so the eye lands on
+     resolution + encounter rows first. Still readable, just quieter. */
+  opacity: 0.72;
 }
 
 .event-line {

@@ -4,6 +4,31 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Tooling (slice 608): event inspector readability — human labels, vocabulary, developer-tools collapse, subdued state-change**
+
+Four observer-experience gaps in the event log panel (the right side of the demo), bundled in one focused slice:
+
+1. **Human-readable event-type labels** — pre-slice, the inspector printed raw event slugs (`AttackRolled`, `ActionEconomyConsumed`, `RoundEnded`) which read as engine-developer jargon. A new `HUMAN_LABELS` map at [web/ui/event-row.ts:36-89](web/ui/event-row.ts#L36-L89) renders "Attack roll", "Action used", "Round ended" instead. Falls back to a CamelCase-split for unmapped types so a new event-type ships as English without forcing a sync update. The raw slug stays available as a tooltip on the type chip.
+2. **Vocabulary consistency** — the panel said "cursor X · N events" while the Random Battle panel says "step X / N". Two names for the same axis; observers had to translate. Inspector header now reads "step X of N · …" — same vocabulary as the transport.
+3. **Developer-tools collapsed** — Verify replay / Export / Import are engine-developer features (replay-equivalence proof, save/load roundtripping); an observer has no reason to want them. Moved into a `<details>` summary block ("Developer tools") that's collapsed by default. The engine devs who want them are one click away; the casual reader gets a cleaner header.
+4. **State-change rows subdued** — the inspector colored events by category (resolution / encounter / state-change) but each row had the same visual weight. State-change events are the highest-volume + lowest-signal category (`ActionEconomyConsumed`, `SpellSlotConsumed`, internal bookkeeping). CSS opacity dialed to `0.72` so the eye lands on resolution + encounter rows first.
+
+Plus a panel-title rename: "Event Inspector" → "Event Log" so it doesn't read like a debugger tool.
+
+**Files** ([web/ui/event-row.ts](web/ui/event-row.ts), [web/modes/event-inspector.ts](web/modes/event-inspector.ts), [web/styles.css](web/styles.css)). No engine work.
+
+**Verification:** `tsc --noEmit` clean (root + web/); `vite --config vite.web.config.ts` boots without runtime errors.
+
+**Audit (presentation slice):**
+- **Names:** `HUMAN_LABELS`, `humanLabel(type)`, `splitCamelCase(s)` are intent-revealing.
+- **DRY:** label map is the single source of truth; CamelCase fallback handles unmapped types without forcing label updates per new event.
+- **SRP:** `event-row.ts` still renders one row; the new label is a swap-in for the prior `event.type` rendering. Inspector mode-file's only added responsibility is the `<details>` wrapper for the developer toolbar.
+- **Magic numbers:** opacity `0.72` for state-change rows — tracked inline.
+
+**Pattern-check** (filter shape: "user-facing surfaces that print engine-internal slugs"): swept `web/` for raw `event.type`, `appliedConditions[].conditionId`, etc. Three places had the pattern pre-slice; conditions (slice 607) + event types (this slice) are now both content-aware. The third — `event.payload` JSON in the expandable `<details>` block — is intentionally raw (it's the engineer's deep-dive view, surfaced only on click). Sweep clean for the surfaced concern.
+
+---
+
 **Tooling (slice 607): initiative panel observability polish — team color, condition display names, class/species inline, coord-column drop, panel title rename**
 
 The slice-600 observer review surfaced five small UX gaps in the demo's initiative panel that together made the demo harder to parse for an observer than for an engine-developer. Bundled into one focused slice so the surface read changes once rather than five times:

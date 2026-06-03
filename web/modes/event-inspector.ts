@@ -32,17 +32,24 @@ export const mountEventInspector = (opts: EventInspectorOptions): EventInspector
   const { host, root, onStatus } = opts;
 
   root.classList.add('event-inspector');
+  // Slice 608: developer tools (Verify replay / Export / Import) moved
+  // into a <details> block so they don't dominate the panel header for
+  // observers who just want to read the event stream. Engine devs can
+  // expand the block; observers ignore it.
   root.innerHTML = `
     <header class="inspector-header">
-      <h2>Event Inspector</h2>
+      <h2>Event Log</h2>
       <p class="inspector-meta"></p>
-      <div class="inspector-toolbar">
-        <button type="button" class="btn-verify">Verify replay</button>
-        <button type="button" class="btn-export">Export</button>
-        <button type="button" class="btn-import">Import</button>
-        <input type="file" class="file-import" accept="application/json,.json" hidden />
-        <span class="verify-result"></span>
-      </div>
+      <details class="inspector-devtools">
+        <summary>Developer tools</summary>
+        <div class="inspector-toolbar">
+          <button type="button" class="btn-verify">Verify replay</button>
+          <button type="button" class="btn-export">Export</button>
+          <button type="button" class="btn-import">Import</button>
+          <input type="file" class="file-import" accept="application/json,.json" hidden />
+          <span class="verify-result"></span>
+        </div>
+      </details>
     </header>
     <div class="inspector-scroll">
       <button id="show-earlier" type="button" class="show-earlier" hidden>Show earlier events</button>
@@ -178,9 +185,12 @@ export const mountEventInspector = (opts: EventInspectorOptions): EventInspector
 
     showEarlier.hidden = hidden === 0;
     showEarlier.textContent = `Show ${hidden} earlier event${hidden === 1 ? '' : 's'}`;
+    // Slice 608: speak the same vocabulary as the Random Battle panel —
+    // "step N" everywhere; "event" only when counting the underlying
+    // log entries (an event IS one step).
     meta.textContent =
-      `${total} events  ·  cursor ${campaign.cursor}  ·  ` +
-      (hidden === 0 ? 'all visible' : `${total - hidden} of ${total} rendered`);
+      `step ${campaign.cursor} of ${total}  ·  ` +
+      (hidden === 0 ? 'all events visible' : `${total - hidden} of ${total} rendered`);
 
     // Fast path: when we're appending new events to the same window we
     // last rendered, only build rows for the newcomers.
