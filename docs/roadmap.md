@@ -138,5 +138,5 @@ Each slice ships its primitive plus a canonical content user, a unit test, a con
 
 ### What "perfect" cannot mean
 
-5.5e explicitly delegates some rulings to the DM: improvised actions, narrative consequences, table houserules, ambiguous spell interactions that even Sage Advice has issued multiple clarifications on. A rules engine cannot adjudicate these. The `CustomEffect` code-handler escape hatch is the explicit spot for table-specific rulings. After all phases the engine covers ~95% of printed mechanics by surface area; the rest is documented as DM-discretion territory.
+5.5e explicitly delegates some rulings to the DM: improvised actions, narrative consequences, table houserules, ambiguous spell interactions that even Sage Advice has issued multiple clarifications on. A rules engine cannot adjudicate these. The `CustomEffect` code-handler escape hatch is the explicit spot for table-specific rulings. The engine targets the bulk of printed mechanics; the long tail that remains is documented as DM-discretion territory.
 

@@ -165,8 +165,8 @@ Pick the doc that matches what you want:
 At a glance:
 
 - **Engine architecture**: 100%. Locked.
-- **Effect-primitive vocabulary**: ~75% of the planned `EFFECT_KINDS` shipped (52 primitives + `Custom` escape hatch); the rest of the backlog enumerated in [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md).
-- **Classes / species / backgrounds / feats / conditions / spells / monsters / magic items**: SRD 5.2.1 catalog complete in every category. Spell mechanical wiring ~54% (182/339 wired, 70 narrative, 87 schema-only; the 12 non-SRD wired spells moved to the phb-2024-extras pack in slice 402); magic-item mechanical wiring ~35% (~91/258, after single-base magic weapons/armor were re-modeled into the weapon/armor categories in slices 315-317); consumables ~65% (~45/69).
+- **Effect-primitive vocabulary**: the majority of the planned primitives are shipped (52 primitives + `Custom` escape hatch in `EFFECT_KINDS`); the queue of remaining primitives is enumerated in [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md).
+- **Classes / species / backgrounds / feats / conditions / spells / monsters / magic items**: SRD 5.2.1 catalog complete in every category. Spell mechanical wiring ~58% (198/339 wired, 68 narrative, 73 schema-only; the 12 non-SRD wired spells moved to the phb-2024-extras pack in slice 402); magic-item mechanical wiring roughly a third (~91/258, after single-base magic weapons/armor were re-modeled into the weapon/armor categories in slices 315-317); consumables roughly two thirds (~45/69).
 - **Variant rules**: `grittyRest` + `heroPoints` enforce; `sanity` + `massCombat` toggle but don't enforce.
 
 For the full coverage table, per-category breakdown, known gaps (engine, content, test infrastructure), and severity ranking, see **[docs/status.md](docs/status.md)**.
@@ -177,7 +177,7 @@ Six phases (A-F). Phases A-E completed at alpha.5 (slices 1-46). Post-alpha.5 wo
 
 The full per-phase slice catalog (Phase A: 16 engine-mechanics slices, Phase B: 4 state-schema slices, Phase C: 10 combat-fill-in slices, Phase D: 7 adoption-surface slices, Phase E: 9 content-fill-out slices, Phase F: 1 optional core-extraction slice) lives in **[docs/roadmap.md](docs/roadmap.md)**, alongside the post-alpha.5 vocabulary-expansion grouping by theme (spell catalog completion, class features fill-out, ~35 engine primitives).
 
-What "perfect" cannot mean: 5.5e explicitly delegates some rulings to the DM (improvised actions, narrative consequences, table houserules, ambiguous spell interactions that even Sage Advice has issued multiple clarifications on). The `CustomEffect` code-handler escape hatch is the explicit spot for table-specific rulings. After all phases the engine covers ~95% of printed mechanics by surface area; the rest is documented as DM-discretion territory.
+What "perfect" cannot mean: 5.5e explicitly delegates some rulings to the DM (improvised actions, narrative consequences, table houserules, ambiguous spell interactions that even Sage Advice has issued multiple clarifications on). The `CustomEffect` code-handler escape hatch is the explicit spot for table-specific rulings. The engine targets the bulk of printed mechanics; the long tail that remains is documented as DM-discretion territory.
 
 ## Install
 

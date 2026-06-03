@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Tests + docs (slice 631): numerical accuracy sweep + audit extension**
+Extended doc-counts.test.ts to derive the spell wired/narrative/deferred/total split + rounded percentage from gaps-spells.md and pin five front-door-doc citations against the derived values. Updated stale percentages (README "~54%" → "~58%"; status.md "196/339" / "182" → "198/339"). Rewrote the two genuinely unmeasurable percentages ("~75% of planned EFFECT_KINDS", "~95% of printed mechanics") qualitatively per "CI-guarded or not stated."
+Detail: [slice-631.md](docs/changelog/slice-631.md).
+
 **Docs (slice 630): comprehensive feature tutorial**
 New docs/tutorial.md walks every major capability end-to-end in one running example (install → engine → character → L1 choices → equip → derive → encounter → attack → spell → reaction → masteries → rests → level-up → event stream → save/load/replay → undo → custom content → custom handlers → determinism → engine scope). Every typecheck-tagged block compiles against the real public API via the doc-examples audit.
 Detail: [slice-630.md](docs/changelog/slice-630.md).
