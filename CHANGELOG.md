@@ -4,6 +4,36 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Content + tooling (slice 613): ResourceSpent wording is content-driven — uncoupled from slug**
+
+Slice 605 hardcoded `resourceId === 'relentless-endurance'` in the transcript formatter for the killing-blow special wording, and printed raw slugs ("spends 1 relentless-endurance") for every other resource. Both shapes are the same coupling: presentation logic bound to specific content ids. A content rename or a future species/feat shipping the same effect-shape would silently fall through to wrong-or-ugly wording.
+
+**Schema** ([src/schemas/effects.ts](src/schemas/effects.ts)): `GrantResource` gained an optional `label?: string` for the human-readable display name. Additive (no migration, no behavior change for existing unlabeled grants).
+
+**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)): Orc Relentless Endurance + Adrenaline Rush both got `"label"` fields. Other resources stay unlabeled and rely on the formatter's title-case fallback.
+
+**Formatter** ([tests/transcript.ts](tests/transcript.ts)): new `summarizeResources(content)` helper walks species traits, class level-table features, subclass level-grants, feats, and background traits to build:
+- `labels: Map<resourceId, displayLabel>` from every `GrantResource` entry with a `label`.
+- `preventsKillingBlow: Set<resourceId>` from every `PreventFatalDamageConsumingResource` entry.
+
+The summary is computed once per `formatTranscript` call and threaded through `FormatterContext`. The `ResourceSpent` formatter now reads:
+- `preventsKillingBlow.has(resourceId)` for the killing-blow wording (any species/feat that ships `PreventFatalDamageConsumingResource` earns the wording automatically — no formatter change needed when new content lands).
+- `labels.get(resourceId) ?? titleizeSlug(resourceId)` for the display name. "rage" → "Rage", "relentless-endurance" → "Relentless Endurance" (with explicit label) or auto-title-cased.
+
+**Tests** ([tests/unit/transcript-slice-613-resource-labels.test.ts](tests/unit/transcript-slice-613-resource-labels.test.ts), 4 cases): content-marked prevent-resource gets killing-blow wording; content-labeled resource uses its label; unlabeled resource falls back to title-cased slug; killing-blow wording does NOT fire for plain resources. Slice 605's test updated to expect "Rage" (title-cased) instead of "rage".
+
+**Snapshot updates:** 4 golden transcripts touched (s201-sorcery-incarnate, s209-superior-defense, s9b-reaction-window, showcase) — each replaced raw slugs with title-cased labels. Cleanly intentional.
+
+**Verification:** 488 files / 3275 tests pass. tsc clean.
+
+**Audit:**
+- Names: `summarizeResources`, `ResourceSummary`, `resourceLabel`, `titleizeSlug`, `preventsKillingBlow` all intent-revealing.
+- DRY: one helper, one call, one map per transcript. The `visitEffects` walker handles all five content surfaces (species/feats/classes/subclasses/backgrounds) uniformly.
+- Magic numbers: none added.
+- Pattern-check: swept the formatter for other hardcoded slug references. Found none in `ResourceSpent` after this change. `condition.conditionId` and `spell.spellId` lookups already go through `content.conditions` / `content.spells` Maps. Sweep clean.
+
+---
+
 **Engine (slice 612): per-component concentration saves + aura-tick coverage — closes the slice-601 open follow-ups**
 
 Slice 601 left two known gaps tracked as follow-ups:

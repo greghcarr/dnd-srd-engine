@@ -148,7 +148,7 @@ Mastery: Sap against **Goblin Shaman** (Alyx).
 
 **Goblin Shaman** is now Sapped.
 
-**Alyx** spends 1 action-surge.
+**Alyx** spends 1 Action Surge.
 
 _(Alyx consumes action)_
 

@@ -668,6 +668,13 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       max: z.union([z.number().int().min(0), FormulaSchema]),
       recharge: RechargeSchema,
       diceSize: z.number().int().optional(),
+      // Slice 613: optional human-readable label for the resource, used
+      // by user-facing surfaces (transcript formatter, web demo) so the
+      // ResourceSpent line reads "spends 1 Relentless Endurance" not
+      // "spends 1 relentless-endurance". Decouples slugs (machine ids)
+      // from display strings. Unset → consumers fall back to a
+      // title-cased version of the slug.
+      label: z.string().optional(),
     }),
     z.object({
       kind: z.literal('GrantSpellSlots'),

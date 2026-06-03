@@ -146,8 +146,8 @@
     { "id": "orc", "name": "Orc", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "orc"], "traits": [
       { "kind": "GrantSense", "sense": "darkvision", "range": 120 },
       { "kind": "Custom", "handlerId": "adrenaline-rush" },
-      { "kind": "GrantResource", "resourceId": "adrenaline-rush", "max": { "kind": "profBonus" }, "recharge": "shortRest" },
-      { "kind": "GrantResource", "resourceId": "relentless-endurance", "max": 1, "recharge": "longRest" },
+      { "kind": "GrantResource", "resourceId": "adrenaline-rush", "max": { "kind": "profBonus" }, "recharge": "shortRest", "label": "Adrenaline Rush" },
+      { "kind": "GrantResource", "resourceId": "relentless-endurance", "max": 1, "recharge": "longRest", "label": "Relentless Endurance" },
       { "kind": "PreventFatalDamageConsumingResource", "resourceId": "relentless-endurance" }
     ] }
   ],

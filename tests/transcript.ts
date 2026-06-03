@@ -17,6 +17,8 @@ interface FormatterContext {
   readonly stateBefore: CampaignState;
   readonly stateAfter: CampaignState;
   readonly content: ResolvedContent;
+  /** Slice 613: resource-id → label + killing-blow lookup, computed once per formatTranscript call. */
+  readonly resources: ResourceSummary;
 }
 
 const characterName = (state: CampaignState, id: string): string =>
@@ -40,6 +42,60 @@ const spellName = (content: ResolvedContent, id: string): string =>
 
 const conditionName = (content: ResolvedContent, id: string): string =>
   content.conditions.get(id)?.name ?? id;
+
+// Slice 613: title-case the slug as a fallback when a resource has
+// no `label` in content. `relentless-endurance` → `Relentless Endurance`.
+const titleizeSlug = (slug: string): string =>
+  slug
+    .split('-')
+    .map((part) => (part.length > 0 ? part[0]!.toUpperCase() + part.slice(1) : part))
+    .join(' ');
+
+interface ResourceSummary {
+  /** resourceId → display label from content (or title-cased slug if unlabeled). */
+  readonly labels: ReadonlyMap<string, string>;
+  /** resourceIds whose `PreventFatalDamageConsumingResource` semantics earn the "prevents the killing blow" wording. */
+  readonly preventsKillingBlow: ReadonlySet<string>;
+}
+
+const summarizeResources = (content: ResolvedContent): ResourceSummary => {
+  const labels = new Map<string, string>();
+  const preventsKillingBlow = new Set<string>();
+  const visitEffects = (effects: ReadonlyArray<unknown>): void => {
+    for (const eff of effects) {
+      if (typeof eff !== 'object' || eff === null) continue;
+      const e = eff as { kind?: string; resourceId?: string; label?: string };
+      if (e.kind === 'GrantResource' && typeof e.resourceId === 'string') {
+        if (typeof e.label === 'string' && !labels.has(e.resourceId)) {
+          labels.set(e.resourceId, e.label);
+        }
+      }
+      if (e.kind === 'PreventFatalDamageConsumingResource' && typeof e.resourceId === 'string') {
+        preventsKillingBlow.add(e.resourceId);
+      }
+    }
+  };
+  // Slice 613: walk every content surface that can carry effects.
+  // Species traits are flat effect arrays; class features hang off
+  // `level → features[] → effects[]`; feats carry `effects[]`; etc.
+  for (const sp of content.species.values()) visitEffects(sp.traits);
+  for (const feat of content.feats.values()) visitEffects(feat.effects);
+  for (const cls of content.classes.values()) {
+    for (const lvl of Object.values(cls.levelTable)) {
+      for (const feature of lvl.features) visitEffects(feature.effects);
+    }
+  }
+  for (const sub of content.subclasses.values()) {
+    for (const features of Object.values(sub.levelGrants)) {
+      for (const feature of features) visitEffects(feature.effects);
+    }
+  }
+  for (const bg of content.backgrounds.values()) visitEffects(bg.traits);
+  return { labels, preventsKillingBlow };
+};
+
+const resourceLabel = (summary: ResourceSummary, resourceId: string): string =>
+  summary.labels.get(resourceId) ?? titleizeSlug(resourceId);
 
 const encounterLabel = (state: CampaignState, id: string): string => {
   const name = state.encounters[id]?.name;
@@ -153,20 +209,22 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
     case 'CreatureDestroyed':
       return `**${characterName(stateBefore, event.targetId)}** is destroyed${event.sourceCharacterId !== undefined ? ` by **${characterName(stateBefore, event.sourceCharacterId)}**` : ''}.`;
     case 'ResourceSpent': {
-      // Slice 605: when the resource being spent is the fatal-damage
-      // intercept resource (Relentless Endurance, etc.), surface the
-      // RAW outcome explicitly so a reader doesn't have to back-derive
-      // "why did Aria spend 1 relentless-endurance?" from the damage
-      // arithmetic. interceptFatalDamage scales the damage components
-      // to bring HP to 1; the user-facing line names the trait.
+      // Slice 605 originally hardcoded `resourceId === 'relentless-endurance'`
+      // for the killing-blow wording. Slice 613 moved both the display
+      // label AND the killing-blow flag into content: GrantResource carries
+      // an optional `label`, and `PreventFatalDamageConsumingResource`
+      // entries identify resources that earn the special wording. Any
+      // future species/feat shipping the same effect-shape inherits the
+      // right wording automatically.
       const who = characterName(stateBefore, event.characterId);
-      if (event.resourceId === 'relentless-endurance') {
-        return `**${who}**'s Relentless Endurance prevents the killing blow (drops to 1 HP).`;
+      const label = resourceLabel(ctx.resources, event.resourceId);
+      if (ctx.resources.preventsKillingBlow.has(event.resourceId)) {
+        return `**${who}**'s ${label} prevents the killing blow (drops to 1 HP).`;
       }
-      return `**${who}** spends ${event.amount} ${event.resourceId}.`;
+      return `**${who}** spends ${event.amount} ${label}.`;
     }
     case 'ResourceRestored':
-      return `**${characterName(stateBefore, event.characterId)}** restores ${event.amount === 'all' ? 'all' : event.amount} ${event.resourceId}.`;
+      return `**${characterName(stateBefore, event.characterId)}** restores ${event.amount === 'all' ? 'all' : event.amount} ${resourceLabel(ctx.resources, event.resourceId)}.`;
     case 'HitDieSpent':
       return `**${characterName(stateBefore, event.characterId)}** spends a hit die (d${event.die}=${event.rolled}+${event.conMod}=${event.healed} HP).`;
     case 'ShortRestStarted':
@@ -787,10 +845,12 @@ export const formatTranscript = (
   if (options.title !== undefined) {
     paragraphs.push(`# ${options.title}`);
   }
+  // Slice 613: compute the resource-id summary once, reuse per event.
+  const resources = summarizeResources(content);
   let state = emptyCampaignState();
   for (const event of events) {
     const next = apply(state, event);
-    const chunk = formatEvent(event, { stateBefore: state, stateAfter: next, content });
+    const chunk = formatEvent(event, { stateBefore: state, stateAfter: next, content, resources });
     for (const line of chunk.split('\n')) {
       if (line === '') continue;
       paragraphs.push(line);

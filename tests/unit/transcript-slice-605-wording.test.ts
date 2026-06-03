@@ -75,7 +75,9 @@ describe('slice 605: transcript wording', () => {
       },
     ];
     const rendered = formatTranscript(events, CONTENT);
-    expect(rendered).toContain('**Bran** spends 1 rage.');
+    // Slice 613: resource ids now display as title-cased ("Rage", not
+    // "rage") via the title-case fallback when no content label is set.
+    expect(rendered).toContain('**Bran** spends 1 Rage.');
   });
 
   it('Shield (preventedHit) reads as the post-hit limitation, not "turns the hit into a miss"', () => {
