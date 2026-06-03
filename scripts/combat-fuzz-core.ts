@@ -523,7 +523,7 @@ interface Combatant {
   firstTurnActionBuffTried?: boolean;
   firstTurnSpeciesBATried?: boolean;
   innateSorceryActivated?: boolean;
-  pendingMasteryFire?: { mastery: string; weaponInstanceId: string; targetId: string };
+  pendingMasteryFire?: { mastery: string; weaponInstanceId: string; targetId: string; attackHit: boolean };
 }
 
 const pickIntent = (
@@ -672,6 +672,10 @@ const pickIntent = (
       attackerId: c.id,
       targetId: fire.targetId,
       weaponInstanceId: fire.weaponInstanceId,
+      // Slice 624: thread the attack outcome to the planner so it can
+      // enforce RAW gates (Graze fires on miss only; on-hit masteries
+      // refuse to fire on a miss).
+      attackHit: fire.attackHit,
     };
   }
 
@@ -1004,12 +1008,24 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
               e.type === 'AttackRolled'
               && (e as { attackerId: string }).attackerId === active.built.character.id,
           );
-          if (atk?.hit === true) {
-            active.pendingMasteryFire = {
-              mastery,
-              weaponInstanceId: active.built.weaponInstance.id,
-              targetId: opponent.built.character.id,
-            };
+          if (atk !== undefined) {
+            // Slice 624: gate mastery fire on the RAW hit/miss
+            // precondition. Graze fires on MISS only; the on-hit
+            // masteries (Sap, Vex, Slow, Topple, Push, Cleave) fire on
+            // HIT only. Nick/Flex don't go through this dispatch (they
+            // live in the attack planner). Pre-slice the fuzz fired
+            // ALL masteries on hit, so Graze-on-hit was a real bug
+            // (seed 6009 surfaced it: Aria with glaive HIT, then
+            // engine still applied 2 graze damage).
+            const shouldFire = mastery === 'Graze' ? !atk.hit : atk.hit;
+            if (shouldFire) {
+              active.pendingMasteryFire = {
+                mastery,
+                weaponInstanceId: active.built.weaponInstance.id,
+                targetId: opponent.built.character.id,
+                attackHit: atk.hit,
+              };
+            }
           }
         }
       }

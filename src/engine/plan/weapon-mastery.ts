@@ -73,6 +73,16 @@ export interface WeaponMasteryIntent {
   readonly attackerId: string;
   readonly targetId: string;
   readonly weaponInstanceId: string;
+  // Slice 624: did the attack roll that prompted this mastery
+  // activation HIT or MISS? Required for masteries with hit/miss-
+  // specific RAW (Graze is miss-only; Sap/Vex/Slow/Topple/Push are
+  // hit-and-damage-only). Optional for backwards compatibility with
+  // call sites that don't have the context; the planner gates based
+  // on the mastery's RAW shape (see invariants below). The slice-622
+  // L1 fuzz at seed 6009 surfaced the bug this gate fixes: Graze
+  // fired on a HIT because the dispatch unconditionally called the
+  // planner regardless of attack outcome.
+  readonly attackHit?: boolean;
   readonly at?: string;
 }
 
@@ -105,6 +115,38 @@ export const planWeaponMastery = (
     canUseWeaponMastery(attacker, weapon, content),
     `${attacker.name} has not mastered ${weaponInst.definitionId} (${intent.mastery})`,
   );
+  // Slice 624: RAW hit/miss gate. Graze fires only when the attack
+  // misses ("if your attack roll with this weapon misses a creature");
+  // every other RAW mastery (Sap, Vex, Slow, Topple, Push, Cleave)
+  // fires on a hit-and-damage. Nick/Flex aren't gated on attack outcome
+  // (Nick is a Light off-hand timing tweak; Flex is the engine's
+  // versatile 1H/2H toggle). When the caller supplies `attackHit`, the
+  // planner refuses to fire a mastery whose RAW shape doesn't match.
+  // When the caller omits it (legacy / golden tests built before this
+  // gate), the planner accepts the call for backward compatibility but
+  // a future slice should require `attackHit` for these masteries.
+  if (intent.attackHit !== undefined) {
+    if (intent.mastery === 'Graze') {
+      invariant(
+        intent.attackHit === false,
+        `Graze fires only when the attack misses (RAW: "If your attack roll with this weapon misses a creature, you can deal damage..."); attackHit was true`,
+      );
+    } else if (
+      intent.mastery === 'Sap'
+      || intent.mastery === 'Vex'
+      || intent.mastery === 'Slow'
+      || intent.mastery === 'Topple'
+      || intent.mastery === 'Push'
+      || intent.mastery === 'Cleave'
+    ) {
+      invariant(
+        intent.attackHit === true,
+        `${intent.mastery} fires only on a hit (RAW); attackHit was false`,
+      );
+    }
+    // Nick / Flex have no RAW hit-or-miss gate; the planner already
+    // no-ops on them (their effects live in the attack planner).
+  }
 
   const at = intent.at ?? nowIso();
   const events: Event[] = [
