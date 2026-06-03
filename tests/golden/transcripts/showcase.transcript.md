@@ -124,11 +124,11 @@ Damage rolled: 1d4=[4]+4 piercing.
 
 _(nick triggers for Vex)_
 
-**Vex** attacks **Goblin Scout A**: d20(1/11) + 7 = 18 vs AC 15 -> hit.
+**Vex** attacks **Goblin Scout A**: d20(1/11) + 7 = 18 vs AC 15 -> CRITICAL HIT!.
 
-Damage rolled: 1d4=[4]+0 piercing.
+Damage rolled (critical, doubled dice): 1d4=[4,2]+0 piercing.
 
-**Goblin Scout A** takes 4 damage (4 piercing).
+**Goblin Scout A** takes 6 damage (6 piercing).
 
 End of Vex's turn.
 
@@ -138,11 +138,11 @@ _(Alyx consumes action)_
 
 _(Alyx consumes attack)_
 
-**Alyx** attacks **Goblin Shaman**: d20(8) + 7 = 15 vs AC 12 -> hit.
+**Alyx** attacks **Goblin Shaman**: d20(5) + 7 = 12 vs AC 12 -> hit.
 
-Damage rolled: 1d8=[2]+4 slashing.
+Damage rolled: 1d8=[8]+4 slashing.
 
-**Goblin Shaman** takes 6 damage from **Alyx** (6 slashing). (HP 22 -> 16)
+**Goblin Shaman** takes 12 damage from **Alyx** (12 slashing). (HP 22 -> 10)
 
 Mastery: Sap against **Goblin Shaman** (Alyx).
 
@@ -154,17 +154,17 @@ _(Alyx consumes action)_
 
 _(Alyx consumes attack)_
 
-**Alyx** attacks **Goblin Shaman**: d20(19) + 7 = 26 vs AC 12 -> hit.
+**Alyx** attacks **Goblin Shaman**: d20(10) + 7 = 17 vs AC 12 -> hit.
 
 Damage rolled: 1d8=[4]+4 slashing.
 
-**Goblin Shaman** takes 8 damage from **Alyx** (8 slashing). (HP 16 -> 8)
+**Goblin Shaman** takes 8 damage from **Alyx** (8 slashing). (HP 10 -> 2)
 
 End of Alyx's turn.
 
 ### Round 1: Goblin Scout A's turn
 
-**Goblin Scout A** death save: d20(10) -> success.
+**Goblin Scout A** death save: d20(1) -> failure.
 
 **Vex** takes 12 damage from **Goblin Scout A** (12 piercing [resisted from 15]). (HP 38 -> 26)
 
@@ -198,7 +198,7 @@ Slot consumed: 2nd-level.
 
 Slot consumed: 3rd-level.
 
-**Goblin Shaman** CON save: d20(1) + 2 = 3 vs DC 15 -> failure.
+**Goblin Shaman** CON save: d20(6) + 2 = 8 vs DC 15 -> failure.
 
 **Mira** counterspells **Goblin Shaman**'s Hold Person: the spell fails.
 
@@ -208,11 +208,11 @@ End of Goblin Shaman's turn.
 
 **Brother Cassius** takes 6 damage from **Goblin Scout B** (6 slashing). (HP 44 -> 38)
 
-**Brother Cassius** CON save: d20(6) + 4 (+2 CON-mod, +2 condition (+1d4=2)) = 10 vs DC 10 -> success.
+**Brother Cassius** CON save: d20(6) + 5 (+2 CON-mod, +3 condition (+1d4=3)) = 11 vs DC 10 -> success.
 
 _(Brother Cassius consumes reaction)_
 
-**Brother Cassius** attacks **Goblin Scout B**: d20(13) + 10 [+1d4=4 condition] = 23 vs AC 15 -> hit.
+**Brother Cassius** attacks **Goblin Scout B**: d20(18) + 8 [+1d4=2 condition] = 26 vs AC 15 -> hit.
 
 Damage rolled: 1d8=[3]+3 slashing.
 
@@ -232,13 +232,13 @@ Slot consumed: 3rd-level.
 
 **Goblin Scout A** takes 29 damage from **Mira** (29 fire).
 
-**Goblin Scout B** DEX save: d20(4) + 2 = 6 vs DC 15 -> failure.
+**Goblin Scout B** DEX save: d20(18) + 2 = 20 vs DC 15 -> success.
 
-**Goblin Scout B** takes 29 damage from **Mira** (29 fire). (HP 6 -> 0)
+**Goblin Scout B** takes 14 damage from **Mira** (14 fire). (HP 6 -> 0)
 
-**Goblin Shaman** DEX save: d20(18) + 2 = 20 vs DC 15 -> success.
+**Goblin Shaman** DEX save: d20(13) + 2 = 15 vs DC 15 -> success.
 
-**Goblin Shaman** takes 14 damage from **Mira** (14 fire). (HP 8 -> 0)
+**Goblin Shaman** takes 14 damage from **Mira** (14 fire). (HP 2 -> 0)
 
 End of Mira's turn.
 
@@ -344,15 +344,15 @@ _(Vex consumes action)_
 
 _(Vex consumes attack)_
 
-**Vex** attacks **Slag the Ogre** [advantage]: d20(13/6) + 7 = 20 vs AC 11 -> hit.
+**Vex** attacks **Slag the Ogre** [advantage]: d20(6/6) + 7 = 13 vs AC 11 -> hit.
 
 _(sneak-attack triggers for Vex)_
 
-**Slag the Ogre** takes 9 damage (9 piercing). (HP 68 -> 59)
+**Slag the Ogre** takes 12 damage (12 piercing). (HP 68 -> 56)
 
-Damage rolled: 1d4=[4]+4 piercing.
+Damage rolled: 1d4=[3]+4 piercing.
 
-**Slag the Ogre** takes 8 damage from **Vex** (8 piercing). (HP 59 -> 51)
+**Slag the Ogre** takes 7 damage from **Vex** (7 piercing). (HP 56 -> 49)
 
 End of Vex's turn.
 
@@ -362,11 +362,7 @@ _(Alyx consumes action)_
 
 _(Alyx consumes attack)_
 
-**Alyx** attacks **Slag the Ogre**: d20(14) + 7 = 21 vs AC 11 -> hit.
-
-Damage rolled: 1d8=[1]+4 slashing.
-
-**Slag the Ogre** takes 5 damage from **Alyx** (5 slashing). (HP 51 -> 46)
+**Alyx** attacks **Slag the Ogre**: d20(2) + 7 = 9 vs AC 11 -> miss.
 
 End of Alyx's turn.
 
@@ -420,7 +416,7 @@ End of Vex's turn.
 
 ### Round 2: Alyx's turn
 
-**Slag the Ogre** takes 25 damage from **Alyx** (25 bludgeoning). (HP 46 -> 21)
+**Slag the Ogre** takes 25 damage from **Alyx** (25 bludgeoning). (HP 49 -> 24)
 
 End of Alyx's turn.
 
@@ -428,7 +424,7 @@ End of Alyx's turn.
 
 Wand of Magic Missiles loses 2 charge(s) by **Mira** for Magic Missile (3rd level).
 
-**Slag the Ogre** takes 20 damage from **Mira** (20 force). (HP 21 -> 1)
+**Slag the Ogre** takes 20 damage from **Mira** (20 force). (HP 24 -> 4)
 
 ## Encounter ends: victory.
 

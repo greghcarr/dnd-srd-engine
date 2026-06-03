@@ -4,6 +4,40 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Tests + engine (slice 614): audit rigor — golden scenarios, fuzz CLI integration test, and the slice-611 follow-up actually paid down**
+
+The slice-600 observer review flagged three weaknesses in the slice 601-610 audit work: shallow test coverage (focused unit tests but no full-battle golden scenarios for the new behaviors), a process gap (no integration test caught the slice-600 Beast-name regression), and superficial pattern-check sweeps (claimed "swept all 28 rollDie sites" — actual count was 51, and one of them, `offhand-attack.ts`, was a real gap I tracked as a follow-up but didn't close).
+
+This slice does the rigor pass.
+
+**1. Golden scenario for slices 601 + 602** ([tests/golden/s31-concentration-and-spell-advantage.test.ts](tests/golden/s31-concentration-and-spell-advantage.test.ts)): a 3-turn battle where the Druid casts Faerie Fire on the Wizard (concentration), Druid's next Fire Bolt rolls with [advantage] (slice 602 pin), Wizard's retaliating Fire Bolt deals damage that triggers the Druid's CON save (slice 601 pin). One end-to-end chain pins both behaviors against snapshot drift in realistic combat.
+
+**2. Fuzz CLI flag integration test** ([tests/integration/combat-fuzz-flags.test.ts](tests/integration/combat-fuzz-flags.test.ts), 6 cases): exercises every CLI flag combo at the `runBattle` core (not via subprocess — calls the same core both the CLI + web demo use). Default 1v1, `--vs monster` (pins the slice-606 Beast-not-Bran regression with explicit "no character named 'Bran' in monster mode" assertion), `--mode 2v2` (suffix naming), `--mode 2v2 --vs monster`, `--level 3` (PCs leveled correctly), `--rest long` (LongRestStarted event present). The Beast-name regression class can't slide again — a future refactor breaking the naming would fail this test.
+
+**3. Pattern-check sweep verification + close the real follow-up.** Walked the slice 602 claim "swept all `rollDie(D20_SIDES)` sites" with actual rigor. Real count: 51 sites (not 28). Categorized:
+- Save-side: 26 sites (correctly use save-side advantage via `computeSavingThrow` / `_save-roll.ts`).
+- Initiative + ability checks + travel + reactive-spells + transformations: 18 sites (each has its own d20 pipeline for save/check semantics; none are attack rolls).
+- Attack-roll sites: 7 — `attack.ts` (×3 incl. Mirror Image deflection), `cast-spell.ts` (×1 attack site, post-611), `_attack-roll.ts` (×2 in the shared helper), `offhand-attack.ts` (×1 — **REAL GAP**), `weapon-mastery.ts` (×1 — that's a SAVE site, not attack).
+
+`offhand-attack.ts:161` rolled a bare d20 with Halfling Luck only — no target-side advantage (Faerie Fire / Restrained / Paralyzed got no advantage on off-hand attacks), no Bless +1d4, no extended crit range, no melee-vs-paralyzed auto-crit. Same shape gap as the pre-slice-602 spell-attack path. Slice 611 tracked this as an open follow-up "for completeness" without closing it.
+
+**Fixed**: [src/engine/plan/offhand-attack.ts:144-220](src/engine/plan/offhand-attack.ts#L144) now routes through `resolveAttackRoll`, computing target-side advantage / disadvantage / cancellation from the target's effect stack and passing through bonus dice + crit threshold + the melee auto-crit `forceCritIfHit`. Off-hand attacks against Faerie Fired / Unconscious / Restrained targets now correctly roll with advantage, and melee off-hand attacks against Paralyzed/HP-0 targets auto-crit.
+
+**Snapshot update:** showcase transcript regenerated — Vex's nick (off-hand) attack against an already-downed Goblin Scout now correctly auto-crits per RAW (`forceCritIfHit` from the slice-611 helper, picked up here via the slice-614 wiring). Downstream RNG shifted because off-hand attacks against advantage-granting targets now consume 2 d20s instead of 1.
+
+**Verification:** 490 files / 3282 tests pass. tsc clean.
+
+**Audit (rigor slice):**
+- Names: golden test prefixed `s31` per existing convention; integration test in `tests/integration/combat-fuzz-flags.test.ts` matches existing fuzz-related integration test layout.
+- DRY: off-hand wiring reuses `resolveAttackRoll`; no duplicated d20 / advantage logic remains in `offhand-attack.ts`.
+- SRP: the test files exercise one behavior each (chain golden + flag matrix). The off-hand engine change is the same shape as slices 602/611's other-attack-kind wirings.
+- Magic numbers: none added.
+- Pattern-check (this slice's): the slice 604 sweep claim about `.hp.current` accesses I verified by walking each match in `combat-fuzz-core.ts`. Each is genuinely a policy comparison (`hp.current <= 0`, `hp.current < hp.max / 2`) — none print to a user-facing string. The slice 604 sweep was right; the slice 602 sweep was wrong on the COUNT but the underlying conclusion (save-side is already correct, only attack-roll sites in attack.ts + cast-spell.ts needed wiring) held — except for the off-hand site which slice 611 tracked but I never closed, until now.
+
+**Open follow-ups:** none from this slice. The slice-611-tracked "off-hand routes through resolveAttackRoll" is now closed.
+
+---
+
 **Content + tooling (slice 613): ResourceSpent wording is content-driven — uncoupled from slug**
 
 Slice 605 hardcoded `resourceId === 'relentless-endurance'` in the transcript formatter for the killing-blow special wording, and printed raw slugs ("spends 1 relentless-endurance") for every other resource. Both shapes are the same coupling: presentation logic bound to specific content ids. A content rename or a future species/feat shipping the same effect-shape would silently fall through to wrong-or-ugly wording.

@@ -25,6 +25,7 @@ import { canUseWeaponMastery } from '../../derive/weapon-mastery.js';
 import { buildEffectStack } from '../../derive/effect-stack.js';
 import { applyAll } from '../apply.js';
 import { planConcentrationOnDamage } from './concentration.js';
+import { resolveAttackRoll } from './_attack-roll.js';
 import { D20_SIDES, NAT_20, NAT_1 } from '../../internal/constants.js';
 import type { ULID } from '../ids-utils.js';
 import { assertActorCanAct } from './_actor-state.js';
@@ -158,14 +159,72 @@ export const planOffHandAttack = (
     });
     if (deflectedEvents !== undefined) return [...economyEvents, ...deflectedEvents];
   }
-  const rolls: number[] = [rollDie(D20_SIDES, rng)];
-  // Slice 543: Halfling Luck on off-hand attack.
-  const d20 = applyHalflingLuckFromFlag(rolls[0]!, attackerEffects.hasHalflingLuck(), rolls, rng);
-  const total = d20 + attackBonusResult.total;
-  const naturalHit = d20 === NAT_20;
-  const naturalMiss = d20 === NAT_1;
-  const hit = !naturalMiss && (naturalHit || total >= acResult.total);
-  const critical = naturalHit;
+  // Slice 614: route through the shared resolveAttackRoll helper to
+  // pick up the same target-side advantage (Faerie Fire, Restrained,
+  // Paralyzed, Prone-melee), attacker-side disadvantage (Blur, Dodge),
+  // Bless / Bane bonus dice, extended crit ranges, and Paralyzed/HP-0
+  // melee auto-crit that weapon + spell attacks use (slices 602 + 611).
+  // Pre-slice the off-hand path rolled a bare d20 with Halfling Luck
+  // and no other attack-side condition awareness — same shape as the
+  // pre-slice-602 spell-attack gap.
+  const targetEffects = buildEffectStack({
+    character: target,
+    content,
+    itemInstances: state.itemInstances,
+    pendingChoices: state.pendingChoices,
+    characters: state.characters,
+  });
+  const targetSideAttackerFacts = new Map<string, unknown>([
+    ['event.attackKind', weaponDef.attackKind],
+  ]);
+  const targetGrantsAdvantage = targetEffects.grantsAdvantageToAttackers(targetSideAttackerFacts);
+  const targetCancelsAdvantage = targetEffects.cancelsAdvantageOnAttackers(new Map([
+    ['bearerHasIncapacitated', target.appliedConditions.some((c) => ['incapacitated', 'stunned', 'paralyzed', 'unconscious'].includes(c.conditionId))],
+  ]));
+  const attackerSideFacts = new Map<string, unknown>([
+    ['event.attackKind', weaponDef.attackKind],
+    ['event.isOpportunityAttack', false],
+    ['bearer.hasIncapacitated', target.appliedConditions.some((c) => ['incapacitated', 'stunned', 'paralyzed', 'unconscious'].includes(c.conditionId))],
+    ['bearer.speedZero', target.speedFeet === 0],
+    ['bearer.canSeeAttacker', undefined],
+  ]);
+  const targetImposesDisadvantage = targetEffects.imposesDisadvantageOnAttackers(attackerSideFacts);
+  const effectivelyGrantsAdvantage = !targetCancelsAdvantage && targetGrantsAdvantage;
+  let advantage: 'none' | 'advantage' | 'disadvantage' = 'none';
+  if (effectivelyGrantsAdvantage && targetImposesDisadvantage) advantage = 'none';
+  else if (effectivelyGrantsAdvantage) advantage = 'advantage';
+  else if (targetImposesDisadvantage) advantage = 'disadvantage';
+
+  // Paralyzed/Unconscious/HP-0 melee auto-crit also fires on off-hand
+  // melee attacks (light-weapon melee is what off-hand is).
+  const targetAutoCritsFromMelee = ((): boolean => {
+    if (weaponDef.attackKind !== 'melee') return false;
+    if (target.hp.current <= 0) return true;
+    return target.appliedConditions.some(
+      (c) => c.conditionId === 'paralyzed'
+        || c.conditionId === 'held-paralyzed-active'
+        || c.conditionId === 'unconscious',
+    );
+  })();
+  const attackerFacts = new Map<string, unknown>([
+    ['event.attackKind', weaponDef.attackKind],
+    ['event.isOpportunityAttack', false],
+  ]);
+  const rollResult = resolveAttackRoll({
+    advantage,
+    attackBonus: attackBonusResult.total,
+    targetAC: acResult.total,
+    attackerHasHalflingLuck: attackerEffects.hasHalflingLuck(),
+    bonusDiceContributions: attackerEffects.bonusDiceFor('attack', attackerFacts),
+    critThreshold: attackerEffects.critThreshold(),
+    forceCritIfHit: targetAutoCritsFromMelee,
+    rng,
+  });
+  const rolls = rollResult.rolls;
+  const d20 = rollResult.usedRoll;
+  const total = rollResult.total;
+  const hit = rollResult.hit;
+  const critical = rollResult.critical;
 
   const attackRolled: AttackRolledEvent = {
     id: newEventId() as ULID,
@@ -175,8 +234,8 @@ export const planOffHandAttack = (
     targetId: intent.targetId,
     weaponInstanceId: intent.weaponInstanceId,
     d20: rolls,
-    used: 'none',
-    attackBonus: attackBonusResult.total,
+    used: advantage,
+    attackBonus: rollResult.effectiveAttackBonus,
     total,
     targetAC: acResult.total,
     hit,
