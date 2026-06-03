@@ -8239,12 +8239,12 @@
     {
       "id": "innate-sorcery-active",
       "name": "Innate Sorcery",
-      "description": "RAW 2024 Sorcerer L1: while active (1 min), the spell save DC of your Sorcerer spells is +1 AND you have Advantage on the attack rolls of your Sorcerer spells. Slice 623: SetAdvantage on:'attack' was added after the L1 fuzz review (seed 7006) caught the advantage arm missing -- prior to the slice the condition only carried the +1 DC arm and the planner explicitly deferred the advantage piece. RAW deviation: the engine grants advantage on ALL spell attacks while active, not strictly Sorcerer-cast spells. At L1 this is the same set; multiclass sorcerers casting non-Sorcerer-list spells over-benefit -- tracked as a follow-up needing a `bearer.castingClassId` fact on the spell-attack predicate matcher.",
+      "description": "RAW 2024 Sorcerer L1: while active (1 min), the spell save DC of your Sorcerer spells is +1 AND you have Advantage on the attack rolls of your Sorcerer spells. Slice 623 added the advantage arm; slice 627 tightened it to fire only when event.spellCastingClassId === 'sorcerer' (cast-spell.ts threads the casting class as a fact). Multiclass sorcerers casting non-Sorcerer-list spells no longer over-benefit. The +1 DC modifier is still unconditional -- it lives on the bearer's spell save DC which is class-aware via the existing computeSpellSaveDC path; tightening it to a Sorcerer-only DC bump is queued behind a separate fact slot (the DC derivation doesn't yet thread a per-event spell-casting class).",
       "stackable": false,
       "endsOn": [{ "kind": "longRest" }],
       "effects": [
         { "kind": "AddModifier", "target": "spellSaveDC", "value": 1 },
-        { "kind": "SetAdvantage", "on": "attack", "mode": "advantage" }
+        { "kind": "SetAdvantage", "on": "attack", "mode": "advantage", "condition": { "kind": "eq", "path": "event.spellCastingClassId", "value": "sorcerer" } }
       ]
     },
     {

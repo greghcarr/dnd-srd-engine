@@ -4,6 +4,30 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + tests (slice 627): Innate Sorcery advantage gates on Sorcerer-list spells (RAW class gate)**
+
+Closes the slice-623 RAW deviation: advantage applied to ALL spell attacks while active; RAW says only Sorcerer spells. Invisible at pure L1; surfaces at multiclass (sorcerer/wizard casting Acid Arrow previously got the advantage).
+
+**Fix**: new `event.spellCastingClassId` fact threaded into `casterAttackFacts` in [src/engine/plan/cast-spell.ts](src/engine/plan/cast-spell.ts). `innate-sorcery-active`'s `SetAdvantage on:'attack'` gained a `condition: { kind: 'eq', path: 'event.spellCastingClassId', value: 'sorcerer' }` predicate. The slice-258 `predicatedAdvantages` infrastructure handles the rest. The +1 spell save DC arm stays unconditional (computeSpellSaveDC doesn't yet thread a per-event class).
+
+**Tests** ([tests/unit/engine/slice-627-innate-sorcery-class-gate.test.ts](tests/unit/engine/slice-627-innate-sorcery-class-gate.test.ts), 3 cases): single-class sorcerer + Fire Bolt → advantage; multiclass sorc/wiz + Acid Arrow (`castingClassId:'wizard'` override) → NO advantage; multiclass + Chromatic Orb (shared list) → advantage.
+
+**Verification:** tsc clean, full suite green.
+
+**Audit:**
+- Names: `event.spellCastingClassId` matches existing `event.spellId` / `event.spellSchool` fact convention.
+- DRY: predicate uses the existing `eq` + `path` shape (same as Agonizing Blast / Empowered Evocation).
+- Pattern-check: swept for other "fires on any cast" effects needing class-gating. Empowered Evocation already gates on `spellSchool` (wizard-exclusive so class-implicit). No other open cases.
+
+**Surfaced follow-up**: `findCastingClass` picks the FIRST spellcasting class in `character.classes`, not the class whose list the spell is on. Multiclass casters consuming a class-exclusive spell get the wrong castingClassId (and wrong spellcasting ability for attack/DC). The slice 627 test pins the intent-override path; fixing `findCastingClass` to match concentration.ts's `findCastingClassForSpell` (walk classes against `spell.classes`) is a separate cleanup.
+
+**Open follow-ups still tracked**:
+- **Power Word Speed Zero autoExpiry** (slice 623 open).
+- **Hellish Rebuke / Heroism / Searing Smite / Ensnaring Strike in fuzz dispatch** (slice 622/624 open): engine wired, fuzz coverage gap.
+- **`findCastingClass` multiclass routing** (this slice surfaced).
+
+---
+
 **Engine + tests + transcript (slice 626): close three open follow-ups from the L1 fuzz cycle**
 
 Three small, tightly-related closures:
@@ -26,10 +50,7 @@ Three small, tightly-related closures:
 - Pattern-check: swept other `event.d20.length === 2` references in [tests/transcript.ts](tests/transcript.ts) — three sites (AttackRolled, SaveRolled, AbilityCheckRolled), all updated to the helper. No other "show only the first d20" patterns elsewhere.
 - Tests: 4 cases pin the damage-gate logic per branch (skip, fire, legacy, Cleave-exempt).
 
-**Open follow-ups still tracked for later slices:**
-- **Innate Sorcery class gate** (slice 623 open): currently grants advantage on ALL spell attacks; should gate on Sorcerer-list spells via a new `bearer.castingClassId` predicate fact. Needs predicate-fact infrastructure work.
-- **Power Word Speed Zero autoExpiry** (slice 623 open): same source-vs-bearer confusion as Vex; needs separate RAW review (the spell's "until the start of the caster's next turn" is ambiguous about which actor's turn-start fires it).
-- **Hellish Rebuke / Heroism / Searing Smite / Ensnaring Strike in fuzz** (slice 622/624 open): each is a reaction or bonus-action rider that doesn't fit the existing turn-start / first-turn-buff dispatch slots; needs new dispatch paths in the fuzz.
+**Open follow-ups**: deferred items rolled forward (Innate Sorcery class gate closed by slice 627; Power Word Speed Zero + fuzz reaction-spell dispatch still open).
 
 ---
 

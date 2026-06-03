@@ -569,6 +569,15 @@ const planAttackMechanic = (
       ['event.spellId', spell.id],
       ['event.spellSchool', spell.school],
       ['event.isOpportunityAttack', false],
+      // Slice 627: the class through which the bearer is casting this
+      // spell (resolved by findCastingClassForSpell -- the first of
+      // the caster's classes that lists the spell in its class spell
+      // list). Used by Innate Sorcery's SetAdvantage to gate the
+      // advantage on Sorcerer-list spells only (closes the slice-623
+      // RAW deviation: "advantage on attack rolls of Sorcerer spells
+      // you cast", not all spells). Undefined for monsters / NPCs
+      // (who don't have a class-based spell list).
+      ['event.spellCastingClassId', castingClassId],
     ]);
     // Slice 623: query attacker-side advantage on spell attacks.
     // Pre-slice this was a gap -- the spell-attack path never folded
@@ -577,7 +586,8 @@ const planAttackMechanic = (
     // Sorcery, which grants Advantage on the attack rolls of Sorcerer
     // spells you cast (the slice-622 fuzz review at seed 7006 caught
     // it never firing). Surfaced via the innate-sorcery-active
-    // condition's new SetAdvantage on:'attack' effect.
+    // condition's new SetAdvantage on:'attack' effect. Slice 627
+    // tightened that to gate on event.spellCastingClassId.
     const casterSelfAdvantage = casterEffects.advantageFor('attack', casterAttackFacts);
 
     const effectivelyGrantsAdvantage = !targetCancelsAdvantage && targetGrantsAdvantage;
