@@ -112,25 +112,68 @@ const findEncounterId = (campaign: Campaign): string => {
 // prior cursor's state and apply just the new events; backward jumps
 // reuse the nearest cached prefix ≤ target, only replaying the gap.
 //
-// Memory tradeoff: O(unique-cursors-visited × state-size). A 2000-event
-// battle scrubbed exhaustively caches ~2000 campaigns (~few KB each,
-// ~10MB total). Acceptable for interactive sessions; an LRU would be a
-// follow-up if the demo grows session lifetimes.
-type ScrubCache = Map<number, Campaign>;
+// Slice 616: LRU eviction. JS Map preserves insertion order, so
+// "least recently used" = first non-pinned key in iteration order. On
+// every cache hit we delete + re-insert to move the key to the most-
+// recently-used end. The cursor=0 and cursor=totalEvents anchors are
+// pinned (never evicted) so the from-genesis and from-end paths stay
+// instant. Cap defaults to SCRUB_CACHE_MAX_SLOTS = 128 which bounds
+// memory at ~1-2 MB for typical L1 battles even with exhaustive
+// scrubbing; small battles never hit the cap.
+const SCRUB_CACHE_MAX_SLOTS = 128;
+
+interface ScrubCache {
+  readonly entries: Map<number, Campaign>;
+  readonly pinned: ReadonlySet<number>;
+  readonly maxSlots: number;
+}
+
+const createScrubCache = (pinnedCursors: ReadonlyArray<number>, maxSlots = SCRUB_CACHE_MAX_SLOTS): ScrubCache => ({
+  entries: new Map(),
+  pinned: new Set(pinnedCursors),
+  maxSlots,
+});
+
+const cacheSet = (cache: ScrubCache, cursor: number, campaign: Campaign): void => {
+  cache.entries.set(cursor, campaign);
+  // Evict LRU non-pinned keys until under the cap.
+  while (cache.entries.size > cache.maxSlots) {
+    let evicted = false;
+    for (const key of cache.entries.keys()) {
+      if (cache.pinned.has(key)) continue;
+      cache.entries.delete(key);
+      evicted = true;
+      break;
+    }
+    // If every remaining entry is pinned, the cap is smaller than the
+    // pin set — stop trying to evict (would loop forever).
+    if (!evicted) break;
+  }
+};
+
+const cacheGet = (cache: ScrubCache, cursor: number): Campaign | undefined => {
+  const hit = cache.entries.get(cursor);
+  if (hit === undefined) return undefined;
+  // Touch: move to MRU end. Pinned entries don't need touching since
+  // they never evict, but the move is harmless.
+  cache.entries.delete(cursor);
+  cache.entries.set(cursor, hit);
+  return hit;
+};
 
 const buildScrubbed = (full: Campaign, cursor: number, cache: ScrubCache): Campaign => {
-  const hit = cache.get(cursor);
+  const hit = cacheGet(cache, cursor);
   if (hit !== undefined) return hit;
 
   // Find the largest cached prefix ≤ cursor.
   let bestKey = -1;
-  for (const key of cache.keys()) {
+  for (const key of cache.entries.keys()) {
     if (key <= cursor && key > bestKey) bestKey = key;
   }
 
   let state;
   if (bestKey >= 0) {
-    const base = cache.get(bestKey)!;
+    const base = cache.entries.get(bestKey)!;
     // applyAll on the prior state + just the gap of new events. For a
     // single-step forward (bestKey = cursor - 1) this is one event.
     state = applyAll(base.state, full.events.slice(bestKey, cursor));
@@ -144,7 +187,7 @@ const buildScrubbed = (full: Campaign, cursor: number, cache: ScrubCache): Campa
     state,
     cursor,
   };
-  cache.set(cursor, scrubbed);
+  cacheSet(cache, cursor, scrubbed);
   return scrubbed;
 };
 
@@ -169,10 +212,19 @@ const startSession = (pack: ContentPack, cfg: FuzzConfig, cursor: number): DemoS
   const fullCampaign = result.campaign;
   const encounterId = findEncounterId(fullCampaign);
   const engine = createEngine({ contentPacks: [pack] });
-  const scrubCache: ScrubCache = new Map();
-  // Seed the cache with the full campaign so scrubbing-from-end-back is
-  // a single-pass incremental computation, not a full replay.
-  scrubCache.set(fullCampaign.events.length, fullCampaign);
+  // Slice 616: pin cursor=0 (genesis) and cursor=totalEvents (end). These
+  // are the natural anchors for scrub navigation and stay free of LRU
+  // eviction so the from-start and from-end paths never re-replay.
+  const totalEvents = fullCampaign.events.length;
+  const scrubCache = createScrubCache([0, totalEvents]);
+  // Seed both pinned anchors so the pin promise actually holds (a pin
+  // marks an entry as eviction-immune IF it's in the cache; it doesn't
+  // auto-populate). Cursor 0 is the empty-state replay; cursor=total is
+  // the full campaign.
+  cacheSet(scrubCache, totalEvents, fullCampaign);
+  // Compute + cache the genesis (cursor=0) entry. buildScrubbed sets
+  // it internally on the miss path.
+  buildScrubbed(fullCampaign, 0, scrubCache);
   const initialCampaign = cursor === fullCampaign.events.length
     ? fullCampaign
     : buildScrubbed(fullCampaign, cursor, scrubCache);

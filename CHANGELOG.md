@@ -4,6 +4,29 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Tooling (slice 616): LRU scrub cache — bound memory for long sessions**
+
+Slice 610's scrub cache was unbounded — a 2000-event battle scrubbed exhaustively could hold ~2000 Campaign snapshots in memory. Acceptable for short sessions; risky for long ones. The slice-610 audit flagged this as an open follow-up.
+
+**Changes** ([web/main.ts](web/main.ts)): `ScrubCache` upgraded from a bare `Map<number, Campaign>` to a `{ entries, pinned, maxSlots }` struct with LRU eviction. Cap defaults to `SCRUB_CACHE_MAX_SLOTS = 128` (~1-2 MB for typical L1 battles; small battles never hit it).
+
+- `cacheGet` touches the entry on read by deleting + re-inserting (JS Map preserves insertion order, so MRU is at the tail).
+- `cacheSet` evicts the LRU non-pinned entry when size exceeds cap. Pinned cursors (the genesis `0` and the end `totalEvents` anchors per session) never evict so from-start / from-end paths never re-replay.
+- `startSession` pre-seeds both pinned anchors (cursor=0 via `buildScrubbed(full, 0, cache)`, cursor=total with the full campaign).
+
+**Tests** ([tests/unit/web-scrub-cache.test.ts](tests/unit/web-scrub-cache.test.ts), now 5 cases): correctness (matches `replay()` at every cursor); referential cache hit on revisit; LRU eviction under cap pressure; pinned anchors survive eviction; MRU-touching keeps recently-accessed entries when newer cursors evict older ones.
+
+**Verification:** tsc clean root + web/; vite boots without runtime errors. The 5-case test suite covers both correctness invariants from slice 610 and the new LRU semantics from slice 616.
+
+**Audit:**
+- Names: `ScrubCache`, `createScrubCache`, `cacheSet`, `cacheGet`, `SCRUB_CACHE_MAX_SLOTS`, `pinned` all intent-revealing.
+- DRY: one cache helper handles both pin protection and LRU eviction; the production + test paths share the same algorithm.
+- SRP: cache helpers do cache things; `buildScrubbed` still owns the replay-or-incremental path decision.
+- Magic numbers: `SCRUB_CACHE_MAX_SLOTS = 128` named at top of file.
+- Pattern-check: the cap doesn't break behavior — every cursor visited still returns a correct campaign, just with O(K) recompute on a cache miss instead of O(1) hit. Worst case: a cursor that was evicted gets re-walked from the nearest remaining prefix (still incremental, never full-genesis-replay unless ALL prefixes ≤ cursor were evicted).
+
+---
+
 **Tooling (slice 615): web polish — drop redundant placeholder text, team colors → CSS variables**
 
 Two small cosmetic fixes from the slice-600 observer-review item list:
