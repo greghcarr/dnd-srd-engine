@@ -103,6 +103,11 @@ const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
   'grantInitialHeroPoints', 'spendHeroPoint',
   // Travel / rest / resurrection / attack follow-ups:
   'rest', 'forcedMarch', 'resurrect', 'cleave',
+  // Slice 618: post-CharacterCreated choice cascade — consumer invokes
+  // after committing CharacterCreated to drain L1 OfferChoice entries
+  // (Fighter Fighting Style, future L1 origin-feat picks). Not a player
+  // action and not part of the action-economy dispatch.
+  'offerCharacterChoices',
 ]);
 
 describe('planner-wiring audit: every engine.plan method is dispatch-routed or allowlisted', () => {

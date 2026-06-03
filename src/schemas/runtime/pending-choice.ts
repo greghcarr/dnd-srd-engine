@@ -16,6 +16,14 @@ export const PendingChoiceSchema = z.object({
   oneOf: z.number().int().min(1).default(1),
   forCharacterId: ULIDSchema,
   triggerEventId: ULIDSchema,
+  // Slice 618: stable content-id for the originating OfferChoice
+  // (`effect.choiceId`). Lets the choice-emitter planner dedupe across
+  // repeated calls (planOfferCharacterChoices skips choices already
+  // present for the character). Optional for backward compat with
+  // events committed before slice 618; the dedupe degrades to "no
+  // match" for legacy choices, which is acceptable since the bug it
+  // closes is for fresh L1 characters.
+  promptKey: z.string().optional(),
   resolution: z
     .object({
       selectedOptionIds: z.array(z.string()).min(1),

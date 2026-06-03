@@ -40,6 +40,10 @@ export {
   type ResolveChoiceIntent,
 } from './level-up.js';
 export {
+  planOfferCharacterChoices,
+  type OfferCharacterChoicesIntent,
+} from './offer-character-choices.js';
+export {
   planSave,
   planAbilityCheck,
   type SaveIntent,

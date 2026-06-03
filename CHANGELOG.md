@@ -4,6 +4,35 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 618): `engine.plan.offerCharacterChoices` — drain L1 OfferChoice entries on fresh characters**
+
+Closes the docs/status.md-flagged gap and the headline "what's left for L1 SRD" item: fresh L1 characters built via `CharacterCreated` (not stepped through `planLevelUp`) didn't receive their L1 `OfferChoice` grants. Fighter L1 Fighting Style is the canonical user — its `OfferChoice when: 'onAcquire'` only fired through the level-up path, so a direct-built L1 Fighter never got a `ChoiceRequired` for their fighting style. Paladin / Ranger Fighting Style work because they're acquired on L1→L2 (which does go through planLevelUp).
+
+**Changes:**
+- New planner [src/engine/plan/offer-character-choices.ts](src/engine/plan/offer-character-choices.ts) walks the character's full effective effect stack (`collectEffectsFromCharacter`), filters for `OfferChoice when: 'onAcquire'`, and emits a `ChoiceRequired` event per choice not already pending or resolved for the character. Wired through `engine.plan.offerCharacterChoices({ characterId })`.
+- Idempotency via `promptKey`: [src/schemas/runtime/pending-choice.ts](src/schemas/runtime/pending-choice.ts) gained an optional `promptKey` field (additive — no migration); [src/engine/reducers/level-up.ts:41-50](src/engine/reducers/level-up.ts#L41) `applyChoiceRequired` persists `event.promptKey` to the pending entry. The new planner dedupes by `promptKey`, so repeat calls (e.g. after later content additions) skip choices already in flight.
+- Engine surface: added to the `Engine.plan` interface + factory at [src/engine/index.ts:364](src/engine/index.ts#L364). Routed onto `EXCLUDED_FROM_DISPATCH` in [tests/audit/planner-wiring.test.ts](tests/audit/planner-wiring.test.ts) (not a player-action, not part of the per-turn dispatch — it's a post-creation cascade).
+
+**Tests** ([tests/unit/engine/slice-618-offer-character-choices.test.ts](tests/unit/engine/slice-618-offer-character-choices.test.ts), 4 cases): fresh L1 Fighter emits ChoiceRequired with the 6 SRD fighting-style options; committed pending choice has `promptKey: 'fighting-style-fighter'`; idempotent (second call returns nothing for the same choice); resolved choice stays suppressed on subsequent calls.
+
+**Usage:**
+```ts
+campaign = commit(campaign, [{ type: 'CharacterCreated', snapshot: fighter, ... }]);
+const { events } = engine.plan.offerCharacterChoices(campaign.state, { characterId: fighter.id });
+campaign = commit(campaign, events); // ChoiceRequired now in pendingChoices for the consumer to resolve
+```
+
+**Verification:** 491 files / 3288 tests pass. tsc clean.
+
+**Audit:**
+- Names: `planOfferCharacterChoices`, `OfferCharacterChoicesIntent`, `promptKey` all intent-revealing.
+- DRY: reuses `collectEffectsFromCharacter` (already expands `GrantFeat` references at the boundary). Idempotency check is one Set lookup per OfferChoice.
+- SRP: planner does one thing — emit ChoiceRequired for unresolved `onAcquire` choices. Reducer change is minimal (one field copy).
+- Magic numbers: none.
+- Pattern-check: swept for other lifecycle moments where direct-built characters might miss content. `onLongRest` choices (resource picks at long rest) are handled by `planRest`. `onLevelUp` choices are handled by `planLevelUp`. `onAcquire` was the only unhandled moment for the CharacterCreated path; this slice closes it.
+
+---
+
 **Docs (slice 617): determinism doc + breaking-change queue + CHANGELOG entry template**
 
 Three doc-shape gaps the slice-600 observer review surfaced + the slice 614 follow-up complaint about my own CHANGELOG verbosity:
