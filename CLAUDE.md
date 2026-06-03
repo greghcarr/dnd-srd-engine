@@ -107,7 +107,8 @@ When a later slice closes a tracked follow-up, mark the original line in the pri
 
 At the close of every slice, update the docs the slice touched:
 
-- [CHANGELOG.md](CHANGELOG.md) — **always**. One entry per slice under `## Unreleased`. Include the Uncle Bob audit summary.
+- [CHANGELOG.md](CHANGELOG.md) — **always**. One entry per slice under `## Unreleased`. Include the Uncle Bob audit summary. See "CHANGELOG entry shape" below for the standard template.
+- [docs/breaking-changes-queued.md](docs/breaking-changes-queued.md) — when the slice ships a consumer-facing breaking change (public API behavior shift, RNG-stream change, removed export). Append an entry; it'll roll into the next release's release notes.
 - [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md) — when a deferred row is closed (strike it through with `~~...~~`), when a new deferral is noted, or when "Coverage at a glance" counts change.
 - [docs/api-overview.md](docs/api-overview.md) — when the public surface changes.
 - [docs/status.md](docs/status.md) — when "Known gaps" closes, when a status row's cell shifts, or when the test count moves significantly.
@@ -124,6 +125,45 @@ At the close of every slice, update the docs the slice touched:
 The doc-examples guard is **opt-in**: most doc `ts` blocks are reference sketches (intentional `...` / `/* ... */` elisions, undeclared setup variables, signature-only pseudo-syntax) that would be all false positives if compiled. A block is checked only when the line directly above its fence is the GitHub-invisible marker `<!-- typecheck -->` (starts a synthetic module) or `<!-- typecheck:continue -->` (appends to that doc's current module, for multi-step walkthroughs). **When you add or edit a doc block you present as copy-paste-runnable, mark it** so the guard pins it; leave illustrative sketches unmarked.
 
 Still un-guarded by design and needing a manual eye on material change: mechanical-wiring percentages, prose feature lists, and cross-doc narrative currency (e.g. a roadmap's slice-by-slice history).
+
+### CHANGELOG entry shape
+
+A standard slice entry to keep the live file tight and the prose consistent. The framing reflects what hands-off readers reach for first (what changed, where, how to verify) rather than narrating the dev journey. Slice 617 set the template after the slice 601-616 cycle showed the entries trending verbose enough to force back-to-back archive operations.
+
+```
+**<Type> (slice N): <one-line headline>**
+
+<1-2 sentences: what changed and why. Skip the "pre-slice the engine
+did X; now it does Y" if the headline already conveys it.>
+
+<Optional 1-3 sub-bullets when the slice has multiple parts. Each
+bullet ≤ 2 lines.>
+
+**Files**: [a](path/to/a) ([b](path/to/b)), ...
+
+**Tests:** [test-file](path), N cases — <one-line summary>.
+
+**Verification:** N files / M tests pass, tsc clean. <Any extra
+verification step, e.g., "fuzz seed=X shows the expected behavior",
+in one sentence.>
+
+**RNG impact** / **Breaking change**: ONLY when the slice changes
+RNG-stream consumption or public API behavior. Otherwise omit.
+
+**Audit:** 2-3 bullets. Names, DRY, magic numbers, pattern-check —
+each one short. The audit is the Uncle Bob discipline check; don't
+expand into a self-review essay.
+
+**Pattern-check** (when surfacing a same-shape-elsewhere sweep):
+filter shape in parens; result summary (sweep clean / N other sites
+fixed / N tracked as follow-ups).
+
+**Open follow-ups:** only when the slice surfaces work that didn't
+ship. Each item: one line. If the slice closes prior follow-ups,
+mark those in the closing slice's CHANGELOG section, not here.
+```
+
+Aim for ~25-40 lines per entry. The pre-slice narrative + "here's how I thought about it" detail belongs in the commit message body, not the CHANGELOG. The live file holds one active release cycle's worth of entries; verbose entries force archiving more often, which is friction the next agent has to navigate.
 
 ### Doc size discipline (the single-Read ceiling)
 

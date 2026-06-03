@@ -4,6 +4,27 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Docs (slice 617): determinism doc + breaking-change queue + CHANGELOG entry template**
+
+Three doc-shape gaps the slice-600 observer review surfaced + the slice 614 follow-up complaint about my own CHANGELOG verbosity:
+
+1. **[docs/determinism.md](docs/determinism.md)** (new) — four-layer table covering what "deterministic" means in this engine. Replay equivalence is always stable; per-seed RNG is version-sensitive (slices 601/602/611/612/614 all changed RNG consumption patterns and per-seed transcripts from before the cycle no longer byte-match). Practical advice: snapshot resulting state + event log for cross-version regression testing, not just the seed.
+
+2. **[docs/breaking-changes-queued.md](docs/breaking-changes-queued.md)** (new) — durable announcement queue for breaking changes that landed on `dev` after the most-recent release tag. Slice 603 (Produce Flame action-economy) is the first entry. The doc rolls into the next release's release notes; per-slice CHANGELOG entries flag "Breaking change" so contributors know to append. CLAUDE.md updated to point at it.
+
+3. **CLAUDE.md "CHANGELOG entry shape"** section (new, in the existing Doc-updates-per-slice block) — standard template after the slice 601-616 cycle showed the entries trending verbose enough to force back-to-back archive operations (slices 593-598, 599-603, 604-610 all evicted within ~10 slices). Template caps entries at ~25-40 lines and pushes the "pre-slice the engine did X; now it does Y" narrative into the commit-message body.
+
+**Files**: [docs/determinism.md](docs/determinism.md) (new), [docs/breaking-changes-queued.md](docs/breaking-changes-queued.md) (new), [CLAUDE.md](CLAUDE.md) (two sections updated).
+
+**Verification:** doc-size + doc-links audits green (the new docs are well under the 60 KB ceiling; all internal links resolve). 490 files / 3284 tests pass.
+
+**Audit:** doc-only slice; no engine work.
+- Names: `determinism.md` and `breaking-changes-queued.md` self-describing.
+- DRY: the determinism doc cross-references the per-slice CHANGELOG entries for specific RNG-impact details rather than restating each.
+- Pattern-check: swept the repo for other places that promise "deterministic" without qualifying the layer. README and concepts.md both say "deterministic replay" / "byte-equivalent state" — those claims are LAYER 1 (replay equivalence), still true. Neither overpromises per-seed cross-version reproducibility. Sweep clean.
+
+---
+
 **Tooling (slice 616): LRU scrub cache — bound memory for long sessions**
 
 Slice 610's scrub cache was unbounded — a 2000-event battle scrubbed exhaustively could hold ~2000 Campaign snapshots in memory. Acceptable for short sessions; risky for long ones. The slice-610 audit flagged this as an open follow-up.
