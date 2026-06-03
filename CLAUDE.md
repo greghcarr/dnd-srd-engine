@@ -107,7 +107,7 @@ When a later slice closes a tracked follow-up, mark the original line in the pri
 
 At the close of every slice, update the docs the slice touched:
 
-- [CHANGELOG.md](CHANGELOG.md) — **always**. One entry per slice under `## Unreleased`. Include the Uncle Bob audit summary. See "CHANGELOG entry shape" below for the standard template.
+- **Per-slice file at `docs/changelog/slice-NNN.md` + pointer entry in [CHANGELOG.md](CHANGELOG.md)** — **always**. Slice 628 split the verbose entry out of the live CHANGELOG: full Files / Tests / Verification / Audit / Open-follow-ups blocks live in `docs/changelog/slice-NNN.md`; the live CHANGELOG gets a 3-line pointer (`**<Type> (slice N): <headline>**` + one-sentence summary + `Detail: [slice-NNN.md](docs/changelog/slice-NNN.md).`). See "CHANGELOG entry shape" below for both the pointer template and the per-slice file template.
 - [docs/breaking-changes-queued.md](docs/breaking-changes-queued.md) — when the slice ships a consumer-facing breaking change (public API behavior shift, RNG-stream change, removed export). Append an entry; it'll roll into the next release's release notes.
 - [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md) — when a deferred row is closed (strike it through with `~~...~~`), when a new deferral is noted, or when "Coverage at a glance" counts change.
 - [docs/api-overview.md](docs/api-overview.md) — when the public surface changes.
@@ -128,42 +128,62 @@ Still un-guarded by design and needing a manual eye on material change: mechanic
 
 ### CHANGELOG entry shape
 
-A standard slice entry to keep the live file tight and the prose consistent. The framing reflects what hands-off readers reach for first (what changed, where, how to verify) rather than narrating the dev journey. Slice 617 set the template after the slice 601-616 cycle showed the entries trending verbose enough to force back-to-back archive operations.
+**Two-file convention (adopted slice 628)**: detail lives in a per-slice file under `docs/changelog/`; the live CHANGELOG gets a compact pointer. This decouples live-file growth from slice count (~150 bytes per pointer vs ~5 KB per verbose entry), so the live CHANGELOG no longer needs trimming every 5-6 slices.
+
+**Pointer in CHANGELOG.md Unreleased section** (one per slice, 3 lines):
 
 ```
 **<Type> (slice N): <one-line headline>**
+<1-2 sentence summary: what changed at a glance.>
+Detail: [slice-NNN.md](docs/changelog/slice-NNN.md).
+```
+
+**Per-slice file at `docs/changelog/slice-NNN.md`** (the full detail):
+
+```markdown
+# Slice N — <one-line headline>
+
+**Type:** <Engine / Content / Tooling / Docs / Tests / Infra / Fix>.
 
 <1-2 sentences: what changed and why. Skip the "pre-slice the engine
 did X; now it does Y" if the headline already conveys it.>
 
-<Optional 1-3 sub-bullets when the slice has multiple parts. Each
-bullet ≤ 2 lines.>
+<Optional 1-3 sub-bullets when the slice has multiple parts.>
 
-**Files**: [a](path/to/a) ([b](path/to/b)), ...
+## Fix / Changes
 
-**Tests:** [test-file](path), N cases — <one-line summary>.
+<Bullets of changes, with file:line references where useful.>
 
-**Verification:** N files / M tests pass, tsc clean. <Any extra
-verification step, e.g., "fuzz seed=X shows the expected behavior",
-in one sentence.>
+## Tests
 
-**RNG impact** / **Breaking change**: ONLY when the slice changes
-RNG-stream consumption or public API behavior. Otherwise omit.
+[../../tests/...](relative path), N cases — <one-line summary>.
 
-**Audit:** 2-3 bullets. Names, DRY, magic numbers, pattern-check —
-each one short. The audit is the Uncle Bob discipline check; don't
-expand into a self-review essay.
+## Verification
 
-**Pattern-check** (when surfacing a same-shape-elsewhere sweep):
-filter shape in parens; result summary (sweep clean / N other sites
-fixed / N tracked as follow-ups).
+N files / M tests pass, tsc clean. <Any extra verification step in
+one sentence.>
 
-**Open follow-ups:** only when the slice surfaces work that didn't
-ship. Each item: one line. If the slice closes prior follow-ups,
-mark those in the closing slice's CHANGELOG section, not here.
+## RNG impact / Breaking change
+
+ONLY when the slice changes RNG-stream consumption or public API
+behavior. Otherwise omit.
+
+## Audit
+
+- **Names**, **DRY**, **magic numbers**, **pattern-check** — each
+  one short. The audit is the Uncle Bob discipline check; don't
+  expand into a self-review essay.
+
+## Open follow-ups
+
+Only when the slice surfaces work that didn't ship. Each item: one
+line. If the slice closes prior follow-ups, mark them in the closing
+slice's per-slice file with `~~strikethrough~~` + `**Closed by slice N.**`.
 ```
 
-Aim for ~25-40 lines per entry. The pre-slice narrative + "here's how I thought about it" detail belongs in the commit message body, not the CHANGELOG. The live file holds one active release cycle's worth of entries; verbose entries force archiving more often, which is friction the next agent has to navigate.
+**Path convention in per-slice files**: links to repo files use `../../` to escape `docs/changelog/`. E.g. `[../../src/engine/plan/attack.ts](../../src/engine/plan/attack.ts)`. The doc-links audit verifies these resolve.
+
+**Per-slice file length** is loose — write what's useful. ~2-10 KB is typical. The live CHANGELOG no longer constrains the size of any individual slice's narrative.
 
 ### Doc size discipline (the single-Read ceiling)
 
@@ -176,7 +196,16 @@ Index-type docs in this repo (README.md, CHANGELOG.md, docs/status.md, docs/road
 
 **When a file gets too big**, split with the playbook below. Don't bypass with offset/limit — the goal is that any agent or contributor can read the front-door doc in one call.
 
-**CHANGELOG: keep only the active cycle (the rule that stops the split treadmill).** The live CHANGELOG.md holds only the current `## Unreleased` work plus the single most-recent tagged release, then a compact "Older releases" pointer. **On every release, evict the previously-latest release narrative (and its cohort pointers) to a `docs/changelog/released-versions-<range>.md` file** — never leave completed release entries inline. This is structural, not reactive: before slice 437 the live file had accreted eight frozen release narratives (alpha.6-13, ~84% of its bytes) plus a 33-entry archive index, so reactively archiving per-slice *detail* and leaving a pointer barely moved the floor (each "split" reclaimed detail but added a pointer and left the release narratives, so the file kept hovering at 57-59 KB). With active-cycle-only, the live file is bounded by one release cycle (~10 KB) regardless of project age. Released narratives split by version range as they grow (`released-versions.md` = alpha.0-5; [released-versions-alpha-6-13.md](docs/changelog/released-versions-alpha-6-13.md) = alpha.6-13; the next range file when alpha.14+ is evicted), each under the ceiling; the global per-cohort archive index lives in [docs/changelog/README.md](docs/changelog/README.md), not inline. Per-slice detail still archives to `archive-slices-NNN-MMM.md` cohort files during a cycle (the playbook below); that part is unchanged.
+**CHANGELOG (post-slice-628 pointer-per-slice structure).** The live `CHANGELOG.md` holds only:
+- A compact 3-line pointer per Unreleased slice (`docs/changelog/slice-NNN.md` carries the detail).
+- A "Older releases" pointer block to per-release-range files.
+
+Two structural rules combine to bound the live file size regardless of project age:
+
+1. **Per-slice detail lives outside the live file.** Slice 628 adopted `docs/changelog/slice-NNN.md` for full Files / Tests / Audit / Open-follow-ups blocks. Live-file growth per slice is ~150 bytes (the pointer); pre-slice-628 it was 4-9 KB. The trim cadence relaxed from "every 5-6 slices" to "never, in practice" — the live file fits ~400 slices' worth of pointers.
+2. **Released narratives migrate to per-release files on every release.** The slice-437 active-cycle rule: on every release, evict the previously-latest release narrative to `docs/changelog/released-versions-<range>.md`. Released narratives split by version range as they grow (`released-versions.md` = alpha.0-5; [released-versions-alpha-6-13.md](docs/changelog/released-versions-alpha-6-13.md) = alpha.6-13; [released-versions-alpha-14.md](docs/changelog/released-versions-alpha-14.md) = alpha.14; [released-versions-alpha-15.md](docs/changelog/released-versions-alpha-15.md) = alpha.15). Each per-release file fits the ceiling; the global per-cohort archive index lives in [docs/changelog/README.md](docs/changelog/README.md).
+
+Older `archive-slices-NNN-MMM.md` cohort files exist from the pre-slice-628 era and stay as-is — they're frozen historical records. New slices write per-slice files instead.
 
 **Splitting playbook:**
 

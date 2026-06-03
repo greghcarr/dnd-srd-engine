@@ -16,7 +16,7 @@ For the project-wide slice workflow (event-first, reducer, planner, tests), see 
 - `npm run typecheck` clean (CI also gates this).
 - Replay-equivalence holds on every new golden scenario.
 - New events round-trip through `formatTranscript` (a case in [tests/transcript.ts](../tests/transcript.ts) for each new event type).
-- CHANGELOG entry under `## Unreleased`.
+- Write the full slice detail (Files / Tests / Verification / Audit / Open-follow-ups) to `docs/changelog/slice-NNN.md`, AND add a 3-line pointer entry to `CHANGELOG.md` under `## Unreleased` (post-slice-628 convention; see [CLAUDE.md](../CLAUDE.md) "CHANGELOG entry shape" for the templates).
 - [docs/starter-pack-gaps.md](starter-pack-gaps.md) updated: future-engine-slices row marked shipped if a primitive landed; per-level spell sections walked from `schema-only` to `wired` for the canonical content user(s); "Coverage at a glance" totals refreshed.
 - Pre-commit Uncle Bob review: clean code / externalities / regressions / tests / Uncle Bob check.
 
@@ -46,7 +46,7 @@ The most common shape. Adds an `IntentX` + `planX` + supporting events.
 4. Planner. Wire into barrels.
 5. Planner test (RNG-capture proof and event-sequence shape).
 6. Golden scenario + transcript snapshot (`npx vitest run -u` to write the initial snapshot, then review the diff carefully).
-7. CHANGELOG + README.
+7. Write per-slice file at `docs/changelog/slice-NNN.md` + pointer in `CHANGELOG.md`; update README only if needed.
 
 ---
 
@@ -70,7 +70,7 @@ Adds data to the starter pack and exercises an existing planner / effect primiti
 3. Wire the content in `starter-pack.json`.
 4. Golden scenario exercising the content via an existing planner.
 5. Update the content table in [README.md](../README.md) (class matrix, feat count, etc.).
-6. CHANGELOG.
+6. Write per-slice file at `docs/changelog/slice-NNN.md` + pointer in `CHANGELOG.md`.
 
 ### Gotchas
 
@@ -97,7 +97,7 @@ A pure function over `CampaignState` (plus content) that doesn't emit events.
 2. Write the function.
 3. Unit test (table-driven where applicable).
 4. Export from barrel(s).
-5. CHANGELOG entry, only if surface-changing.
+5. Per-slice file + CHANGELOG pointer, only if surface-changing.
 
 ### Gotchas
 

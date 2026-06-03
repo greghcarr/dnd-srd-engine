@@ -1,8 +1,26 @@
 # CHANGELOG archive index
 
-Per-cohort slice-detail archives, split out of the live [CHANGELOG.md](../../CHANGELOG.md) over the project history to keep every file within the single-Read ceiling. The live CHANGELOG carries only the active (Unreleased) cycle plus the latest tagged release; everything below is the historical record.
+Per-slice detail and per-cohort archives, split out of the live [CHANGELOG.md](../../CHANGELOG.md) to keep every file within the single-Read ceiling. The live CHANGELOG carries only compact 3-line pointers per Unreleased slice (post-slice-628 convention) plus a "Older releases" pointer block; everything below is the per-slice detail or historical record.
 
-*Slice detail for slices 48-512 has been moved out of the live CHANGELOG to per-cohort archives under [docs/changelog/](.) (single-Read fitness; slices 506-512 were archived in slice 517; slices 501-505 were archived in slice 511; slices 496-500 were archived in slice 503; slices 491-495 were archived in slice 499; slices 487-490 were archived in slice 494; slices 482-486 were archived in slice 490; slices 472-481 were archived in slice 487; slices 460-468 were archived in slice 470; slices 451-459 were archived in slice 460; slices 444-450 were archived in slice 454; slices 405-407 were archived in slice 408; slices 400-403 were archived in slice 404; slices 392-397 were archived in slice 398; slices 386-391 were archived in slice 392; slices 381-385 were archived in slice 387; slices 376-380 were archived in slice 382; slices 350-351 were archived in slice 353; slices 345-349 in slice 350; slices 329-336 were archived in slice 340; slices 315-322 in slice 326; slices 301-312 in slice 313; slices 269-280 in slice 288; slices 261-268 in slice 277; slices 252-260 in slice 270; the alpha.6 release block of slices 241-250 in slice 252; older slices in slice 248). Each fits in a single Read tool call:*
+## Per-slice files (slice 622 onward)
+
+Slice 628 adopted the pointer-per-slice + detail-per-file convention. Each slice's full Files / Tests / Audit / Open-follow-ups blocks live in its own file here. The live CHANGELOG carries only a 3-line pointer; growth is ~150 bytes per slice instead of 4-9 KB, so the live file no longer hits the 60 KB ceiling on a 5-6 slice cadence.
+
+- [slice-628.md](slice-628.md) — CHANGELOG sustainability (per-slice file convention).
+- [slice-627.md](slice-627.md) — Innate Sorcery advantage gates on Sorcerer-list spells.
+- [slice-626.md](slice-626.md) — three follow-up closures (on-hit mastery damage gate, s23 Graze test, Halfling Lucky transcript display).
+- [slice-625.md](slice-625.md) — Martial Arts Die scales monk weapons too.
+- [slice-624.md](slice-624.md) — Graze weapon mastery fires on MISS only.
+- [slice-623.md](slice-623.md) — three RAW bugs from the slice-622 fuzz review (Vex autoExpiry, Innate Sorcery advantage, Monk Dexterous Attacks).
+- [slice-622.md](slice-622.md) — pool-based fuzz loadouts.
+
+Future slices append to this list.
+
+## Per-cohort archives (slices 48-621, pre-slice-628 era)
+
+Frozen historical record of per-slice detail from the pre-slice-628 era, grouped by cohort. Each fits in a single Read tool call.
+
+*Slice detail for slices 48-621 lives in the per-cohort archive files below (single-Read fitness). Each fits in a single Read tool call:*
 
 - *[archive-slices-506-512.md](archive-slices-506-512.md) (post-alpha.15 cohort G: the L1-completion polish arc — Cleric Divine Order test, Floating Disk reclassification, Skilled origin feat, stale-note sweep, Warlock invocation foundation (choice mechanism, Agonizing Blast canonical user, `event.spellId` damage fact, `GrantFeat` indirection primitive, per-cantrip Agonizing Blast generalization))*
 - *[archive-slices-501-505.md](archive-slices-501-505.md) (post-alpha.15 cohort F: the L1-spell-tail close — Shillelagh + `weapon-buff` mechanic, Ensnaring Strike + `largeCreatureAdvantage` + `extraDicePerSlotLevel` — plus the L1 character-creation gap closures — Weapon Mastery enforcement, Rogue Thieves' Cant stale-stub sweep, Wizard Ritual Adept marker promotion)*
