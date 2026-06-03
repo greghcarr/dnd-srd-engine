@@ -64,6 +64,7 @@ import { buildEffectStack } from '../../derive/effect-stack.js';
 import { isImmuneToCondition } from '../../derive/condition-immunity.js';
 import { isHealingBlocked } from '../../derive/healing-block.js';
 import { planConcentrationOnDamage } from './concentration.js';
+import { resolveAttackRoll } from './_attack-roll.js';
 import { assertActorCanAct, findActorBlockingCondition } from './_actor-state.js';
 import { parseSpellDurationMinutes } from '../../internal/spell-duration.js';
 import {
@@ -566,20 +567,48 @@ const planAttackMechanic = (
       advantage = 'disadvantage';
     }
 
-    const d20Rolls: number[] = [rollDie(D20_SIDES, rng)];
-    if (advantage !== 'none') {
-      d20Rolls.push(rollDie(D20_SIDES, rng));
-    }
-    const d20 =
-      advantage === 'advantage'
-        ? Math.max(...d20Rolls)
-        : advantage === 'disadvantage'
-          ? Math.min(...d20Rolls)
-          : d20Rolls[0]!;
-    const total = d20 + attackBonus.total;
-    const isCrit = d20 === NAT_20;
-    const isMiss = d20 === NAT_1;
-    const hit = !isMiss && (isCrit || total >= targetAC.total);
+    // Slice 611: spell attacks now go through the same resolveAttackRoll
+    // helper as weapon attacks. Side benefit: Halfling Luck (nat-1
+    // reroll), Bless +1d4 / Bane -1d4 bonus dice, and extended crit
+    // ranges (Improved Critical) all fire automatically for spell
+    // attacks — pre-slice they were weapon-only because cast-spell.ts
+    // had its own bare-d20 roll path. RAW (PHB Spellcasting): "If you
+    // cast a spell that has an attack roll, follow the rules for an
+    // attack roll."
+    const casterAttackFacts = new Map<string, unknown>([
+      ['event.attackKind', mechanic.attackKind],
+      ['event.spellId', spell.id],
+      ['event.spellSchool', spell.school],
+      ['event.isOpportunityAttack', false],
+    ]);
+    // RAW Paralyzed/Unconscious melee auto-crit (slice 568 originally
+    // for weapon attacks): the same rule applies to MELEE spell
+    // attacks. The five RAW melee spell attacks (Shocking Grasp,
+    // Spiritual Weapon, Chill Touch, Flame Blade, Vampiric Touch) get
+    // the auto-crit on hits against Paralyzed/Unconscious/HP-0 targets.
+    const targetAutoCritsFromMelee = ((): boolean => {
+      if (mechanic.attackKind !== 'melee') return false;
+      if (target.hp.current <= 0) return true;
+      return target.appliedConditions.some(
+        (c) => c.conditionId === 'paralyzed'
+          || c.conditionId === 'held-paralyzed-active'
+          || c.conditionId === 'unconscious',
+      );
+    })();
+    const rollResult = resolveAttackRoll({
+      advantage,
+      attackBonus: attackBonus.total,
+      targetAC: targetAC.total,
+      attackerHasHalflingLuck: casterEffects.hasHalflingLuck(),
+      bonusDiceContributions: casterEffects.bonusDiceFor('attack', casterAttackFacts),
+      critThreshold: casterEffects.critThreshold(),
+      forceCritIfHit: targetAutoCritsFromMelee,
+      rng,
+    });
+    // Aliases so the downstream damage-roll / potent-cantrip / damage-
+    // event code keeps its existing variable names.
+    const hit = rollResult.hit;
+    const isCrit = rollResult.critical;
 
     const attackEvent: AttackRolledEvent = {
       id: newEventId() as ULID,
@@ -588,13 +617,24 @@ const planAttackMechanic = (
       attackerId: intent.characterId,
       targetId,
       weaponInstanceId: intent.spellId as ULID,
-      d20: d20Rolls,
+      d20: rollResult.rolls,
       used: advantage,
-      attackBonus: attackBonus.total,
-      total,
+      attackBonus: rollResult.effectiveAttackBonus,
+      total: rollResult.total,
       targetAC: targetAC.total,
-      hit,
-      critical: isCrit,
+      hit: rollResult.hit,
+      critical: rollResult.critical,
+      ...(rollResult.bonusDice.rolls.length > 0
+        ? {
+            bonusDice: rollResult.bonusDice.rolls.map((b) => ({
+              dice: b.dice,
+              rolls: [...b.rolls],
+              subtract: b.subtract,
+              source: b.source,
+              total: b.total,
+            })),
+          }
+        : {}),
       // Melee vs Ranged Spell Attack, from the mechanic (defaults to
       // 'ranged'). Slice 371: the five RAW melee spell attacks (Shocking
       // Grasp, Spiritual Weapon, Chill Touch, Flame Blade, Vampiric Touch)

@@ -34,6 +34,7 @@ import { resolveEnchantment } from '../../derive/enchantment.js';
 import { evaluatePredicate } from '../../effects/predicate.js';
 import { rollSaveAgainstDC } from './_save-roll.js';
 import { rollBonusDice } from './_bonus-dice.js';
+import { resolveAttackRoll } from './_attack-roll.js';
 import {
   GIANT_ANCESTRY_RESOURCE_ID,
   validateGoliathAncestry,
@@ -990,44 +991,30 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     });
     if (deflectedEvents !== undefined) return deflectedEvents;
   }
-  const rolls: number[] = [rollDie(D20_SIDES, rng)];
-  if (advantage !== 'none') {
-    rolls.push(rollDie(D20_SIDES, rng));
-  }
-  let usedRoll =
-    advantage === 'advantage'
-      ? Math.max(...rolls)
-      : advantage === 'disadvantage'
-        ? Math.min(...rolls)
-        : (rolls[0] ?? 0);
-  // Slice 538: Halfling Luck. RAW: "When you roll a 1 on the d20 of
-  // a D20 Test, you can reroll the die, and you must use the new
-  // roll." Fires when the chosen d20 (post-advantage/disadvantage
-  // selection) is a natural 1 AND the attacker carries the marker.
-  // Reroll once; the new value replaces usedRoll. The reroll is
-  // appended to the `d20` array on the event so the consumer can
-  // see the reroll happened. No second reroll even if the new die
-  // is also a 1 (RAW: "you must use the new roll").
-  if (usedRoll === NAT_1 && attackerEffects.hasHalflingLuck()) {
-    const reroll = rollDie(D20_SIDES, rng);
-    rolls.push(reroll);
-    usedRoll = reroll;
-  }
-  // Slice 330: per-roll bonus dice (Bless +1d4 / Bane -1d4 via
-  // AddBonusDie). Rolled here, after the d20(s), and folded into the
-  // attack bonus so `total === usedRoll + attackBonus` still holds; the
-  // per-die detail is recorded on the event. No RNG consumed when none
-  // apply (the common case), so unblessed attacks keep their RNG stream.
-  const attackBonusDice = rollBonusDice(attackerEffects.bonusDiceFor('attack', attackerFacts), rng);
-  const effectiveAttackBonus = attackBonusResult.total + attackBonusDice.total;
-  const total = usedRoll + effectiveAttackBonus;
-  const naturalHit = usedRoll === NAT_20;
-  const naturalMiss = usedRoll === NAT_1;
-  const hit = !naturalMiss && (naturalHit || total >= acResult.total);
-  // Improved Critical / Superior Critical (and similar) lower the
-  // crit threshold via ExpandCritRange. Default 20. A crit only
-  // counts on a hit (a 19 that misses AC is just a miss).
-  const critThreshold = attackerEffects.critThreshold();
+  // Slice 611: the d20 roll + advantage resolution + Halfling Luck
+  // reroll + Bless/Bane bonus-dice fold + crit threshold all live in
+  // a shared helper now, used by both weapon attacks (here) and spell
+  // attacks (cast-spell.ts). The pre-roll advantage state and crit
+  // threshold are still computed locally; this helper just executes
+  // the dice + arithmetic.
+  const critThresholdNow = attackerEffects.critThreshold();
+  const rollResult = resolveAttackRoll({
+    advantage,
+    attackBonus: attackBonusResult.total,
+    targetAC: acResult.total,
+    attackerHasHalflingLuck: attackerEffects.hasHalflingLuck(),
+    bonusDiceContributions: attackerEffects.bonusDiceFor('attack', attackerFacts),
+    critThreshold: critThresholdNow,
+    rng,
+  });
+  const rolls = rollResult.rolls;
+  const usedRoll = rollResult.usedRoll;
+  const attackBonusDice = rollResult.bonusDice;
+  const effectiveAttackBonus = rollResult.effectiveAttackBonus;
+  const total = rollResult.total;
+  const naturalHit = rollResult.naturalHit;
+  const naturalMiss = rollResult.naturalMiss;
+  const hit = rollResult.hit;
   // Slice 568: RAW Paralyzed / Unconscious "Any attack that hits the
   // creature is a critical hit if the attacker is within 5 feet of
   // the creature." The engine doesn't track positional adjacency, so
@@ -1040,6 +1027,9 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   // / Hold Monster — both compose Paralyzed in RAW), unconscious, or
   // HP <= 0 (the synthetic-unconscious case findActorBlockingCondition
   // also returns for).
+  // Slice 611: the base crit (`usedRoll >= critThreshold`) lives in
+  // resolveAttackRoll; this re-derives the combined crit including
+  // the melee-auto-crit branch.
   const targetAutoCritsFromMelee = ((): boolean => {
     if (weaponDef.attackKind !== 'melee') return false;
     if (target.hp.current <= 0) return true;
@@ -1049,7 +1039,7 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
         || c.conditionId === 'unconscious',
     );
   })();
-  const critical = hit && (usedRoll >= critThreshold || targetAutoCritsFromMelee);
+  const critical = rollResult.critical || (hit && targetAutoCritsFromMelee);
 
   // RAW Rogue Sneak Attack (and equivalent content triggers): the
   // ally-adjacent path requires *another* positioned, non-incapacitated

@@ -4,6 +4,30 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 611): shared `resolveAttackRoll` helper — closes slice-602 duplication + attacker-side spell-attack gap**
+
+Slice 602's review flagged two debts (same root cause): spell attacks duplicated 50 lines of `plan/attack.ts`, and spell attacks skipped the attacker-side advantage pipeline (Halfling Luck, Bless +1d4, extended crit range).
+
+New [src/engine/plan/_attack-roll.ts](src/engine/plan/_attack-roll.ts) extracts the d20 + advantage resolution + Halfling Luck reroll + Bless/Bane bonus dice + crit-threshold math. Caller passes pre-resolved advantage state, attack bonus, target AC, and effect-stack queries (`hasHalflingLuck()`, `bonusDiceFor('attack', facts)`, `critThreshold()`); helper runs the dice. `forceCritIfHit?: boolean` carries the Paralyzed/Unconscious melee-auto-crit rule from both call sites.
+
+Both [src/engine/plan/attack.ts:993](src/engine/plan/attack.ts#L993) (weapon, behavior-preserving) and [src/engine/plan/cast-spell.ts:569](src/engine/plan/cast-spell.ts#L569) (spell, behavior-adding) now route through the helper. Spell attacks gain four pre-existing weapon-only behaviors, all RAW:
+- Halfling Luck reroll on nat-1 spell attacks
+- Bless / Bane bonus dice on the spell attack roll (event now stamps `bonusDice` field too)
+- Extended crit ranges (Improved Critical 19+)
+- Melee spell attacks auto-crit Paralyzed / Unconscious / HP-0 targets (Shocking Grasp et al.)
+
+**Tests** ([tests/unit/engine/slice-611-shared-attack-roll.test.ts](tests/unit/engine/slice-611-shared-attack-roll.test.ts), 2 cases): Halfling-caster spell attack rerolls on nat 1; Shocking Grasp on Paralyzed target auto-crits on hit.
+
+**Verification:** 486 files / 3267 tests pass. Slice 601-603 tests unchanged. RNG stream for spell attacks shifts when Halfling Luck or Bless is involved — tracked for slice 617's RNG-versioning doc.
+
+**Audit:**
+- DRY: 50-line duplication gone; one helper, two callers.
+- Names: helper file `_attack-roll.ts` matches `_halfling-luck` / `_bonus-dice` / `_save-roll` internal-helper convention.
+- Magic numbers: none added.
+- Pattern-check: swept `rollDie(D20_SIDES` across `src/engine/plan/`; remaining sites are save-side (use `_save-roll.ts`) or wrap `planAttack` (pick up the helper transitively). **`planOffHandAttack` still has its own d20 site** — same shape, would benefit from routing through `resolveAttackRoll` too; tracked as open follow-up since offhand has additional two-weapon-fighting gating not in slice 611's scope.
+
+---
+
 **Tooling (slice 610): scrub cache — replay is now incremental, not from-genesis-per-step**
 
 The slice-600 observer review flagged the demo's scrub performance as an architectural smell that would bite once battles grew past a few hundred events: every cursor change called `replay(events.slice(0, cursor))` from genesis, O(N) per step. A 1500-event L5 multi-round battle scrubbing one step back was a full re-application of 1499 events.
