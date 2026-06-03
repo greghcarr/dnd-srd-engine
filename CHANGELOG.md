@@ -4,6 +4,38 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 620): trigger-dispatched rider damage triggers concentration save (closes the L1 fuzz review's bug)**
+
+The L1 fuzz review (60 battles across `--vs pc`, `--vs monster`, `--mode 2v2`) surfaced one real bug the slice 601-612 wiring missed: OnEvent `AddDamage` riders (Hex, Hunter's Mark, Divine Smite, Searing Smite, any on-hit damage trigger) emit their own DamageApplied via `fireAddDamage` in [src/engine/triggers/dispatch.ts](src/engine/triggers/dispatch.ts), and that path didn't call `planConcentrationOnDamage`. Result: a Hex rider hitting a concentrating creature never triggered the per-damage-source CON save RAW requires.
+
+RAW (PHB 2024 Concentration): "If you take damage from multiple sources, such as an arrow and a dragon's breath, you make a separate saving throw for each source of damage." Each rider IS a separate source.
+
+**Changes** ([src/engine/triggers/dispatch.ts](src/engine/triggers/dispatch.ts)):
+- `fireAddDamage` (line 235+) now calls `planConcentrationOnDamage` after emitting the rider's DamageApplied, with `applyAll(state, out)` so the helper sees the just-committed damage event when deciding whether the target would drop to 0.
+- `fireAddDamageToAttacker` (the retaliation variant for Fire Shield / Armor of Agathys) gets the same wire — retaliation damage to the original attacker is also a separate source for concentration.
+
+**Tests** ([tests/unit/engine/slice-620-rider-concentration-save.test.ts](tests/unit/engine/slice-620-rider-concentration-save.test.ts), 1 case): warlock with Hex hits a concentrating fighter with Eldritch Blast; both the Hex rider's DamageApplied AND the main spell's DamageApplied emit their own CON save (so `conSaves.length === damageApplieds.length`). Pre-slice only the main damage triggered a save.
+
+**Verification:** the seed=4006 fuzz transcript that originally surfaced the bug now shows TWO CON saves (one for the 1 necrotic Hex rider, one for the 3 force main damage) where pre-slice it showed only one. Full suite green (493 files, 3330 tests). The RAW-correct outcome is now visible at every Hex / Hunter's Mark / smite hit.
+
+**RNG impact:** rider hits on concentrating targets now consume an additional d20 per rider. Same per-seed determinism shift class as slices 601/602/611/612/614 — tracked in [docs/determinism.md](docs/determinism.md) and [docs/breaking-changes-queued.md](docs/breaking-changes-queued.md).
+
+**Audit:**
+- Names: `planConcentrationOnDamage` import in dispatch.ts; helper unchanged.
+- DRY: reuses the slice 601/612 helper; no new save-rolling logic.
+- SRP: trigger dispatch still owns rider firing; concentration save is delegated.
+- Magic numbers: none added.
+- Pattern-check: this is the THIRD wiring location for `planConcentrationOnDamage` (after slice 601's 8 main-damage sites and slice 612's 3 aura-tick sites). Swept the codebase for other `DamageApplied` emitters — `fireAddDamage` + `fireAddDamageToAttacker` were the only outstanding sites. Sweep clean.
+
+**L1 fuzz review additional findings** (verified clean, no slices needed):
+- Sap mastery → next-attack disadvantage fires correctly.
+- Vex mastery → next-attack advantage + Sneak Attack chain fires correctly.
+- Sneak Attack damage doubles on crit (1d6 → 2d6, observed in seed-4023).
+- Disadvantage uses lower die; nat-20-with-disadvantage doesn't spuriously crit.
+- Slice 601 / 602 / 603 / 604 / 605 / 611 / 612 / 618 all observably correct in real battles.
+
+---
+
 **Tests (slice 619): CI-guarded "L1 SRD complete" floor audit**
 
 Companion to slice 574's `srd-l1-invariants.test.ts` (hit dice + spell-slot table + ability-score bounds). This audit goes broader: it locks in the surface area that constitutes "a complete L1 SRD experience" so a future slice can't silently drop a class feature, a species, a background's origin feat, or a RAW condition.

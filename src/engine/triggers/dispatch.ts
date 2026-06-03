@@ -14,6 +14,7 @@ import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { isMagicWeaponAttack } from '../../derive/magicality.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { applyAll } from '../apply.js';
+import { planConcentrationOnDamage } from '../plan/concentration.js';
 import type { AppliedCondition } from '../../schemas/runtime/character.js';
 import { newEventId } from '../../ids.js';
 import type { ULID } from '../ids-utils.js';
@@ -284,7 +285,28 @@ const fireAddDamage = (
     components: intercept.components,
     causedByEventId: causedByEventId as ULID,
   };
-  return [damageApplied, ...intercept.extraEvents];
+  const out: Event[] = [damageApplied, ...intercept.extraEvents];
+  // Slice 620: rider DamageApplied is its own source per RAW
+  // ("multiple sources, such as an arrow and a dragon's breath, you
+  // make a separate saving throw for each source"), so the
+  // concentration save fires here just like at the main-damage
+  // emission site (slice 601). The L1 fuzz review surfaced the gap:
+  // a Hex / Hunter's Mark / Divine Smite rider hitting a
+  // concentrating creature wasn't triggering the CON save.
+  if (target !== undefined) {
+    out.push(
+      ...planConcentrationOnDamage(
+        applyAll(state, out),
+        content,
+        rng,
+        target,
+        intercept.components,
+        damageAppliedId,
+        event.at,
+      ),
+    );
+  }
+  return out;
 };
 
 // Retaliation variant: damage goes to event.attackerId (Fire Shield,
@@ -347,7 +369,26 @@ const fireAddDamageToAttacker = (
     components: intercept.components,
     causedByEventId: causedByEventId as ULID,
   };
-  return [damageApplied, ...intercept.extraEvents];
+  const out: Event[] = [damageApplied, ...intercept.extraEvents];
+  // Slice 620: retaliation damage to the original attacker is a
+  // separate damage source for concentration purposes (e.g. an Armor
+  // of Agathys cold-on-melee retaliator hits a concentrating attacker
+  // → CON save on the attacker for the retaliation damage). Same
+  // shape as the forward fireAddDamage wire above.
+  if (target !== undefined) {
+    out.push(
+      ...planConcentrationOnDamage(
+        applyAll(state, out),
+        content,
+        rng,
+        target,
+        intercept.components,
+        damageAppliedId,
+        event.at,
+      ),
+    );
+  }
+  return out;
 };
 
 // Determine whether a fired rider's damage is "magical" for the
