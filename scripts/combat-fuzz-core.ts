@@ -599,6 +599,10 @@ export interface FuzzBattleResult {
   readonly campaign: Campaign;
   readonly winner: string | null;
   readonly rounds: number;
+  /** Character ids on the "Aria" team. Slice 607: lets the web demo color-code teams. */
+  readonly teamACharacterIds: ReadonlyArray<string>;
+  /** Character ids on the "Bran" (or "Beast") team. Slice 607: lets the web demo color-code teams. */
+  readonly teamBCharacterIds: ReadonlyArray<string>;
 }
 
 export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
@@ -813,5 +817,11 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
     } catch { /* end-encounter / rest threw; transcript truncates at battle end */ }
   }
 
-  return { campaign, winner, rounds };
+  return {
+    campaign,
+    winner,
+    rounds,
+    teamACharacterIds: teamA.map((pc) => pc.character.id),
+    teamBCharacterIds: teamB.map((pc) => pc.character.id),
+  };
 };

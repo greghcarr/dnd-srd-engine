@@ -143,13 +143,29 @@ button:disabled {
   padding: 0.5rem 0.75rem;
   border-radius: 0.375rem;
   border: 1px solid transparent;
+  border-left-width: 4px;
   margin-bottom: 0.25rem;
   font-size: 0.95rem;
 }
 
+/* Slice 607: per-team left border so a reader can tell A from B at a glance. */
+.combatant.team-a {
+  border-left-color: #4a89ff;
+}
+.combatant.team-b {
+  border-left-color: #e7553c;
+}
+
 .combatant.active {
   border-color: currentColor;
+  border-left-width: 4px;
   background: rgba(127, 127, 127, 0.1);
+}
+.combatant.active.team-a {
+  border-left-color: #4a89ff;
+}
+.combatant.active.team-b {
+  border-left-color: #e7553c;
 }
 
 .combatant.downed .combatant-name::after {
@@ -186,11 +202,8 @@ button:disabled {
   min-height: 1em;
 }
 
-.combatant-pos {
-  color: #888;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.8rem;
-}
+/* Slice 607: .combatant-pos removed — the coord column was orphaned
+   when the map panel was retired (slice 600). */
 
 .toolbar {
   display: flex;

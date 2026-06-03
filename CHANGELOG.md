@@ -4,6 +4,30 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Tooling (slice 607): initiative panel observability polish — team color, condition display names, class/species inline, coord-column drop, panel title rename**
+
+The slice-600 observer review surfaced five small UX gaps in the demo's initiative panel that together made the demo harder to parse for an observer than for an engine-developer. Bundled into one focused slice so the surface read changes once rather than five times:
+
+1. **Team coloring** — 2v2 mode interleaves all four combatants by initiative; a left-border color per team (blue for Aria team, red for Bran/Beast team) makes "who's on which side" instant. Extended [`FuzzBattleResult`](scripts/combat-fuzz-core.ts) with `teamACharacterIds` and `teamBCharacterIds` arrays so the panel doesn't have to guess by name pattern.
+2. **Condition display names** — replaced raw id rendering (`viciously-mocked`, `dragonborn-breath-weapon-active`) with content lookup ("Viciously Mocked", "Dragonborn Breath Weapon Active"). The panel now resolves the pack once at mount via `resolveContent([pack])`.
+3. **Class / species inline** — name line was bare ("Aria"); now reads "Aria (bard elf)" so observers can scan the initiative list and immediately tell builds apart. Skips the suffix for `companion`-classed creatures (monster team — would just say "(companion companion)").
+4. **Coord column drop** — `.combatant-pos` column was showing "(5,5)" with no map context after slice 600 retired the grid view. Orphaned data; removed from the row template and the CSS.
+5. **Panel title rename** — "Fuzz Replay" → "Random Battle". "Fuzz" is internal harness vocabulary; observers reading the page have no idea what it means.
+
+**Files** ([scripts/combat-fuzz-core.ts:598-628](scripts/combat-fuzz-core.ts#L598-L628), [web/modes/fuzz-replay.ts](web/modes/fuzz-replay.ts), [web/main.ts](web/main.ts), [web/styles.css](web/styles.css)). No engine work; pure UX / public-interface surface.
+
+**Verification:** `npx tsc --noEmit` clean (root + web/), `npx vitest run tests/integration/web-scenarios.test.ts` green (17 tests; the scenarios use the engine surface unchanged), `npx vite --config vite.web.config.ts` boots without runtime errors.
+
+**Audit (presentation slice):**
+- **Names:** `teamACharacterIds`/`teamBCharacterIds` mirror the existing `teamA`/`teamB` private names; `conditionName(id)` is intent-revealing; `teamLabel(combatantId) → 'team-a' | 'team-b' | ''` is the panel-internal CSS-class mapper.
+- **DRY:** `resolveContent([pack])` and `teamAIds`/`teamBIds` Sets cached once at mount, queried per render. The class+species blurb is one helper expression, not duplicated.
+- **SRP:** panel-only changes; the simulator core touches only its public return shape (additive — no fields removed).
+- **Magic numbers:** team colors `#4a89ff` (Aria/blue) and `#e7553c` (Bran/red) borrowed from the dropped grid-view's `TOKEN_PALETTE` so the demo's color identity stays consistent with prior versions.
+
+**Pattern-check** (filter shape: "panel rendering that prints engine-internal slugs to a user-facing surface"): swept `web/modes/` for `.appliedConditions.map`, `.classes[0].classId`, `.speciesId` raw-text uses. Only `fuzz-replay.ts` had the pattern; the inspector renders event-type slugs (`AttackRolled` etc.) which is a separate observability gap tracked as slice 608. The pending-choice resolver uses content-side `prompt` / `label` strings already.
+
+---
+
 **Fix (slice 606): restore "Beast" name for monster opponents (slice-600 regression)**
 
 The slice-600 core-extraction refactor (`scripts/combat-fuzz.ts` → `combat-fuzz-core.ts`) silently lost the slice-596 monster-naming distinction: both PC and monster opposing teams ended up named "Bran", so `--vs monster` battles read like PC battles in the transcripts and the web demo. Caught by the slice-600 observer review.

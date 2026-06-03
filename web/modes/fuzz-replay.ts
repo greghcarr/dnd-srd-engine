@@ -21,7 +21,8 @@
 // No engine.plan / commit / dispatch happens here — the events were
 // already produced by runBattle(). Scrubbing is pure replay.
 
-import type { Campaign } from 'dnd-srd-engine';
+import type { Campaign, ContentPack } from 'dnd-srd-engine';
+import { resolveContent, type ResolvedContent } from 'dnd-srd-engine';
 import type { EngineHost } from '../engine-host.js';
 
 export interface FuzzReplayOptions {
@@ -36,6 +37,11 @@ export interface FuzzReplayOptions {
   /** Display name for the winner, resolved against the full campaign once at session start. Lets the panel show the actual name even at a cursor where the character snapshot hasn't been committed yet. */
   readonly winnerName: string | null;
   readonly rounds: number;
+  /** Slice 607: character ids on each team. Used for the left-border team-color so observers can tell A from B at a glance. */
+  readonly teamACharacterIds: ReadonlyArray<string>;
+  readonly teamBCharacterIds: ReadonlyArray<string>;
+  /** Slice 607: content pack supplies condition display names (so the row reads "Viciously Mocked", not "viciously-mocked"). */
+  readonly pack: ContentPack;
   readonly root: HTMLElement;
   readonly onSeek: (nextCursor: number) => void;
   readonly onStatus?: (text: string) => void;
@@ -76,15 +82,42 @@ const activeCombatantId = (campaign: Campaign, encounterId: string): string | un
 };
 
 export const mountFuzzReplay = (opts: FuzzReplayOptions): FuzzReplay => {
-  const { host, totalEvents, initialCursor, encounterId, seed, winner, winnerName, rounds, root, onSeek, onStatus } = opts;
+  const {
+    host,
+    totalEvents,
+    initialCursor,
+    encounterId,
+    seed,
+    winner,
+    winnerName,
+    rounds,
+    teamACharacterIds,
+    teamBCharacterIds,
+    pack,
+    root,
+    onSeek,
+    onStatus,
+  } = opts;
 
   let cursor = initialCursor;
   let playTimer: ReturnType<typeof setInterval> | undefined;
 
+  // Slice 607: resolve content once so condition-id → "display name"
+  // lookups don't re-resolve on every render.
+  const content: ResolvedContent = resolveContent([pack]);
+  const conditionName = (id: string): string => content.conditions.get(id)?.name ?? id;
+  const teamAIds = new Set(teamACharacterIds);
+  const teamBIds = new Set(teamBCharacterIds);
+  const teamLabel = (combatantId: string): 'team-a' | 'team-b' | '' => {
+    if (teamAIds.has(combatantId)) return 'team-a';
+    if (teamBIds.has(combatantId)) return 'team-b';
+    return '';
+  };
+
   root.classList.add('fuzz-replay');
   root.innerHTML = `
     <header class="fuzz-header">
-      <h2>Fuzz Replay</h2>
+      <h2>Random Battle</h2>
       <p class="fuzz-meta"></p>
     </header>
     <div class="fuzz-transport">
@@ -158,27 +191,37 @@ export const mountFuzzReplay = (opts: FuzzReplayOptions): FuzzReplay => {
     const items = order.map((entry) => {
       const ch = campaign.state.characters[entry.combatantId];
       const li = document.createElement('li');
-      li.className = 'combatant';
+      const teamClass = teamLabel(entry.combatantId);
+      li.className = `combatant${teamClass ? ` ${teamClass}` : ''}`;
       if (entry.combatantId === active) li.classList.add('active');
       if (ch && ch.hp.current <= 0) li.classList.add('downed');
 
-      const conds = ch ? ch.appliedConditions.map((a) => a.conditionId) : [];
-      const pos = entry.position ? `(${entry.position.x},${entry.position.y})` : '';
+      // Slice 607: condition display names via content lookup; raw ids
+      // (`viciously-mocked`) read like internal slugs.
+      const conds = ch ? ch.appliedConditions.map((a) => conditionName(a.conditionId)) : [];
+      // Slice 607: brief class/species blurb beside the name so a
+      // reader scanning the initiative list can tell "Aria (bard elf)"
+      // from "Aria (rogue tiefling)" at a glance.
+      const classBits: string[] = [];
+      if (ch) {
+        const primaryClass = ch.classes[0]?.classId;
+        if (primaryClass && primaryClass !== 'companion') classBits.push(primaryClass);
+        if (ch.speciesId && ch.speciesId !== 'companion') classBits.push(ch.speciesId);
+      }
+      const subtitle = classBits.length > 0 ? ` (${classBits.join(' ')})` : '';
 
       li.innerHTML = `
         <div class="combatant-line">
           <span class="combatant-name"></span>
           <span class="combatant-hp"></span>
-          <span class="combatant-pos"></span>
           <span class="combatant-initiative"></span>
         </div>
         <div class="combatant-conditions"></div>
       `;
-      li.querySelector('.combatant-name')!.textContent = ch?.name ?? entry.combatantId;
+      li.querySelector('.combatant-name')!.textContent = `${ch?.name ?? entry.combatantId}${subtitle}`;
       li.querySelector('.combatant-hp')!.textContent = ch
         ? `${Math.max(0, ch.hp.current)}/${ch.hp.max}${ch.hp.temp > 0 ? ` (+${ch.hp.temp})` : ''} HP`
         : '? HP';
-      li.querySelector('.combatant-pos')!.textContent = pos;
       li.querySelector('.combatant-initiative')!.textContent = `init ${entry.initiative}`;
       li.querySelector('.combatant-conditions')!.textContent =
         conds.length === 0 ? '' : conds.join(', ');
