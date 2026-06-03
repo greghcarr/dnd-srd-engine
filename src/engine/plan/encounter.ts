@@ -49,6 +49,7 @@ const DEATH_SAVE_SUCCESSES_TO_STABILIZE = 3;
  */
 const planAutoExpireConditionsAtTurnStart = (
   state: CampaignState,
+  content: ResolvedContent,
   sourceCharacterId: string,
   round: number,
   causedByEventId: ULID,
@@ -57,7 +58,16 @@ const planAutoExpireConditionsAtTurnStart = (
   const events: ConditionRemovedEvent[] = [];
   for (const character of Object.values(state.characters)) {
     for (const applied of character.appliedConditions) {
-      if (applied.sourceCharacterId !== sourceCharacterId) continue;
+      // Slice 623: by default key the expiry on `sourceCharacterId`
+      // (so a condition with source = caster expires on the caster's
+      // turn). Conditions with `expirySourceFromBearer: true` key on
+      // the BEARER instead (Vex: source = vexed target for the
+      // consumeOnAttack filter, but expiry RAW is "end of YOUR next
+      // turn" — the vexer's, which is the bearer).
+      const expirySource = content.conditions.get(applied.conditionId)?.autoExpiry?.expirySourceFromBearer === true
+        ? character.id
+        : applied.sourceCharacterId;
+      if (expirySource !== sourceCharacterId) continue;
       if (applied.expiresOnRound === undefined) continue;
       if (applied.expiresOnRound > round) continue;
       if (applied.expiryTrigger === 'turnEnd') continue;
@@ -84,6 +94,7 @@ const planAutoExpireConditionsAtTurnStart = (
  */
 const planAutoExpireConditionsAtTurnEnd = (
   state: CampaignState,
+  content: ResolvedContent,
   sourceCharacterId: string,
   round: number,
   causedByEventId: ULID,
@@ -92,7 +103,12 @@ const planAutoExpireConditionsAtTurnEnd = (
   const events: ConditionRemovedEvent[] = [];
   for (const character of Object.values(state.characters)) {
     for (const applied of character.appliedConditions) {
-      if (applied.sourceCharacterId !== sourceCharacterId) continue;
+      // Slice 623: see planAutoExpireConditionsAtTurnStart -- same
+      // expirySourceFromBearer override.
+      const expirySource = content.conditions.get(applied.conditionId)?.autoExpiry?.expirySourceFromBearer === true
+        ? character.id
+        : applied.sourceCharacterId;
+      if (expirySource !== sourceCharacterId) continue;
       if (applied.expiresOnRound === undefined) continue;
       if (applied.expiresOnRound > round) continue;
       if (applied.expiryTrigger !== 'turnEnd') continue;
@@ -362,6 +378,7 @@ export const planAdvanceTurn = (
   // the next combatant's actions.
   const endTurnExpired = planAutoExpireConditionsAtTurnEnd(
     state,
+    content,
     current.combatantId,
     encounter.round,
     turnEnd.id,
@@ -396,6 +413,7 @@ export const planAdvanceTurn = (
     );
     const expired = planAutoExpireConditionsAtTurnStart(
       state,
+      content,
       first.combatantId,
       encounter.round + 1,
       nextTurn.id,
@@ -431,6 +449,7 @@ export const planAdvanceTurn = (
   );
   const expired = planAutoExpireConditionsAtTurnStart(
     state,
+    content,
     next.combatantId,
     encounter.round,
     nextTurn.id,

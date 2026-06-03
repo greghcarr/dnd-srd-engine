@@ -81,9 +81,20 @@ export type RecurringSave = z.infer<typeof RecurringSaveSchema>;
 // expiry fires at the end of the bearer's own next turn per RAW.
 // Outside an active encounter the planner doesn't stamp anything and
 // the consumer manages expiry.
+// Slice 623: `expirySourceFromBearer` decouples "whose turn-boundary
+// fires the auto-expiry" from `applied.sourceCharacterId`. By default
+// the encounter sweep keys on sourceCharacterId (so a condition with
+// source = caster expires on the caster's turn-end). Some conditions
+// need both source-keyed scoping (for `consumeOnAttack` filters like
+// Vex's "advantage on attacks against THIS specific target") AND
+// bearer-keyed expiry ("until the end of YOUR next turn"). Set this
+// flag true and the sweep ignores sourceCharacterId and instead lifts
+// the condition on the BEARER's matching turn boundary. Canonical user
+// (slice 623): Vex's vexing-active.
 export const AutoExpirySchema = z.object({
   afterRounds: z.number().int().min(0),
   trigger: z.enum(['turnStart', 'turnEnd']),
+  expirySourceFromBearer: z.boolean().optional(),
 });
 export type AutoExpiry = z.infer<typeof AutoExpirySchema>;
 

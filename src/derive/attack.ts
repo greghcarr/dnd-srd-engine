@@ -39,10 +39,52 @@ export interface ComputeAttackInput {
   readonly abilityOverride?: 'STR' | 'DEX' | 'CON' | 'INT' | 'WIS' | 'CHA';
 }
 
+// Slice 623: Monk Martial Arts "Dexterous Attacks." RAW 2024 Monk L1
+// Martial Arts: while unarmed or wielding only Monk weapons and not
+// wearing armor or wielding a shield, you can use Dex instead of Str
+// for attack and damage rolls of Unarmed Strikes and Monk weapons.
+// Monk weapons = Simple Melee + Martial Melee with the Light property
+// (not Two-Handed). Unarmed Strike always qualifies.
+//
+// Pre-slice the engine implemented only the Martial Arts die scaling
+// (and only for unarmed-strike); the STR->DEX swap on monk-eligible
+// weapons (javelin, shortsword, scimitar, ...) was missing. The
+// slice-622 fuzz review at seed 7007 surfaced a monk wielding a
+// javelin attacking with STR (+1) when RAW says DEX (+2).
+export const martialArtsApplies = (character: Character, weapon: Weapon): boolean => {
+  const monkLevel = character.classes.find((c) => c.classId === 'monk')?.level ?? 0;
+  if (monkLevel < 1) return false;
+  // RAW gate: unarmored AND not wielding a shield. Both checked at
+  // equipped slots; the armor slot is unset for an unarmored monk and
+  // the shield slot is unset for a non-shield-wielding monk.
+  if (character.equipped.armor !== undefined) return false;
+  if (character.equipped.shield !== undefined) return false;
+  if (weapon.id === 'unarmed-strike') return true;
+  if (weapon.attackKind !== 'melee') return false;
+  if (weapon.category === 'simple') return true;
+  if (
+    weapon.category === 'martial'
+    && weapon.properties.includes('light')
+    && !weapon.properties.includes('two-handed')
+  ) {
+    return true;
+  }
+  return false;
+};
+
 const chooseAttackAbility = (character: Character, weapon: Weapon): 'STR' | 'DEX' => {
   const isFinesse = weapon.properties.includes('finesse');
   const isRanged = weapon.attackKind === 'ranged';
   if (isRanged && !weapon.properties.includes('thrown')) return 'DEX';
+  // Slice 623: monk "Dexterous Attacks" swaps STR -> DEX on monk-
+  // eligible weapons (mirror of the finesse rule). Picks the better
+  // of the two; in practice DEX > STR for any reasonable monk build.
+  if (martialArtsApplies(character, weapon)) {
+    return abilityModifier(character.abilityScores.DEX) >=
+      abilityModifier(character.abilityScores.STR)
+      ? 'DEX'
+      : 'STR';
+  }
   if (isFinesse) {
     return abilityModifier(character.abilityScores.DEX) >=
       abilityModifier(character.abilityScores.STR)

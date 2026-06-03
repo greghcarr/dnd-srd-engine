@@ -556,17 +556,6 @@ const planAttackMechanic = (
       });
     })();
 
-    const effectivelyGrantsAdvantage = !targetCancelsAdvantage && targetGrantsAdvantage;
-    const effectivelyImposesDisadvantage = targetImposesDisadvantage || rangedSpellInMelee;
-    let advantage: 'none' | 'advantage' | 'disadvantage' = 'none';
-    if (effectivelyGrantsAdvantage && effectivelyImposesDisadvantage) {
-      advantage = 'none';
-    } else if (effectivelyGrantsAdvantage) {
-      advantage = 'advantage';
-    } else if (effectivelyImposesDisadvantage) {
-      advantage = 'disadvantage';
-    }
-
     // Slice 611: spell attacks now go through the same resolveAttackRoll
     // helper as weapon attacks. Side benefit: Halfling Luck (nat-1
     // reroll), Bless +1d4 / Bane -1d4 bonus dice, and extended crit
@@ -581,6 +570,31 @@ const planAttackMechanic = (
       ['event.spellSchool', spell.school],
       ['event.isOpportunityAttack', false],
     ]);
+    // Slice 623: query attacker-side advantage on spell attacks.
+    // Pre-slice this was a gap -- the spell-attack path never folded
+    // attacker-side SetAdvantage effects in (mirror of attack.ts:867
+    // for weapons). Canonical RAW user closed here: Sorcerer L1 Innate
+    // Sorcery, which grants Advantage on the attack rolls of Sorcerer
+    // spells you cast (the slice-622 fuzz review at seed 7006 caught
+    // it never firing). Surfaced via the innate-sorcery-active
+    // condition's new SetAdvantage on:'attack' effect.
+    const casterSelfAdvantage = casterEffects.advantageFor('attack', casterAttackFacts);
+
+    const effectivelyGrantsAdvantage = !targetCancelsAdvantage && targetGrantsAdvantage;
+    const effectivelyImposesDisadvantage = targetImposesDisadvantage || rangedSpellInMelee;
+    // Slice 623 (continued): also fold the attacker-side advantage
+    // computed above (Innate Sorcery etc.). The cancel-on-tie rule
+    // applies symmetrically: any grant + any impose -> straight roll.
+    const grantsFromAnywhere = effectivelyGrantsAdvantage || casterSelfAdvantage.advantage;
+    const imposesFromAnywhere = effectivelyImposesDisadvantage || casterSelfAdvantage.disadvantage;
+    let advantage: 'none' | 'advantage' | 'disadvantage' = 'none';
+    if (grantsFromAnywhere && imposesFromAnywhere) {
+      advantage = 'none';
+    } else if (grantsFromAnywhere) {
+      advantage = 'advantage';
+    } else if (imposesFromAnywhere) {
+      advantage = 'disadvantage';
+    }
     // RAW Paralyzed/Unconscious melee auto-crit (slice 568 originally
     // for weapon attacks): the same rule applies to MELEE spell
     // attacks. The five RAW melee spell attacks (Shocking Grasp,

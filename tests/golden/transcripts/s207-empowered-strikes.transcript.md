@@ -8,8 +8,8 @@ Item acquired: Unarmed Strike.
 
 **Warded** is now Stoneskin.
 
-**Kai** attacks **Warded**: d20(14) + 5 = 19 vs AC 9 -> hit.
+**Kai** attacks **Warded**: d20(14) + 7 = 21 vs AC 9 -> hit.
 
-Damage rolled: 1d8=[3]+2 bludgeoning.
+Damage rolled: 1d8=[3]+4 bludgeoning.
 
-**Warded** takes 5 damage from **Kai** (5 bludgeoning). (HP 50 -> 45)
+**Warded** takes 7 damage from **Kai** (7 bludgeoning). (HP 50 -> 43)

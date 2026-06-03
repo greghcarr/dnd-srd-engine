@@ -8239,10 +8239,12 @@
     {
       "id": "innate-sorcery-active",
       "name": "Innate Sorcery",
+      "description": "RAW 2024 Sorcerer L1: while active (1 min), the spell save DC of your Sorcerer spells is +1 AND you have Advantage on the attack rolls of your Sorcerer spells. Slice 623: SetAdvantage on:'attack' was added after the L1 fuzz review (seed 7006) caught the advantage arm missing -- prior to the slice the condition only carried the +1 DC arm and the planner explicitly deferred the advantage piece. RAW deviation: the engine grants advantage on ALL spell attacks while active, not strictly Sorcerer-cast spells. At L1 this is the same set; multiclass sorcerers casting non-Sorcerer-list spells over-benefit -- tracked as a follow-up needing a `bearer.castingClassId` fact on the spell-attack predicate matcher.",
       "stackable": false,
       "endsOn": [{ "kind": "longRest" }],
       "effects": [
-        { "kind": "AddModifier", "target": "spellSaveDC", "value": 1 }
+        { "kind": "AddModifier", "target": "spellSaveDC", "value": 1 },
+        { "kind": "SetAdvantage", "on": "attack", "mode": "advantage" }
       ]
     },
     {
@@ -8479,11 +8481,11 @@
     {
       "id": "vexing-active",
       "name": "Vexing (Vex mastery)",
-      "description": "RAW (weapon mastery Vex): 'If you hit a creature with this weapon and deal damage to the creature, you have Advantage on your next attack roll against that creature before the end of your next turn.' Applied to the ATTACKER (the vexer) with sourceCharacterId set to the vexed target; SetAdvantageVsSource grants the bearer Advantage on attacks against that source (the mirror of Bestow Curse's cursed-attacks-active). RAW deviation (documented in starter-pack-gaps.md): modeled as Advantage on all the vexer's attacks against that target until the end of the vexer's next turn (autoExpiry afterRounds 1, turnEnd); with Extra Attack this over-applies vs RAW's single attack.",
+      "description": "RAW (weapon mastery Vex): 'If you hit a creature with this weapon and deal damage to the creature, you have Advantage on your next attack roll against that creature before the end of your next turn.' Applied to the ATTACKER (the vexer) with sourceCharacterId set to the vexed target; SetAdvantageVsSource grants the bearer Advantage on attacks against that source (the mirror of Bestow Curse's cursed-attacks-active). Slice 623: `expirySourceFromBearer: true` makes the autoExpiry sweep key on the BEARER's (the vexer's) turn-end instead of the source's (the vexed target's) -- the slice-622 L1 fuzz review (seed 7000) surfaced this: Vex was expiring at the end of the vexed target's turn, before the vexer could use the advantage on their own next turn. RAW deviation (documented in starter-pack-gaps.md): modeled as Advantage on all the vexer's attacks against that target until the end of the vexer's next turn (autoExpiry afterRounds 1, turnEnd); with Extra Attack this over-applies vs RAW's single attack.",
       "stackable": false,
       "consumeOnAttack": true,
       "endsOn": [],
-      "autoExpiry": { "afterRounds": 1, "trigger": "turnEnd" },
+      "autoExpiry": { "afterRounds": 1, "trigger": "turnEnd", "expirySourceFromBearer": true },
       "effects": [{ "kind": "SetAdvantageVsSource", "on": "attack", "mode": "advantage" }]
     },
     {

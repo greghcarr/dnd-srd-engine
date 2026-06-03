@@ -18,7 +18,8 @@ import type { ItemTemporaryBuff } from '../../schemas/runtime/item-instance.js';
 import type { RNG } from '../../rng/index.js';
 import { rollDie, parseDiceExpression } from '../../rng/dice.js';
 import { newEventId, newAppliedConditionId } from '../../ids.js';
-import { computeAttackBonus } from '../../derive/attack.js';
+import { computeAttackBonus, martialArtsApplies } from '../../derive/attack.js';
+import type { Weapon } from '../../schemas/content/item.js';
 import { computeAC } from '../../derive/ac.js';
 import { buildEffectStack, collectEffectsFromCharacter, getEffectiveFeatIds } from '../../derive/effect-stack.js';
 import { cunningStrikeForgoDice, cunningStrikeMinLevel, type CunningStrikeOption } from './cunning-strike.js';
@@ -350,12 +351,20 @@ export interface AttackIntent {
 }
 
 const chooseDamageAbility = (
-  attacker: { abilityScores: { STR: number; DEX: number } },
-  weapon: { properties: ReadonlyArray<string>; attackKind: 'melee' | 'ranged' },
+  attacker: Character,
+  weapon: Weapon,
 ): 'STR' | 'DEX' => {
   const isFinesse = weapon.properties.includes('finesse');
   const isRanged = weapon.attackKind === 'ranged';
   if (isRanged && !weapon.properties.includes('thrown')) return 'DEX';
+  // Slice 623: Martial Arts "Dexterous Attacks" applies to damage
+  // too (mirror of chooseAttackAbility in derive/attack.ts).
+  if (martialArtsApplies(attacker, weapon)) {
+    return abilityModifier(attacker.abilityScores.DEX) >=
+      abilityModifier(attacker.abilityScores.STR)
+      ? 'DEX'
+      : 'STR';
+  }
   if (isFinesse) {
     return abilityModifier(attacker.abilityScores.DEX) >=
       abilityModifier(attacker.abilityScores.STR)
