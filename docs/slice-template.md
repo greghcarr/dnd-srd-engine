@@ -1,8 +1,8 @@
 # Slice template
 
-Most slices in this repo fall into one of three shapes. This doc lists the file checklist + order of operations for each. The planner skeleton itself is documented in [CLAUDE.md](../CLAUDE.md#planner-shape).
+Most slices in this repo fall into one of three shapes. This doc lists the file checklist + order of operations for each. The planner skeleton itself is documented in [docs/architecture.md](architecture.md#planner-shape).
 
-For the project-wide slice workflow (event-first, reducer, planner, tests), see the "Slice workflow" section of [CLAUDE.md](../CLAUDE.md#slice-workflow). This doc breaks it out by slice shape.
+For the project-wide slice workflow (event-first, reducer, planner, tests), see the "Slice workflow" section of [docs/architecture.md](architecture.md#slice-workflow). This doc breaks it out by slice shape.
 
 ## Pre-flight (every slice)
 
@@ -16,7 +16,7 @@ For the project-wide slice workflow (event-first, reducer, planner, tests), see 
 - `npm run typecheck` clean (CI also gates this).
 - Replay-equivalence holds on every new golden scenario.
 - New events round-trip through `formatTranscript` (a case in [tests/transcript.ts](../tests/transcript.ts) for each new event type).
-- Write the full slice detail (Files / Tests / Verification / Audit / Open-follow-ups) to `docs/changelog/slice-NNN.md`, AND add a 3-line pointer entry to `CHANGELOG.md` under `## Unreleased` (post-slice-628 convention; see [CLAUDE.md](../CLAUDE.md) "CHANGELOG entry shape" for the templates).
+- Write the full slice detail (Files / Tests / Verification / Audit / Open-follow-ups) to `docs/changelog/slice-NNN.md`, AND add a 3-line pointer entry to `CHANGELOG.md` under `## Unreleased` (post-slice-628 convention; see [CONTRIBUTING.md](../CONTRIBUTING.md#changelog-entry-shape) for the templates).
 - [docs/starter-pack-gaps.md](starter-pack-gaps.md) updated: future-engine-slices row marked shipped if a primitive landed; per-level spell sections walked from `schema-only` to `wired` for the canonical content user(s); "Coverage at a glance" totals refreshed.
 - Pre-commit Uncle Bob review: clean code / externalities / regressions / tests / Uncle Bob check.
 
@@ -30,7 +30,7 @@ The most common shape. Adds an `IntentX` + `planX` + supporting events.
 
 - **Events**: add or extend a schema file under [src/schemas/events/](../src/schemas/events/) (e.g. `attack.ts`, `action-economy.ts`). Wire into [src/schemas/events/index.ts](../src/schemas/events/index.ts) (union + export).
 - **Reducer**: add `applyFoo(draft, event)` to the matching reducer file in [src/engine/reducers/](../src/engine/reducers/) (one file per event category). Wire into the switch in [src/engine/apply.ts](../src/engine/apply.ts) (both the import and the case, easy to forget).
-- **Planner**: new file in [src/engine/plan/](../src/engine/plan/) following the skeleton in [CLAUDE.md](../CLAUDE.md#planner-shape).
+- **Planner**: new file in [src/engine/plan/](../src/engine/plan/) following the skeleton in [docs/architecture.md](architecture.md#planner-shape).
 - **Public API**: re-export from [src/engine/plan/index.ts](../src/engine/plan/index.ts), add to [src/engine/index.ts](../src/engine/index.ts) Engine interface + `planNs` factory if intended for consumers, optionally add a convenience method in [src/engine/conveniences.ts](../src/engine/conveniences.ts).
 - **Tests**:
   - Reducer test in [tests/unit/reducers/](../tests/unit/reducers/).

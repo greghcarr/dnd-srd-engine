@@ -4,7 +4,7 @@ This doc is the **priority queue** for contributor work and a top-level summary 
 
 ## How to pick a slice (for new contributors)
 
-1. **Read [CLAUDE.md](../CLAUDE.md) first** if you haven't — slice cadence, branch flow, pre-commit Uncle Bob audit, SRD canon, doc size discipline. Those rules apply to every slice.
+1. **Read [CONTRIBUTING.md](../CONTRIBUTING.md) first** if you haven't — slice cadence, branch flow, pre-commit Uncle Bob audit, SRD canon, doc size discipline. Those rules apply to every slice.
 2. **Skim the "Coverage at a glance" table below** for the lay of the land.
 3. **Jump to "Future engine slices"** further down for the catalog of focused primitives, each with the cohort of spells / features / items it unblocks. Rows ranked roughly by payoff.
 4. **Also check the Deferred primitives backlog** in [gaps-deferred-primitives.md](gaps-deferred-primitives.md) for small, accreted RAW deviations that each have a one-primitive fix. Lower-payoff per slice but excellent for getting familiar with the codebase.
@@ -18,7 +18,7 @@ If you need per-category detail beyond the slim "Coverage at a glance" table bel
 
 This is separate from [content-attribution.md](content-attribution.md), which is a licensing audit (what's clearly SRD-derived vs needs verification). The two docs are kept in parallel: attribution tracks "may we ship this?", this doc tracks "is it actually in here, and how completely?".
 
-Sibling per-category catalogs (extracted in slice 249 to keep this doc under the single-Read ceiling — see [CLAUDE.md](../CLAUDE.md) "Doc size discipline"):
+Sibling per-category catalogs (extracted in slice 249 to keep this doc under the single-Read ceiling — see [CONTRIBUTING.md](../CONTRIBUTING.md#doc-size-discipline-the-single-read-ceiling)):
 
 - [gaps-spells.md](gaps-spells.md) — per-spell wired vs schema-only catalog (L0 through L9).
 - [gaps-class-features.md](gaps-class-features.md) — per-class stub-features inventory.

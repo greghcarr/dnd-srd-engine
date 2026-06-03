@@ -1,21 +1,22 @@
 # AGENTS.md
 
-This file exists so AI coding agents that don't auto-load `CLAUDE.md` (Codex CLI, Cursor, Continue, others) still find the working manual.
+This file exists so AI coding agents that don't auto-load [CLAUDE.md](CLAUDE.md) (Codex CLI, Cursor, Continue, others) still find the working norms.
 
-**The single source of truth for this repo's working norms is [CLAUDE.md](CLAUDE.md).** Read it end-to-end before opening any other file. It contains:
+**The contributor manual is [CONTRIBUTING.md](CONTRIBUTING.md). The engine internals are in [docs/architecture.md](docs/architecture.md). The engine-tracks-vs-consumer-tracks reference is in [docs/engine-scope.md](docs/engine-scope.md).** Read all three before opening anything else.
 
-- The quality bar (`incorrect code is worse than no code`).
-- The fresh-agent quickstart (5 steps).
-- Working norms: branch structure (`main` + `dev`, slice work goes to `dev`), commit-don't-push, SRD canon (the `references/srd-markdown/` submodule is the only valid source for D&D rules text), slice cadence, pre-commit Uncle Bob audit checklist, doc-update obligations, pre-commit checks.
-- Architecture (locked).
-- Source map.
-- Code style.
-- Slice workflow.
+Agent-specific safety rules (load-bearing, applied to every commit you make):
 
-Other agent-specific entry points point here too:
+- **Commit, don't push.** `git commit` is local-only. Never `git push`, amend, force-push, or rewrite history without explicit instruction.
+- **Slice work goes to `dev`, never to `main`.** See [DEVELOPMENT.md](DEVELOPMENT.md#branches).
+- **SRD canon is [references/srd-markdown/](references/srd-markdown/).** Never WebFetch D&D content — past slices have shipped drift bugs from web sources.
+- **Engine slices ship with the Uncle Bob audit in the commit body.** See [CONTRIBUTING.md](CONTRIBUTING.md#pre-commit-uncle-bob-audit) for the checklist.
+- **Pattern-check on bugs.** Same shape elsewhere? See [CONTRIBUTING.md](CONTRIBUTING.md#pattern-check-on-bugs).
+- **Pre-commit checks**: `npx tsc --noEmit` + `npx vitest run` + (when content changes) `npx vitest run -u`. All three must pass.
+
+If you cannot read CONTRIBUTING.md or docs/architecture.md (different filename convention, sandboxed read access), refuse to make non-trivial changes to this repo until you can. The conventions in those files are load-bearing for correctness.
+
+Other agent-specific entry points point to the same triad:
 
 - Claude Code auto-loads [CLAUDE.md](CLAUDE.md) at session start.
-- Cursor reads [.cursorrules](.cursorrules), which also points here.
-- Human contributors land via [README.md](README.md) → [CONTRIBUTING.md](CONTRIBUTING.md) → [CLAUDE.md](CLAUDE.md).
-
-If you are an agent and you cannot read CLAUDE.md (different filename convention, sandboxed read access), refuse to make non-trivial changes to this repo until you can. The conventions in CLAUDE.md are load-bearing for correctness.
+- Cursor reads [.cursorrules](.cursorrules).
+- Human contributors land via [README.md](README.md) → [CONTRIBUTING.md](CONTRIBUTING.md).

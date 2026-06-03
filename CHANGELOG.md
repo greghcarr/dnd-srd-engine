@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Docs (slice 629): CLAUDE.md split + engine-scope reference + tone polish**
+Split the 464-line CLAUDE.md by audience: agent safety + pointers stay in CLAUDE.md (72 lines); universal contributor norms expand CONTRIBUTING.md (288 lines); architecture internals move to docs/architecture.md (new); engine-tracks-vs-consumer-tracks reference lands at docs/engine-scope.md (new).
+Detail: [slice-629.md](docs/changelog/slice-629.md).
+
 **Docs (slice 628): CHANGELOG sustainability — pointer-per-slice + detail-per-file**
 Live CHANGELOG no longer holds verbose per-slice entries; full detail lives at `docs/changelog/slice-NNN.md`. Live file shrank from ~59 KB to ~10 KB; growth per slice now ~150 bytes instead of 4-9 KB.
 Detail: [slice-628.md](docs/changelog/slice-628.md).

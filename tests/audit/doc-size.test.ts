@@ -47,6 +47,9 @@ const fixedFiles = [
   'README.md',
   'CHANGELOG.md',
   'CLAUDE.md',
+  'CONTRIBUTING.md',
+  'docs/architecture.md',
+  'docs/engine-scope.md',
   'docs/starter-pack-gaps.md',
   'docs/status.md',
   'docs/roadmap.md',
@@ -94,7 +97,7 @@ describe('doc-size audit (slice 285): front-door docs fit the single-Read ceilin
       const bytes = sizeBytes(rel);
       expect(
         bytes,
-        `${rel} is ${bytes} bytes (limit ${MAX_BYTES}). Split or archive — see CLAUDE.md "Doc size discipline".`,
+        `${rel} is ${bytes} bytes (limit ${MAX_BYTES}). Split or archive — see CONTRIBUTING.md "Doc size discipline".`,
       ).toBeLessThanOrEqual(MAX_BYTES);
     });
   }

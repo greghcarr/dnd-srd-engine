@@ -11,6 +11,16 @@ The package is named `dnd-srd-engine` because the long-term plan extracts the sy
 
 If you are building a D&D character sheet, encounter tracker, virtual tabletop, automation tool, or AI dungeon master and you do not want to reimplement the rules engine from scratch, this is for you.
 
+## New here?
+
+Three docs cover the common entry points:
+
+- **Using the library**: [docs/getting-started.md](docs/getting-started.md) for a 15-minute walkthrough of your first character + attack + save/load; [docs/api-overview.md](docs/api-overview.md) for the full public surface.
+- **Integrating it into your app**: [docs/engine-scope.md](docs/engine-scope.md) for the engine-tracks-vs-consumer-tracks reference (do I need to track positions / line of sight / carry weight?).
+- **Contributing**: [CONTRIBUTING.md](CONTRIBUTING.md) for the contributor manual; [docs/architecture.md](docs/architecture.md) for the engine internals (event sourcing, plan/commit, effect primitives).
+
+The rest of this README covers the quickstart, status, and roadmap.
+
 ## Try it in your browser
 
 A live demo of the engine — combat sandbox + event inspector + import/export with replay verification — runs on GitHub Pages: **https://greghcarr.github.io/dnd-srd-engine/** (deployed via `.github/workflows/deploy-demo.yml`; one-time setup is Settings → Pages → Source = "GitHub Actions"). Source lives under [web/](web/). See [web/README.md](web/README.md) for local development.
@@ -84,8 +94,9 @@ That snippet shows the shortest "engine is alive" path: load the starter pack, b
 - **I want to walk through my first attack + save/load (15 min, copy-paste runnable):** [docs/getting-started.md](docs/getting-started.md).
 - **I want runnable code I can read or run right now:** [examples/](examples/) (four small scripts, each one file).
 - **I want to understand events / plan-commit / why the API has this shape:** [docs/concepts.md](docs/concepts.md).
+- **I want to know what the engine tracks vs what my app tracks:** [docs/engine-scope.md](docs/engine-scope.md).
 - **I'm looking up a specific symbol:** [docs/api-overview.md](docs/api-overview.md).
-- **I'm extending the engine (houserules, new content, custom planners):** [docs/recipes.md](docs/recipes.md) for patterns, then [CLAUDE.md](CLAUDE.md) for the working manual.
+- **I'm extending the engine (houserules, new content, custom planners):** [docs/recipes.md](docs/recipes.md) for patterns, then [CONTRIBUTING.md](CONTRIBUTING.md) for the contributor manual and [docs/architecture.md](docs/architecture.md) for the engine internals.
 
 ## What lives in this repo
 
@@ -99,7 +110,8 @@ That snippet shows the shortest "engine is alive" path: load the starter pack, b
 | [web/](web/) | Browser demo for the engine (combat sandbox + event inspector). Deployed to GitHub Pages. |
 | [dndbnb/](dndbnb/) | A D&D Beyond-style consumer app built on the engine. Co-located so engine changes flow into it without a publish cycle. Has its own [README](dndbnb/README.md) and deploy workflow. |
 | [supabase/](supabase/) | dndbnb's database migrations (Postgres + Auth + RLS). Not used by the engine itself. |
-| [CLAUDE.md](CLAUDE.md) / [AGENTS.md](AGENTS.md) / [.cursorrules](.cursorrules) | Working manual (CLAUDE.md) plus cross-agent pointers for tools that don't auto-load it. Anyone doing non-trivial work reads CLAUDE.md end-to-end first. |
+| [CONTRIBUTING.md](CONTRIBUTING.md) / [docs/architecture.md](docs/architecture.md) | Contributor manual + engine internals. Anyone doing non-trivial work reads these end-to-end first. |
+| [CLAUDE.md](CLAUDE.md) / [AGENTS.md](AGENTS.md) / [.cursorrules](.cursorrules) | Per-agent safety-rail summaries + pointers to the contributor manual. Auto-loaded by their respective tools. |
 
 ## Documentation
 
@@ -110,9 +122,11 @@ Pick the doc that matches what you want:
 | Try the smallest possible working example | [examples/00-quickstart](examples/00-quickstart/) |
 | Walk through your first character, attack, and save/load | [docs/getting-started.md](docs/getting-started.md) |
 | Understand the mental model (events, plan/commit, content packs) | [docs/concepts.md](docs/concepts.md) |
+| Know what the engine tracks vs what your app tracks (positions, line of sight, choices) | [docs/engine-scope.md](docs/engine-scope.md) |
 | Look up a specific public symbol | [docs/api-overview.md](docs/api-overview.md) |
 | See common patterns (save, undo, houserules, multiplayer sync) | [docs/recipes.md](docs/recipes.md) |
 | Author content packs (spells, classes, feats, items, monsters) | [docs/authoring-content-packs.md](docs/authoring-content-packs.md) |
+| Understand the engine internals (event sourcing, plan/commit, effect primitives, planner shape) | [docs/architecture.md](docs/architecture.md) |
 | Try the web demo in your browser | [https://greghcarr.github.io/dnd-srd-engine/](https://greghcarr.github.io/dnd-srd-engine/) |
 | Hack on the web demo locally | [web/README.md](web/README.md) |
 | Read the demo's architecture decisions | [docs/web-demo-plan.md](docs/web-demo-plan.md) |
@@ -224,7 +238,7 @@ const sheet = engine.derive.character(campaign.state, alyx.id);
 // sheet.ac, sheet.savingThrows, sheet.spellSlots, etc.
 ```
 
-For a step-by-step walkthrough, see [docs/getting-started.md](docs/getting-started.md). For the full surface, see [docs/api-overview.md](docs/api-overview.md). See [DEVELOPMENT.md](DEVELOPMENT.md) for the dev workflow and [CLAUDE.md](CLAUDE.md) for architecture conventions.
+For a step-by-step walkthrough, see [docs/getting-started.md](docs/getting-started.md). For the full surface, see [docs/api-overview.md](docs/api-overview.md). See [DEVELOPMENT.md](DEVELOPMENT.md) for the dev workflow and [docs/architecture.md](docs/architecture.md) for engine internals.
 
 ## Intellectual property
 
@@ -240,14 +254,15 @@ If you build your own content pack to load into this engine, your pack's license
 
 ## Contributing
 
-The engine is structured so that anyone (or any AI coding agent) can clone the repo and start contributing effectively. The working manual is [CLAUDE.md](CLAUDE.md): quality bar, branch structure, commit conventions, SRD-as-canon, slice cadence, pre-commit Uncle Bob audit, architecture. Read it before opening anything else.
+The engine is structured so that anyone (or any AI coding agent) can clone the repo and start contributing effectively. Read these in order before opening a PR:
 
-Then:
+- [CONTRIBUTING.md](CONTRIBUTING.md) — contributor manual: quality bar, branch structure, slice cadence, SRD-as-canon, pre-commit Uncle Bob audit, doc-update obligations, testing standard, code style.
+- [docs/architecture.md](docs/architecture.md) — engine internals: the locked architectural decisions, source map, planner shape, system-agnostic seam.
+- [DEVELOPMENT.md](DEVELOPMENT.md) — dev commands and branch flow (slice work goes to `dev`, never `main`).
+- [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md) — prioritized backlog of next slices.
+- [docs/slice-template.md](docs/slice-template.md) — per-shape checklist (new planner / new content / new derivation).
 
-- [CONTRIBUTING.md](CONTRIBUTING.md) for the contributor flow and testing standard.
-- [DEVELOPMENT.md](DEVELOPMENT.md) for dev commands and branch flow (slice work goes to `dev`, never `main`).
-- [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md) for the prioritized backlog of next slices.
-- [docs/slice-template.md](docs/slice-template.md) for the per-shape checklist (new planner / new content / new derivation).
+AI agents land via [CLAUDE.md](CLAUDE.md) (Claude Code) or [AGENTS.md](AGENTS.md) (other tools), which carry the safety-critical rules and redirect to the contributor manual.
 
 The architecture is locked. The quality bar is high: **incorrect code is worse than no code.** Contributions that fit within the locked architecture are welcome; open an issue before a large architectural change.
 

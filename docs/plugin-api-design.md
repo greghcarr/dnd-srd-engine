@@ -22,7 +22,7 @@ So this proposal is about **finishing the scaffold into a real seam**, on terms 
 
 ## Hard constraints (these shape everything)
 
-The locked architecture (see [CLAUDE.md](../CLAUDE.md) "Architecture") dictates the rules a handler must obey:
+The locked architecture (see [docs/architecture.md](architecture.md)) dictates the rules a handler must obey:
 
 1. **Plan/commit split: RNG lives only in planners.** `engine.plan(...)` is the only place randomness is consumed; resolution events carry baked rolls. Therefore a handler that needs randomness **runs at plan time** and **bakes its rolls into the events it returns**.
 2. **`apply()` is pure and RNG-free; replay re-applies baked events.** Therefore handlers **must never run during `apply()` or replay**. The invocation point is the planner/trigger layer, not the reducer. At replay the handler's already-emitted events are simply re-applied; the handler does not run again.

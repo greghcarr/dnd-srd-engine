@@ -1,21 +1,21 @@
 # Cursor rules for dnd-srd-engine
 
-The working manual for this repo is `CLAUDE.md`. Read it end-to-end before making any non-trivial change. It is the single source of truth for working norms, architecture, and conventions.
+The contributor manual for this repo is `CONTRIBUTING.md`. Engine internals are documented in `docs/architecture.md`. The engine-tracks-vs-consumer-tracks reference is `docs/engine-scope.md`. Read all three before making any non-trivial change.
 
-Load-bearing rules that apply to every commit:
+Agent-specific safety rules (load-bearing, applied to every commit):
 
 1. **Incorrect code is worse than no code.** This engine is meant to be the foundation other D&D 5.5e tools rely on; a subtly-wrong rule implementation will mislead consumers for months. If you cannot make a change correct, leave it deferred with a tracked row in `docs/starter-pack-gaps.md`.
 
-2. **Commit, don't push.** `git commit` is local-only. Never `git push`, amend, force-push, or rewrite history without explicit instruction from the user.
+2. **Commit, don't push.** `git commit` is local-only. Never `git push`, amend, force-push, or rewrite history without explicit instruction from a human collaborator.
 
-3. **Slice work goes to `dev`, never to `main`.** Branch off `dev`. Commit there. Surface the work to the user and let them merge to `main` on their cadence.
+3. **Slice work goes to `dev`, never to `main`.** Branch off `dev`. Commit there. `dev` integrates into `main` through a CI-gated PR, never a local merge.
 
 4. **SRD is canon.** The `references/srd-markdown/` git submodule is the only valid source for D&D 5.2.1 rules text. Never WebFetch D&D content. If the submodule is empty (fresh clone), run `git submodule update --init --recursive` to populate it.
 
 5. **Slice cadence: primitive + canonical user.** Each commit ships one focused unit (new primitive plus 1-2 RAW users that exercise it, OR a content sweep against an existing primitive). See `docs/slice-template.md`.
 
-6. **Pre-commit Uncle Bob audit.** Every engine slice commit body includes an audit covering names / DRY / SRP / magic numbers / at-threading / mechanical outcomes asserted / tests. The checklist lives in `CLAUDE.md` under "Pre-commit Uncle Bob audit."
+6. **Pre-commit Uncle Bob audit.** Every engine slice commit body includes an audit covering names / DRY / SRP / magic numbers / at-threading / mechanical outcomes asserted / tests. The checklist lives in `CONTRIBUTING.md` under "Pre-commit Uncle Bob audit."
 
 7. **Pre-commit checks (both mandatory).** `npx tsc --noEmit` clean and `npx vitest run` green before every commit.
 
-For the full set of conventions, architecture, source map, and slice workflow, read `CLAUDE.md`. These seven rules are a summary, not a replacement.
+For the full set of conventions, architecture, source map, and slice workflow, read `CONTRIBUTING.md` and `docs/architecture.md`. These seven rules are a summary, not a replacement.
