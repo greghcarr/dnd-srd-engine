@@ -2,6 +2,12 @@
   color-scheme: light dark;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   line-height: 1.5;
+  /* Slice 615: team colors as CSS variables so theme overrides + future
+     team palettes don't require touching the component CSS. Values
+     borrowed from the dropped grid-view's TOKEN_PALETTE so the demo's
+     color identity stays consistent. */
+  --team-a-color: #4a89ff;
+  --team-b-color: #e7553c;
 }
 
 body {
@@ -158,12 +164,14 @@ button:disabled {
   font-size: 0.95rem;
 }
 
-/* Slice 607: per-team left border so a reader can tell A from B at a glance. */
+/* Slice 607: per-team left border so a reader can tell A from B at a glance.
+   Slice 615: color values come from the root --team-{a,b}-color
+   variables, not hardcoded hexes. */
 .combatant.team-a {
-  border-left-color: #4a89ff;
+  border-left-color: var(--team-a-color);
 }
 .combatant.team-b {
-  border-left-color: #e7553c;
+  border-left-color: var(--team-b-color);
 }
 
 .combatant.active {
@@ -172,10 +180,10 @@ button:disabled {
   background: rgba(127, 127, 127, 0.1);
 }
 .combatant.active.team-a {
-  border-left-color: #4a89ff;
+  border-left-color: var(--team-a-color);
 }
 .combatant.active.team-b {
-  border-left-color: #e7553c;
+  border-left-color: var(--team-b-color);
 }
 
 .combatant.downed .combatant-name::after {

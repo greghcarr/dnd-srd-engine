@@ -4,6 +4,23 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Tooling (slice 615): web polish — drop redundant placeholder text, team colors → CSS variables**
+
+Two small cosmetic fixes from the slice-600 observer-review item list:
+
+1. **Mid-scrub outcome placeholder** ([web/modes/fuzz-replay.ts](web/modes/fuzz-replay.ts)) said "Battle in progress (step N of M). Scrub to the end (⏭) to see the outcome." The transport directly above already shows "step N / M" — redundant. New copy: "Battle in progress — scrub to the end (⏭) to see the outcome."
+2. **Team colors as CSS variables** ([web/styles.css](web/styles.css)): `--team-a-color: #4a89ff` and `--team-b-color: #e7553c` on `:root`; the four `.combatant.team-*` rules now reference the variables instead of inline hexes. A future theme override or palette change touches one declaration instead of four.
+
+No engine work, no tests touched.
+
+**Verification:** `tsc -p web/tsconfig.json` clean; `vite` boots without runtime errors.
+
+**Audit (trivial slice):**
+- Names: `--team-a-color` / `--team-b-color` mirror existing `--token-color` convention from the dropped grid-view.
+- DRY: 4 hardcoded hexes collapse to 2 variable declarations.
+
+---
+
 **Tests + engine (slice 614): audit rigor — golden scenarios, fuzz CLI integration test, and the slice-611 follow-up actually paid down**
 
 The slice-600 observer review flagged three weaknesses in the slice 601-610 audit work: shallow test coverage (focused unit tests but no full-battle golden scenarios for the new behaviors), a process gap (no integration test caught the slice-600 Beast-name regression), and superficial pattern-check sweeps (claimed "swept all 28 rollDie sites" — actual count was 51, and one of them, `offhand-attack.ts`, was a real gap I tracked as a follow-up but didn't close).

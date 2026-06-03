@@ -152,8 +152,10 @@ export const mountFuzzReplay = (opts: FuzzReplayOptions): FuzzReplay => {
     // placeholder so observers know the battle has a resolution and
     // how to reveal it.
     if (cursor < totalEvents) {
+      // Slice 615: drop the "(step N of M)" — the transport directly
+      // above already shows that count. Redundant.
       outcomeEl.hidden = false;
-      outcomeEl.textContent = `Battle in progress (step ${cursor} of ${totalEvents}). Scrub to the end (⏭) to see the outcome.`;
+      outcomeEl.textContent = `Battle in progress — scrub to the end (⏭) to see the outcome.`;
       outcomeEl.className = 'fuzz-outcome fuzz-outcome-inprogress';
       return;
     }
