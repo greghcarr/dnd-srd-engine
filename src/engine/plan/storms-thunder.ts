@@ -8,6 +8,8 @@ import type { RNG } from '../../rng/index.js';
 import { rollDie } from '../../rng/dice.js';
 import { newEventId } from '../../ids.js';
 import { nowIso } from '../../internal/clock.js';
+import { applyAll } from '../apply.js';
+import { planConcentrationOnDamage } from './concentration.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { assertReactionAvailable, economyConsumedIfEncountered } from './reactive-spells.js';
@@ -138,6 +140,20 @@ export const planStormsThunder = (
   };
   events.push(damageApplied);
   events.push(...intercept.extraEvents);
+  // Slice 621: Storm's Thunder retaliation damage triggers CON save on
+  // the original attacker if they're concentrating. Same shape as
+  // slice 620's retaliation wire in trigger dispatch.
+  events.push(
+    ...planConcentrationOnDamage(
+      applyAll(state, events),
+      content,
+      rng,
+      attacker,
+      intercept.components,
+      damageApplied.id,
+      at,
+    ),
+  );
 
   const damageDealt = intercept.components.reduce((s, c) => s + c.amount, 0);
   return { events, damageDealt };

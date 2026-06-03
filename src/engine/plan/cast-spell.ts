@@ -729,10 +729,17 @@ const planAttackMechanic = (
       sourceCharacterId: intent.characterId as ULID,
       source: spell.id,
     };
+    // Slice 621: snapshot pre-damage state so the conc helper sees (a)
+    // whether a prior event in this planner already broke conc -- skip
+    // duplicate save -- and (b) the target's pre-this-damage HP, so a
+    // drop-to-0 from THIS damage classifies as 'unconscious' not
+    // 'failedSave'. Mirrors the attack.ts:1423 fix.
+    const stateBeforeThisDamage = applyAll(state, events);
     events.push(damageApplied);
     events.push(...intercept.extraEvents);
+    const targetForConc = stateBeforeThisDamage.characters[targetId] ?? target;
     events.push(
-      ...planConcentrationOnDamage(state, content, rng, target, intercept.components, damageApplied.id, at),
+      ...planConcentrationOnDamage(stateBeforeThisDamage, content, rng, targetForConc, intercept.components, damageApplied.id, at),
     );
     // Slice 516: dispatch OnEvent triggers on the spell-attack
     // DamageApplied so per-spell on-hit riders fire (canonical user:
@@ -973,10 +980,13 @@ const planSaveMechanic = (
           sourceCharacterId: intent.characterId as ULID,
           source: spell.id,
         };
+        // Slice 621: pre-damage state for conc helper (see attack.ts:1423).
+        const stateBeforeThisDamage = applyAll(state, events);
         events.push(damageApplied);
         events.push(...intercept.extraEvents);
+        const targetForConc = stateBeforeThisDamage.characters[targetId] ?? target;
         events.push(
-          ...planConcentrationOnDamage(state, content, rng, target, intercept.components, damageApplied.id, at),
+          ...planConcentrationOnDamage(stateBeforeThisDamage, content, rng, targetForConc, intercept.components, damageApplied.id, at),
         );
       }
     }
@@ -1521,9 +1531,12 @@ const planHpThresholdMechanic = (
       sourceCharacterId: intent.characterId as ULID,
       source: spell.id,
     };
+    // Slice 621: pre-damage state for conc helper (see attack.ts:1423).
+    const stateBeforeThisDamage = applyAll(state, events);
     events.push(damageApplied);
     events.push(...intercept.extraEvents);
-    events.push(...planConcentrationOnDamage(state, content, rng, target, intercept.components, damageApplied.id, at));
+    const targetForConc = stateBeforeThisDamage.characters[targetId] ?? target;
+    events.push(...planConcentrationOnDamage(stateBeforeThisDamage, content, rng, targetForConc, intercept.components, damageApplied.id, at));
   }
   return events;
 };

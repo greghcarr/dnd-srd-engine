@@ -1420,11 +1420,16 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     // attacks; the spell / trap damage emitters already set it.
     sourceCharacterId: input.attackerId as ULID,
   };
+  // Slice 621: pass post-rider state so the helper sees (a) whether a
+  // rider (Hex / Hunter's Mark) already broke concentration -- skip the
+  // duplicate save -- and (b) the target's post-rider HP, so "main
+  // damage drops to 0" classifies as 'unconscious' not 'failedSave'.
+  const targetAfterRiders = stateBeforeMainDamage.characters[input.targetId] ?? target;
   const concentrationBreak = planConcentrationOnDamage(
-    state,
+    stateBeforeMainDamage,
     content,
     rng,
-    target,
+    targetAfterRiders,
     intercept.components,
     damageApplied.id,
     at,

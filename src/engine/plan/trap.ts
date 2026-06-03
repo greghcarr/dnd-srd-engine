@@ -13,6 +13,7 @@ import { rollSaveBonusDice } from './_bonus-dice.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { applyAll } from '../apply.js';
+import { planConcentrationOnDamage } from './concentration.js';
 import type { SaveRolledEvent } from '../../schemas/events/checks.js';
 import type {
   DamageAppliedEvent,
@@ -162,6 +163,19 @@ export const planTriggerTrap = (
     };
     events.push(damage);
     events.push(...intercept.extraEvents);
+    // Slice 621: trap damage triggers CON save on a concentrating
+    // triggering character. Same shape as slice 601/612/620 wirings.
+    events.push(
+      ...planConcentrationOnDamage(
+        applyAll(state, events),
+        content,
+        rng,
+        target,
+        intercept.components,
+        damage.id,
+        at,
+      ),
+    );
   }
 
   const triggered: TrapTriggeredEvent = {

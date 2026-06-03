@@ -24,6 +24,7 @@ import { computeSpellSaveDC } from '../../derive/spell-dc.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { applyAll } from '../apply.js';
+import { planConcentrationOnDamage } from './concentration.js';
 import { newAppliedConditionId } from '../../ids.js';
 import { newEventId } from '../../ids.js';
 import { nowIso } from '../../internal/clock.js';
@@ -761,6 +762,21 @@ export const planThunderStep = (
     };
     events.push(damage);
     events.push(...intercept.extraEvents);
+    // Slice 621: per-target concentration save on Thunder Step area damage.
+    const concTarget = stagedState.characters[aff.combatantId];
+    if (concTarget !== undefined) {
+      events.push(
+        ...planConcentrationOnDamage(
+          applyAll(stagedState, [damage, ...intercept.extraEvents]),
+          content,
+          rng,
+          concTarget,
+          intercept.components,
+          damage.id,
+          at,
+        ),
+      );
+    }
     stagedState = applyAll(stagedState, [damage, ...intercept.extraEvents]);
   }
 

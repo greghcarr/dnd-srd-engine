@@ -4,6 +4,38 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + tests (slice 621): concentration RAW closure — wire helper at 6 missed damage sites + use post-rider state on main-damage save + permanent coverage audit**
+
+The slice-620 "do another round of 12" fuzz batch surfaced two distinct RAW deviations the slice 601-620 wiring missed:
+
+1. **Six unwired DamageApplied emission sites.** The slice-614 audit-rigor pass *claimed* a clean sweep of every DamageApplied emitter, but the actual sweep was filter-shape-narrow (only checked `cast-spell.ts` and `attack.ts`). [src/engine/plan/dragonborn-breath.ts](src/engine/plan/dragonborn-breath.ts), [src/engine/plan/breath-weapon.ts](src/engine/plan/breath-weapon.ts) (monster breath), [src/engine/plan/movement.ts](src/engine/plan/movement.ts) (Thunder Step area damage), [src/engine/plan/paladins-smite.ts](src/engine/plan/paladins-smite.ts), [src/engine/plan/storms-thunder.ts](src/engine/plan/storms-thunder.ts) (Goliath retaliation), and [src/engine/plan/trap.ts](src/engine/plan/trap.ts) all emitted DamageApplied without rolling the per-source CON save RAW requires. Six sites: a concentrating target eating dragon breath, a trap's poison dart, or a paladin smite would never lose concentration.
+
+2. **Stale-state main-damage CON save** (seeds 5003 + 5006 in the L1 fuzz batch). The main-damage `planConcentrationOnDamage` call in `attack.ts:1423` (and `cast-spell.ts` ×3) passed the pre-attack state + pre-attack `target` snapshot, missing two facts the helper needed: (a) whether a rider (Hex, Hunter's Mark) had already broken concentration this chain (→ double-break: rider broke via failedSave then main re-fired Broken(failedSave) idempotent-but-wrong), and (b) the target's post-rider HP (→ wrong-reason: main damage that *would* drop a post-rider HP=3 target to 0 saw stale HP=9, fell through to per-component save, failed → emitted `ConcBroken(failedSave)` when RAW says `'unconscious'`).
+
+**Fix** ([src/engine/plan/attack.ts:1423](src/engine/plan/attack.ts#L1423), [src/engine/plan/cast-spell.ts](src/engine/plan/cast-spell.ts) ×3): pass `stateBeforeMainDamage = applyAll(state, [...rider+staged events])` and re-fetch the target from it. The helper now sees the rider already cleared `concentrationEffectId` (returns `[]` → no double-break) AND sees post-rider HP (`damageWouldDropTo0` fires the correct `'unconscious'` branch). Same shape applied to all 6 newly-wired sites.
+
+**Permanent audit** ([tests/audit/concentration-save-coverage.test.ts](tests/audit/concentration-save-coverage.test.ts)): every `src/engine/plan/` file that emits `DamageApplied` must either call `planConcentrationOnDamage` or be allowlisted with a documented reason (currently only `concentration.ts` itself, which IS the helper). Promoted from "remember to sweep" to CI gate — this closes the filter-shape-narrow class of bug for good.
+
+**Tests** ([tests/unit/engine/slice-621-conc-save-post-rider-state.test.ts](tests/unit/engine/slice-621-conc-save-post-rider-state.test.ts), 2 cases over 400-seed sweeps): (1) Hex rider + main Eldritch Blast on concentrating target emits at most ONE `ConcentrationBroken` (proves no double-break + proves post-rider state being used); (2) a chain never emits BOTH `failedSave` AND `unconscious` for the same target (proves the wrong-reason class is closed). Slice 620's test updated to filter for seeds where the rider's save passed (so both rider's + main's saves still fire — the slice 620 invariant), since the slice 621 fix correctly suppresses the second save when the first broke conc.
+
+**Verification:** full suite green, tsc clean. The L1 fuzz seeds 5003 (double-break) and 5006 (wrong-reason) now produce RAW-correct transcripts.
+
+**RNG impact:** breath weapon damage, trap damage, smite damage, and movement-zone damage on concentrating targets now consume an additional d20 per source. Same per-seed determinism shift class as slices 601 / 612 / 620 — tracked in [docs/determinism.md](docs/determinism.md) and [docs/breaking-changes-queued.md](docs/breaking-changes-queued.md).
+
+**Audit:**
+- Names: `stateBeforeMainDamage`, `targetAfterRiders`, `targetForConc`, `stateBeforeThisDamage`, `targetCharForConc` — each names a snapshot at a specific moment in the event chain. Variable boundary names are intentionally explicit; the bug here was conflating "raw state" with "state at this moment."
+- DRY: every wire follows the same shape (compute pre-damage state, re-fetch target, call helper). Six sites, one pattern. The slice-621 comment block in each site cross-references attack.ts:1423 as the canonical example.
+- SRP: `planConcentrationOnDamage` unchanged; only call sites adjusted to pass the right state. Audit file does one thing — pin the wiring.
+- Magic numbers: none added.
+- at-threading: each wire uses the planner's existing `at` value; no new clock reads.
+- Mechanical outcomes asserted: (a) at most one `ConcentrationBroken` per attack chain per target; (b) `failedSave` and `unconscious` reasons never co-occur on the same target in one chain; (c) every DamageApplied emission site wires the helper or is allowlisted.
+- Pattern-check: this audit IS the pattern-check, promoted to permanent CI guard. The slice-614 sweep that *claimed* clean coverage missed 6 sites because it only walked `cast-spell.ts` + `attack.ts` (filter-shape-narrow false negative — same class as the slice-264 SetAdvantage sweep that missed `ImposeDisadvantageOnAttackers` siblings). The audit walks every `.ts` file in `src/engine/plan/`; future emissions can't slip through.
+- Tests: test 1 prevents double-break regressions; test 2 prevents wrong-reason regressions; audit prevents new unwired sites. Each test catches a specific named bug from the L1 fuzz batch.
+
+**Closes** slice-614's *unintentionally false* claim "swept all DamageApplied emission sites" — that sweep was filter-shape-narrow. The audit now makes the claim mechanically verifiable.
+
+---
+
 **Engine (slice 620): trigger-dispatched rider damage triggers concentration save (closes the L1 fuzz review's bug)**
 
 The L1 fuzz review (60 battles across `--vs pc`, `--vs monster`, `--mode 2v2`) surfaced one real bug the slice 601-612 wiring missed: OnEvent `AddDamage` riders (Hex, Hunter's Mark, Divine Smite, Searing Smite, any on-hit damage trigger) emit their own DamageApplied via `fireAddDamage` in [src/engine/triggers/dispatch.ts](src/engine/triggers/dispatch.ts), and that path didn't call `planConcentrationOnDamage`. Result: a Hex rider hitting a concentrating creature never triggered the per-damage-source CON save RAW requires.
@@ -155,118 +187,7 @@ No engine work, no tests touched.
 
 ---
 
-**Tests + engine (slice 614): audit rigor — golden scenarios, fuzz CLI integration test, and the slice-611 follow-up actually paid down**
-
-The slice-600 observer review flagged three weaknesses in the slice 601-610 audit work: shallow test coverage (focused unit tests but no full-battle golden scenarios for the new behaviors), a process gap (no integration test caught the slice-600 Beast-name regression), and superficial pattern-check sweeps (claimed "swept all 28 rollDie sites" — actual count was 51, and one of them, `offhand-attack.ts`, was a real gap I tracked as a follow-up but didn't close).
-
-This slice does the rigor pass.
-
-**1. Golden scenario for slices 601 + 602** ([tests/golden/s31-concentration-and-spell-advantage.test.ts](tests/golden/s31-concentration-and-spell-advantage.test.ts)): a 3-turn battle where the Druid casts Faerie Fire on the Wizard (concentration), Druid's next Fire Bolt rolls with [advantage] (slice 602 pin), Wizard's retaliating Fire Bolt deals damage that triggers the Druid's CON save (slice 601 pin). One end-to-end chain pins both behaviors against snapshot drift in realistic combat.
-
-**2. Fuzz CLI flag integration test** ([tests/integration/combat-fuzz-flags.test.ts](tests/integration/combat-fuzz-flags.test.ts), 6 cases): exercises every CLI flag combo at the `runBattle` core (not via subprocess — calls the same core both the CLI + web demo use). Default 1v1, `--vs monster` (pins the slice-606 Beast-not-Bran regression with explicit "no character named 'Bran' in monster mode" assertion), `--mode 2v2` (suffix naming), `--mode 2v2 --vs monster`, `--level 3` (PCs leveled correctly), `--rest long` (LongRestStarted event present). The Beast-name regression class can't slide again — a future refactor breaking the naming would fail this test.
-
-**3. Pattern-check sweep verification + close the real follow-up.** Walked the slice 602 claim "swept all `rollDie(D20_SIDES)` sites" with actual rigor. Real count: 51 sites (not 28). Categorized:
-- Save-side: 26 sites (correctly use save-side advantage via `computeSavingThrow` / `_save-roll.ts`).
-- Initiative + ability checks + travel + reactive-spells + transformations: 18 sites (each has its own d20 pipeline for save/check semantics; none are attack rolls).
-- Attack-roll sites: 7 — `attack.ts` (×3 incl. Mirror Image deflection), `cast-spell.ts` (×1 attack site, post-611), `_attack-roll.ts` (×2 in the shared helper), `offhand-attack.ts` (×1 — **REAL GAP**), `weapon-mastery.ts` (×1 — that's a SAVE site, not attack).
-
-`offhand-attack.ts:161` rolled a bare d20 with Halfling Luck only — no target-side advantage (Faerie Fire / Restrained / Paralyzed got no advantage on off-hand attacks), no Bless +1d4, no extended crit range, no melee-vs-paralyzed auto-crit. Same shape gap as the pre-slice-602 spell-attack path. Slice 611 tracked this as an open follow-up "for completeness" without closing it.
-
-**Fixed**: [src/engine/plan/offhand-attack.ts:144-220](src/engine/plan/offhand-attack.ts#L144) now routes through `resolveAttackRoll`, computing target-side advantage / disadvantage / cancellation from the target's effect stack and passing through bonus dice + crit threshold + the melee auto-crit `forceCritIfHit`. Off-hand attacks against Faerie Fired / Unconscious / Restrained targets now correctly roll with advantage, and melee off-hand attacks against Paralyzed/HP-0 targets auto-crit.
-
-**Snapshot update:** showcase transcript regenerated — Vex's nick (off-hand) attack against an already-downed Goblin Scout now correctly auto-crits per RAW (`forceCritIfHit` from the slice-611 helper, picked up here via the slice-614 wiring). Downstream RNG shifted because off-hand attacks against advantage-granting targets now consume 2 d20s instead of 1.
-
-**Verification:** 490 files / 3282 tests pass. tsc clean.
-
-**Audit (rigor slice):**
-- Names: golden test prefixed `s31` per existing convention; integration test in `tests/integration/combat-fuzz-flags.test.ts` matches existing fuzz-related integration test layout.
-- DRY: off-hand wiring reuses `resolveAttackRoll`; no duplicated d20 / advantage logic remains in `offhand-attack.ts`.
-- SRP: the test files exercise one behavior each (chain golden + flag matrix). The off-hand engine change is the same shape as slices 602/611's other-attack-kind wirings.
-- Magic numbers: none added.
-- Pattern-check (this slice's): the slice 604 sweep claim about `.hp.current` accesses I verified by walking each match in `combat-fuzz-core.ts`. Each is genuinely a policy comparison (`hp.current <= 0`, `hp.current < hp.max / 2`) — none print to a user-facing string. The slice 604 sweep was right; the slice 602 sweep was wrong on the COUNT but the underlying conclusion (save-side is already correct, only attack-roll sites in attack.ts + cast-spell.ts needed wiring) held — except for the off-hand site which slice 611 tracked but I never closed, until now.
-
-**Open follow-ups:** none from this slice. The slice-611-tracked "off-hand routes through resolveAttackRoll" is now closed.
-
----
-
-**Content + tooling (slice 613): ResourceSpent wording is content-driven — uncoupled from slug**
-
-Slice 605 hardcoded `resourceId === 'relentless-endurance'` in the transcript formatter for the killing-blow special wording, and printed raw slugs ("spends 1 relentless-endurance") for every other resource. Both shapes are the same coupling: presentation logic bound to specific content ids. A content rename or a future species/feat shipping the same effect-shape would silently fall through to wrong-or-ugly wording.
-
-**Schema** ([src/schemas/effects.ts](src/schemas/effects.ts)): `GrantResource` gained an optional `label?: string` for the human-readable display name. Additive (no migration, no behavior change for existing unlabeled grants).
-
-**Content** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)): Orc Relentless Endurance + Adrenaline Rush both got `"label"` fields. Other resources stay unlabeled and rely on the formatter's title-case fallback.
-
-**Formatter** ([tests/transcript.ts](tests/transcript.ts)): new `summarizeResources(content)` helper walks species traits, class level-table features, subclass level-grants, feats, and background traits to build:
-- `labels: Map<resourceId, displayLabel>` from every `GrantResource` entry with a `label`.
-- `preventsKillingBlow: Set<resourceId>` from every `PreventFatalDamageConsumingResource` entry.
-
-The summary is computed once per `formatTranscript` call and threaded through `FormatterContext`. The `ResourceSpent` formatter now reads:
-- `preventsKillingBlow.has(resourceId)` for the killing-blow wording (any species/feat that ships `PreventFatalDamageConsumingResource` earns the wording automatically — no formatter change needed when new content lands).
-- `labels.get(resourceId) ?? titleizeSlug(resourceId)` for the display name. "rage" → "Rage", "relentless-endurance" → "Relentless Endurance" (with explicit label) or auto-title-cased.
-
-**Tests** ([tests/unit/transcript-slice-613-resource-labels.test.ts](tests/unit/transcript-slice-613-resource-labels.test.ts), 4 cases): content-marked prevent-resource gets killing-blow wording; content-labeled resource uses its label; unlabeled resource falls back to title-cased slug; killing-blow wording does NOT fire for plain resources. Slice 605's test updated to expect "Rage" (title-cased) instead of "rage".
-
-**Snapshot updates:** 4 golden transcripts touched (s201-sorcery-incarnate, s209-superior-defense, s9b-reaction-window, showcase) — each replaced raw slugs with title-cased labels. Cleanly intentional.
-
-**Verification:** 488 files / 3275 tests pass. tsc clean.
-
-**Audit:**
-- Names: `summarizeResources`, `ResourceSummary`, `resourceLabel`, `titleizeSlug`, `preventsKillingBlow` all intent-revealing.
-- DRY: one helper, one call, one map per transcript. The `visitEffects` walker handles all five content surfaces (species/feats/classes/subclasses/backgrounds) uniformly.
-- Magic numbers: none added.
-- Pattern-check: swept the formatter for other hardcoded slug references. Found none in `ResourceSpent` after this change. `condition.conditionId` and `spell.spellId` lookups already go through `content.conditions` / `content.spells` Maps. Sweep clean.
-
----
-
-**Engine (slice 612): per-component concentration saves + aura-tick coverage — closes the slice-601 open follow-ups**
-
-Slice 601 left two known gaps tracked as follow-ups:
-1. Multi-source damage rolled ONE save against the totaled damage. RAW: "If you take damage from multiple sources, such as an arrow and a dragon's breath, you make a separate saving throw for each source of damage." Hex (1d6 necrotic) + weapon damage (1d8 piercing) hitting a concentrating target rolled one save vs the larger DC instead of two saves at per-source DCs.
-2. The three aura-tick planners (`planTickAura`, `planTickRecurring`, `planTickMovementDamage`) emitted DamageApplied without triggering the slice-601 concentration save. A concentrating wizard taking Spirit Guardians aura damage from a hostile cleric wouldn't save.
-
-**Changes** ([src/engine/plan/concentration.ts](src/engine/plan/concentration.ts)):
-- `planConcentrationOnDamage` now iterates damage components. New private `rollConcentrationSave` helper rolls one save per source. On first failure, emit Broken and short-circuit (concentration is already broken). Single-component damage (the common case — most attacks emit one component) behaves identically to slice 601.
-- DC math is per-component: `max(10, floor(component.amount / 2))`. A 30-piercing + 4-cold split now rolls vs DC 15 + DC 10 instead of one save vs DC 17 (totaled).
-- All three aura-tick planners now call `planConcentrationOnDamage` after their DamageApplied, mirroring the direct-damage path's slice-601 wiring.
-
-**Tests** ([tests/unit/engine/slice-612-multi-source-concentration.test.ts](tests/unit/engine/slice-612-multi-source-concentration.test.ts), 4 cases): two-source damage emits two saves (or one + Broken on early fail); per-source DC math pinned (30 → DC 15, 4 → DC 10); zero-amount components skipped; single-component matches slice 601.
-
-**Verification:** 487 files / 3271 tests pass. Slice 601 tests still green (single-component is the trivial multi-source case). tsc clean.
-
-**RNG impact:** any multi-component damage event to a concentrating target now consumes more RNG (one d20 per component instead of one total). Same per-seed determinism shift class as slices 601/602/611; tracked for slice 617's RNG-versioning doc. The aura-tick wiring also adds RNG to any battle where a hostile aura damages a concentrating target.
-
-**Audit:**
-- Names: `rollConcentrationSave` (private helper); `planConcentrationOnDamage` signature unchanged.
-- DRY: per-component save logic extracted from the slice-601 inline body into the new helper; the outer loop is short and readable.
-- Magic numbers: DC math constants unchanged from slice 601.
-- Pattern-check: swept all `DamageApplied` emission sites in `src/engine/`. 11 sites: 8 already call `planConcentrationOnDamage` (slice 601), and the 3 aura-tick sites are now wired (this slice). Remaining DamageApplied sites (`fatal-damage-intercept` ExcessDamage labels, save-based area-damage in `cast-spell.ts` which already wires through the existing call) all check out — none are unwired damage-to-concentrating-target paths. Sweep clean.
-
----
-
-**Engine (slice 611): shared `resolveAttackRoll` helper — closes slice-602 duplication + attacker-side spell-attack gap**
-
-Slice 602's review flagged two debts (same root cause): spell attacks duplicated 50 lines of `plan/attack.ts`, and spell attacks skipped the attacker-side advantage pipeline (Halfling Luck, Bless +1d4, extended crit range).
-
-New [src/engine/plan/_attack-roll.ts](src/engine/plan/_attack-roll.ts) extracts the d20 + advantage resolution + Halfling Luck reroll + Bless/Bane bonus dice + crit-threshold math. Caller passes pre-resolved advantage state, attack bonus, target AC, and effect-stack queries (`hasHalflingLuck()`, `bonusDiceFor('attack', facts)`, `critThreshold()`); helper runs the dice. `forceCritIfHit?: boolean` carries the Paralyzed/Unconscious melee-auto-crit rule from both call sites.
-
-Both [src/engine/plan/attack.ts:993](src/engine/plan/attack.ts#L993) (weapon, behavior-preserving) and [src/engine/plan/cast-spell.ts:569](src/engine/plan/cast-spell.ts#L569) (spell, behavior-adding) now route through the helper. Spell attacks gain four pre-existing weapon-only behaviors, all RAW:
-- Halfling Luck reroll on nat-1 spell attacks
-- Bless / Bane bonus dice on the spell attack roll (event now stamps `bonusDice` field too)
-- Extended crit ranges (Improved Critical 19+)
-- Melee spell attacks auto-crit Paralyzed / Unconscious / HP-0 targets (Shocking Grasp et al.)
-
-**Tests** ([tests/unit/engine/slice-611-shared-attack-roll.test.ts](tests/unit/engine/slice-611-shared-attack-roll.test.ts), 2 cases): Halfling-caster spell attack rerolls on nat 1; Shocking Grasp on Paralyzed target auto-crits on hit.
-
-**Verification:** 486 files / 3267 tests pass. Slice 601-603 tests unchanged. RNG stream for spell attacks shifts when Halfling Luck or Bless is involved — tracked for slice 617's RNG-versioning doc.
-
-**Audit:**
-- DRY: 50-line duplication gone; one helper, two callers.
-- Names: helper file `_attack-roll.ts` matches `_halfling-luck` / `_bonus-dice` / `_save-roll` internal-helper convention.
-- Magic numbers: none added.
-- Pattern-check: swept `rollDie(D20_SIDES` across `src/engine/plan/`; remaining sites are save-side (use `_save-roll.ts`) or wrap `planAttack` (pick up the helper transitively). **`planOffHandAttack` still has its own d20 site** — same shape, would benefit from routing through `resolveAttackRoll` too; tracked as open follow-up since offhand has additional two-weapon-fighting gating not in slice 611's scope.
-
----
+Per-slice detail for slices 611-614 (shared `resolveAttackRoll` helper closing slice-602 spell-attack duplication + off-hand attack-roll gap; per-component concentration saves + aura-tick coverage closing slice-601 follow-ups; content-driven `ResourceSpent` wording decoupled from slugs; slice-600-review audit rigor pass with golden scenarios + fuzz CLI integration test) is archived at [docs/changelog/archive-slices-611-614.md](docs/changelog/archive-slices-611-614.md) (slice 621, to keep this file under the 60 KB single-Read ceiling).
 
 Per-slice detail for slices 604-610 (slice-600 observer-review polish: HP display clamp, RE + Shield wording, Beast-name regression, initiative panel polish, event log readability, toolbar UX, incremental scrub cache) is archived at [docs/changelog/archive-slices-604-610.md](docs/changelog/archive-slices-604-610.md) (slice 613, to keep this file under the 60 KB single-Read ceiling).
 

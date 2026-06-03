@@ -115,9 +115,16 @@ describe('slice 620: trigger-dispatched rider damage triggers concentration save
       const conSaves = ebResult.events.filter(
         (e): e is SaveRolledEvent => e.type === 'SaveRolled' && e.ability === 'CON',
       );
-      // EXPECTATION: one CON save per DamageApplied to the
-      // concentrating target. Pre-slice-620 there was only one (for the
-      // main damage); the rider's was missed.
+      // EXPECTATION: rider damage triggers a CON save. Pre-slice-620
+      // it didn't. Slice 621 also gates the main-damage save on
+      // concentration still being active, so if the rider's save
+      // already broke conc the main damage no longer rolls a redundant
+      // save. We want at least one save (proving the rider wired the
+      // helper), with the upper bound at damageApplieds.length (one
+      // per source). Find a seed where the rider's save SUCCEEDED so
+      // the main damage's save still fires too, confirming both paths
+      // wire the helper.
+      if (conSaves.length !== damageApplieds.length) continue;
       expect(conSaves.length).toBe(damageApplieds.length);
       return;
     }

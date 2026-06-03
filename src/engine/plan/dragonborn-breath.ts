@@ -13,6 +13,7 @@ import { computeTotalLevel } from '../../schemas/runtime/character.js';
 import { abilityModifier, proficiencyBonus } from '../../derive/ability.js';
 import { rollSaveAgainstDC } from './_save-roll.js';
 import { applyAll } from '../apply.js';
+import { planConcentrationOnDamage } from './concentration.js';
 import type { ULID } from '../ids-utils.js';
 
 const DRAGONBORN_SPECIES_ID = 'dragonborn';
@@ -155,6 +156,7 @@ export const planDragonbornBreath = (
   let stagedState = applyAll(state, events);
   for (const targetId of intent.targetIds) {
     if (state.characters[targetId] === undefined) continue;
+    const eventsBeforeTarget = events.length;
     const saveResult = rollSaveAgainstDC({
       state: stagedState,
       content,
@@ -179,8 +181,25 @@ export const planDragonbornBreath = (
         causedByEventId: saveResult.event.id,
       };
       events.push(dmg);
+      // Slice 621: per-target concentration save on the breath damage.
+      // RAW: every damage event triggers a CON save on a concentrating
+      // target (PHB 2024 Concentration). Mirrors the slice 601/612/620
+      // wiring on the main-damage paths.
+      const targetCharForConc = stagedState.characters[targetId];
+      if (targetCharForConc !== undefined) {
+        const concEvents = planConcentrationOnDamage(
+          applyAll(stagedState, events.slice(eventsBeforeTarget)),
+          content,
+          rng,
+          targetCharForConc,
+          dmg.components,
+          dmg.id,
+          at,
+        );
+        events.push(...concEvents);
+      }
     }
-    stagedState = applyAll(stagedState, events.slice(-2));
+    stagedState = applyAll(stagedState, events.slice(eventsBeforeTarget));
   }
 
   return events;
