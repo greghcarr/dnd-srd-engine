@@ -261,7 +261,7 @@ export const planOffHandAttack = (
     : abilityMod < 0
       ? abilityMod
       : 0;
-  const damageExpression = applyMartialArtsDieScaling(attacker, weaponDef.id, weaponDef.damageDice);
+  const damageExpression = applyMartialArtsDieScaling(attacker, weaponDef, weaponDef.damageDice);
   const parsed = parseDiceExpression(damageExpression);
   const totalRolls = critical ? parsed.count * 2 : parsed.count;
   const damageRolls: number[] = [];

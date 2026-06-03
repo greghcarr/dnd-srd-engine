@@ -385,15 +385,25 @@ export const martialArtsDie = (monkLevel: number): string | undefined => {
   return undefined;
 };
 
-// When a Monk uses an Unarmed Strike whose natural die is smaller than
-// their Martial Arts die, the Martial Arts die replaces it. Other
-// weapons (and non-Monks) keep their natural die.
+// Slice 625: RAW 2024 Martial Arts Die: "You can roll 1d6 in place of
+// the normal damage of your Unarmed Strike OR Monk weapons." Pre-slice
+// the engine narrowed this to unarmed-strike only (via the
+// `weaponDefId !== 'unarmed-strike'` early-return); the slice-624 fuzz
+// review at seed 5508 surfaced the gap: a monk wielding a sickle
+// (Light simple melee, monk-eligible) still rolled the sickle's 1d4
+// when the Martial Arts L1 die is 1d6. Fix: reuse `martialArtsApplies`
+// (the slice-623 helper) so both arms of Martial Arts -- Dexterous
+// Attacks (STR→DEX swap) and Martial Arts Die scaling -- share the
+// same RAW gate (monk + monk-eligible weapon + no armor + no shield).
+// The replacement rule still applies: substitute the Martial Arts die
+// only when it's larger than the weapon's native die (RAW: "you can
+// roll" -- always optional, but max(weaponDie, maDie) is correct).
 export const applyMartialArtsDieScaling = (
-  attacker: { classes: ReadonlyArray<{ classId: string; level: number }> },
-  weaponDefId: string,
+  attacker: Character,
+  weapon: Weapon,
   naturalDamageDice: string,
 ): string => {
-  if (weaponDefId !== 'unarmed-strike') return naturalDamageDice;
+  if (!martialArtsApplies(attacker, weapon)) return naturalDamageDice;
   const monk = attacker.classes.find((c) => c.classId === 'monk');
   const lvl = monk?.level ?? 0;
   const maDie = martialArtsDie(lvl);
@@ -1146,7 +1156,7 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     ?? (useFlex && weaponDef.versatileDice !== undefined
       ? weaponDef.versatileDice
       : weaponDef.damageDice);
-  const damageExpression = applyMartialArtsDieScaling(attacker, weaponDef.id, baseDamageExpression);
+  const damageExpression = applyMartialArtsDieScaling(attacker, weaponDef, baseDamageExpression);
   const parsed = parseDiceExpression(damageExpression);
   const totalRolls = critical ? parsed.count * 2 : parsed.count;
   // Slice 467: Savage Attacker reroll. RAW (SRD 5.2.1): "you can roll
