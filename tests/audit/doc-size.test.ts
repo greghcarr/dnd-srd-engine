@@ -50,6 +50,7 @@ const fixedFiles = [
   'CONTRIBUTING.md',
   'docs/architecture.md',
   'docs/engine-scope.md',
+  'docs/tutorial.md',
   'docs/starter-pack-gaps.md',
   'docs/status.md',
   'docs/roadmap.md',

@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Docs (slice 630): comprehensive feature tutorial**
+New docs/tutorial.md walks every major capability end-to-end in one running example (install → engine → character → L1 choices → equip → derive → encounter → attack → spell → reaction → masteries → rests → level-up → event stream → save/load/replay → undo → custom content → custom handlers → determinism → engine scope). Every typecheck-tagged block compiles against the real public API via the doc-examples audit.
+Detail: [slice-630.md](docs/changelog/slice-630.md).
+
 **Docs (slice 629): CLAUDE.md split + engine-scope reference + tone polish**
 Split the 464-line CLAUDE.md by audience: agent safety + pointers stay in CLAUDE.md (72 lines); universal contributor norms expand CONTRIBUTING.md (288 lines); architecture internals move to docs/architecture.md (new); engine-tracks-vs-consumer-tracks reference lands at docs/engine-scope.md (new).
 Detail: [slice-629.md](docs/changelog/slice-629.md).

@@ -144,6 +144,7 @@ This is the practical payoff of event sourcing. Your save file is the truth; the
 
 ## What's next
 
+- **Long-form tutorial covering every major capability**: [docs/tutorial.md](tutorial.md) walks attacks, spells, reactions, weapon masteries, rests, level-up, custom content, custom handlers, save / load / replay, and determinism in one running example.
 - **Understand the mental model**: [docs/concepts.md](concepts.md) explains why the API has the shape it does (events, plan/commit, content packs, effect primitives, PendingChoice).
 - **Common how-tos**: [docs/recipes.md](recipes.md) covers save/undo/redo, branching timelines, adding content and feats, houserules, multiplayer sync, custom planners, and migrations.
 - **Browse the public surface**: [docs/api-overview.md](api-overview.md) lists every public symbol by namespace.

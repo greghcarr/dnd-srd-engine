@@ -15,7 +15,7 @@ If you are building a D&D character sheet, encounter tracker, virtual tabletop, 
 
 Three docs cover the common entry points:
 
-- **Using the library**: [docs/getting-started.md](docs/getting-started.md) for a 15-minute walkthrough of your first character + attack + save/load; [docs/api-overview.md](docs/api-overview.md) for the full public surface.
+- **Using the library**: [docs/getting-started.md](docs/getting-started.md) for a 15-minute walkthrough of your first character + attack + save/load; [docs/tutorial.md](docs/tutorial.md) for a longer end-to-end walkthrough covering every major capability; [docs/api-overview.md](docs/api-overview.md) for the full public surface.
 - **Integrating it into your app**: [docs/engine-scope.md](docs/engine-scope.md) for the engine-tracks-vs-consumer-tracks reference (do I need to track positions / line of sight / carry weight?).
 - **Contributing**: [CONTRIBUTING.md](CONTRIBUTING.md) for the contributor manual; [docs/architecture.md](docs/architecture.md) for the engine internals (event sourcing, plan/commit, effect primitives).
 
@@ -121,6 +121,7 @@ Pick the doc that matches what you want:
 |---|---|
 | Try the smallest possible working example | [examples/00-quickstart](examples/00-quickstart/) |
 | Walk through your first character, attack, and save/load | [docs/getting-started.md](docs/getting-started.md) |
+| Walk through every major capability end-to-end (attacks, spells, reactions, masteries, rests, level-up, custom content / handlers, save / load / replay) | [docs/tutorial.md](docs/tutorial.md) |
 | Understand the mental model (events, plan/commit, content packs) | [docs/concepts.md](docs/concepts.md) |
 | Know what the engine tracks vs what your app tracks (positions, line of sight, choices) | [docs/engine-scope.md](docs/engine-scope.md) |
 | Look up a specific public symbol | [docs/api-overview.md](docs/api-overview.md) |
