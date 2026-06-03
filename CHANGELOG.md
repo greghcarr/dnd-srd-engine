@@ -4,6 +4,31 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine (slice 612): per-component concentration saves + aura-tick coverage — closes the slice-601 open follow-ups**
+
+Slice 601 left two known gaps tracked as follow-ups:
+1. Multi-source damage rolled ONE save against the totaled damage. RAW: "If you take damage from multiple sources, such as an arrow and a dragon's breath, you make a separate saving throw for each source of damage." Hex (1d6 necrotic) + weapon damage (1d8 piercing) hitting a concentrating target rolled one save vs the larger DC instead of two saves at per-source DCs.
+2. The three aura-tick planners (`planTickAura`, `planTickRecurring`, `planTickMovementDamage`) emitted DamageApplied without triggering the slice-601 concentration save. A concentrating wizard taking Spirit Guardians aura damage from a hostile cleric wouldn't save.
+
+**Changes** ([src/engine/plan/concentration.ts](src/engine/plan/concentration.ts)):
+- `planConcentrationOnDamage` now iterates damage components. New private `rollConcentrationSave` helper rolls one save per source. On first failure, emit Broken and short-circuit (concentration is already broken). Single-component damage (the common case — most attacks emit one component) behaves identically to slice 601.
+- DC math is per-component: `max(10, floor(component.amount / 2))`. A 30-piercing + 4-cold split now rolls vs DC 15 + DC 10 instead of one save vs DC 17 (totaled).
+- All three aura-tick planners now call `planConcentrationOnDamage` after their DamageApplied, mirroring the direct-damage path's slice-601 wiring.
+
+**Tests** ([tests/unit/engine/slice-612-multi-source-concentration.test.ts](tests/unit/engine/slice-612-multi-source-concentration.test.ts), 4 cases): two-source damage emits two saves (or one + Broken on early fail); per-source DC math pinned (30 → DC 15, 4 → DC 10); zero-amount components skipped; single-component matches slice 601.
+
+**Verification:** 487 files / 3271 tests pass. Slice 601 tests still green (single-component is the trivial multi-source case). tsc clean.
+
+**RNG impact:** any multi-component damage event to a concentrating target now consumes more RNG (one d20 per component instead of one total). Same per-seed determinism shift class as slices 601/602/611; tracked for slice 617's RNG-versioning doc. The aura-tick wiring also adds RNG to any battle where a hostile aura damages a concentrating target.
+
+**Audit:**
+- Names: `rollConcentrationSave` (private helper); `planConcentrationOnDamage` signature unchanged.
+- DRY: per-component save logic extracted from the slice-601 inline body into the new helper; the outer loop is short and readable.
+- Magic numbers: DC math constants unchanged from slice 601.
+- Pattern-check: swept all `DamageApplied` emission sites in `src/engine/`. 11 sites: 8 already call `planConcentrationOnDamage` (slice 601), and the 3 aura-tick sites are now wired (this slice). Remaining DamageApplied sites (`fatal-damage-intercept` ExcessDamage labels, save-based area-damage in `cast-spell.ts` which already wires through the existing call) all check out — none are unwired damage-to-concentrating-target paths. Sweep clean.
+
+---
+
 **Engine (slice 611): shared `resolveAttackRoll` helper — closes slice-602 duplication + attacker-side spell-attack gap**
 
 Slice 602's review flagged two debts (same root cause): spell attacks duplicated 50 lines of `plan/attack.ts`, and spell attacks skipped the attacker-side advantage pipeline (Halfling Luck, Bless +1d4, extended crit range).
