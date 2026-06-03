@@ -124,7 +124,7 @@ Damage rolled: 1d4=[4]+4 piercing.
 
 _(nick triggers for Vex)_
 
-**Vex** attacks **Goblin Scout A**: d20(1/11) + 7 = 18 vs AC 15 -> CRITICAL HIT!.
+**Vex** attacks **Goblin Scout A**: d20(1→11) + 7 = 18 vs AC 15 -> CRITICAL HIT!.
 
 Damage rolled (critical, doubled dice): 1d4=[4,2]+0 piercing.
 

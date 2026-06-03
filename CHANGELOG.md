@@ -4,6 +4,35 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Engine + tests + transcript (slice 626): close three open follow-ups from the L1 fuzz cycle**
+
+Three small, tightly-related closures:
+
+**1. On-hit masteries gate on damage > 0** (closes slice 624's open item). RAW Sap/Vex/Slow/Topple/Push: *"If you hit a creature with this weapon **AND deal damage to the creature**..."* A hit reduced to 0 by resistance/immunity shouldn't fire the rider. `WeaponMasteryIntent` gained `attackDealtDamage?: boolean`; when `false` for one of the 5 damage-gated masteries, [src/engine/plan/weapon-mastery.ts](src/engine/plan/weapon-mastery.ts) emits only the activation event and skips the rider. Cleave is exempt (RAW: "if you hit... you can make a melee attack roll" — no damage gate). Graze is unaffected (miss-only). Fuzz dispatch ([scripts/combat-fuzz-core.ts](scripts/combat-fuzz-core.ts)) inspects the following `DamageApplied` event's component sum and threads `attackDealtDamage = atk.hit && damageTotal > 0`.
+
+**2. s23-weapon-mastery's "Graze deals ability mod damage" test now actually tests Graze** (closes slice 624's open item). Pre-slice the test fired Sap with a longsword because TEST_PACK had no Graze weapon (mislabel survived since the test was originally written). Slice 626 adds a `greatsword` (2d6 slashing, Graze) to [tests/fixtures/content/test-pack.json](tests/fixtures/content/test-pack.json) and the test now exercises `mastery: 'Graze', attackHit: false` and asserts the STR-mod-damage event with the right type.
+
+**3. Transcript shows ALL d20 rolls when Halfling Lucky reroll grew the array** (closes the slice-625 review's transcript-display nit). Pre-slice [tests/transcript.ts](tests/transcript.ts) collapsed length≥3 d20 arrays to just `event.d20[0]`, so a `[disadvantage]: d20(19)` line looked bizarre (it was actually disadvantage rolling [19, 1], halfling lucky rerolling the 1 to 19, used=19). New `formatD20Rolls(rolls, used)` helper renders length-1 as "X", length-2 as "X/Y", length-3+ as "X/Y→Z" (the "→" marks the reroll). Used by AttackRolled / SaveRolled / AbilityCheckRolled formatters.
+
+**Tests** ([tests/unit/engine/slice-626-mastery-damage-gate.test.ts](tests/unit/engine/slice-626-mastery-damage-gate.test.ts), 4 cases): Sap with `attackDealtDamage:false` → only the activation event (no Sapped); Sap with `attackDealtDamage:true` → Sapped applied; legacy caller (no field) still applies Sapped (backwards-compat); Cleave with `attackDealtDamage:false` still fires (Cleave has no damage gate per RAW). The s23 test now exercises real Graze. Transcript change is exercised implicitly by every golden + integration test that consumes `formatTranscript`; full suite green confirms no regressions.
+
+**Verification:** tsc clean, full suite green. The transcript change is purely additive (formatting only): no golden transcripts regenerated since none currently include a Halfling Lucky + disadvantage combo with length≥3 d20 arrays.
+
+**RNG impact**: none. Damage-gate is a planner-side skip on borderline RAW (no new rolls). Transcript change is presentation-only.
+
+**Audit:**
+- Names: `attackDealtDamage` mirrors `attackHit` from slice 624; `formatD20Rolls(rolls, used)` reads as what it does.
+- DRY: damage-gated mastery list is a `Set<string>` literal at the top of the gate block. `formatD20Rolls` collapses 3 duplicate `length === 2 ? ... : event.d20[0]` ternaries into one helper.
+- Pattern-check: swept other `event.d20.length === 2` references in [tests/transcript.ts](tests/transcript.ts) — three sites (AttackRolled, SaveRolled, AbilityCheckRolled), all updated to the helper. No other "show only the first d20" patterns elsewhere.
+- Tests: 4 cases pin the damage-gate logic per branch (skip, fire, legacy, Cleave-exempt).
+
+**Open follow-ups still tracked for later slices:**
+- **Innate Sorcery class gate** (slice 623 open): currently grants advantage on ALL spell attacks; should gate on Sorcerer-list spells via a new `bearer.castingClassId` predicate fact. Needs predicate-fact infrastructure work.
+- **Power Word Speed Zero autoExpiry** (slice 623 open): same source-vs-bearer confusion as Vex; needs separate RAW review (the spell's "until the start of the caster's next turn" is ambiguous about which actor's turn-start fires it).
+- **Hellish Rebuke / Heroism / Searing Smite / Ensnaring Strike in fuzz** (slice 622/624 open): each is a reaction or bonus-action rider that doesn't fit the existing turn-start / first-turn-buff dispatch slots; needs new dispatch paths in the fuzz.
+
+---
+
 **Engine + tests (slice 625): Martial Arts Die scales monk weapons too, not just unarmed strikes**
 
 The slice-624 fuzz review caught it (seed 5508): a monk wielding a sickle (1d4, Light simple melee → monk-eligible) still rolled the sickle's 1d4 when the L1 Martial Arts die is 1d6. RAW 2024 ([references/srd-markdown/classes.md](references/srd-markdown/classes.md) Martial Arts → Martial Arts Die): *"You can roll 1d6 in place of the normal damage of your Unarmed Strike **or Monk weapons**."* Slice 623 fixed the **Dexterous Attacks** arm of Martial Arts (STR→DEX on monk weapons) via the `martialArtsApplies` helper but missed widening the **die-scaling** arm — `applyMartialArtsDieScaling` still had the narrow `weaponDefId !== 'unarmed-strike'` early-return.

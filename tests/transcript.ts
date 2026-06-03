@@ -135,6 +135,33 @@ const formatBreakdown = (
   return ` (${parts.join(', ')})`;
 };
 
+// Slice 626: render the d20 array for attack / save / check rolls in a
+// way that surfaces ALL dice when Halfling Lucky's reroll grew the
+// array beyond the expected 1 (no advantage) or 2 (advantage /
+// disadvantage). Pre-slice the formatter showed only `event.d20[0]`
+// for any length other than 2 -- which collapsed length-3 (lucky-
+// reroll) arrays to a single die in the transcript, making
+// "[disadvantage] d20(19)" look bizarre (it was actually disadvantage
+// rolling a 1 + something, halfling-rerolled the 1, used the new 19).
+//
+// Format:
+//   length 1: "15" -- straight roll, no advantage
+//   length 2: "15/3" -- advantage / disadvantage pair
+//   length 3+ with adv/dis: "15/1→18" -- pair + reroll(s) after →
+//   length 2 with no-adv: "1→19" -- single + lucky reroll
+// The "→" marks the lucky reroll(s). Used inferred from `usedLabel`.
+const formatD20Rolls = (
+  rolls: ReadonlyArray<number>,
+  usedLabel: 'none' | 'advantage' | 'disadvantage',
+): string => {
+  if (rolls.length === 0) return '?';
+  const baseLen = usedLabel === 'none' ? 1 : 2;
+  if (rolls.length <= baseLen) return rolls.join('/');
+  const base = rolls.slice(0, baseLen).join('/');
+  const rerolls = rolls.slice(baseLen).join('→');
+  return `${base}→${rerolls}`;
+};
+
 const sumDamage = (event: Extract<Event, { type: 'DamageApplied' }>): { total: number; summary: string } => {
   let total = 0;
   const parts: string[] = [];
@@ -260,7 +287,7 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       const attacker = characterName(stateBefore, event.attackerId);
       const target = characterName(stateBefore, event.targetId);
       const advLabel = event.used === 'none' ? '' : ` [${event.used}]`;
-      const rollLabel = event.d20.length === 2 ? `${event.d20[0]}/${event.d20[1]}` : `${event.d20[0]}`;
+      const rollLabel = formatD20Rolls(event.d20, event.used);
       const verdict = event.critical
         ? 'CRITICAL HIT!'
         : event.hit
@@ -282,13 +309,13 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
     }
     case 'SaveRolled': {
       const saveAdvLabel = event.used === 'none' ? '' : ` [${event.used}]`;
-      const saveRollLabel = event.d20.length === 2 ? `${event.d20[0]}/${event.d20[1]}` : `${event.d20[0]}`;
+      const saveRollLabel = formatD20Rolls(event.d20, event.used);
       return `**${characterName(stateBefore, event.targetId)}** ${event.ability} save${saveAdvLabel}: d20(${saveRollLabel}) + ${event.bonus}${formatBreakdown(event.breakdown)} = ${event.total} vs DC ${event.dc} -> ${event.success ? 'success' : 'failure'}.`;
     }
     case 'AbilityCheckRolled': {
       const label = event.skill !== undefined ? event.skill : `${event.ability} check`;
       const checkAdvLabel = event.used === 'none' ? '' : ` [${event.used}]`;
-      const checkRollLabel = event.d20.length === 2 ? `${event.d20[0]}/${event.d20[1]}` : `${event.d20[0]}`;
+      const checkRollLabel = formatD20Rolls(event.d20, event.used);
       const dcLine = event.dc !== undefined ? ` vs DC ${event.dc} -> ${event.success === true ? 'success' : 'failure'}` : '';
       return `**${characterName(stateBefore, event.characterId)}** ${label}${checkAdvLabel}: d20(${checkRollLabel}) + ${event.bonus}${formatBreakdown(event.breakdown)} = ${event.total}${dcLine}.`;
     }

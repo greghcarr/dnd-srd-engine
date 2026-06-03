@@ -83,6 +83,17 @@ export interface WeaponMasteryIntent {
   // fired on a HIT because the dispatch unconditionally called the
   // planner regardless of attack outcome.
   readonly attackHit?: boolean;
+  // Slice 626: did the attack actually deal damage? Sap/Vex/Slow/
+  // Topple/Push RAW says "If you hit AND deal damage to the creature"
+  // -- a hit reduced to 0 by resistance/immunity shouldn't fire them.
+  // Cleave RAW only requires the hit ("you can make a melee attack
+  // roll with the weapon against a second creature"), no damage gate.
+  // Graze doesn't need this (it deals the damage; the attack roll
+  // missed). When supplied, the planner refuses to fire a damage-gated
+  // mastery for which `attackDealtDamage === false`. Optional for
+  // backwards compatibility with legacy callers; absence is treated
+  // as "presume the damage condition is met" so old goldens pass.
+  readonly attackDealtDamage?: boolean;
   readonly at?: string;
 }
 
@@ -147,8 +158,22 @@ export const planWeaponMastery = (
     // Nick / Flex have no RAW hit-or-miss gate; the planner already
     // no-ops on them (their effects live in the attack planner).
   }
-
   const at = intent.at ?? nowIso();
+  // Slice 626: damage-dealt gate. RAW Sap/Vex/Slow/Topple/Push all
+  // include "and deal damage to the creature" in the trigger -- a hit
+  // reduced to 0 by resistance/immunity shouldn't fire them. Cleave
+  // doesn't require damage (just the hit); Graze deals the damage
+  // itself. When the caller supplies attackDealtDamage=false for a
+  // damage-gated mastery, the planner emits just the activation event
+  // and skips the on-hit rider. Borderline-RAW situation: a resisted
+  // hit shouldn't fire the rider, but also shouldn't crash the planner.
+  const damageGatedMasteries = new Set(['Sap', 'Vex', 'Slow', 'Topple', 'Push']);
+  if (
+    damageGatedMasteries.has(intent.mastery)
+    && intent.attackDealtDamage === false
+  ) {
+    return [recordMasteryEvent(intent.mastery, intent.attackerId, intent.targetId, intent.weaponInstanceId, at)];
+  }
   const events: Event[] = [
     recordMasteryEvent(intent.mastery, intent.attackerId, intent.targetId, intent.weaponInstanceId, at),
   ];

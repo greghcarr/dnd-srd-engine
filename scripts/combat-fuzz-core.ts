@@ -523,7 +523,7 @@ interface Combatant {
   firstTurnActionBuffTried?: boolean;
   firstTurnSpeciesBATried?: boolean;
   innateSorceryActivated?: boolean;
-  pendingMasteryFire?: { mastery: string; weaponInstanceId: string; targetId: string; attackHit: boolean };
+  pendingMasteryFire?: { mastery: string; weaponInstanceId: string; targetId: string; attackHit: boolean; attackDealtDamage?: boolean };
 }
 
 const pickIntent = (
@@ -676,6 +676,10 @@ const pickIntent = (
       // enforce RAW gates (Graze fires on miss only; on-hit masteries
       // refuse to fire on a miss).
       attackHit: fire.attackHit,
+      // Slice 626: thread "did the attack deal damage" so on-hit
+      // masteries (Sap/Vex/Slow/Topple/Push) skip the rider on a hit
+      // reduced to 0 by resistance/immunity.
+      ...(fire.attackDealtDamage !== undefined ? { attackDealtDamage: fire.attackDealtDamage } : {}),
     };
   }
 
@@ -1019,11 +1023,26 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
             // engine still applied 2 graze damage).
             const shouldFire = mastery === 'Graze' ? !atk.hit : atk.hit;
             if (shouldFire) {
+              // Slice 626: also surface whether the hit actually dealt
+              // damage. Sap/Vex/Slow/Topple/Push RAW says "and deal
+              // damage to the creature" -- a hit reduced to 0 by
+              // resistance/immunity shouldn't fire them. Find the
+              // DamageApplied that followed the attack roll (any
+              // component sum > 0 = damage dealt).
+              const attackIdx = recent.indexOf(atk);
+              const followingDamage = recent.slice(attackIdx + 1).find(
+                (e): e is Event & { type: 'DamageApplied'; targetId: string; components: ReadonlyArray<{ amount: number }> } =>
+                  e.type === 'DamageApplied'
+                  && (e as { targetId: string }).targetId === opponent.built.character.id,
+              );
+              const damageTotal = followingDamage?.components.reduce((s, c) => s + c.amount, 0) ?? 0;
+              const attackDealtDamage = atk.hit && damageTotal > 0;
               active.pendingMasteryFire = {
                 mastery,
                 weaponInstanceId: active.built.weaponInstance.id,
                 targetId: opponent.built.character.id,
                 attackHit: atk.hit,
+                attackDealtDamage,
               };
             }
           }
