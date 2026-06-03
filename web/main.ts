@@ -1,4 +1,4 @@
-import { createEngine, replay, type Campaign, type ContentPack } from 'dnd-srd-engine';
+import { createEngine, replay, applyAll, type Campaign, type ContentPack } from 'dnd-srd-engine';
 import { createEngineHost, type EngineHost } from './engine-host.js';
 import { mountFuzzReplay, type FuzzReplay } from './modes/fuzz-replay.js';
 import { mountEventInspector, type EventInspector } from './modes/event-inspector.js';
@@ -107,14 +107,45 @@ const findEncounterId = (campaign: Campaign): string => {
   return '';
 };
 
-const buildScrubbed = (full: Campaign, cursor: number): Campaign => {
-  const sliced = full.events.slice(0, cursor);
-  return {
+// Slice 610: per-session cache of `cursor → Campaign` so scrubbing
+// doesn't re-replay-from-genesis every step. Forward steps reuse the
+// prior cursor's state and apply just the new events; backward jumps
+// reuse the nearest cached prefix ≤ target, only replaying the gap.
+//
+// Memory tradeoff: O(unique-cursors-visited × state-size). A 2000-event
+// battle scrubbed exhaustively caches ~2000 campaigns (~few KB each,
+// ~10MB total). Acceptable for interactive sessions; an LRU would be a
+// follow-up if the demo grows session lifetimes.
+type ScrubCache = Map<number, Campaign>;
+
+const buildScrubbed = (full: Campaign, cursor: number, cache: ScrubCache): Campaign => {
+  const hit = cache.get(cursor);
+  if (hit !== undefined) return hit;
+
+  // Find the largest cached prefix ≤ cursor.
+  let bestKey = -1;
+  for (const key of cache.keys()) {
+    if (key <= cursor && key > bestKey) bestKey = key;
+  }
+
+  let state;
+  if (bestKey >= 0) {
+    const base = cache.get(bestKey)!;
+    // applyAll on the prior state + just the gap of new events. For a
+    // single-step forward (bestKey = cursor - 1) this is one event.
+    state = applyAll(base.state, full.events.slice(bestKey, cursor));
+  } else {
+    state = replay(full.events.slice(0, cursor));
+  }
+
+  const scrubbed: Campaign = {
     ...full,
-    events: sliced,
-    state: replay(sliced),
+    events: full.events.slice(0, cursor),
+    state,
     cursor,
   };
+  cache.set(cursor, scrubbed);
+  return scrubbed;
 };
 
 interface DemoSession {
@@ -122,6 +153,8 @@ interface DemoSession {
   readonly fullCampaign: Campaign;
   readonly encounterId: string;
   readonly result: FuzzBattleResult;
+  /** Slice 610: per-session scrub cache; reset on each session start. */
+  readonly scrubCache: ScrubCache;
 }
 
 const startSession = (pack: ContentPack, cfg: FuzzConfig, cursor: number): DemoSession => {
@@ -136,11 +169,15 @@ const startSession = (pack: ContentPack, cfg: FuzzConfig, cursor: number): DemoS
   const fullCampaign = result.campaign;
   const encounterId = findEncounterId(fullCampaign);
   const engine = createEngine({ contentPacks: [pack] });
+  const scrubCache: ScrubCache = new Map();
+  // Seed the cache with the full campaign so scrubbing-from-end-back is
+  // a single-pass incremental computation, not a full replay.
+  scrubCache.set(fullCampaign.events.length, fullCampaign);
   const initialCampaign = cursor === fullCampaign.events.length
     ? fullCampaign
-    : buildScrubbed(fullCampaign, cursor);
+    : buildScrubbed(fullCampaign, cursor, scrubCache);
   const host = createEngineHost(engine, initialCampaign);
-  return { host, fullCampaign, encounterId, result };
+  return { host, fullCampaign, encounterId, result, scrubCache };
 };
 
 async function boot(): Promise<void> {
@@ -154,7 +191,7 @@ async function boot(): Promise<void> {
   let session = startSession(pack, cfg, Number.POSITIVE_INFINITY);
   let cursor = readCursorFromHash(session.fullCampaign.events.length);
   if (cursor !== session.fullCampaign.events.length) {
-    session.host.replaceCampaign(buildScrubbed(session.fullCampaign, cursor));
+    session.host.replaceCampaign(buildScrubbed(session.fullCampaign, cursor, session.scrubCache));
   }
 
   // Reflect parsed config back into the toolbar inputs so the user
@@ -178,7 +215,7 @@ async function boot(): Promise<void> {
     // the outcome banner flash the wrong state for one frame on hash-
     // driven seeks.
     fuzz?.setCursor(cursor);
-    session.host.replaceCampaign(buildScrubbed(session.fullCampaign, cursor));
+    session.host.replaceCampaign(buildScrubbed(session.fullCampaign, cursor, session.scrubCache));
     writeHash(cfg, cursor, session.fullCampaign.events.length);
   };
 

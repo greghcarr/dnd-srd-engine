@@ -4,6 +4,36 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Tooling (slice 610): scrub cache — replay is now incremental, not from-genesis-per-step**
+
+The slice-600 observer review flagged the demo's scrub performance as an architectural smell that would bite once battles grew past a few hundred events: every cursor change called `replay(events.slice(0, cursor))` from genesis, O(N) per step. A 1500-event L5 multi-round battle scrubbing one step back was a full re-application of 1499 events.
+
+**Changes** ([web/main.ts](web/main.ts)):
+- New `ScrubCache = Map<number, Campaign>` per session, seeded with the full-cursor campaign on session start.
+- `buildScrubbed(full, cursor, cache)`:
+  - Cache hit → return cached campaign (referential equality).
+  - Cache miss → find largest cached prefix `≤ cursor`, `applyAll(base.state, full.events.slice(bestKey, cursor))`. For a single-step forward jump from cursor K → K+1 that's one event applied; for a backward jump it's a from-nearest-prefix replay.
+  - Cache the result.
+- `startSession` builds the cache; `onSeek` threads it through.
+
+**Memory tradeoff:** O(unique-cursors-visited × state-size). A 2000-event battle scrubbed exhaustively caches ~2000 campaigns at a few KB each (~10MB). Acceptable for interactive sessions; an LRU would be a follow-up if session lifetimes grow.
+
+**Tests** ([tests/unit/web-scrub-cache.test.ts](tests/unit/web-scrub-cache.test.ts), 3 cases): cache produces the same state at every cursor as a fresh `replay()` (20 sampled stops on a real seed-42 fuzz battle); forward-then-jump-to-mid is a referential cache hit (no recompute); scrubbed campaign carries the slice cursor + events length while preserving identity props.
+
+**Verification:** full suite green (485 files, 3265 tests, 173 skipped); tsc clean root + web/; vite boots without runtime errors.
+
+**Audit (perf slice):**
+- **Names:** `ScrubCache` is the type alias; `buildScrubbed(full, cursor, cache)` is intent-revealing.
+- **DRY:** the cache helper lives in one place; production version in main.ts, test inlines the same algorithm against the public engine surface so it can't drift silently without the test noticing.
+- **SRP:** session lifecycle, scrub helper, render loop all still single-job.
+- **Magic numbers:** none added. `bestKey = -1` is the standard sentinel.
+- **at-threading:** N/A — the cache stores Campaign snapshots; the underlying events keep their original timestamps.
+- **Mechanical outcomes asserted:** the test pins both correctness (state at cursor N matches replay()) and cache-hit semantics (referential equality on repeat lookup).
+
+**Pattern-check** (filter shape: "O(N) per interactive operation when an incremental path is available"): the engine's `replay()` is genuinely O(N) by design — it has no notion of intermediate checkpoints. `applyAll(state, events)` is the incremental path the engine already exposes. Other O(N) sites in the demo: the event inspector's append-only rendering already uses an O(K) fast path for K new events. The grid-view re-render also computed a full bounds-and-tokens pass per commit — moot, the grid was removed in slice 600. No other hot paths surfaced.
+
+---
+
 **Tooling (slice 609): toolbar UX — tooltips, "Run new battle" label, mid-scrub outcome placeholder**
 
 Three small toolbar/page-copy fixes from the slice-600 observer review:
