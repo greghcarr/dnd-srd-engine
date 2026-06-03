@@ -4,6 +4,35 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Tests (slice 619): CI-guarded "L1 SRD complete" floor audit**
+
+Companion to slice 574's `srd-l1-invariants.test.ts` (hit dice + spell-slot table + ability-score bounds). This audit goes broader: it locks in the surface area that constitutes "a complete L1 SRD experience" so a future slice can't silently drop a class feature, a species, a background's origin feat, or a RAW condition.
+
+**Pinned** ([tests/audit/srd-l1-complete.test.ts](tests/audit/srd-l1-complete.test.ts), 41 cases — one per invariant so a regression names the exact dropped piece):
+
+1. **Per-class L1 feature ids present** — each of the 12 SRD classes has its canonical L1 feature ids (e.g., Fighter: `second-wind`, `fighting-style-fighter`, `weapon-mastery-fighter`; Barbarian: `rage`, `unarmored-defense-barbarian-feature`, `weapon-mastery-barbarian`; etc.). 12 cases.
+2. **All 9 SRD species** present with non-empty `traits`. 9 cases.
+3. **All 4 SRD backgrounds** present with an `originFeatId` that resolves to a feat in the pack. 4 cases.
+4. **All 15 RAW conditions** ship under their canonical ids. 15 cases.
+5. **Slice 618 OfferCharacterChoices cascade** works for a fresh L1 Fighter — emits Fighting Style ChoiceRequired with the 6 SRD options (`archery`, `defense`, `dueling`, `great-weapon`, `protection`, `two-weapon`). 1 case.
+
+**Intentionally NOT pinned** (already guarded elsewhere or volatile):
+- Numerical counts (test totals, mechanical-wiring percentages, spell-bucket splits) — guarded by `doc-counts`, `gaps-spells-counts`, and the per-spell `spell-coverage.test.ts`.
+- Hit dice + spell slots + ability scores — already in `srd-l1-invariants.test.ts`.
+
+**Verification:** 492 files / 3329 tests pass.
+
+**Audit:**
+- Names: `REQUIRED_L1_FEATURES`, `REQUIRED_SPECIES`, `REQUIRED_BACKGROUNDS`, `RAW_CONDITIONS` — each carries the canonical id set as the source of truth.
+- DRY: pulls counts from the pack; assertions per id rather than aggregate counts.
+- SRP: one audit, one floor — content surface stability.
+- Magic numbers: none added. The id lists are documentation pinned in code.
+- Pattern-check: swept `tests/audit/` for similar coverage gaps. `phantom-fields`, `srd-drift`, `srd-l1-invariants`, `pack-integrity`, `doc-counts`, `coverage-ledger` all carry their own piece of the floor. This audit fills the "feature / species / background / condition presence" hole that none of the others covered.
+
+When a future content edit intentionally renames or removes one of these ids, update both the content + this audit in the same slice — the audit's job is to make that update visible, not to block valid content evolution.
+
+---
+
 **Engine (slice 618): `engine.plan.offerCharacterChoices` — drain L1 OfferChoice entries on fresh characters**
 
 Closes the docs/status.md-flagged gap and the headline "what's left for L1 SRD" item: fresh L1 characters built via `CharacterCreated` (not stepped through `planLevelUp`) didn't receive their L1 `OfferChoice` grants. Fighter L1 Fighting Style is the canonical user — its `OfferChoice when: 'onAcquire'` only fired through the level-up path, so a direct-built L1 Fighter never got a `ChoiceRequired` for their fighting style. Paladin / Ranger Fighting Style work because they're acquired on L1→L2 (which does go through planLevelUp).
