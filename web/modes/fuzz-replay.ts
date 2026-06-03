@@ -146,19 +146,20 @@ export const mountFuzzReplay = (opts: FuzzReplayOptions): FuzzReplay => {
   }
 
   const renderOutcome = (_campaign: Campaign): void => {
-    // The outcome banner describes the END of the battle. Hide it while
-    // the user is scrubbing through the middle — surfacing the winner
-    // mid-stream spoils the playback. The transport's "step N / total"
-    // already conveys "how far in are we".
+    // Slice 609: mid-scrub placeholder. Pre-slice the outcome banner
+    // hid completely while cursor < total, leaving no signal that an
+    // outcome was waiting at ⏭. Now shows a quiet "Scrub to the end..."
+    // placeholder so observers know the battle has a resolution and
+    // how to reveal it.
     if (cursor < totalEvents) {
-      outcomeEl.textContent = '';
+      outcomeEl.hidden = false;
+      outcomeEl.textContent = `Battle in progress (step ${cursor} of ${totalEvents}). Scrub to the end (⏭) to see the outcome.`;
       outcomeEl.className = 'fuzz-outcome fuzz-outcome-inprogress';
-      outcomeEl.hidden = true;
       return;
     }
     outcomeEl.hidden = false;
     if (winner === null) {
-      outcomeEl.textContent = `No winner after ${rounds} rounds — drag the cursor to inspect any moment.`;
+      outcomeEl.textContent = `No winner after ${rounds} rounds — scrub the transport to inspect any moment.`;
       outcomeEl.className = 'fuzz-outcome fuzz-outcome-draw';
       return;
     }

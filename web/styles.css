@@ -133,6 +133,16 @@ button:disabled {
   background: rgba(182, 117, 0, 0.08);
 }
 
+/* Slice 609: quiet placeholder while scrubbing mid-stream — visible
+   enough to signal "there's an outcome at ⏭" but not loud enough to
+   spoil the playback. */
+.fuzz-outcome-inprogress {
+  border-left-color: #888;
+  background: rgba(127, 127, 127, 0.06);
+  color: #888;
+  font-style: italic;
+}
+
 .combatant-list {
   list-style: none;
   padding: 0;

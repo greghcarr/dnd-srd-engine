@@ -4,6 +4,30 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 ## Unreleased
 
+**Tooling (slice 609): toolbar UX — tooltips, "Run new battle" label, mid-scrub outcome placeholder**
+
+Three small toolbar/page-copy fixes from the slice-600 observer review:
+
+1. **Tooltips on every toolbar control** — `seed`, `mode`, `opponent`, `level`, `post-battle rest` all gained `title=` attributes explaining what they do (and why an observer might want each one). The labels themselves stay short; the tooltip carries the explanation. The "Run new battle" button gets a tooltip explaining "different seeds give different battles" so observers know re-running with the same seed gives the same battle.
+2. **"Run" → "Run new battle"** — the prior label was ambiguous (continue? restart? re-render?). New label says exactly what the button does.
+3. **Mid-scrub outcome placeholder** — pre-slice the outcome banner hid entirely while `cursor < total`, leaving no signal that an outcome was waiting. Now shows "Battle in progress (step N of M). Scrub to the end (⏭) to see the outcome." in a quiet gray banner. Still doesn't spoil the result; just tells the observer there IS one and how to reveal it.
+
+Plus a copy refresh: the page's content-notice and hint paragraphs now reference the new panel names ("Random Battle", "Event Log", "Developer tools") established by slices 607-608.
+
+**Files** ([web/index.html](web/index.html), [web/modes/fuzz-replay.ts](web/modes/fuzz-replay.ts), [web/styles.css](web/styles.css)). No engine work.
+
+**Verification:** `tsc --noEmit -p web/tsconfig.json` clean; `vite` boots without runtime errors.
+
+**Audit (presentation slice):**
+- **Names:** new CSS class `.fuzz-outcome-inprogress` mirrors the existing `-win` / `-draw` siblings.
+- **DRY:** tooltips are one-line `title=` attributes inline; not worth a per-tooltip helper for 5 entries.
+- **SRP:** index.html copy + panel mid-scrub branch; both surface-only.
+- **Magic numbers:** none added.
+
+**Pattern-check** (filter shape: "user-facing toolbar / page copy that referenced retired vocabulary"): swept index.html + the page's hint copy for stale references to "Fuzz Replay" / "Event Inspector" / "cursor" / "map". Three sites updated (content-notice paragraph, panels aria-label, hint paragraph). One stale phrase in the README will need a follow-up sweep if it shows the old vocabulary — leaving the README scope for now since this slice was scoped to in-page UX.
+
+---
+
 **Tooling (slice 608): event inspector readability — human labels, vocabulary, developer-tools collapse, subdued state-change**
 
 Four observer-experience gaps in the event log panel (the right side of the demo), bundled in one focused slice:
