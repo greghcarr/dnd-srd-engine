@@ -424,6 +424,7 @@ exports[`feature-coverage matrix: subclasses > wired subclass features catalog i
   "champion L7 additional-fighting-style",
   "champion L15 superior-critical",
   "circle-of-the-land L3 circle-of-the-land-cantrip",
+  "circle-of-the-land L3 circle-of-the-land-spells",
   "circle-of-the-land L3 lands-aid",
   "circle-of-the-land L6 natural-recovery",
   "circle-of-the-land L10 natures-ward",

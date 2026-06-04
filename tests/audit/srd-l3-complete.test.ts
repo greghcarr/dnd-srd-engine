@@ -302,13 +302,9 @@ describe('slice 645: SRD L3 completeness audit', () => {
         featureId: 'hunters-lore',
         reason: 'Intentionally narrative: RAW reveals immunity/resistance info while Hunter\'s Mark is active. Engine has no shown-information primitive; consumer-side reveal.',
       },
-      // Still-unwired content (genuine punch list for future slices).
-      {
-        kind: 'subclass',
-        ownerId: 'circle-of-the-land',
-        featureId: 'circle-of-the-land-spells',
-        reason: 'Land-type expanded spell list (Arctic / Coast / Desert / etc.); needs OfferChoice over land type + per-land GrantSpell list.',
-      },
+      // (No still-unwired content stubs remain — slice 652 wired
+      // circle-of-the-land-spells. If a future cycle introduces a
+      // new L3 stub, add it here with its reason.)
     ];
 
     for (const stub of EMPTY_STUBS) {

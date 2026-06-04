@@ -932,7 +932,53 @@
           {
             "id": "circle-of-the-land-spells",
             "name": "Circle of the Land Spells",
-            "effects": []
+            "effects": [
+              {
+                "kind": "OfferChoice",
+                "choiceId": "circle-of-the-land-type",
+                "prompt": "Choose one type of land: arid, polar, temperate, or tropical. You always have the spells listed for your Druid level and lower prepared.",
+                "oneOf": 1,
+                "when": "onAcquire",
+                "options": [
+                  {
+                    "id": "arid",
+                    "label": "Arid",
+                    "effects": [
+                      { "kind": "GrantSpell", "spellId": "blur", "preparation": "always-prepared" },
+                      { "kind": "GrantSpell", "spellId": "burning-hands", "preparation": "always-prepared" },
+                      { "kind": "GrantSpell", "spellId": "fire-bolt", "preparation": "always-prepared" }
+                    ]
+                  },
+                  {
+                    "id": "polar",
+                    "label": "Polar",
+                    "effects": [
+                      { "kind": "GrantSpell", "spellId": "fog-cloud", "preparation": "always-prepared" },
+                      { "kind": "GrantSpell", "spellId": "hold-person", "preparation": "always-prepared" },
+                      { "kind": "GrantSpell", "spellId": "ray-of-frost", "preparation": "always-prepared" }
+                    ]
+                  },
+                  {
+                    "id": "temperate",
+                    "label": "Temperate",
+                    "effects": [
+                      { "kind": "GrantSpell", "spellId": "misty-step", "preparation": "always-prepared" },
+                      { "kind": "GrantSpell", "spellId": "shocking-grasp", "preparation": "always-prepared" },
+                      { "kind": "GrantSpell", "spellId": "sleep", "preparation": "always-prepared" }
+                    ]
+                  },
+                  {
+                    "id": "tropical",
+                    "label": "Tropical",
+                    "effects": [
+                      { "kind": "GrantSpell", "spellId": "acid-splash", "preparation": "always-prepared" },
+                      { "kind": "GrantSpell", "spellId": "ray-of-sickness", "preparation": "always-prepared" },
+                      { "kind": "GrantSpell", "spellId": "web", "preparation": "always-prepared" }
+                    ]
+                  }
+                ]
+              }
+            ]
           }
         ],
         "6": [
