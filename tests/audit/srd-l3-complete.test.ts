@@ -524,4 +524,71 @@ describe('slice 645: SRD L3 completeness audit', () => {
       expect(optionIds).toEqual(['arid', 'polar', 'temperate', 'tropical']);
     });
   });
+
+  describe('Section 7: subclass L3 spell-list scaffolding (RAW match)', () => {
+    // Slice 655: pin the exact L3 spell list each "domain-spells"-style
+    // subclass feature ships. RAW per SRD 5.2.1 (verified inline). The
+    // 5th subclass with an L3 spell list — Druid Circle of the Land —
+    // ships an OfferChoice over 4 land types (not a fixed list) and is
+    // pinned by slice 653's Section 6 OfferChoice cascade tests; not
+    // re-pinned here.
+    interface L3SubclassSpellList {
+      readonly subclassId: string;
+      readonly featureId: string;
+      readonly expectedSpellIds: ReadonlyArray<string>;
+    }
+    const L3_SUBCLASS_SPELL_LISTS: ReadonlyArray<L3SubclassSpellList> = [
+      {
+        subclassId: 'life-domain',
+        featureId: 'life-domain-spells',
+        expectedSpellIds: ['aid', 'bless', 'cure-wounds', 'lesser-restoration'],
+      },
+      {
+        subclassId: 'oath-of-devotion',
+        featureId: 'devotion-spells',
+        expectedSpellIds: ['protection-from-evil-and-good', 'shield-of-faith'],
+      },
+      {
+        subclassId: 'fiend-patron',
+        featureId: 'fiend-spells',
+        expectedSpellIds: ['burning-hands', 'command', 'scorching-ray', 'suggestion'],
+      },
+      {
+        subclassId: 'draconic-sorcery',
+        featureId: 'draconic-spells',
+        expectedSpellIds: ['alter-self', 'chromatic-orb', 'command', 'dragons-breath'],
+      },
+    ];
+    for (const check of L3_SUBCLASS_SPELL_LISTS) {
+      it(`${check.subclassId} / ${check.featureId} ships the RAW L3 spell list`, () => {
+        const feature = findL3SubclassFeature(check.subclassId, check.featureId) as
+          | { effects?: ReadonlyArray<{ kind: string; spellId?: string; preparation?: string }> }
+          | undefined;
+        expect(feature, `${check.subclassId}/${check.featureId} missing`).toBeDefined();
+        const grants = (feature!.effects ?? []).filter((e) => e.kind === 'GrantSpell');
+        const actualSpellIds = grants.map((g) => g.spellId!).sort();
+        const expected = [...check.expectedSpellIds].sort();
+        expect(
+          actualSpellIds,
+          `${check.subclassId}/${check.featureId} spell list drift: got ${JSON.stringify(actualSpellIds)}, RAW expects ${JSON.stringify(expected)}`,
+        ).toEqual(expected);
+        // Pin preparation: 'always-prepared' per RAW ("you always
+        // have these spells prepared"). A regression that uses
+        // 'prepared' or 'known' would change the slot economy.
+        for (const g of grants) {
+          expect(
+            g.preparation,
+            `${check.subclassId}/${check.featureId} ${g.spellId} preparation is '${g.preparation}', RAW expects 'always-prepared'`,
+          ).toBe('always-prepared');
+        }
+        // Pin that each granted spell actually exists in the pack
+        // (defensive: a grant pointing at a missing spell would be a
+        // silent content bug otherwise).
+        for (const spellId of actualSpellIds) {
+          const spell = PACK.spells?.find((s) => s.id === spellId);
+          expect(spell, `${check.subclassId}/${check.featureId} grants missing spell '${spellId}'`).toBeDefined();
+        }
+      });
+    }
+  });
 });

@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Tests (slice 655): L3 floor Section 7 — subclass L3 spell-list RAW pin**
+Pins each of the 4 fixed-list L3 subclass spell features (Life Domain Spells, Devotion Spells, Fiend Spells, Draconic Spells) against SRD 5.2.1. Verifies: (1) the exact array of granted spell ids matches RAW, (2) every GrantSpell uses `preparation: 'always-prepared'`, (3) every granted spellId exists in the pack's spells catalog. All 4 match RAW exactly. Druid Circle of the Land Spells uses an OfferChoice and is pinned separately by slice 653's Section 6.
+Detail: [slice-655.md](docs/changelog/slice-655.md).
+
 **Engine + schema (slice 654): subclass-selection cascade**
 Closes the second L3 RAW-completeness gap. planLevelUp at `newClassLevel === cls.subclassLevel` now emits a subclass-selection ChoiceRequired with the available subclasses as options + a `subclassChoiceForClassId` marker. planResolveChoice detects the marker and emits a new `SubclassChosen` event; the reducer assigns `enrollment.subclassId`. End-to-end cascade: Druid L2→L3 picks Circle of the Land, then re-invoking `offerCharacterChoices` surfaces the nested Circle Cantrip + Land Type choices. Old characters built with subclassId already set are unaffected (guard short-circuits the cascade).
 Detail: [slice-654.md](docs/changelog/slice-654.md).
