@@ -361,6 +361,10 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       return `**${characterName(stateBefore, event.combatantId)}** readies an action (trigger: ${event.trigger}).`;
     case 'RecklessAttackActivated':
       return `**${characterName(stateBefore, event.combatantId)}** attacks recklessly.`;
+    case 'SteadyAimActivated':
+      return `**${characterName(stateBefore, event.combatantId)}** takes Steady Aim (advantage on next attack; speed 0 until end of turn).`;
+    case 'SteadyAimConsumed':
+      return `Steady Aim consumed.`;
     case 'StunningStrikeAttempted':
       return `**${characterName(stateBefore, event.combatantId)}** attempts a Stunning Strike against **${characterName(stateBefore, event.targetId)}**.`;
     case 'SavageAttackerUsed':

@@ -23,6 +23,33 @@ export const RecklessAttackActivatedEventSchema = EventEnvelopeSchema.extend({
 });
 export type RecklessAttackActivatedEvent = z.infer<typeof RecklessAttackActivatedEventSchema>;
 
+// Slice 646: Rogue L3 Steady Aim. Sets two turnUsage flags on the
+// combatant: `steadyAimActive` (next attack roll this turn gets
+// advantage; cleared by attack resolution) and
+// `speedZeroUntilEndOfTurn` (move planner rejects until TurnStarted
+// clears it). RAW: "As a Bonus Action, you give yourself Advantage
+// on your next attack roll on the current turn ... after you use it,
+// your Speed is 0 until the end of the current turn."
+export const SteadyAimActivatedEventSchema = EventEnvelopeSchema.extend({
+  type: z.literal('SteadyAimActivated'),
+  encounterId: ULIDSchema,
+  combatantId: ULIDSchema,
+});
+export type SteadyAimActivatedEvent = z.infer<typeof SteadyAimActivatedEventSchema>;
+
+// Slice 646: emitted by `planAttack` (or any future planner that
+// consumes a Steady Aim advantage) after the attack roll resolves
+// against a target. The reducer clears the combatant's
+// `steadyAimActive` flag so subsequent attacks this turn don't also
+// gain advantage. RAW: only the NEXT attack benefits — this event
+// enforces that.
+export const SteadyAimConsumedEventSchema = EventEnvelopeSchema.extend({
+  type: z.literal('SteadyAimConsumed'),
+  encounterId: ULIDSchema,
+  combatantId: ULIDSchema,
+});
+export type SteadyAimConsumedEvent = z.infer<typeof SteadyAimConsumedEventSchema>;
+
 // Monk Stunning Strike attempt marker. Records the monk used their
 // once-per-turn Stunning Strike; the reducer sets the corresponding
 // turnUsage flag. The actual save + condition application are emitted

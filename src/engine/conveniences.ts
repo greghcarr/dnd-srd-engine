@@ -36,6 +36,7 @@ export const performIntent = (
     ChooseWeaponMasteries: (i) => engine.plan.chooseWeaponMasteries(campaign.state, i),
     ConjurePactWeapon: (i) => engine.plan.conjurePactWeapon(campaign.state, i),
     RecklessAttack: (i) => engine.plan.recklessAttack(campaign.state, i),
+    SteadyAim: (i) => engine.plan.steadyAim(campaign.state, i),
     StunningStrike: (i) => engine.plan.stunningStrike(campaign.state, i),
     FlurryOfBlows: (i) => engine.plan.flurryOfBlows(campaign.state, i),
     PatientDefense: (i) => engine.plan.patientDefense(campaign.state, i),

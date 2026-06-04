@@ -125,6 +125,14 @@ export const planMove = (
   if (combatant.position === undefined) {
     throw new Error('Combatant has no position set');
   }
+  // Slice 646: Rogue L3 Steady Aim arm. The combatant's speed is 0
+  // until end of turn after using Steady Aim. Reject any movement
+  // intent until the flag clears at TurnStarted.
+  if (combatant.turnUsage.speedZeroUntilEndOfTurn) {
+    throw new Error(
+      `${character?.name ?? intent.combatantId} cannot move: speed is 0 until end of turn (Steady Aim)`,
+    );
+  }
   // RAW Appendix "Frightened": "while frightened by a source, you
   // can't willingly move closer to the source of your fear." If the
   // mover carries a Frightened condition with a sourceCharacterId set,

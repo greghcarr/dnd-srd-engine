@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine + schema (slice 646): Rogue L3 Steady Aim planner**
+Two-arm self-effect using the per-turn flag pattern (mirrors Reckless Attack from slice 461): `steadyAimActive` consumed by next attack roll (new `SteadyAimActivated` + `SteadyAimConsumed` events); `speedZeroUntilEndOfTurn` consulted by `planMove` and cleared at next `TurnStarted`. Attack-side advantage applied in `resolveAttack` alongside the existing advantage sources. Closes the first L3 planner xfail; 2 remaining.
+Detail: [slice-646.md](docs/changelog/slice-646.md).
+
 **Tests (slice 645): CI-guarded "L3 SRD complete" floor audit**
 Companion to slice 619 (L1) and slice 633 (L2). 32-test audit across 4 sections: per-class L3 features (4 classes have named L3 features; 8 have only subclass selection), per-subclass L3 features (12 canonical subclasses), planner presence (5 wired + 3 xfail: Steady Aim, Fast Hands, Deflect Attacks), and 7 content-stub pins. Defines the L3 punch list before any planner work lands. Opens the L3 cycle.
 Detail: [slice-645.md](docs/changelog/slice-645.md).

@@ -46,6 +46,8 @@ export const applyEncounterCreated = (
         stunningStrikeUsedThisTurn: false,
         savageAttackerUsedThisTurn: false,
         noProvokeMovementUpToFeet: 0,
+        steadyAimActive: false,
+        speedZeroUntilEndOfTurn: false,
       },
     })),
     round: 0,
@@ -163,6 +165,14 @@ export const applyTurnStarted = (
   // your next turn"). Clearing on TurnStarted matches the RAW
   // expiry window.
   active.turnUsage.readiedAction = undefined;
+  // Slice 646: Rogue L3 Steady Aim flags. The steadyAimActive flag
+  // SHOULD already be cleared by an attack resolution that consumed
+  // it; if the rogue used Steady Aim and then didn't attack, the
+  // flag would persist into next turn without this reset.
+  // speedZeroUntilEndOfTurn is by definition "until end of turn"
+  // and clears here.
+  active.turnUsage.steadyAimActive = false;
+  active.turnUsage.speedZeroUntilEndOfTurn = false;
 };
 
 export const applyTurnEnded = (

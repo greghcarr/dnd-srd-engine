@@ -152,17 +152,10 @@ const PLANNERS: ReadonlyArray<PlannerExpectation> = [
   { classOrSubclassId: 'life-domain', featureId: 'preserve-life', plannerExport: 'planPreserveLife' },
   { classOrSubclassId: 'circle-of-the-land', featureId: 'lands-aid', plannerExport: 'planLandsAid' },
   { classOrSubclassId: 'oath-of-devotion', featureId: 'sacred-weapon', plannerExport: 'planSacredWeapon' },
+  { classOrSubclassId: 'rogue', featureId: 'steady-aim', plannerExport: 'planSteadyAim' }, // slice 646
 
-  // Xfail today. Three L3 features need standalone planners that
+  // Xfail today. Two L3 features still need standalone planners that
   // don't yet exist. Content currently ships effects:[] for each.
-  {
-    classOrSubclassId: 'rogue',
-    featureId: 'steady-aim',
-    plannerExport: 'planSteadyAim',
-    xfail: true,
-    xfailReason:
-      'L3 Rogue feature: bonus action to grant self advantage on next attack this turn; speed becomes 0 until end of turn. Needs a self-effect with until-end-of-turn duration + a speed-0 condition.',
-  },
   {
     classOrSubclassId: 'thief',
     featureId: 'fast-hands',

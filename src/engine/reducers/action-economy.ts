@@ -4,6 +4,8 @@ import type {
   ActionEconomyConsumedEvent,
   ActionReadiedEvent,
   RecklessAttackActivatedEvent,
+  SteadyAimActivatedEvent,
+  SteadyAimConsumedEvent,
   StunningStrikeAttemptedEvent,
   SavageAttackerUsedEvent,
 } from '../../schemas/events/action-economy.js';
@@ -93,6 +95,37 @@ export const applyRecklessAttackActivated = (
   const combatant = encounter.combatants.find((c) => c.combatantId === event.combatantId);
   invariant(combatant !== undefined, `Combatant ${event.combatantId} not in encounter`);
   combatant.turnUsage.recklessAttackActive = true;
+};
+
+// Slice 646: Rogue L3 Steady Aim. Sets two turnUsage flags on the
+// combatant — next attack gets advantage, AND speed=0 until end of
+// turn. Both flags clear at the next TurnStarted (via the existing
+// per-turn reset).
+export const applySteadyAimActivated = (
+  state: Draft<CampaignState>,
+  event: SteadyAimActivatedEvent,
+): void => {
+  const encounter = state.encounters[event.encounterId];
+  invariant(encounter !== undefined, `Encounter ${event.encounterId} not found`);
+  const combatant = encounter.combatants.find((c) => c.combatantId === event.combatantId);
+  invariant(combatant !== undefined, `Combatant ${event.combatantId} not in encounter`);
+  combatant.turnUsage.steadyAimActive = true;
+  combatant.turnUsage.speedZeroUntilEndOfTurn = true;
+};
+
+// Slice 646: clears the `steadyAimActive` flag after an attack
+// consumed the advantage. Emitted by attack planners that grant
+// advantage from Steady Aim. Doesn't touch `speedZeroUntilEndOfTurn`
+// — RAW: speed stays 0 until end of turn regardless.
+export const applySteadyAimConsumed = (
+  state: Draft<CampaignState>,
+  event: SteadyAimConsumedEvent,
+): void => {
+  const encounter = state.encounters[event.encounterId];
+  invariant(encounter !== undefined, `Encounter ${event.encounterId} not found`);
+  const combatant = encounter.combatants.find((c) => c.combatantId === event.combatantId);
+  invariant(combatant !== undefined, `Combatant ${event.combatantId} not in encounter`);
+  combatant.turnUsage.steadyAimActive = false;
 };
 
 export const applyStunningStrikeAttempted = (
