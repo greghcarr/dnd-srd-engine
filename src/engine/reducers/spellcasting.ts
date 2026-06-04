@@ -4,6 +4,7 @@ import type { Character } from '../../schemas/runtime/character.js';
 import type {
   FreeCastUsedEvent,
   PactSlotConsumedEvent,
+  PactSlotsRegainedEvent,
   SpellCastDeclaredEvent,
   SpellSlotConsumedEvent,
 } from '../../schemas/events/spellcasting.js';
@@ -39,6 +40,18 @@ export const applyPactSlotConsumed = (
 ): void => {
   const character = requireCharacter(state, event.characterId);
   character.pactSlotsUsed += 1;
+};
+
+// Slice 637: Magical Cunning (Warlock L2) regains expended Pact Magic
+// slots mid-rest. Clamps at 0 so an over-credit (planner bug or a
+// hand-authored event with too-large `count`) can't produce negative
+// expended slots.
+export const applyPactSlotsRegained = (
+  state: Draft<CampaignState>,
+  event: PactSlotsRegainedEvent,
+): void => {
+  const character = requireCharacter(state, event.characterId);
+  character.pactSlotsUsed = Math.max(0, character.pactSlotsUsed - event.count);
 };
 
 // Slice 486: records that the bearer's once-per-long-rest free cast for

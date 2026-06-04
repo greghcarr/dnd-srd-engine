@@ -114,16 +114,9 @@ const PLANNERS: ReadonlyArray<PlannerExpectation> = [
   { classId: 'paladin', featureId: 'paladins-smite', plannerExport: 'planPaladinsSmite' },
   { classId: 'rogue', featureId: 'cunning-action', plannerExport: 'planCunningAction' },
   { classId: 'sorcerer', featureId: 'metamagic', plannerExport: 'planMetamagic' },
+  { classId: 'warlock', featureId: 'magical-cunning', plannerExport: 'planMagicalCunning' }, // slice 637
 
   // Xfail today. Remaining planners that must land before L2 is complete.
-  {
-    classId: 'warlock',
-    featureId: 'magical-cunning',
-    plannerExport: 'planMagicalCunning',
-    xfail: true,
-    xfailReason:
-      "L2 Warlock feature: 1/long-rest action regains all expended Pact Magic slots after 1-minute meditation. Needs a 'regain slots of a specific casting type' primitive.",
-  },
 ];
 
 // ────────────────────────────────────────────────────────────────────

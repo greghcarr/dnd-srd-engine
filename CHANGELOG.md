@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine + content + event schema (slice 637): Warlock L2 Magical Cunning planner**
+Adds the new `PactSlotsRegained { count, source }` event (first mid-rest pact-slot-refund primitive) + reducer + transcript line; planner consumes the per-long-rest `magical-cunning` gate and emits a regain of `min(ceil(maxPactSlots/2), pactSlotsUsed)`. Closes the fourth L2 punch-list xfail; only the Eldritch Invocations catalog remains.
+Detail: [slice-637.md](docs/changelog/slice-637.md).
+
 **Engine + content + tests (slice 636): Monk L2 Uncanny Metabolism planner**
 Adds `GrantResource { uncanny-metabolism, max 1, longRest }` to the L2 Monk feature (was `effects: []`); planner consumes the once-per-long-rest gate, emits `ResourceRestored { ki, 'all' }` to refund Focus Points, and `Healed { monkLevel + martial-arts die }`. First mid-encounter consumer of `ResourceRestored { amount: 'all' }`. Closes the third L2 punch-list xfail (2 remaining).
 Detail: [slice-636.md](docs/changelog/slice-636.md).

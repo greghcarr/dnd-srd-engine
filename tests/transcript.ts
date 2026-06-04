@@ -338,6 +338,8 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       return `Slot consumed: ${ordinal(event.slotLevel)}-level.`;
     case 'PactSlotConsumed':
       return `Pact slot consumed.`;
+    case 'PactSlotsRegained':
+      return `Pact slots regained: ${event.count} (${event.source}).`;
     case 'FreeCastUsed':
       return `Free cast used: ${spellName(content, event.spellId)}.`;
     case 'ConcentrationStarted': {

@@ -29,6 +29,20 @@ export const PactSlotConsumedEventSchema = EventEnvelopeSchema.extend({
 });
 export type PactSlotConsumedEvent = z.infer<typeof PactSlotConsumedEventSchema>;
 
+// Slice 637: emitted when a feature gives back previously-spent pact
+// slots mid-rest (Warlock L2 Magical Cunning: regain up to ceil(max/2)
+// expended Pact Magic slots as part of a 1-minute esoteric rite;
+// Warlock L20 Eldritch Master uses the same shape with `count: 'all'`
+// when that planner lands). Reducer decrements `pactSlotsUsed` by
+// `count`, clamped at 0.
+export const PactSlotsRegainedEventSchema = EventEnvelopeSchema.extend({
+  type: z.literal('PactSlotsRegained'),
+  characterId: ULIDSchema,
+  count: z.number().int().min(1),
+  source: z.string(),
+});
+export type PactSlotsRegainedEvent = z.infer<typeof PactSlotsRegainedEventSchema>;
+
 // Slice 486: emitted when a cast consumes a oncePerLongRest free cast
 // from a GrantSpell grant (Magic Initiate, Warlock Contact Patron).
 // Reducer pushes `spellId` onto the bearer's `usedFreeCastSpellIds`;

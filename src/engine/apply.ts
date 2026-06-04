@@ -63,6 +63,7 @@ import { applyAbilityCheckRolled, applySaveRolled } from './reducers/checks.js';
 import {
   applyFreeCastUsed,
   applyPactSlotConsumed,
+  applyPactSlotsRegained,
   applySpellCastDeclared,
   applySpellSlotConsumed,
 } from './reducers/spellcasting.js';
@@ -318,6 +319,9 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
         break;
       case 'PactSlotConsumed':
         applyPactSlotConsumed(draft, event);
+        break;
+      case 'PactSlotsRegained':
+        applyPactSlotsRegained(draft, event);
         break;
       case 'FreeCastUsed':
         applyFreeCastUsed(draft, event);
