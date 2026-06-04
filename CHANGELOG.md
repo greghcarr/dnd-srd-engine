@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Tests (slice 642): multiclass L1+L1 build audit**
+Adds 67 tests (one per unordered class pair, plus enumeration sanity): each builds an L1+L1 character with all-14 stats, commits CharacterCreated, and confirms `engine.derive.character` returns a sheet without throwing. Closes the multiclass-at-total-level-2 gap the single-class L2 floor didn't cover. Fourth of five L2 hardening slices.
+Detail: [slice-642.md](docs/changelog/slice-642.md).
+
 **Tests (slice 641): per-level spell wiring floor enforcement**
 Extends `gaps-spells-counts.test.ts` with a `MIN_WIRED_PER_LEVEL` ratchet: each level's wired count must stay at or above its slice-641 snapshot (L2 floor = 36). Lowering requires bumping the floor in the same slice; raising is silently allowed. Test count grows 23 → 33 (one new `it()` per level). First "ratchet" audit in the repo; pattern is reusable for any "this count can only go up" invariant.
 Detail: [slice-641.md](docs/changelog/slice-641.md).
