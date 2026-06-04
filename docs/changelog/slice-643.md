@@ -2,6 +2,8 @@
 
 **Type:** Tests (audit-only). Fifth and last of the L2 hardening slices. **Closes the L2-complete gate.**
 
+> **Note (slice 644):** the audit file shipped here was superseded by [slice-644.md](slice-644.md)'s fuzz matrix audit (same 20-seed count for the L2 / 1v1 PC / rest=none cell, plus 23 additional cells covering L1 + monster + 2v2 + rest cadences). The file `tests/audit/l2-fuzz-floor.test.ts` was deleted in slice 644. The historical detail below is retained as the original slice-643 record.
+
 The four previous hardening slices (639-642) pinned static invariants — feature ids present, planners exported, resource max + recharge, spell-wired floor, multiclass build cleanliness. None of them exercised the engine end-to-end: a planner could throw mid-turn, an action-economy reset could desync, a reaction could fire in the wrong slot, and the static audits wouldn't notice.
 
 Slice 643 closes that gap. It drives the existing combat-fuzz harness ([scripts/combat-fuzz-core.ts](../../scripts/combat-fuzz-core.ts), slice 600) at L2: 20 seeded 1v1 PC-vs-PC battles, each runs to completion (HP 0 or MAX_ROUNDS=20). The invariant: every battle completes without throwing.
@@ -23,7 +25,7 @@ All 20 seeds pass with the current engine. Average per-seed wall-clock: ~10ms. T
 
 ## Files
 
-- **[../../tests/audit/l2-fuzz-floor.test.ts](../../tests/audit/l2-fuzz-floor.test.ts)** (new): drives `runBattle({ level: 2, vs: 'pc', teamSize: 1, seed: N })` for `N ∈ [1, 20]`. Each test catches and re-throws with the seed in the error message so a regression points at the exact reproduction. Asserts `result.rounds > 0` as a sanity check (the engine actually advanced turns rather than no-opping).
+- `tests/audit/l2-fuzz-floor.test.ts` (new at slice 643; deleted at slice 644 after the fuzz matrix audit superseded it): drives `runBattle({ level: 2, vs: 'pc', teamSize: 1, seed: N })` for `N ∈ [1, 20]`. Each test catches and re-throws with the seed in the error message so a regression points at the exact reproduction. Asserts `result.rounds > 0` as a sanity check (the engine actually advanced turns rather than no-opping).
 
 ## Tests
 
