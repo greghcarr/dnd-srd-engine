@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Tests (slice 651): L3 fuzz matrix extension**
+Extends slice 644's fuzz matrix from `LEVELS = [1, 2]` to `[1, 2, 3]`. New cell count: 3 × 4 × 3 = **36 cells × 20 seeds = 720 battles** per CI run, ~7.3s wall-clock. L3 cells exercise everything the L3 cycle introduced (Steady Aim / Fast Hands / Deflect Attacks planners, Paladin Channel Divinity, scaled-to-3 resources, plus L3 subclass features composing with them). All 720 complete without throwing.
+Detail: [slice-651.md](docs/changelog/slice-651.md).
+
 **Tests (slice 650): L3 floor Section 5 — resource scaffolding pin**
 Mirrors slice 639/640's L2 resource pin pattern but for the four resources that scale to / come online at L3: Barbarian rage (max=3, longRest), Paladin channel-divinity (max=2, shortRest), Sorcerer sorcery-points (max=3 via formula, longRest), Monk ki (max=3 via formula, shortRest). Sorcerer + Monk formulas evaluate via `evaluateFormula` with a synthesized L3 `FormulaContext`. First of the L3 hardening cycle (mirror of L2's 639-644).
 Detail: [slice-650.md](docs/changelog/slice-650.md).

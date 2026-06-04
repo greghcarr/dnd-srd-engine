@@ -45,7 +45,14 @@ import {
 } from '../../scripts/combat-fuzz-core.js';
 
 const PACK = loadStarterPack();
-const LEVELS = [1, 2] as const;
+// Slice 651: extended from [1, 2] to [1, 2, 3] to cover the L3
+// surface introduced in slices 645-650 (subclass selection at L3,
+// new planners — Steady Aim / Fast Hands / Deflect Attacks — plus
+// Paladin Channel Divinity + scaled-to-3 resources). The pre-slice
+// fuzz cycle ran each shipped L3 planner through its dedicated
+// per-planner test; this audit catches cross-cutting regressions
+// that show up only under random encounter shapes.
+const LEVELS = [1, 2, 3] as const;
 const SHAPES: ReadonlyArray<{
   teamSize: 1 | 2;
   vs: FuzzVs;
@@ -61,7 +68,7 @@ const SEEDS_PER_CELL = 20;
 
 describe('slice 644: fuzz matrix audit (L1 + L2 across shapes + rests)', () => {
   it(`enumerates ${LEVELS.length * SHAPES.length * RESTS.length} matrix cells (${LEVELS.length} levels x ${SHAPES.length} shapes x ${RESTS.length} rests)`, () => {
-    expect(LEVELS.length * SHAPES.length * RESTS.length).toBe(24);
+    expect(LEVELS.length * SHAPES.length * RESTS.length).toBe(36);
   });
 
   for (const level of LEVELS) {
