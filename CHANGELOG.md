@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine + schema (slice 654): subclass-selection cascade**
+Closes the second L3 RAW-completeness gap. planLevelUp at `newClassLevel === cls.subclassLevel` now emits a subclass-selection ChoiceRequired with the available subclasses as options + a `subclassChoiceForClassId` marker. planResolveChoice detects the marker and emits a new `SubclassChosen` event; the reducer assigns `enrollment.subclassId`. End-to-end cascade: Druid L2→L3 picks Circle of the Land, then re-invoking `offerCharacterChoices` surfaces the nested Circle Cantrip + Land Type choices. Old characters built with subclassId already set are unaffected (guard short-circuits the cascade).
+Detail: [slice-654.md](docs/changelog/slice-654.md).
+
 **Tests (slice 653): L3 floor Section 6 — OfferChoice cascade verification**
 Verifies the 3 L3 OfferChoices wired in slices 649/652 actually fire via `engine.plan.offerCharacterChoices` for a fresh L3 character: Barbarian Primal Knowledge (6 skill options), Druid Circle of the Land Cantrip (11 cantrip options), Druid Circle of the Land Spells (4 SRD lands). All 3 pass — the cascade is sound. First slice of the L3 RAW-completeness push (8-slice plan after the user requested it).
 Detail: [slice-653.md](docs/changelog/slice-653.md).

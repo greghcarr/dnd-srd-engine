@@ -48,6 +48,7 @@ import {
   LevelUpResolvedEventSchema,
   ChoiceRequiredEventSchema,
   ChoiceResolvedEventSchema,
+  SubclassChosenEventSchema,
 } from './level-up.js';
 import {
   SaveRolledEventSchema,
@@ -246,6 +247,7 @@ export const EventSchema = z.discriminatedUnion('type', [
   LevelUpResolvedEventSchema,
   ChoiceRequiredEventSchema,
   ChoiceResolvedEventSchema,
+  SubclassChosenEventSchema,
   SaveRolledEventSchema,
   AbilityCheckRolledEventSchema,
   SpellCastDeclaredEventSchema,
@@ -399,6 +401,7 @@ export const EVENT_TYPES = [
   'LevelUpResolved',
   'ChoiceRequired',
   'ChoiceResolved',
+  'SubclassChosen',
   'SaveRolled',
   'AbilityCheckRolled',
   'SpellCastDeclared',
@@ -639,12 +642,14 @@ export {
   LevelUpResolvedEventSchema,
   ChoiceRequiredEventSchema,
   ChoiceResolvedEventSchema,
+  SubclassChosenEventSchema,
   HPStrategySchema,
 } from './level-up.js';
 export type {
   LevelUpResolvedEvent,
   ChoiceRequiredEvent,
   ChoiceResolvedEvent,
+  SubclassChosenEvent,
   HPStrategy,
 } from './level-up.js';
 export {

@@ -58,6 +58,7 @@ import {
   applyChoiceRequired,
   applyChoiceResolved,
   applyLevelUpResolved,
+  applySubclassChosen,
 } from './reducers/level-up.js';
 import { applyAbilityCheckRolled, applySaveRolled } from './reducers/checks.js';
 import {
@@ -308,6 +309,9 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
         break;
       case 'ChoiceResolved':
         applyChoiceResolved(draft, event);
+        break;
+      case 'SubclassChosen':
+        applySubclassChosen(draft, event);
         break;
       case 'SaveRolled':
         applySaveRolled(draft, event);

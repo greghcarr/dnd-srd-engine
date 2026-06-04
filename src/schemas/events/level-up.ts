@@ -25,6 +25,12 @@ export const ChoiceRequiredEventSchema = EventEnvelopeSchema.extend({
   prompt: z.string(),
   options: z.array(ChoiceOptionSchema).min(1),
   oneOf: z.number().int().min(1),
+  // Slice 654: when set, this ChoiceRequired is the
+  // subclass-selection cascade at the class's `subclassLevel`.
+  // planResolveChoice detects this marker and emits a
+  // SubclassChosen event alongside ChoiceResolved so the
+  // reducer sets the enrollment's subclassId.
+  subclassChoiceForClassId: z.string().optional(),
 });
 export type ChoiceRequiredEvent = z.infer<typeof ChoiceRequiredEventSchema>;
 
@@ -35,3 +41,19 @@ export const ChoiceResolvedEventSchema = EventEnvelopeSchema.extend({
   selectedOptionIds: z.array(z.string()).min(1),
 });
 export type ChoiceResolvedEvent = z.infer<typeof ChoiceResolvedEventSchema>;
+
+// Slice 654: emitted by planResolveChoice when the resolved
+// choice's `subclassChoiceForClassId` is set. The reducer assigns
+// `subclassId` on the matching class enrollment. After this event
+// applies, the character's effective effect-stack picks up the
+// subclass's levelGrants at the enrollment's current level; any
+// nested OfferChoices (Druid Circle Cantrip + Spells, etc.) the
+// consumer re-surfaces via a subsequent
+// `engine.plan.offerCharacterChoices` call.
+export const SubclassChosenEventSchema = EventEnvelopeSchema.extend({
+  type: z.literal('SubclassChosen'),
+  characterId: ULIDSchema,
+  classId: z.string(),
+  subclassId: z.string(),
+});
+export type SubclassChosenEvent = z.infer<typeof SubclassChosenEventSchema>;

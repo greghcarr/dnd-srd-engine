@@ -6,6 +6,7 @@ import type {
   ChoiceResolvedEvent,
   HPStrategy,
   LevelUpResolvedEvent,
+  SubclassChosenEvent,
 } from '../../schemas/events/level-up.js';
 import type { RNG } from '../../rng/index.js';
 import { rollDie } from '../../rng/dice.js';
@@ -101,6 +102,42 @@ export const planLevelUp = (
     }
   }
 
+  // Slice 654: subclass-selection cascade. At the class's
+  // `subclassLevel`, emit a ChoiceRequired listing the available
+  // subclasses (content.subclasses filtered by parentClassId). The
+  // `subclassChoiceForClassId` marker tells planResolveChoice to
+  // emit a SubclassChosen event alongside ChoiceResolved.
+  if (cls.subclassLevel === newClassLevel && enrollment.subclassId === undefined) {
+    const availableSubclasses = [...content.subclasses.values()].filter(
+      (s) => s.parentClassId === intent.classId,
+    );
+    if (availableSubclasses.length > 0) {
+      const subclassChoice: ChoiceRequiredEvent = {
+        id: newEventId() as ULID,
+        at,
+        type: 'ChoiceRequired',
+        choiceId: newChoiceId(),
+        characterId: intent.characterId,
+        promptKey: `subclass-${intent.classId}`,
+        prompt: `Choose a ${cls.name ?? intent.classId} subclass.`,
+        options: availableSubclasses.map((s) => ({
+          id: s.id,
+          label: s.name ?? s.id,
+          // Subclass effects come online via the effect-stack derive
+          // once the enrollment's subclassId is set by SubclassChosen.
+          // No per-option effects to apply at choice-resolution time
+          // (the consumer re-invokes offerCharacterChoices to surface
+          // nested OfferChoices like Druid Circle Cantrip).
+          effects: [],
+        })),
+        oneOf: 1,
+        causedByEventId: levelUp.id,
+        subclassChoiceForClassId: intent.classId,
+      };
+      events.push(subclassChoice);
+    }
+  }
+
   return events;
 };
 
@@ -143,6 +180,26 @@ export const planResolveChoice = (
     characterId: intent.characterId,
     selectedOptionIds: [...intent.selectedOptionIds],
   };
+  // Slice 654: subclass-selection cascade. If the choice was a
+  // subclass selection (per the slice-654 `subclassChoiceForClassId`
+  // marker on the original ChoiceRequired, copied onto the
+  // PendingChoice by the reducer), emit a SubclassChosen event so
+  // the reducer assigns the enrollment's subclassId. The chosen
+  // option's id IS the subclassId (planLevelUp constructs each
+  // option's id from the subclass id).
+  const subclassChosen: SubclassChosenEvent[] = [];
+  const subclassClassId = (choice as { subclassChoiceForClassId?: string })
+    .subclassChoiceForClassId;
+  if (subclassClassId !== undefined && intent.selectedOptionIds.length === 1) {
+    subclassChosen.push({
+      id: newEventId() as ULID,
+      at: intent.at ?? nowIso(),
+      type: 'SubclassChosen',
+      characterId: intent.characterId,
+      classId: subclassClassId,
+      subclassId: intent.selectedOptionIds[0]!,
+    });
+  }
   // Slice 517: cascade ChoiceRequired events for nested OfferChoice
   // effects in the resolved option(s). Canonical user: Warlock Pact of
   // the Tome — picking it via the L1 invocation OfferChoice triggers
@@ -157,7 +214,7 @@ export const planResolveChoice = (
   //   2. For each OfferChoice in the resulting flat effects (with
   //      `when !== 'onLongRest'`, same filter as planLevelUp), emit a
   //      ChoiceRequired event.
-  const events: Event[] = [event];
+  const events: Event[] = [event, ...subclassChosen];
   const at = intent.at ?? nowIso();
   for (const optionId of intent.selectedOptionIds) {
     const option = choice.options.find((o) => o.id === optionId);
