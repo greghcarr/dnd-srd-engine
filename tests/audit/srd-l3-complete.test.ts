@@ -268,47 +268,44 @@ describe('slice 645: SRD L3 completeness audit', () => {
       readonly featureId: string;
       readonly reason: string;
     }> = [
-      {
-        kind: 'class',
-        ownerId: 'barbarian',
-        featureId: 'primal-knowledge',
-        reason: 'Skill prof picked from the sneak-attack list — needs OfferChoice over the rogue skill subset.',
-      },
+      // Planner-wired (slices 646-648). Content row intentionally
+      // stays effects:[] because the planner is the wiring; the pin
+      // catches a regression that adds declarative effects without
+      // intent.
       {
         kind: 'class',
         ownerId: 'rogue',
         featureId: 'steady-aim',
-        reason: 'BA self-advantage; planSteadyAim xfailing in Section 3.',
+        reason: 'BA self-advantage; wired via planSteadyAim (slice 646). Content stays effects:[] intentionally.',
       },
       {
         kind: 'class',
         ownerId: 'monk',
         featureId: 'deflect-attacks',
-        reason: 'Reaction; planDeflectAttacks xfailing in Section 3.',
-      },
-      {
-        kind: 'subclass',
-        ownerId: 'circle-of-the-land',
-        featureId: 'circle-of-the-land-cantrip',
-        reason: 'Bonus druid cantrip pick at L3; needs OfferChoice over druid cantrip list.',
-      },
-      {
-        kind: 'subclass',
-        ownerId: 'circle-of-the-land',
-        featureId: 'circle-of-the-land-spells',
-        reason: 'Land-type expanded spell list (Arctic / Coast / Desert / etc.); needs OfferChoice over land type + GrantSpell per land.',
-      },
-      {
-        kind: 'subclass',
-        ownerId: 'hunter',
-        featureId: 'hunters-lore',
-        reason: 'Favored Enemy lore narrative ability; may be content-only (no planner needed).',
+        reason: 'Reaction reduction; wired via planDeflectAttacks (slice 648). Content stays effects:[] intentionally.',
       },
       {
         kind: 'subclass',
         ownerId: 'thief',
         featureId: 'fast-hands',
-        reason: 'BA thieves\' tools; planFastHands xfailing in Section 3.',
+        reason: 'BA dispatcher; wired via planFastHands (slice 647). Content stays effects:[] intentionally.',
+      },
+      // Intentionally narrative (RAW: reveals immunity/resistance info
+      // to the player; engine has no shown-information primitive).
+      // Stays effects:[] permanently unless a "DM-reveal" primitive
+      // lands and the consumer wants the engine to drive it.
+      {
+        kind: 'subclass',
+        ownerId: 'hunter',
+        featureId: 'hunters-lore',
+        reason: 'Intentionally narrative: RAW reveals immunity/resistance info while Hunter\'s Mark is active. Engine has no shown-information primitive; consumer-side reveal.',
+      },
+      // Still-unwired content (genuine punch list for future slices).
+      {
+        kind: 'subclass',
+        ownerId: 'circle-of-the-land',
+        featureId: 'circle-of-the-land-spells',
+        reason: 'Land-type expanded spell list (Arctic / Coast / Desert / etc.); needs OfferChoice over land type + per-land GrantSpell list.',
       },
     ];
 

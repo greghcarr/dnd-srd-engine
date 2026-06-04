@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Content + audit (slice 649): L3 stub sweep (3 of 4)**
+Flips two content stubs from slice 645's Section 4: Barbarian Primal Knowledge ships an OfferChoice over the 6 L1 Barbarian skills (`oneOf: 1`); Druid Circle of the Land Cantrip ships an OfferChoice over the 11 Druid cantrips. Reclassifies Hunter's Lore as intentionally narrative (RAW reveals immunity info; no shown-information primitive). Section 4 reorganized into three groups (planner-wired-intentional, narrative, still-unwired). Only Circle of the Land Spells remains as a still-unwired content stub.
+Detail: [slice-649.md](docs/changelog/slice-649.md).
+
 **Engine + schema (slice 648): Monk L3 Deflect Attacks planner (reduction arm)**
 Reaction-style planner returning `DeflectAttacksOutcome { reduction, remainingDamage }` (mirrors `cuttingWords` / `shield` shape). Gates on Monk L3+, B/P/S damage, reaction-available. Reduction = 1d10 + DEX + monk level. Counter arm (Focus Point + DEX save + 2× Martial Arts die counter damage) and damage-pipeline auto-integration deferred. **Closes the last L3 planner xfail; all three L3 planner xfails are now wired (slices 646-648).** L3 punch list reduces to 4 non-planner content stubs + L3 hardening cycle.
 Detail: [slice-648.md](docs/changelog/slice-648.md).

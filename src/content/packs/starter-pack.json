@@ -516,7 +516,7 @@
           "columns": {}
         },
         "2": { "proficiencyBonus": 2, "features": [{ "id": "reckless-attack", "name": "Reckless Attack", "effects": [{ "kind": "Custom", "handlerId": "reckless-attack" }] }, { "id": "danger-sense", "name": "Danger Sense", "effects": [{ "kind": "SetAdvantage", "on": { "kind": "save", "ability": "DEX" }, "mode": "advantage" }] }], "columns": {} },
-        "3": { "proficiencyBonus": 2, "features": [{ "id": "primal-knowledge", "name": "Primal Knowledge", "effects": [] }, { "id": "rage-uses-3", "name": "Rage (3/long rest)", "effects": [{ "kind": "GrantResource", "resourceId": "rage", "max": 3, "recharge": "longRest" }] }], "columns": {} },
+        "3": { "proficiencyBonus": 2, "features": [{ "id": "primal-knowledge", "name": "Primal Knowledge", "effects": [{ "kind": "OfferChoice", "choiceId": "barbarian-primal-knowledge", "prompt": "Choose one additional skill from the Barbarian L1 skill list.", "oneOf": 1, "when": "onAcquire", "options": [{ "id": "animal-handling", "label": "Animal Handling", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "animal-handling", "level": "proficient" }] }, { "id": "athletics", "label": "Athletics", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "athletics", "level": "proficient" }] }, { "id": "intimidation", "label": "Intimidation", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "intimidation", "level": "proficient" }] }, { "id": "nature", "label": "Nature", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "nature", "level": "proficient" }] }, { "id": "perception", "label": "Perception", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "perception", "level": "proficient" }] }, { "id": "survival", "label": "Survival", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "survival", "level": "proficient" }] }] }] }, { "id": "rage-uses-3", "name": "Rage (3/long rest)", "effects": [{ "kind": "GrantResource", "resourceId": "rage", "max": 3, "recharge": "longRest" }] }], "columns": {} },
         "4": { "proficiencyBonus": 2, "features": [], "columns": {} },
         "5": { "proficiencyBonus": 3, "features": [{ "id": "extra-attack-barb", "name": "Extra Attack", "effects": [{ "kind": "ModifyActionEconomy", "op": "extraAttack", "count": 1 }] }, { "id": "fast-movement", "name": "Fast Movement", "effects": [{ "kind": "ModifySpeed", "mode": "walk", "op": "add", "value": 10 }] }], "columns": {} },
         "6": { "proficiencyBonus": 3, "features": [{ "id": "rage-uses-4", "name": "Rage (4/long rest)", "effects": [{ "kind": "GrantResource", "resourceId": "rage", "max": 4, "recharge": "longRest" }] }], "columns": {} },
@@ -901,7 +901,28 @@
           {
             "id": "circle-of-the-land-cantrip",
             "name": "Circle of the Land: Bonus Cantrip",
-            "effects": []
+            "effects": [
+              {
+                "kind": "OfferChoice",
+                "choiceId": "circle-of-the-land-cantrip",
+                "prompt": "Choose one additional Druid cantrip.",
+                "oneOf": 1,
+                "when": "onAcquire",
+                "options": [
+                  { "id": "guidance", "label": "Guidance", "effects": [{ "kind": "GrantSpell", "spellId": "guidance", "preparation": "at-will" }] },
+                  { "id": "druidcraft", "label": "Druidcraft", "effects": [{ "kind": "GrantSpell", "spellId": "druidcraft", "preparation": "at-will" }] },
+                  { "id": "mending", "label": "Mending", "effects": [{ "kind": "GrantSpell", "spellId": "mending", "preparation": "at-will" }] },
+                  { "id": "message", "label": "Message", "effects": [{ "kind": "GrantSpell", "spellId": "message", "preparation": "at-will" }] },
+                  { "id": "poison-spray", "label": "Poison Spray", "effects": [{ "kind": "GrantSpell", "spellId": "poison-spray", "preparation": "at-will" }] },
+                  { "id": "produce-flame", "label": "Produce Flame", "effects": [{ "kind": "GrantSpell", "spellId": "produce-flame", "preparation": "at-will" }] },
+                  { "id": "resistance", "label": "Resistance", "effects": [{ "kind": "GrantSpell", "spellId": "resistance", "preparation": "at-will" }] },
+                  { "id": "shillelagh", "label": "Shillelagh", "effects": [{ "kind": "GrantSpell", "spellId": "shillelagh", "preparation": "at-will" }] },
+                  { "id": "spare-the-dying", "label": "Spare the Dying", "effects": [{ "kind": "GrantSpell", "spellId": "spare-the-dying", "preparation": "at-will" }] },
+                  { "id": "starry-wisp", "label": "Starry Wisp", "effects": [{ "kind": "GrantSpell", "spellId": "starry-wisp", "preparation": "at-will" }] },
+                  { "id": "elementalism", "label": "Elementalism", "effects": [{ "kind": "GrantSpell", "spellId": "elementalism", "preparation": "at-will" }] }
+                ]
+              }
+            ]
           },
           {
             "id": "lands-aid",
