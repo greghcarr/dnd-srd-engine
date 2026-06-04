@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Tests (slice 645): CI-guarded "L3 SRD complete" floor audit**
+Companion to slice 619 (L1) and slice 633 (L2). 32-test audit across 4 sections: per-class L3 features (4 classes have named L3 features; 8 have only subclass selection), per-subclass L3 features (12 canonical subclasses), planner presence (5 wired + 3 xfail: Steady Aim, Fast Hands, Deflect Attacks), and 7 content-stub pins. Defines the L3 punch list before any planner work lands. Opens the L3 cycle.
+Detail: [slice-645.md](docs/changelog/slice-645.md).
+
 **Tests (slice 644): fuzz matrix audit (L1 + L2 across shapes + rests)**
 Supersedes slice 643's single-cell L2 fuzz floor. New matrix: 2 levels × 4 combat shapes (1v1 PC, 2v2 PC, 1v1 monster, 2v2 monster) × 3 rest cadences (none / short / long) × 20 seeds = **480 battles per CI run, ~5 sec wall-clock**. Closes the "no L1 fuzz coverage in CI at all" gap noted post-slice-643 (the L1 cycle's bug-finding fuzz never became a permanent guard until now).
 Detail: [slice-644.md](docs/changelog/slice-644.md).
