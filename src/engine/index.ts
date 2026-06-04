@@ -95,6 +95,7 @@ import {
   planDetachStirge,
   planTurnUndead,
   planDivineSpark,
+  planUncannyMetabolism,
   planIntimidatingPresence,
   planDragonWings,
   planPreserveLife,
@@ -254,6 +255,7 @@ import {
   type DetachStirgeIntent,
   type TurnUndeadIntent,
   type DivineSparkIntent,
+  type UncannyMetabolismIntent,
   type IntimidatingPresenceIntent,
   type DragonWingsIntent,
   type PreserveLifeIntent,
@@ -440,6 +442,7 @@ export interface Engine {
     detachStirge(state: CampaignState, intent: Omit<DetachStirgeIntent, 'type'>): PlanResult;
     turnUndead(state: CampaignState, intent: Omit<TurnUndeadIntent, 'type'>): PlanResult;
     divineSpark(state: CampaignState, intent: Omit<DivineSparkIntent, 'type'>): PlanResult;
+    uncannyMetabolism(state: CampaignState, intent: Omit<UncannyMetabolismIntent, 'type'>): PlanResult;
     intimidatingPresence(state: CampaignState, intent: Omit<IntimidatingPresenceIntent, 'type'>): PlanResult;
     dragonWings(state: CampaignState, intent: Omit<DragonWingsIntent, 'type'>): PlanResult;
     preserveLife(state: CampaignState, intent: Omit<PreserveLifeIntent, 'type'>): PlanResult;
@@ -846,6 +849,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     divineSpark(state, intent) {
       return { events: planDivineSpark(state, content, rng, { type: 'DivineSpark', ...intent }) };
+    },
+    uncannyMetabolism(state, intent) {
+      return { events: planUncannyMetabolism(state, content, rng, { type: 'UncannyMetabolism', ...intent }) };
     },
     intimidatingPresence(state, intent) {
       return { events: planIntimidatingPresence(state, content, rng, { type: 'IntimidatingPresence', ...intent }) };

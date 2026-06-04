@@ -135,6 +135,7 @@ export {
 } from './stirge-drain.js';
 export { planTurnUndead, type TurnUndeadIntent } from './turn-undead.js';
 export { planDivineSpark, divineSparkDiceCount, type DivineSparkIntent } from './divine-spark.js';
+export { planUncannyMetabolism, type UncannyMetabolismIntent } from './uncanny-metabolism.js';
 export { planIntimidatingPresence, type IntimidatingPresenceIntent } from './intimidating-presence.js';
 export { planDragonWings, type DragonWingsIntent } from './dragon-wings.js';
 export { planPreserveLife, type PreserveLifeIntent } from './preserve-life.js';

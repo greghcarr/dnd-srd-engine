@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine + content + tests (slice 636): Monk L2 Uncanny Metabolism planner**
+Adds `GrantResource { uncanny-metabolism, max 1, longRest }` to the L2 Monk feature (was `effects: []`); planner consumes the once-per-long-rest gate, emits `ResourceRestored { ki, 'all' }` to refund Focus Points, and `Healed { monkLevel + martial-arts die }`. First mid-encounter consumer of `ResourceRestored { amount: 'all' }`. Closes the third L2 punch-list xfail (2 remaining).
+Detail: [slice-636.md](docs/changelog/slice-636.md).
+
 **Engine + tests (slice 635): Cleric L2 Channel Divinity Divine Spark planner**
 Sibling of Turn Undead (L2 CD) and Land's Aid (heal-or-damage save-for-half). Spends one CD use; heal mode emits Healed for NdN + WIS HP, damage mode rolls CON save for full / half necrotic-or-radiant damage. Dice scale 1d8 / 2d8 / 3d8 / 4d8 at cleric L2 / 7 / 13 / 18. Closes the second of slice 633's L2 punch-list xfails (3 remaining).
 Detail: [slice-635.md](docs/changelog/slice-635.md).

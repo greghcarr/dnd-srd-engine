@@ -110,19 +110,12 @@ const PLANNERS: ReadonlyArray<PlannerExpectation> = [
   { classId: 'fighter', featureId: 'action-surge', plannerExport: 'planActionSurge' },
   { classId: 'fighter', featureId: 'tactical-mind', plannerExport: 'planTacticalMind' }, // slice 634
   { classId: 'monk', featureId: 'unarmored-movement-monk', plannerExport: 'planStepOfTheWind' },
+  { classId: 'monk', featureId: 'uncanny-metabolism', plannerExport: 'planUncannyMetabolism' }, // slice 636
   { classId: 'paladin', featureId: 'paladins-smite', plannerExport: 'planPaladinsSmite' },
   { classId: 'rogue', featureId: 'cunning-action', plannerExport: 'planCunningAction' },
   { classId: 'sorcerer', featureId: 'metamagic', plannerExport: 'planMetamagic' },
 
   // Xfail today. Remaining planners that must land before L2 is complete.
-  {
-    classId: 'monk',
-    featureId: 'uncanny-metabolism',
-    plannerExport: 'planUncannyMetabolism',
-    xfail: true,
-    xfailReason:
-      'L2 Monk feature: on initiative, regain HP (martial-arts-die + monk level) plus all Ki. Needs an on-initiative trigger hook + heal-by-formula primitive.',
-  },
   {
     classId: 'warlock',
     featureId: 'magical-cunning',
