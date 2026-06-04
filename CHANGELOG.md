@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Tests (slice 643): L2 fuzz floor**
+Drives the existing combat-fuzz harness at L2: 20 seeded 1v1 PC-vs-PC battles, each runs to HP=0 or MAX_ROUNDS=20 without throwing. **Closes the L2-complete gate** — the L2 floor now covers feature presence, planner export, resource max + recharge, spell wiring floor, multiclass build cleanliness, AND end-to-end engine behavior. v0.3.0-alpha.0 ("L2 SRD complete") is unblocked. Total CI overhead: ~200ms.
+Detail: [slice-643.md](docs/changelog/slice-643.md).
+
 **Tests (slice 642): multiclass L1+L1 build audit**
 Adds 67 tests (one per unordered class pair, plus enumeration sanity): each builds an L1+L1 character with all-14 stats, commits CharacterCreated, and confirms `engine.derive.character` returns a sheet without throwing. Closes the multiclass-at-total-level-2 gap the single-class L2 floor didn't cover. Fourth of five L2 hardening slices.
 Detail: [slice-642.md](docs/changelog/slice-642.md).
