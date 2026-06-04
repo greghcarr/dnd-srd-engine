@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Tests (slice 641): per-level spell wiring floor enforcement**
+Extends `gaps-spells-counts.test.ts` with a `MIN_WIRED_PER_LEVEL` ratchet: each level's wired count must stay at or above its slice-641 snapshot (L2 floor = 36). Lowering requires bumping the floor in the same slice; raising is silently allowed. Test count grows 23 → 33 (one new `it()` per level). First "ratchet" audit in the repo; pattern is reusable for any "this count can only go up" invariant.
+Detail: [slice-641.md](docs/changelog/slice-641.md).
+
 **Tests (slice 640): L2 floor Section 3 recharge-cadence pin**
 Extends Section 3 with a recharge-field pin per resource (action-surge=shortRest, channel-divinity=shortRest, wild-shape=shortRest, ki=shortRest, sorcery-points=longRest). Documents two pre-existing partial-recharge RAW deviations (Channel Divinity, Wild Shape — engine binary model is over-permissive) inline so a future partial-recharge engine primitive can flip both atomically. Audit-only; no content or engine change.
 Detail: [slice-640.md](docs/changelog/slice-640.md).

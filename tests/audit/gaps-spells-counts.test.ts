@@ -23,6 +23,17 @@
 // consistency (W + R + X === P), and the cross-level sum. Keep the
 // coverage test's SPELL_EXPECTATIONS in sync for the split itself.
 //
+// Slice 641: added per-level WIRED FLOOR enforcement. The earlier
+// audit caught a drift between doc and pack but not a drift in the
+// *value* itself — a slice could lower L2's wired count from 36 to
+// 30, update the doc to match, and ship green. The floor table
+// below pins each level at the current count; lowering any level
+// requires raising the floor in the same slice (forcing a conscious
+// "we are dropping coverage" decision). RAISING wired is silently
+// allowed: do the slice, update the doc, and bump the floor when
+// you next sweep these numbers (or wait for the next release-time
+// reconciliation).
+//
 // Header format parsed (one per level, 0..9):
 //   ## Level N (P in pack): W wired, R narrative, X deferred
 
@@ -38,6 +49,31 @@ const DOC = resolve(REPO_ROOT, 'docs/gaps-spells.md');
 const PACK = resolve(REPO_ROOT, 'src/content/packs/starter-pack.json');
 
 const SPELL_LEVELS = 10; // L0 through L9
+
+// Slice 641: per-level wired-spell floors. Each entry is the
+// minimum wired count for that level; the doc header's wired number
+// must meet or exceed it. Values snapshot at the slice-641 reference
+// point. RAISING is allowed (a future slice that wires more spells
+// can update the doc header without touching this table; the floor
+// audit still passes). LOWERING the doc header fails the audit
+// until this table is updated in the same slice — that's the point.
+//
+// When the L2 (or any other level) coverage is intentionally raised
+// in a later slice, bump the floor here in the next release-doc
+// reconciliation so the audit catches future regressions against
+// the new high-water mark.
+const MIN_WIRED_PER_LEVEL: ReadonlyMap<number, number> = new Map([
+  [0, 17],
+  [1, 45],
+  [2, 36],
+  [3, 27],
+  [4, 18],
+  [5, 13],
+  [6, 17],
+  [7, 8],
+  [8, 9],
+  [9, 8],
+]);
 
 interface ParsedHeader {
   level: number;
@@ -122,6 +158,18 @@ describe('gaps-spells.md count audit: per-level headers match the pack', () => {
         sum,
         `L${level}: ${header.wired} + ${header.narrative} + ${header.deferred} = ${sum}, expected ${header.inPack}`,
       ).toBe(header.inPack);
+    });
+
+    it(`L${level}: wired count is at or above the slice-641 floor`, () => {
+      const floor = MIN_WIRED_PER_LEVEL.get(level);
+      expect(
+        floor,
+        `MIN_WIRED_PER_LEVEL missing entry for L${level}; update the table in the same slice that adds a new level`,
+      ).toBeDefined();
+      expect(
+        header.wired,
+        `L${level} wired count ${header.wired} dropped below the slice-641 floor (${floor}). Either (a) wire the regressed spells back up, or (b) intentionally lower the floor in MIN_WIRED_PER_LEVEL in the same slice and document why.`,
+      ).toBeGreaterThanOrEqual(floor!);
     });
   }
 
