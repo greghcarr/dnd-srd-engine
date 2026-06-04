@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Tests (slice 638): correct L2 floor's invocation-catalog audit query**
+The final L2 xfail turned out to be an audit-authoring bug, not a content gap: the slice-633 audit queried `pack.eldritchInvocations` (nonexistent key), but invocations ship as `feats` with `category: 'invocation'` and the pack already has 16 of them. Corrected the query, flipped `it.fails` → `it`. **L2 floor is now 32/32 plain `it` — `0.3.0-alpha.0` ("L2 SRD complete") is unblocked.**
+Detail: [slice-638.md](docs/changelog/slice-638.md).
+
 **Engine + content + event schema (slice 637): Warlock L2 Magical Cunning planner**
 Adds the new `PactSlotsRegained { count, source }` event (first mid-rest pact-slot-refund primitive) + reducer + transcript line; planner consumes the per-long-rest `magical-cunning` gate and emits a regain of `min(ceil(maxPactSlots/2), pactSlotsUsed)`. Closes the fourth L2 punch-list xfail; only the Eldritch Invocations catalog remains.
 Detail: [slice-637.md](docs/changelog/slice-637.md).

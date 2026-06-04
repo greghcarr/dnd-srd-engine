@@ -13,16 +13,9 @@
 //      content rewrite can't silently rename or drop a feature.
 //
 //   2. Planner presence for each L2 feature that needs one.
-//      Most pass today (slices 444-624 wired the bulk). Five entries
-//      use `it.fails` to mark engine gaps that must close before L2
-//      is "done":
-//        - fighter / tactical-mind
-//        - cleric / divine-spark (Channel Divinity option dispatch)
-//        - monk / uncanny-metabolism (on-initiative trigger)
-//        - warlock / magical-cunning (Pact slot regain)
-//        - warlock / eldritch-invocations (catalog content)
-//      When each `it.fails` flips to "test unexpectedly passed",
-//      convert it to plain `it()` in the same slice.
+//      All entries pass as of slice 638 (the four planner xfails
+//      flipped across slices 634-637: planTacticalMind, planDivineSpark,
+//      planUncannyMetabolism, planMagicalCunning).
 //
 //   3. Resource scaffolding for L2 resource-granting features.
 //      Each L2 feature that grants a resource (Action Surge, Channel
@@ -34,9 +27,8 @@
 //      level-up. Wizard Scholar + Ranger Deft Explorer both prompt
 //      via `engine.plan.offerCharacterChoices`.
 //
-// When every `it.fails` entry in Section 2 (and the invocation-catalog
-// xfail in Section 4) flips, the L2 floor is green. That's the gate
-// to a 0.3.0-alpha.0 ("L2 complete") release.
+// As of slice 638 the floor is fully green (32/32 plain `it`).
+// The 0.3.0-alpha.0 ("L2 complete") tag is unblocked.
 //
 // What this audit deliberately does NOT cover:
 //   - L2 spell wiring split. Already guarded by gaps-spells-counts
@@ -261,22 +253,22 @@ describe('slice 633: SRD L2 completeness audit', () => {
       ]);
     });
 
-    it.fails(
-      'xfail: warlock invocation catalog ships at least 3 invocation entries for the L2 OfferChoice to draw from',
-      () => {
-        // Magical Cunning shares the L2 entry with Eldritch Invocations
-        // (3 known). The OfferChoice for invocations needs a content
-        // catalog the L2 cohort hasn't authored yet. When the catalog
-        // lands as a content slice, this xfail flips green; convert it
-        // to a plain `it` in the same slice, and add a per-invocation
-        // wiring sweep separately.
-        const pack = PACK as { eldritchInvocations?: ReadonlyArray<{ id: string }> };
-        const invocations = pack.eldritchInvocations ?? [];
-        expect(
-          invocations.length,
-          'pack.eldritchInvocations is empty or missing; the L2 warlock cannot make their 3 picks',
-        ).toBeGreaterThanOrEqual(3);
-      },
-    );
+    it('warlock invocation catalog ships at least 3 invocation entries for the L2 OfferChoice to draw from', () => {
+      // The L2 Warlock's "Eldritch Invocations (3 known)" row is a
+      // tier marker; the OfferChoice mechanism that draws picks is at
+      // L1, and the per-tier increase rides the same `GrantFeat`
+      // path. The "catalog" the audit gates on is the existing feat
+      // catalog filtered by category 'invocation' (slice 511 added
+      // the category enum entry; slices 513-516 authored the first
+      // 16 invocation feats). The original slice-633 xfail queried
+      // `pack.eldritchInvocations` (a nonexistent top-level key);
+      // slice 638 corrects the query to the real catalog location
+      // and flips the xfail to a plain assertion.
+      const invocations = (PACK.feats ?? []).filter((f) => f.category === 'invocation');
+      expect(
+        invocations.length,
+        'No invocation-category feats in the pack; the L2 warlock cannot make their 3 picks',
+      ).toBeGreaterThanOrEqual(3);
+    });
   });
 });
