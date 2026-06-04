@@ -134,17 +134,35 @@ const PLANNERS: ReadonlyArray<PlannerExpectation> = [
 //   - monk      Focus Points column @ L2 = 2 ("Your Monk level")
 //   - sorcerer  Sorcery Points column @ L2 = 2 ("Your Sorcerer level")
 // ────────────────────────────────────────────────────────────────────
+// `recharge` notes (slice 640 — pinned to current content + RAW deviations
+// documented):
+//   - action-surge:       shortRest  (RAW: "regain its use after a Short or
+//                                          Long Rest" — exact match)
+//   - channel-divinity:   shortRest  (RAW: partial on short, full on long.
+//                                     Engine's binary recharge can't model
+//                                     partial; shortRest is the
+//                                     over-permissive arm)
+//   - wild-shape:         shortRest  (RAW: partial on short, full on long.
+//                                     Same partial-recharge limitation as
+//                                     channel-divinity; same over-permissive
+//                                     binary choice)
+//   - ki:                 shortRest  (RAW: "regain all your expended points"
+//                                          on a Short or Long Rest — exact)
+//   - sorcery-points:     longRest   (RAW: "all your expended Sorcery Points
+//                                          when you finish a Long Rest"
+//                                          — exact)
 const RESOURCE_BEARING_L2_FEATURES: ReadonlyArray<{
   classId: string;
   featureId: string;
   resourceId: string;
   l2Max: number;
+  recharge: 'shortRest' | 'longRest';
 }> = [
-  { classId: 'fighter', featureId: 'action-surge', resourceId: 'action-surge', l2Max: 1 },
-  { classId: 'cleric', featureId: 'channel-divinity', resourceId: 'channel-divinity', l2Max: 2 },
-  { classId: 'druid', featureId: 'wild-shape', resourceId: 'wild-shape', l2Max: 2 },
-  { classId: 'monk', featureId: 'monks-focus', resourceId: 'ki', l2Max: 2 },
-  { classId: 'sorcerer', featureId: 'font-of-magic', resourceId: 'sorcery-points', l2Max: 2 },
+  { classId: 'fighter', featureId: 'action-surge', resourceId: 'action-surge', l2Max: 1, recharge: 'shortRest' },
+  { classId: 'cleric', featureId: 'channel-divinity', resourceId: 'channel-divinity', l2Max: 2, recharge: 'shortRest' },
+  { classId: 'druid', featureId: 'wild-shape', resourceId: 'wild-shape', l2Max: 2, recharge: 'shortRest' },
+  { classId: 'monk', featureId: 'monks-focus', resourceId: 'ki', l2Max: 2, recharge: 'shortRest' },
+  { classId: 'sorcerer', featureId: 'font-of-magic', resourceId: 'sorcery-points', l2Max: 2, recharge: 'longRest' },
 ];
 
 // ────────────────────────────────────────────────────────────────────
@@ -221,15 +239,16 @@ describe('slice 633: SRD L2 completeness audit', () => {
     }
   });
 
-  describe('Section 3: L2 resource scaffolding (GrantResource effect + RAW max at L2)', () => {
-    for (const { classId, featureId, resourceId, l2Max } of RESOURCE_BEARING_L2_FEATURES) {
-      it(`${classId} / ${featureId} ships GrantResource (${resourceId}) with L2 max = ${l2Max}`, () => {
+  describe('Section 3: L2 resource scaffolding (GrantResource + RAW max + recharge at L2)', () => {
+    for (const { classId, featureId, resourceId, l2Max, recharge } of RESOURCE_BEARING_L2_FEATURES) {
+      it(`${classId} / ${featureId} ships GrantResource (${resourceId}) with L2 max = ${l2Max}, recharge = ${recharge}`, () => {
         const feature = findL2Feature(classId, featureId);
         expect(feature, `feature ${featureId} missing on ${classId} L2`).toBeDefined();
         const effects = (feature!.effects ?? []) as Array<{
           kind: string;
           resourceId?: string;
           max?: number | Formula;
+          recharge?: string;
         }>;
         const grantResource = effects.find(
           (e) => e.kind === 'GrantResource' && e.resourceId === resourceId,
@@ -264,6 +283,19 @@ describe('slice 633: SRD L2 completeness audit', () => {
           evaluatedMax,
           `${classId}/${featureId} L2 max evaluates to ${evaluatedMax}, RAW expects ${l2Max}`,
         ).toBe(l2Max);
+
+        // Slice 640: pin recharge cadence to the engine's modeling
+        // choice (binary 'shortRest' | 'longRest'). Documented RAW
+        // deviations for partial-recharge features
+        // (channel-divinity, wild-shape) are in the
+        // RESOURCE_BEARING_L2_FEATURES header comment block — the
+        // audit pins what the content currently ships, not what RAW
+        // strictly says (the engine can't model "1 back per short,
+        // all back per long" today).
+        expect(
+          grantResource!.recharge,
+          `${classId}/${featureId} L2 recharge is '${grantResource!.recharge}', expected '${recharge}'`,
+        ).toBe(recharge);
       });
     }
   });

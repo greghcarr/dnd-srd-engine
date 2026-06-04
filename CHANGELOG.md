@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Tests (slice 640): L2 floor Section 3 recharge-cadence pin**
+Extends Section 3 with a recharge-field pin per resource (action-surge=shortRest, channel-divinity=shortRest, wild-shape=shortRest, ki=shortRest, sorcery-points=longRest). Documents two pre-existing partial-recharge RAW deviations (Channel Divinity, Wild Shape — engine binary model is over-permissive) inline so a future partial-recharge engine primitive can flip both atomically. Audit-only; no content or engine change.
+Detail: [slice-640.md](docs/changelog/slice-640.md).
+
 **Tests (slice 639): L2 floor Section 3 hardening (resource max-value pin)**
 Promotes Section 3 from "GrantResource exists" to "GrantResource exists AND its L2 max evaluates to the RAW value." Pins Action Surge=1, Channel Divinity=2, Wild Shape=2, Ki=2, Sorcery Points=2 — the formula-driven Monk / Sorcerer maxes evaluate via `evaluateFormula` with a synthesized L2 context. First of five L2 hardening slices on the road to a defensible 0.3.0-alpha.0 tag.
 Detail: [slice-639.md](docs/changelog/slice-639.md).
