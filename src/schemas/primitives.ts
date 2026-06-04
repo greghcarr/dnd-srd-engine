@@ -214,6 +214,15 @@ export type CurrencyKey = (typeof CURRENCY_KEYS)[number];
 export const RechargeSchema = z.enum([
   'shortRest',
   'longRest',
+  // Slice 657: RAW for several "rest" resources (Cleric/Paladin
+  // Channel Divinity, Druid Wild Shape) is partial: regain 1
+  // expended use on a Short Rest, all uses on a Long Rest.
+  // applyShortRestEnded restores +1 (capped at max) for resources
+  // with this cadence; applyLongRestEnded restores all (same as
+  // longRest). Before this primitive, those features used
+  // recharge: 'shortRest' as an over-permissive approximation
+  // (documented deviation in slice 640 + 650).
+  'partialShortFullLong',
   'turn',
   'round',
   'dawn',

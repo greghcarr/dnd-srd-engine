@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine + content + schema (slice 657): `partialShortFullLong` recharge primitive**
+Discovered during authoring: pre-657 short-rest reducer didn't honor the `recharge` field at all — every `recharge: 'shortRest'` was silently long-rest-only. Slice 657 fixes both gaps in one: new `'partialShortFullLong'` enum value, new optional `ResourceState.recharge` field (default undefined preserves pre-657 behavior), and `applyShortRestEnded` now honors cadences (`'shortRest'` = full restore, `'partialShortFullLong'` = +1 capped). 8 Channel Divinity + Wild Shape content grants updated. Audit pins in L2 + L3 floors updated to match.
+Detail: [slice-657.md](docs/changelog/slice-657.md).
+
 **Tests (slice 656): L1+L2 multiclass build audit**
 Sibling of slice 642's L1+L1 audit. Covers total-level-3 multiclass: one class at L1 + a different class at L2. Ordered pairs (Fighter1+Wizard2 ≠ Fighter2+Wizard1): 12 × 11 = 132 pairs. All 132 build + derive cleanly in ~345ms. Triple-class L1+L1+L1 (C(12,3) = 220) deferred to future hardening.
 Detail: [slice-656.md](docs/changelog/slice-656.md).

@@ -364,11 +364,13 @@ describe('slice 645: SRD L3 completeness audit', () => {
       readonly featureId: string;
       readonly resourceId: string;
       readonly l3Max: number;
-      readonly recharge: 'shortRest' | 'longRest';
+      readonly recharge: 'shortRest' | 'longRest' | 'partialShortFullLong';
     }
     const L3_RESOURCE_CHECKS: ReadonlyArray<L3ResourceCheck> = [
       { classId: 'barbarian', grantLevel: '3', featureId: 'rage-uses-3', resourceId: 'rage', l3Max: 3, recharge: 'longRest' },
-      { classId: 'paladin', grantLevel: '3', featureId: 'channel-divinity-paladin', resourceId: 'channel-divinity', l3Max: 2, recharge: 'shortRest' },
+      // Slice 657: was 'shortRest' (over-permissive); now uses the
+      // RAW-exact 'partialShortFullLong' primitive.
+      { classId: 'paladin', grantLevel: '3', featureId: 'channel-divinity-paladin', resourceId: 'channel-divinity', l3Max: 2, recharge: 'partialShortFullLong' },
       { classId: 'sorcerer', grantLevel: '2', featureId: 'font-of-magic', resourceId: 'sorcery-points', l3Max: 3, recharge: 'longRest' },
       { classId: 'monk', grantLevel: '2', featureId: 'monks-focus', resourceId: 'ki', l3Max: 3, recharge: 'shortRest' },
     ];

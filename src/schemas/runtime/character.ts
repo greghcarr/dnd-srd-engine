@@ -5,6 +5,7 @@ import {
   CharacterLevelSchema,
   DamageTypeSchema,
   ExhaustionLevelSchema,
+  RechargeSchema,
   SizeSchema,
   ULIDSchema,
 } from '../primitives.js';
@@ -13,6 +14,15 @@ export const ResourceStateSchema = z.object({
   resourceId: z.string(),
   current: z.number().int().min(0),
   max: z.number().int().min(0),
+  // Slice 657: runtime recharge cadence for this resource. Default
+  // 'longRest' is over-conservative for back-compat: old characters
+  // without this field continue to recharge only on long rest (which
+  // was the engine's pre-657 behavior since applyShortRestEnded
+  // didn't touch resources). Consumers that want RAW short-rest
+  // recharge for a resource (Action Surge, Channel Divinity, Ki,
+  // Second Wind, etc.) opt in by setting `recharge: 'shortRest'`.
+  // applyShortRestEnded honors this field as of slice 657.
+  recharge: RechargeSchema.optional(),
 });
 export type ResourceState = z.infer<typeof ResourceStateSchema>;
 

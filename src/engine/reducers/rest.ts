@@ -35,6 +35,21 @@ export const applyShortRestEnded = (
     const character = state.characters[id];
     if (!character) continue;
     character.pactSlotsUsed = 0;
+    // Slice 657: honor the per-resource recharge cadence on short
+    // rest. 'shortRest' resources fully recharge; 'partialShortFullLong'
+    // resources recharge +1 (capped at max). Other cadences
+    // ('longRest', 'turn', 'dawn', etc.) are no-ops here. Pre-657
+    // behavior was no-op for all resources; opt-in via the new
+    // `recharge` field on ResourceState (default 'longRest' preserves
+    // pre-657 behavior for characters that don't set it).
+    for (const resource of character.resources) {
+      const cadence = resource.recharge;
+      if (cadence === 'shortRest') {
+        resource.current = resource.max;
+      } else if (cadence === 'partialShortFullLong' && resource.current < resource.max) {
+        resource.current = Math.min(resource.max, resource.current + 1);
+      }
+    }
   }
   clearShortRestCountersForCharacters(state, session.participantIds);
 };

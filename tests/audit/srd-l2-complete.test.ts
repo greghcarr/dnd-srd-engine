@@ -156,11 +156,15 @@ const RESOURCE_BEARING_L2_FEATURES: ReadonlyArray<{
   featureId: string;
   resourceId: string;
   l2Max: number;
-  recharge: 'shortRest' | 'longRest';
+  recharge: 'shortRest' | 'longRest' | 'partialShortFullLong';
 }> = [
   { classId: 'fighter', featureId: 'action-surge', resourceId: 'action-surge', l2Max: 1, recharge: 'shortRest' },
-  { classId: 'cleric', featureId: 'channel-divinity', resourceId: 'channel-divinity', l2Max: 2, recharge: 'shortRest' },
-  { classId: 'druid', featureId: 'wild-shape', resourceId: 'wild-shape', l2Max: 2, recharge: 'shortRest' },
+  // Slice 657: channel-divinity + wild-shape were 'shortRest'
+  // (over-permissive approximation; documented in slice 640). Now
+  // use the RAW-exact 'partialShortFullLong' primitive (1 back on
+  // short, all on long).
+  { classId: 'cleric', featureId: 'channel-divinity', resourceId: 'channel-divinity', l2Max: 2, recharge: 'partialShortFullLong' },
+  { classId: 'druid', featureId: 'wild-shape', resourceId: 'wild-shape', l2Max: 2, recharge: 'partialShortFullLong' },
   { classId: 'monk', featureId: 'monks-focus', resourceId: 'ki', l2Max: 2, recharge: 'shortRest' },
   { classId: 'sorcerer', featureId: 'font-of-magic', resourceId: 'sorcery-points', l2Max: 2, recharge: 'longRest' },
 ];
