@@ -78,12 +78,15 @@ describe("Hex's target-side, source-filtered on-hit rider", () => {
           spellId: 'hex',
           slotLevel: 1,
           targetIds: [target.id],
+          casterChoice: { kind: 'variant', value: 'STR' },
         }).events,
       );
 
-      // Confirm the condition's source is the hexer.
+      // Confirm the condition's source is the hexer. Slice 565: the
+      // single hexed-active condition was replaced with one variant per
+      // chosen ability; the STR variant is selected here.
       const hexedCondition = campaign.state.characters[target.id]
-        ?.appliedConditions.find((c) => c.conditionId === 'hexed-active');
+        ?.appliedConditions.find((c) => c.conditionId === 'hexed-STR-active');
       expect(hexedCondition).toBeDefined();
       expect(hexedCondition!.sourceCharacterId).toBe(hexer.id);
 
@@ -135,6 +138,7 @@ describe("Hex's target-side, source-filtered on-hit rider", () => {
           spellId: 'hex',
           slotLevel: 1,
           targetIds: [target.id],
+          casterChoice: { kind: 'variant', value: 'STR' },
         }).events,
       );
 

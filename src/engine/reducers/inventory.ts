@@ -26,6 +26,14 @@ export const applyItemAcquired = (
     `Item instance ${event.instance.id} already exists`,
   );
   state.itemInstances[event.instance.id] = event.instance;
+  // Slice 499: optional inventory grant (Goodberry's create-item).
+  if (event.characterId !== undefined) {
+    const character = state.characters[event.characterId];
+    invariant(character !== undefined, `Character ${event.characterId} not found`);
+    if (!character.inventory.includes(event.instance.id)) {
+      character.inventory.push(event.instance.id);
+    }
+  }
 };
 
 export const applyItemEquipped = (
@@ -102,9 +110,13 @@ export const applyItemBuffApplied = (
   instance.temporaryBuff = {
     attackBonus: event.attackBonus,
     damageBonus: event.damageBonus,
-    sourceEffectInstanceId: event.sourceEffectInstanceId,
+    ...(event.sourceEffectInstanceId !== undefined ? { sourceEffectInstanceId: event.sourceEffectInstanceId } : {}),
     ...(event.extraDamageDice !== undefined ? { extraDamageDice: event.extraDamageDice } : {}),
     ...(event.extraDamageType !== undefined ? { extraDamageType: event.extraDamageType } : {}),
+    // Slice 501: Shillelagh weapon transformation.
+    ...(event.abilityOverride !== undefined ? { abilityOverride: event.abilityOverride } : {}),
+    ...(event.damageDieOverride !== undefined ? { damageDieOverride: event.damageDieOverride } : {}),
+    ...(event.damageTypeOverride !== undefined ? { damageTypeOverride: event.damageTypeOverride } : {}),
     ...(event.source !== undefined ? { source: event.source } : {}),
   };
 };

@@ -7,6 +7,7 @@ import type { DamageComponent } from '../../schemas/events/combat.js';
 import type { Character } from '../../schemas/runtime/character.js';
 import type { RNG } from '../../rng/index.js';
 import { rollDie, parseDiceExpression } from '../../rng/dice.js';
+import { applyHalflingLuckFromFlag } from './_halfling-luck.js';
 import { newAppliedConditionId, newEventId } from '../../ids.js';
 import { computeSavingThrow } from '../../derive/save.js';
 import { rollSaveBonusDice } from './_bonus-dice.js';
@@ -25,6 +26,9 @@ const CONCENTRATION_DC_DIVISOR = 2;
 
 const totalOfComponents = (components: ReadonlyArray<DamageComponent>): number =>
   components.reduce((sum, c) => sum + c.amount, 0);
+
+const concentrationDC = (damageTaken: number): number =>
+  Math.max(CONCENTRATION_MIN_DC, Math.floor(damageTaken / CONCENTRATION_DC_DIVISOR));
 
 /**
  * Predicts whether the given mitigated damage will reduce the target's
@@ -50,6 +54,11 @@ const damageWouldDropTo0 = (
  * event chain as the damage that downed it.
  *
  * Returns at most one event. Callers append it after `DamageApplied`.
+ *
+ * Slice 601: prefer `planConcentrationOnDamage` for the full RAW path —
+ * it ALSO rolls the per-damage CON save that this helper omits. Kept as
+ * the unconscious-only variant for tests and the rare call site that
+ * has no RNG available.
  */
 export const planConcentrationBreakOnDrop = (
   target: Character,
@@ -71,15 +80,143 @@ export const planConcentrationBreakOnDrop = (
   return [broken];
 };
 
+/**
+ * Roll a single CON save for a single source of damage and return the
+ * SaveRolled event. Pure helper; doesn't decide whether to break
+ * concentration — that's the caller's job in `planConcentrationOnDamage`.
+ */
+const rollConcentrationSave = (
+  state: CampaignState,
+  content: ResolvedContent,
+  rng: RNG,
+  target: Character,
+  damageAmount: number,
+  at: string,
+): SaveRolledEvent => {
+  const dc = concentrationDC(damageAmount);
+  const saveDerivation = computeSavingThrow({
+    character: target,
+    itemInstances: state.itemInstances,
+    content,
+    ability: 'CON',
+    characters: state.characters,
+    isConcentrationCheck: true,
+  });
+  const rolls: number[] = [rollDie(D20_SIDES, rng)];
+  const d20 = applyHalflingLuckFromFlag(rolls[0]!, saveDerivation.hasHalflingLuck, rolls, rng);
+  const saveBonus = rollSaveBonusDice(saveDerivation.bonusDice, rng);
+  const bonus = saveDerivation.total + saveBonus.total;
+  const totalRoll = d20 + bonus;
+  const success = totalRoll >= dc;
+  return {
+    id: newEventId() as ULID,
+    at,
+    type: 'SaveRolled',
+    targetId: target.id as ULID,
+    ability: 'CON',
+    dc,
+    d20: rolls,
+    used: 'none',
+    bonus,
+    total: totalRoll,
+    success,
+    breakdown: [...saveDerivation.breakdown, ...saveBonus.breakdown],
+  };
+};
+
+/**
+ * RAW 2024 PHB Concentration (slices 601 + 612):
+ *
+ * > Whenever you take damage while you are concentrating on a spell,
+ * > you must make a Constitution saving throw to maintain your
+ * > concentration. The DC equals 10 or half the damage you take
+ * > (rounded down), whichever number is higher. **If you take damage
+ * > from multiple sources, such as an arrow and a dragon's breath,
+ * > you make a separate saving throw for each source of damage.**
+ *
+ * Plus:
+ *
+ * > You also lose concentration on a spell if you are incapacitated
+ * > or if you die.
+ *
+ * Behavior:
+ *   1. would-drop-to-0 → immediately emit `ConcentrationBroken (unconscious)`,
+ *      no saves needed (RAW: 0 HP → Unconscious → ends concentration).
+ *   2. non-fatal damage with N components → roll ONE save per component
+ *      (slice 612). DC per save = max(10, floor(componentAmount / 2)).
+ *      On any failure: emit `SaveRolled` (fail) + `ConcentrationBroken
+ *      (failedSave)` and STOP — once concentration breaks, subsequent
+ *      sources can't break what's already broken. Matches the RAW
+ *      narrative reading "first source, save; second source, save; …".
+ *
+ * Slice 601 rolled a single save against the totaled damage. For a
+ * single-component damage event (the common case) behavior is
+ * identical (1 component → 1 save). For multi-component (1d8 piercing
+ * + 1d6 Hex necrotic) the pre-slice-612 path under-rolled (1 save vs
+ * the larger DC); now rolls 2 saves vs the per-source DCs.
+ *
+ * Callers append the returned events after their `DamageApplied`. The
+ * save uses the standard `computeSavingThrow` derivation so Bless /
+ * Bane / War Caster / Eldritch Mind / Halfling Luck all wire through.
+ *
+ * Damage of 0 across all components returns no events — RAW: no damage
+ * taken, no save.
+ */
+export const planConcentrationOnDamage = (
+  state: CampaignState,
+  content: ResolvedContent,
+  rng: RNG,
+  target: Character,
+  mitigated: ReadonlyArray<DamageComponent>,
+  causedByEventId: ULID,
+  at: string,
+): ReadonlyArray<Event> => {
+  if (target.concentrationEffectId === undefined) return [];
+  const total = totalOfComponents(mitigated);
+  if (total <= 0) return [];
+
+  if (damageWouldDropTo0(target, mitigated)) {
+    const broken: ConcentrationBrokenEvent = {
+      id: newEventId() as ULID,
+      at,
+      type: 'ConcentrationBroken',
+      effectInstanceId: target.concentrationEffectId,
+      casterId: target.id as ULID,
+      reason: 'unconscious',
+      causedByEventId,
+    };
+    return [broken];
+  }
+
+  // Slice 612: per-source saves. Iterate components in order; on the
+  // first failure, emit Broken and stop.
+  const events: Event[] = [];
+  for (const component of mitigated) {
+    if (component.amount <= 0) continue;
+    const save = rollConcentrationSave(state, content, rng, target, component.amount, at);
+    events.push(save);
+    if (!save.success) {
+      events.push({
+        id: newEventId() as ULID,
+        at,
+        type: 'ConcentrationBroken',
+        effectInstanceId: target.concentrationEffectId,
+        casterId: target.id as ULID,
+        reason: 'failedSave',
+        causedByEventId: save.id,
+      } satisfies ConcentrationBrokenEvent);
+      break;
+    }
+  }
+  return events;
+};
+
 export interface CheckConcentrationIntent {
   readonly type: 'CheckConcentration';
   readonly characterId: string;
   readonly damageTaken: number;
   readonly at?: string;
 }
-
-const concentrationDC = (damageTaken: number): number =>
-  Math.max(CONCENTRATION_MIN_DC, Math.floor(damageTaken / CONCENTRATION_DC_DIVISOR));
 
 export const planCheckConcentration = (
   state: CampaignState,
@@ -104,8 +241,13 @@ export const planCheckConcentration = (
     content,
     ability: 'CON',
     characters: state.characters,
+    // Slice 515: surface "this save is a Concentration check" to the
+    // SetAdvantage condition facts so Eldritch Mind etc. can gate on it.
+    isConcentrationCheck: true,
   });
-  const d20 = rollDie(D20_SIDES, rng);
+  const rolls: number[] = [rollDie(D20_SIDES, rng)];
+  // Slice 543: Halfling Luck on Concentration save.
+  const d20 = applyHalflingLuckFromFlag(rolls[0]!, saveDerivation.hasHalflingLuck, rolls, rng);
   // Slice 331: per-roll save bonus dice (Bless +1d4 / Bane -1d4).
   const saveBonus = rollSaveBonusDice(saveDerivation.bonusDice, rng);
   const bonus = saveDerivation.total + saveBonus.total;
@@ -119,7 +261,7 @@ export const planCheckConcentration = (
     targetId: intent.characterId as ULID,
     ability: 'CON',
     dc,
-    d20: [d20],
+    d20: rolls,
     used: 'none',
     bonus,
     total,
@@ -273,7 +415,9 @@ export const planTickAura = (
         ability: aura.saveAbility,
         characters: state.characters,
       });
-      const d20 = rollDie(D20_SIDES, rng);
+      const rolls: number[] = [rollDie(D20_SIDES, rng)];
+      // Slice 543: Halfling Luck on the aura save target side.
+      const d20 = applyHalflingLuckFromFlag(rolls[0]!, saveDerivation.hasHalflingLuck, rolls, rng);
       const saveBonus = rollSaveBonusDice(saveDerivation.bonusDice, rng);
       const bonus = saveDerivation.total + saveBonus.total;
       const total = d20 + bonus;
@@ -285,7 +429,7 @@ export const planTickAura = (
         targetId: targetId as ULID,
         ability: aura.saveAbility,
         dc: dcResult.total,
-        d20: [d20],
+        d20: rolls,
         used: 'none',
         bonus,
         total,
@@ -350,6 +494,21 @@ export const planTickAura = (
           source: spell.id,
         });
         events.push(...intercept.extraEvents);
+        // Slice 612: per-target aura damage now triggers a concentration
+        // check on the target (a hostile caster's Spirit Guardians can
+        // break the bearer's concentration on Hex etc.). Mirrors the
+        // direct-damage path's slice-601 wiring.
+        events.push(
+          ...planConcentrationOnDamage(
+            applyAll(state, events),
+            content,
+            rng,
+            target,
+            intercept.components,
+            damageId,
+            at,
+          ),
+        );
       }
     }
 
@@ -457,19 +616,32 @@ export const planTickMovementDamage = (
     at,
     rng,
   });
-  return [
-    {
-      id: damageId,
+  const damageApplied: Event = {
+    id: damageId,
+    at,
+    type: 'DamageApplied',
+    targetId: intent.targetId as ULID,
+    components: intercept.components,
+    causedByEventId: effect.startedAtEventId as ULID,
+    sourceCharacterId: intent.casterId as ULID,
+    source: spell.id,
+  };
+  const events: Event[] = [damageApplied, ...intercept.extraEvents];
+  // Slice 612: a target moving through Spike Growth (or future
+  // movement-damage zones) and taking damage must roll a concentration
+  // save like any other damage source.
+  events.push(
+    ...planConcentrationOnDamage(
+      applyAll(state, events),
+      content,
+      rng,
+      target,
+      intercept.components,
+      damageId,
       at,
-      type: 'DamageApplied',
-      targetId: intent.targetId as ULID,
-      components: intercept.components,
-      causedByEventId: effect.startedAtEventId as ULID,
-      sourceCharacterId: intent.casterId as ULID,
-      source: spell.id,
-    },
-    ...intercept.extraEvents,
-  ];
+    ),
+  );
+  return events;
 };
 
 export interface TickRecurringIntent {
@@ -521,8 +693,13 @@ export const planTickRecurring = (
   let rolled = 0;
   if (mechanic.amountDice !== undefined) {
     const parsed = parseDiceExpression(mechanic.amountDice);
+    // Slice 503: per-tick upcast scaling. Each slot above the spell's
+    // base level adds `extraDicePerSlotLevel` of the same die to every
+    // tick (Ensnaring Strike: +1d6 per slot above 1).
+    const slotsAbove = Math.max(0, (effect.slotLevel ?? spell.level) - spell.level);
+    const bonusDiceCount = (mechanic.extraDicePerSlotLevel ?? 0) * slotsAbove;
     let sum = parsed.modifier;
-    for (let i = 0; i < parsed.count; i += 1) {
+    for (let i = 0; i < parsed.count + bonusDiceCount; i += 1) {
       sum += rollDie(parsed.die, rng);
     }
     rolled = sum;
@@ -586,19 +763,32 @@ export const planTickRecurring = (
     at,
     rng,
   });
-  return [
-    {
-      id: damageId,
+  const damageApplied: Event = {
+    id: damageId,
+    at,
+    type: 'DamageApplied',
+    targetId: intent.targetId as ULID,
+    components: intercept.components,
+    causedByEventId,
+    sourceCharacterId: intent.casterId as ULID,
+    source: spell.id,
+  };
+  const events: Event[] = [damageApplied, ...intercept.extraEvents];
+  // Slice 612: recurring-damage ticks (Stirge drain, Cloud of Daggers,
+  // etc.) trigger concentration saves on the target like any other
+  // damage source.
+  events.push(
+    ...planConcentrationOnDamage(
+      applyAll(state, events),
+      content,
+      rng,
+      target,
+      intercept.components,
+      damageId,
       at,
-      type: 'DamageApplied',
-      targetId: intent.targetId as ULID,
-      components: intercept.components,
-      causedByEventId,
-      sourceCharacterId: intent.casterId as ULID,
-      source: spell.id,
-    },
-    ...intercept.extraEvents,
-  ];
+    ),
+  );
+  return events;
 };
 
 const findCastingClassForSpell = (

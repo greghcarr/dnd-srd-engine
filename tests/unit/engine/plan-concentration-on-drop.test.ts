@@ -16,6 +16,7 @@ import {
 import type { CharacterCreatedEvent } from '../../../src/schemas/events/progression.js';
 import type { ConcentrationStartedEvent } from '../../../src/schemas/events/concentration.js';
 import type { DamageAppliedEvent } from '../../../src/schemas/events/combat.js';
+import type { SaveRolledEvent } from '../../../src/schemas/events/checks.js';
 
 const seedConcentratingTarget = (opts: { targetHp: number; rng?: ReturnType<typeof seededRNG> }) => {
   const rng = opts.rng ?? seededRNG(42);
@@ -102,9 +103,14 @@ describe('plan.attack: concentration breaks on drop to 0 HP', () => {
     void ctx; // pacify the unused-let warning
   });
 
-  it('does not emit ConcentrationBroken when target stays conscious', () => {
+  it('does not emit ConcentrationBroken (unconscious) when target stays conscious', () => {
+    // Slice 601: a successful CON save on the per-damage check leaves
+    // ConcentrationBroken unemitted. The drop-to-0 path stays the only
+    // source of `reason: 'unconscious'`. Sweep seeds until we land on
+    // one where the target survives the hit AND succeeds the save, then
+    // assert the broken event is absent.
     let found = false;
-    for (let seed = 0; seed < 50; seed++) {
+    for (let seed = 0; seed < 200; seed++) {
       const { engine, campaign, attackerId, targetId, weaponId } =
         seedConcentratingTarget({ targetHp: 200, rng: seededRNG(seed) });
       const { events } = engine.plan.attack(campaign.state, {
@@ -117,7 +123,11 @@ describe('plan.attack: concentration breaks on drop to 0 HP', () => {
         | undefined;
       if (!damage) continue;
       const total = damage.components.reduce((s, c) => s + c.amount, 0);
-      if (total >= 200) continue; // skip extreme crit cases
+      if (total >= 200) continue;
+      const conSave = events.find(
+        (e): e is SaveRolledEvent => e.type === 'SaveRolled' && e.ability === 'CON',
+      );
+      if (conSave === undefined || !conSave.success) continue;
       const broken = events.find((e) => e.type === 'ConcentrationBroken');
       expect(broken).toBeUndefined();
       found = true;

@@ -3,6 +3,7 @@ import type { ResolvedContent } from '../../content/pack.js';
 import type { Event } from '../../schemas/events/index.js';
 import type { RNG } from '../../rng/index.js';
 import { rollDie } from '../../rng/dice.js';
+import { applyHalflingLuckFromFlag, applyHalflingLuckForCharacter } from './_halfling-luck.js';
 import { newEventId } from '../../ids.js';
 import { D20_SIDES } from '../../internal/constants.js';
 import { nowIso } from '../../internal/clock.js';
@@ -120,7 +121,9 @@ export const planCounterspell = (
   });
   const dc = dcResult.total;
   const conBonus = abilityModifier(target.abilityScores.CON);
-  const d20 = rollDie(D20_SIDES, rng);
+  const rolls: number[] = [rollDie(D20_SIDES, rng)];
+  // Slice 543: Halfling Luck on Counterspell CON save (target side).
+  const d20 = applyHalflingLuckForCharacter(rolls[0]!, target.id, state, content, rolls, rng);
   const total = d20 + conBonus;
   const saveSucceeded = total >= dc;
   const slotLevel = intent.slotLevelToConsume ?? COUNTERSPELL_SLOT_LEVEL;
@@ -219,7 +222,9 @@ export const planDispelMagic = (
       rawAbility === 'INT' || rawAbility === 'WIS' || rawAbility === 'CHA' ? rawAbility : 'INT';
     const totalLevel = computeTotalLevel(caster);
     const bonus = abilityModifier(caster.abilityScores[ability]) + proficiencyBonus(totalLevel);
-    const d20 = rollDie(D20_SIDES, rng);
+    const rolls: number[] = [rollDie(D20_SIDES, rng)];
+    // Slice 543: Halfling Luck on Dispel Magic ability check (caster side).
+    const d20 = applyHalflingLuckForCharacter(rolls[0]!, intent.casterId, state, content, rolls, rng);
     const total = d20 + bonus;
     dispelSucceeds = total >= dc;
     events.push({
@@ -230,7 +235,7 @@ export const planDispelMagic = (
       ability,
       dc,
       success: dispelSucceeds,
-      d20: [d20],
+      d20: rolls,
       used: 'none',
       bonus,
       total,
@@ -860,6 +865,8 @@ export const planSanctuaryWardSave = (
     d20s = [firstRoll, second];
     d20 = useAdv === 'advantage' ? Math.max(firstRoll, second) : Math.min(firstRoll, second);
   }
+  // Slice 543: Halfling Luck on reactive-spell save (target side).
+  d20 = applyHalflingLuckFromFlag(d20, saveDerivation.hasHalflingLuck, d20s, rng);
   const saveBonus = rollSaveBonusDice(saveDerivation.bonusDice, rng);
   const bonus = saveDerivation.total + saveBonus.total;
   const total = d20 + bonus;

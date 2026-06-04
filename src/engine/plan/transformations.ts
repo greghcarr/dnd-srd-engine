@@ -21,6 +21,7 @@ import type { SaveRolledEvent } from '../../schemas/events/checks.js';
 import type { ResourceSpentEvent } from '../../schemas/events/resources.js';
 import type { ActionEconomyConsumedEvent } from '../../schemas/events/action-economy.js';
 import { rollDie } from '../../rng/dice.js';
+import { applyHalflingLuckFromFlag } from './_halfling-luck.js';
 import { newEventId, newEffectInstanceId, newCharacterId } from '../../ids.js';
 import { invariant } from '../../internal/invariants.js';
 import { nowIso } from '../../internal/clock.js';
@@ -144,7 +145,9 @@ export const planPolymorph = (
       ability: 'WIS',
       characters: state.characters,
     });
-    const d20 = rollDie(D20_SIDES, rng);
+    const rolls: number[] = [rollDie(D20_SIDES, rng)];
+    // Slice 543: Halfling Luck on polymorph WIS save.
+    const d20 = applyHalflingLuckFromFlag(rolls[0]!, saveDerivation.hasHalflingLuck, rolls, rng);
     const saveBonus = rollSaveBonusDice(saveDerivation.bonusDice, rng);
     const bonus = saveDerivation.total + saveBonus.total;
     const total = d20 + bonus;
@@ -156,7 +159,7 @@ export const planPolymorph = (
       targetId: intent.targetId as ULID,
       ability: 'WIS',
       dc: dcResult.total,
-      d20: [d20],
+      d20: rolls,
       used: 'none',
       bonus,
       total,

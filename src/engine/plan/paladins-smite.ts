@@ -8,6 +8,8 @@ import type { RNG } from '../../rng/index.js';
 import { rollDie } from '../../rng/dice.js';
 import { newEventId } from '../../ids.js';
 import { nowIso } from '../../internal/clock.js';
+import { applyAll } from '../apply.js';
+import { planConcentrationOnDamage } from './concentration.js';
 import { invariant } from '../../internal/invariants.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { computeAvailableSpellSlots } from '../../derive/spell-slots.js';
@@ -128,8 +130,9 @@ export const planPaladinsSmite = (
     sourceIsMagical: true,
   });
 
+  const damageAppliedId = newEventId() as ULID;
   events.push({
-    id: newEventId() as ULID,
+    id: damageAppliedId,
     at,
     type: 'DamageApplied',
     targetId: intent.targetId as ULID,
@@ -138,6 +141,21 @@ export const planPaladinsSmite = (
     sourceCharacterId: intent.paladinId as ULID,
     source: 'paladins-smite',
   } satisfies DamageAppliedEvent);
+
+  // Slice 621: Paladin's Smite damage triggers a CON save on a
+  // concentrating target like every other damage source. Same shape as
+  // slice 601/612/620 wirings.
+  events.push(
+    ...planConcentrationOnDamage(
+      applyAll(state, events),
+      content,
+      rng,
+      target,
+      mitigated,
+      damageAppliedId,
+      at,
+    ),
+  );
 
   return events;
 };

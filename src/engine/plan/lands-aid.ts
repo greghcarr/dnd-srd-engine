@@ -10,7 +10,7 @@ import { rollDie } from '../../rng/dice.js';
 import { computeSpellSaveDC } from '../../derive/spell-dc.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
-import { planConcentrationBreakOnDrop } from './concentration.js';
+import { planConcentrationOnDamage } from './concentration.js';
 import { applyAll } from '../apply.js';
 import { newEventId } from '../../ids.js';
 import { nowIso } from '../../internal/clock.js';
@@ -188,7 +188,7 @@ export const planLandsAid = (
     };
     events.push(damageApplied);
     events.push(...intercept.extraEvents);
-    events.push(...planConcentrationBreakOnDrop(target, intercept.components, damageApplied.id, at));
+    events.push(...planConcentrationOnDamage(state, content, rng, target, intercept.components, damageApplied.id, at));
   }
 
   if (intent.healTargetId !== undefined && state.characters[intent.healTargetId] !== undefined) {

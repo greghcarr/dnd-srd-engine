@@ -100,6 +100,8 @@ const masteryPush = (target: Character): ReadonlyArray<Event> => {
     classes: [{ classId: 'fighter', level: 5, hitDiceRemaining: 5 }],
     abilityScores: { STR: 18, DEX: 10, CON: 14, INT: 10, WIS: 10, CHA: 10 },
     hp: { current: 44, max: 44, temp: 0 },
+    // Slice 502: master the greatclub so its Push mastery applies.
+    weaponMasteries: ['greatclub'],
   });
   const club = makeItemInstance('greatclub'); // Push mastery
   let campaign: Campaign = engine.createCampaign({ name: 'push' });

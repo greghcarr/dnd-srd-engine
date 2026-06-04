@@ -8,10 +8,11 @@
 // The engine's `characterKnowsSpell` (cast-spell.ts) returns true for
 // either `knownSpells` (the wizard's spellbook) or `preparedSpells`, so
 // the asRitual path already accepts a spellbook-only spell for a
-// wizard. Slice 457 closes the L1-audit stub by adding the
-// discoverable `Custom { handlerId: 'ritual-adept' }` marker; this
-// test pins the underlying behavior so future preparation-enforcement
-// work has a regression target.
+// wizard. Slice 457 added a discoverable `Custom { handlerId:
+// 'ritual-adept' }` marker; slice 505 promoted it to a real
+// `GrantRitualAdept` marker effect (observable in the effect stack via
+// `hasRitualAdept()`). This file's third case below was updated to the
+// new shape; the cast scenarios stay as regression targets.
 
 import { describe, expect, it } from 'vitest';
 import { createEngine } from '../../../src/engine/index.js';
@@ -92,7 +93,7 @@ describe('Wizard Ritual Adept (slice 457)', () => {
     const ritualAdept = l1Features.find((f) => f.id === 'ritual-adept');
     expect(ritualAdept).toBeDefined();
     expect(ritualAdept!.effects).toEqual([
-      { kind: 'Custom', handlerId: 'ritual-adept' },
+      { kind: 'GrantRitualAdept' },
     ]);
   });
 });

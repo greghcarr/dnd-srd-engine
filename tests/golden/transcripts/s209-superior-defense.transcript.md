@@ -2,6 +2,6 @@
 
 **Kai** joined (monk 18, 100/100 HP).
 
-**Kai** spends 3 ki.
+**Kai** spends 3 Ki.
 
 **Kai** is now Superior Defense.

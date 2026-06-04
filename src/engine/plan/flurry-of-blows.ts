@@ -142,6 +142,7 @@ export const planFlurryOfBlows = (
       if (struck?.hit === true) {
         const ohEvents = applyOpenHandTechnique({
           state: workingState,
+          content,
           monk,
           targetId: intent.targetId,
           technique: intent.openHandTechnique,

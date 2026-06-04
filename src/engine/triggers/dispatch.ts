@@ -14,6 +14,7 @@ import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { isMagicWeaponAttack } from '../../derive/magicality.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { applyAll } from '../apply.js';
+import { planConcentrationOnDamage } from '../plan/concentration.js';
 import type { AppliedCondition } from '../../schemas/runtime/character.js';
 import { newEventId } from '../../ids.js';
 import type { ULID } from '../ids-utils.js';
@@ -72,6 +73,29 @@ const buildEventFacts = (
     facts.set('event.attackKind', event.attackKind);
     facts.set('event.used', event.used);
     facts.set('event.weaponInstanceId', event.weaponInstanceId);
+    // Slice 549: weapon-type facts for Sneak Attack's RAW weapon gate
+    // ("Finesse or Ranged weapon"). Reads the weapon's definition via
+    // the item-instance lookup. Falls back to false for synthetic /
+    // unknown weapons. `event.attackerWeaponHasFinesse` = the weapon
+    // declares `finesse` in its properties; `event.attackerWeaponIsRanged`
+    // mirrors `event.attackKind === 'ranged'` for parallel use in the
+    // sneak-attack `any` term. Future RAW gates on other weapon
+    // properties (heavy / light / two-handed) reuse the same pattern.
+    if (event.weaponInstanceId !== undefined) {
+      const wi = state.itemInstances[event.weaponInstanceId];
+      const wdef = wi !== undefined ? content.items.get(wi.definitionId) : undefined;
+      const hasFinesse = wdef !== undefined && wdef.itemKind === 'weapon'
+        && wdef.properties.includes('finesse');
+      const isRanged = wdef !== undefined && wdef.itemKind === 'weapon'
+        && wdef.attackKind === 'ranged';
+      facts.set('event.attackerWeaponHasFinesse', hasFinesse);
+      facts.set('event.attackerWeaponIsRanged', isRanged);
+      facts.set('event.attackerWeaponIsFinesseOrRanged', hasFinesse || isRanged);
+    } else {
+      facts.set('event.attackerWeaponHasFinesse', false);
+      facts.set('event.attackerWeaponIsRanged', false);
+      facts.set('event.attackerWeaponIsFinesseOrRanged', false);
+    }
     facts.set(
       'event.attackerHasAllyAdjacentToTarget',
       event.attackerHasAllyAdjacentToTarget ?? false,
@@ -127,6 +151,13 @@ const buildEventFacts = (
     }
     for (const [type, amount] of byType) {
       facts.set(`event.damageOfType.${type}`, amount);
+    }
+    // Slice 516: surface the source string (spell id for cast-spell
+    // damage; weapon id for weapon-attack damage when set) so per-spell
+    // predicates can gate on it. Canonical user: Warlock Repelling Blast
+    // (`OnEvent DamageApplied condition: eq event.source 'eldritch-blast'`).
+    if (event.source !== undefined) {
+      facts.set('event.source', event.source);
     }
   }
   return facts;
@@ -254,7 +285,28 @@ const fireAddDamage = (
     components: intercept.components,
     causedByEventId: causedByEventId as ULID,
   };
-  return [damageApplied, ...intercept.extraEvents];
+  const out: Event[] = [damageApplied, ...intercept.extraEvents];
+  // Slice 620: rider DamageApplied is its own source per RAW
+  // ("multiple sources, such as an arrow and a dragon's breath, you
+  // make a separate saving throw for each source"), so the
+  // concentration save fires here just like at the main-damage
+  // emission site (slice 601). The L1 fuzz review surfaced the gap:
+  // a Hex / Hunter's Mark / Divine Smite rider hitting a
+  // concentrating creature wasn't triggering the CON save.
+  if (target !== undefined) {
+    out.push(
+      ...planConcentrationOnDamage(
+        applyAll(state, out),
+        content,
+        rng,
+        target,
+        intercept.components,
+        damageAppliedId,
+        event.at,
+      ),
+    );
+  }
+  return out;
 };
 
 // Retaliation variant: damage goes to event.attackerId (Fire Shield,
@@ -317,7 +369,26 @@ const fireAddDamageToAttacker = (
     components: intercept.components,
     causedByEventId: causedByEventId as ULID,
   };
-  return [damageApplied, ...intercept.extraEvents];
+  const out: Event[] = [damageApplied, ...intercept.extraEvents];
+  // Slice 620: retaliation damage to the original attacker is a
+  // separate damage source for concentration purposes (e.g. an Armor
+  // of Agathys cold-on-melee retaliator hits a concentrating attacker
+  // → CON save on the attacker for the retaliation damage). Same
+  // shape as the forward fireAddDamage wire above.
+  if (target !== undefined) {
+    out.push(
+      ...planConcentrationOnDamage(
+        applyAll(state, out),
+        content,
+        rng,
+        target,
+        intercept.components,
+        damageAppliedId,
+        event.at,
+      ),
+    );
+  }
+  return out;
 };
 
 // Determine whether a fired rider's damage is "magical" for the
@@ -493,10 +564,13 @@ const fireSpawnCreature = (
       preparedSpells: [],
       spellSlotsUsed: {},
       pactSlotsUsed: 0,
+      usedFreeCastSpellIds: [],
+      weaponMasteries: [],
       triggerCounters: {},
       featsTaken: [],
       pendingChoiceIds: [],
       breathWeaponExpended: false,
+      heroicInspiration: false,
       damageTypesTakenThisTurn: [],
       heroPoints: 0,
       xp: 0,
@@ -602,6 +676,25 @@ const fireTrigger = (
           amount,
           source: triggerId,
         } satisfies TempHPGrantedEvent);
+      }
+    } else if (action.kind === 'PushTarget') {
+      // Slice 516: emit CreaturePushed targeting the triggering event's
+      // target (AttackRolled and DamageApplied both carry `targetId`).
+      // The engine doesn't model positions; the event is informational
+      // for consumers to apply the position change. Canonical user:
+      // Warlock Repelling Blast.
+      const targetId = (event as { targetId?: string }).targetId;
+      if (targetId !== undefined && action.distanceFeet > 0) {
+        events.push({
+          id: newEventId() as ULID,
+          at,
+          type: 'CreaturePushed',
+          targetId: targetId as ULID,
+          distanceFeet: action.distanceFeet,
+          sourceCharacterId: character.id as ULID,
+          source: triggerId,
+          causedByEventId: triggerFired.id,
+        });
       }
     }
   }

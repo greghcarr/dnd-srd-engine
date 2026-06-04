@@ -14,6 +14,6 @@ Encounter "Workshop Skirmish" begins.
 
 _(Ember consumes bonusAction)_
 
-**Ember** spends 2 sorcery-points.
+**Ember** spends 2 Sorcery Points.
 
 **Ember** is now Innate Sorcery.

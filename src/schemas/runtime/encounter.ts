@@ -45,6 +45,13 @@ export const TurnUsageSchema = z.object({
   // movement; this caps the no-provoke distance. 0 = no allowance. Cleared
   // at TurnStarted.
   noProvokeMovementUpToFeet: z.number().min(0).default(0),
+  // Slice 572: RAW PHB 2024 Ready action. When the combatant takes
+  // the Ready action, this records the pending readied reaction's
+  // trigger description. The consumer reads it when their declared
+  // trigger fires and invokes the appropriate planner with the
+  // combatant's Reaction. Cleared at TurnStarted (RAW: "before the
+  // start of your next turn"). Undefined when no Ready is pending.
+  readiedAction: z.object({ trigger: z.string() }).optional(),
 });
 export type TurnUsage = z.infer<typeof TurnUsageSchema>;
 

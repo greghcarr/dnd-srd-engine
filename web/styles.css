@@ -2,6 +2,12 @@
   color-scheme: light dark;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   line-height: 1.5;
+  /* Slice 615: team colors as CSS variables so theme overrides + future
+     team palettes don't require touching the component CSS. Values
+     borrowed from the dropped grid-view's TOKEN_PALETTE so the demo's
+     color identity stays consistent. */
+  --team-a-color: #4a89ff;
+  --team-b-color: #e7553c;
 }
 
 body {
@@ -54,32 +60,14 @@ button:disabled {
 }
 
 .seed-control,
-.scenario-control {
+.cfg-control {
   font-size: 0.9rem;
   margin-left: 0.5rem;
 }
 
-.scenario-control select {
-  font: inherit;
-  padding: 0.25rem 0.4rem;
-  border-radius: 0.375rem;
-  border: 1px solid currentColor;
-  background: transparent;
-  color: inherit;
-  max-width: 18rem;
-}
-
-.scenario-hint {
-  margin: 0 0 0.5rem;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.85rem;
-  border-radius: 0.375rem;
-  background: rgba(70, 130, 200, 0.08);
-  border: 1px solid rgba(70, 130, 200, 0.4);
-}
-
+.cfg-control select,
+.cfg-control input,
 .seed-control input {
-  width: 6rem;
   font: inherit;
   padding: 0.25rem 0.4rem;
   border-radius: 0.375rem;
@@ -88,23 +76,77 @@ button:disabled {
   color: inherit;
 }
 
-.combat-sandbox {
+.seed-control input,
+.cfg-control input {
+  width: 5rem;
+}
+
+.fuzz-replay {
   margin: 1rem 0;
   padding: 1rem;
   border: 1px solid rgba(127, 127, 127, 0.4);
   border-radius: 0.5rem;
 }
 
-.combat-header h2 {
+.fuzz-header h2 {
   margin: 0 0 0.25rem;
   font-size: 1.1rem;
 }
 
-.combat-meta {
-  margin: 0 0 0.75rem;
+.fuzz-meta {
+  margin: 0 0 0.5rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.8rem;
   color: #888;
+}
+
+.fuzz-transport {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.fuzz-transport button {
+  font-size: 1rem;
+  padding: 0.2rem 0.55rem;
+  min-width: 2.2rem;
+}
+
+.fuzz-cursor {
+  margin-left: 0.5rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+  color: #888;
+}
+
+.fuzz-outcome {
+  margin: 0 0 0.6rem;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.375rem;
+  border-left: 3px solid transparent;
+}
+
+.fuzz-outcome-win {
+  border-left-color: #2ea84f;
+  background: rgba(46, 168, 79, 0.08);
+}
+
+.fuzz-outcome-draw {
+  border-left-color: #b67500;
+  background: rgba(182, 117, 0, 0.08);
+}
+
+/* Slice 609: quiet placeholder while scrubbing mid-stream — visible
+   enough to signal "there's an outcome at ⏭" but not loud enough to
+   spoil the playback. */
+.fuzz-outcome-inprogress {
+  border-left-color: #888;
+  background: rgba(127, 127, 127, 0.06);
+  color: #888;
+  font-style: italic;
 }
 
 .combatant-list {
@@ -117,13 +159,31 @@ button:disabled {
   padding: 0.5rem 0.75rem;
   border-radius: 0.375rem;
   border: 1px solid transparent;
+  border-left-width: 4px;
   margin-bottom: 0.25rem;
   font-size: 0.95rem;
 }
 
+/* Slice 607: per-team left border so a reader can tell A from B at a glance.
+   Slice 615: color values come from the root --team-{a,b}-color
+   variables, not hardcoded hexes. */
+.combatant.team-a {
+  border-left-color: var(--team-a-color);
+}
+.combatant.team-b {
+  border-left-color: var(--team-b-color);
+}
+
 .combatant.active {
   border-color: currentColor;
+  border-left-width: 4px;
   background: rgba(127, 127, 127, 0.1);
+}
+.combatant.active.team-a {
+  border-left-color: var(--team-a-color);
+}
+.combatant.active.team-b {
+  border-left-color: var(--team-b-color);
 }
 
 .combatant.downed .combatant-name::after {
@@ -160,62 +220,8 @@ button:disabled {
   min-height: 1em;
 }
 
-.combatant-pos {
-  color: #888;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.8rem;
-}
-
-.oa-queue {
-  margin: 0 0 0.75rem;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #c98a;
-  border-radius: 0.375rem;
-  background: rgba(200, 140, 60, 0.08);
-}
-
-.oa-queue-header {
-  margin: 0 0 0.4rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #c98;
-}
-
-.oa-offer {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.25rem;
-  font-size: 0.85rem;
-}
-
-.oa-text {
-  flex: 1;
-}
-
-.oa-offer button {
-  font-size: 0.8rem;
-  padding: 0.2rem 0.6rem;
-}
-
-.action-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-top: 0.5rem;
-}
-
-.action-toolbar button {
-  font-size: 0.85rem;
-  padding: 0.25rem 0.55rem;
-}
-
-.toolbar-note {
-  font-size: 0.8rem;
-  color: #c44;
-  align-self: center;
-  margin-right: 0.5rem;
-}
+/* Slice 607: .combatant-pos removed — the coord column was orphaned
+   when the map panel was retired (slice 600). */
 
 .toolbar {
   display: flex;
@@ -224,129 +230,9 @@ button:disabled {
   flex-wrap: wrap;
 }
 
-.rules-lab {
-  margin: 1rem 0;
-  padding: 1rem;
-  border: 1px solid rgba(127, 127, 127, 0.4);
-  border-radius: 0.5rem;
-}
-
-.rules-lab-header h2 {
-  margin: 0 0 0.25rem;
-  font-size: 1.1rem;
-}
-
-.rules-lab-meta {
-  margin: 0 0 0.5rem;
-  font-size: 0.85rem;
-  color: #888;
-}
-
-.rules-lab-toolbar {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  margin-bottom: 0.5rem;
-}
-
-.btn-run-audit {
-  font-size: 0.95rem;
-  padding: 0.35rem 0.9rem;
-}
-
-.rules-lab-summary {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.9rem;
-}
-
-.rules-lab-summary-all-pass {
-  color: #4a4;
-  font-weight: 600;
-}
-
-.rules-lab-summary-some-fail {
-  color: #c44;
-  font-weight: 600;
-}
-
-.rules-lab-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.rules-lab-group {
-  margin-top: 0.6rem;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #888;
-  font-weight: 600;
-}
-
-.rules-lab-row {
-  display: flex;
-  gap: 0.5rem;
-  align-items: flex-start;
-  padding: 0.35rem 0.5rem;
-  border-radius: 0.25rem;
-  margin-bottom: 0.15rem;
-}
-
-.rules-lab-row-pending {
-  background: rgba(127, 127, 127, 0.06);
-}
-
-.rules-lab-row-pass {
-  background: rgba(70, 170, 80, 0.08);
-}
-
-.rules-lab-row-fail {
-  background: rgba(200, 70, 70, 0.1);
-}
-
-.rules-lab-status {
-  flex: 0 0 1.5rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-weight: 700;
-  font-size: 1rem;
-  text-align: center;
-}
-
-.rules-lab-row-pass .rules-lab-status {
-  color: #4a4;
-}
-
-.rules-lab-row-fail .rules-lab-status {
-  color: #c44;
-}
-
-.rules-lab-body {
-  flex: 1;
-  font-size: 0.85rem;
-  line-height: 1.35;
-}
-
-.rules-lab-name {
-  font-weight: 600;
-}
-
-.rules-lab-raw {
-  color: #888;
-  font-size: 0.8rem;
-}
-
-.rules-lab-detail {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.78rem;
-  color: #888;
-  min-height: 1.1em;
-  margin-top: 0.1rem;
-}
-
 .panels {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(12rem, 16rem) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 1rem;
   align-items: start;
 }
@@ -355,61 +241,6 @@ button:disabled {
   .panels {
     grid-template-columns: 1fr;
   }
-}
-
-.grid-view {
-  margin: 1rem 0;
-  padding: 0.75rem;
-  border: 1px solid rgba(127, 127, 127, 0.4);
-  border-radius: 0.5rem;
-}
-
-.grid-view-header h2 {
-  margin: 0 0 0.5rem;
-  font-size: 1rem;
-}
-
-.grid-view-board {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(var(--grid-cols, 6), 1fr);
-  grid-template-rows: repeat(var(--grid-rows, 4), 1fr);
-  aspect-ratio: var(--grid-cols, 6) / var(--grid-rows, 4);
-  gap: 1px;
-  background: rgba(127, 127, 127, 0.4);
-  border: 1px solid rgba(127, 127, 127, 0.4);
-  border-radius: 0.25rem;
-  max-width: 16rem;
-  margin-inline: auto;
-}
-
-.grid-cell {
-  background: rgba(127, 127, 127, 0.05);
-}
-
-.grid-token {
-  grid-column: var(--token-col, 1);
-  grid-row: var(--token-row, 1);
-  margin: 2px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: #fff;
-  background: var(--token-color, #888);
-  border-radius: 0.25rem;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
-}
-
-.grid-token-active {
-  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--token-color, #888);
-}
-
-.grid-token-downed {
-  opacity: 0.4;
-  text-decoration: line-through;
 }
 
 .event-inspector {
@@ -436,6 +267,26 @@ button:disabled {
 .inspector-scroll {
   max-height: 28rem;
   overflow-y: auto;
+}
+
+/* Slice 608: developer-tools <details> block — collapsed by default
+   so observers reading the event log aren't distracted by the engine-
+   internal Verify / Export / Import buttons. */
+.inspector-devtools {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+}
+.inspector-devtools > summary {
+  cursor: pointer;
+  color: #888;
+  padding: 0.1rem 0;
+  user-select: none;
+}
+.inspector-devtools > summary:hover {
+  color: inherit;
+}
+.inspector-devtools[open] > summary {
+  margin-bottom: 0.4rem;
 }
 
 .inspector-toolbar {
@@ -496,6 +347,9 @@ button:disabled {
 
 .event-row.event-state-change {
   border-left-color: #2ea84f;
+  /* Slice 608: dial back state-change visibility so the eye lands on
+     resolution + encounter rows first. Still readable, just quieter. */
+  opacity: 0.72;
 }
 
 .event-line {

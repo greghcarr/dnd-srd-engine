@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ULIDSchema } from '../primitives.js';
+import { PositionSchema } from './encounter.js';
 
 export const AppliedConditionRefSchema = z.object({
   targetId: ULIDSchema,
@@ -7,6 +8,26 @@ export const AppliedConditionRefSchema = z.object({
   appliedConditionId: ULIDSchema,
 });
 export type AppliedConditionRef = z.infer<typeof AppliedConditionRefSchema>;
+
+// Slice 495: positioned AOE-zone metadata for concentration spells whose
+// area persists in space (Fog Cloud, Darkness, Silent Image, Stinking
+// Cloud, Silence, etc.). Bound to the parent EffectInstance, so when
+// concentration breaks the zone is removed automatically (no separate
+// state field). The engine treats the zone as opaque metadata — the
+// "creatures in heavy obscurement are effectively Blinded" / "creatures
+// in the area must save against being incapacitated" / etc. RAW arms
+// stay consumer-managed (the consumer reads the zone + applies the
+// effect to creatures inside). This slice ships the structural record;
+// future slices may add auto-enforcement for specific zone types.
+export const ZoneShapeSchema = z.enum(['sphere', 'cube', 'cylinder', 'line', 'cone']);
+export type ZoneShape = z.infer<typeof ZoneShapeSchema>;
+
+export const ZoneSchema = z.object({
+  shape: ZoneShapeSchema,
+  size: z.number().int().min(1),
+  center: PositionSchema,
+});
+export type Zone = z.infer<typeof ZoneSchema>;
 
 export const EffectInstanceSchema = z.object({
   id: ULIDSchema,
@@ -29,5 +50,11 @@ export const EffectInstanceSchema = z.object({
   // intent in hand at tick time.
   slotLevel: z.number().int().min(0).optional(),
   startedAtEventId: ULIDSchema,
+  // Slice 495: positioned AOE-zone metadata for concentration spells
+  // whose area persists in space. Read by consumers to know where the
+  // zone is + apply the spell's RAW effect to creatures in/leaving the
+  // zone. Removed automatically when concentration breaks (the parent
+  // EffectInstance is deleted).
+  zone: ZoneSchema.optional(),
 });
 export type EffectInstance = z.infer<typeof EffectInstanceSchema>;

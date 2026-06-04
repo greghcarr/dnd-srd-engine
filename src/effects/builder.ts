@@ -1,5 +1,5 @@
 import type { Effect, ModifierTarget, RollTarget } from '../schemas/effects.js';
-import type { AbilityScore, DamageType, Sense, Skill } from '../schemas/primitives.js';
+import type { AbilityScore, DamageType, Sense, Skill, WeaponMastery } from '../schemas/primitives.js';
 import type { Predicate } from '../schemas/predicate.js';
 import { evaluatePredicate } from './predicate.js';
 import { evaluateFormula, type FormulaContext } from './formula.js';
@@ -174,6 +174,15 @@ export class EffectAccumulator {
   private readonly abilityScoreIncreases = new Map<AbilityScore, { amount: number; max: number }[]>();
   private readonly regenerationEntries: Array<{ perTurn: number; suppressedBy: DamageType[] }> = [];
   private readonly resourceGrants: ResourceGrant[] = [];
+  // Slice 502: 2024 Weapon Mastery grants. `weaponMasterySlotMax` is the
+  // largest slot count any grant confers (the number of weapon kinds the
+  // character may choose; single-class case = that class's count).
+  // `grantedMasteries` is the union of mastery properties the grants make
+  // available (every martial class grants all 8 today, but a future
+  // restricted-pool grant would narrow it). The selection planner reads
+  // both to validate a choice; the gate keys on the chosen weapon ids.
+  private weaponMasterySlotMax = 0;
+  private readonly grantedMasteries = new Set<WeaponMastery>();
   // Slice 127: granted senses (darkvision / blindsight / tremorsense /
   // truesight). Stored as sense -> max-range (feet) where multiple
   // grants of the same sense take the larger range (RAW: a dwarf
@@ -198,6 +207,21 @@ export class EffectAccumulator {
   private healingBoostPerSpellLevel: number = 0;
   private evasionFlag: boolean = false;
   private potentCantripFlag: boolean = false;
+  // Slice 505: Wizard L1 Ritual Adept presence marker.
+  private ritualAdeptFlag: boolean = false;
+  // Slice 518: Warlock L1 Pact of the Blade presence marker.
+  private pactBladeFlag: boolean = false;
+  // Slice 519: Warlock L1 Pact of the Chain presence marker.
+  private pactChainFlag: boolean = false;
+  // Slice 538: Halfling Luck presence marker. Read at d20 roll sites
+  // (currently attack rolls; save/check sites to follow) to trigger
+  // the reroll-on-natural-1 mechanic.
+  private halflingLuckFlag: boolean = false;
+  // Slice 542: Heroic Inspiration on Long Rest presence marker.
+  // Read by planLongRest to auto-grant Heroic Inspiration to
+  // participants with the marker on their effect stack (Human
+  // Resourceful, etc.).
+  private heroicInspirationOnLongRestFlag: boolean = false;
   private uncannyDodgeFlag: boolean = false;
   private innateSorcerySpendAlternativeFlag: boolean = false;
   private selfRestorationFlag: boolean = false;
@@ -387,6 +411,10 @@ export class EffectAccumulator {
   }
   addResourceGrant(grant: ResourceGrant): void {
     this.resourceGrants.push(grant);
+  }
+  addWeaponMasteryGrant(slots: number, masteries: ReadonlyArray<WeaponMastery>): void {
+    if (slots > this.weaponMasterySlotMax) this.weaponMasterySlotMax = slots;
+    for (const mastery of masteries) this.grantedMasteries.add(mastery);
   }
   addProficiency(
     target: 'skill' | 'tool' | 'weapon' | 'armor' | 'save' | 'language',
@@ -730,6 +758,15 @@ export class EffectAccumulator {
   resources(): ReadonlyArray<ResourceGrant> {
     return this.resourceGrants;
   }
+  // Slice 502: number of weapon kinds this character may choose for
+  // Weapon Mastery (0 = no Weapon Mastery feature). The set of mastery
+  // properties those weapons may carry.
+  weaponMasterySlots(): number {
+    return this.weaponMasterySlotMax;
+  }
+  grantedWeaponMasteryProperties(): ReadonlySet<WeaponMastery> {
+    return this.grantedMasteries;
+  }
   proficiencyLevel(target: string, id: string): 'none' | 'half' | 'proficient' | 'expertise' {
     return this.proficiencies.get(`${target}:${id}`) ?? 'none';
   }
@@ -815,6 +852,55 @@ export class EffectAccumulator {
   hasPotentCantrip(): boolean {
     return this.potentCantripFlag;
   }
+  markRitualAdept(): void {
+    this.ritualAdeptFlag = true;
+  }
+  // Slice 505: Wizard L1 Ritual Adept. Currently observable only (the
+  // cast pathway already permits the underlying behavior — see the
+  // GrantRitualAdept schema comment). A future RAW-tightening slice
+  // that gates `intent.asRitual` strictly on a ritual-casting feature
+  // would consult this accessor.
+  hasRitualAdept(): boolean {
+    return this.ritualAdeptFlag;
+  }
+  markPactBlade(): void {
+    this.pactBladeFlag = true;
+  }
+  // Slice 518: Warlock L1 Pact of the Blade. Read by planConjurePactWeapon
+  // to gate the conjure action on the bearer having the invocation.
+  hasPactBlade(): boolean {
+    return this.pactBladeFlag;
+  }
+  markPactChain(): void {
+    this.pactChainFlag = true;
+  }
+  // Slice 519: Warlock L1 Pact of the Chain. Presence marker for the
+  // invocation. The free-cast of Find Familiar comes from the companion
+  // `GrantSpell find-familiar 'at-will'` on the same feat (slice-513
+  // at-will free-cast pathway). This accessor is the gate for future
+  // Chain-specific surface (special familiar forms enforcement, the
+  // "forgo one attack" reaction arm).
+  hasPactChain(): boolean {
+    return this.pactChainFlag;
+  }
+  markHalflingLuck(): void {
+    this.halflingLuckFlag = true;
+  }
+  // Slice 538: Halfling Luck. Read by the attack-roll site (and future
+  // save/check sites) to trigger reroll-on-natural-1 per RAW: "When you
+  // roll a 1 on the d20 of a D20 Test, you can reroll the die, and you
+  // must use the new roll."
+  hasHalflingLuck(): boolean {
+    return this.halflingLuckFlag;
+  }
+  markHeroicInspirationOnLongRest(): void {
+    this.heroicInspirationOnLongRestFlag = true;
+  }
+  // Slice 542: Heroic Inspiration on Long Rest. Read by planLongRest
+  // to auto-grant Heroic Inspiration to participants with the marker.
+  hasHeroicInspirationOnLongRest(): boolean {
+    return this.heroicInspirationOnLongRestFlag;
+  }
   // Slice 200: marker that gates `planUncannyDodge`. Set by Rogue L5+
   // via the `GrantUncannyDodge` effect on the Uncanny Dodge feature.
   markUncannyDodge(): void {
@@ -892,6 +978,7 @@ export class EffectAccumulator {
     spellId: string;
     preparation: 'always-prepared' | 'prepared' | 'known' | 'at-will' | 'oncePerLongRest' | 'oncePerShortRest';
     spellcastingAbility?: AbilityScore;
+    freeCastResourceId?: string;
   }): void {
     this.grantedSpellEntries.push(entry);
   }
@@ -899,6 +986,7 @@ export class EffectAccumulator {
     readonly spellId: string;
     readonly preparation: 'always-prepared' | 'prepared' | 'known' | 'at-will' | 'oncePerLongRest' | 'oncePerShortRest';
     readonly spellcastingAbility?: AbilityScore;
+    readonly freeCastResourceId?: string;
   }> {
     return this.grantedSpellEntries;
   }
@@ -1056,6 +1144,29 @@ export const applyEffectToBuilder = (
     case 'GrantPotentCantrip':
       acc.markPotentCantrip();
       return;
+    case 'GrantRitualAdept':
+      acc.markRitualAdept();
+      return;
+    case 'GrantFeat':
+      // Slice 511: GrantFeat is pre-expanded by `expandGrantFeatEffects`
+      // in derive/effect-stack.ts before reaching this switch (cycle
+      // protection + feat lookup live there, where the content pack is
+      // in scope). A GrantFeat reaching the builder means a caller fed
+      // raw (unexpanded) effects in — treat as a no-op so behavior
+      // degrades gracefully.
+      return;
+    case 'GrantPactBlade':
+      acc.markPactBlade();
+      return;
+    case 'GrantPactChain':
+      acc.markPactChain();
+      return;
+    case 'GrantHalflingLuck':
+      acc.markHalflingLuck();
+      return;
+    case 'GrantHeroicInspirationOnLongRest':
+      acc.markHeroicInspirationOnLongRest();
+      return;
     case 'GrantUncannyDodge':
       acc.markUncannyDodge();
       return;
@@ -1106,14 +1217,23 @@ export const applyEffectToBuilder = (
         ...(effect.spellcastingAbility !== undefined
           ? { spellcastingAbility: effect.spellcastingAbility }
           : {}),
+        ...(effect.freeCastResourceId !== undefined
+          ? { freeCastResourceId: effect.freeCastResourceId }
+          : {}),
       });
+      return;
+    case 'GrantWeaponMastery':
+      // Slice 502: project the Weapon Mastery grant so the selection
+      // planner + the per-attack gate can read the budget and the
+      // available mastery pool. Multiple grants take the largest slot
+      // count (Fighter's L4/L10/L16 bumps) and union their property pools.
+      acc.addWeaponMasteryGrant(effect.slots, effect.masteries);
       return;
     case 'ModifySpeed':
     case 'GrantSpellSlots':
     case 'OnEvent':
     case 'RecoverResource':
     case 'GrantAction':
-    case 'GrantWeaponMastery':
     case 'ExpandSpellList':
     case 'SetHPMaxFormula':
     case 'OfferChoice':

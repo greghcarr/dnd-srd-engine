@@ -4,6 +4,6 @@
 
 **Test Fighter** takes 5 damage (5 slashing). (HP 5 -> 0)
 
-**Test Fighter** takes 2 damage (2 slashing). (HP 0 -> -2)
+**Test Fighter** takes 2 damage (2 slashing).
 
-**Test Fighter** healed 5. (HP -2 -> 5)
+**Test Fighter** healed 5. (HP 0 -> 5)

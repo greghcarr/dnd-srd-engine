@@ -23,6 +23,10 @@ import {
   LongRestStartedEventSchema,
   LongRestEndedEventSchema,
 } from './rest.js';
+import {
+  HeroicInspirationGrantedEventSchema,
+  HeroicInspirationConsumedEventSchema,
+} from './heroic-inspiration.js';
 import { CharacterCreatedEventSchema } from './progression.js';
 import {
   EncounterCreatedEventSchema,
@@ -53,6 +57,7 @@ import {
   SpellCastDeclaredEventSchema,
   SpellSlotConsumedEventSchema,
   PactSlotConsumedEventSchema,
+  FreeCastUsedEventSchema,
 } from './spellcasting.js';
 import {
   ConcentrationStartedEventSchema,
@@ -61,6 +66,7 @@ import {
 import { TriggerFiredEventSchema } from './triggers.js';
 import {
   ActionEconomyConsumedEventSchema,
+  ActionReadiedEventSchema,
   RecklessAttackActivatedEventSchema,
   StunningStrikeAttemptedEventSchema,
   SavageAttackerUsedEventSchema,
@@ -126,7 +132,7 @@ import {
   GuidanceUsedEventSchema,
   UncannyDodgeUsedEventSchema,
 } from './reactive-spells.js';
-import { WeaponMasteryActivatedEventSchema } from './weapon-mastery.js';
+import { WeaponMasteryActivatedEventSchema, WeaponMasteriesChosenEventSchema } from './weapon-mastery.js';
 import {
   MountedEventSchema,
   DismountedEventSchema,
@@ -211,6 +217,8 @@ export const EventSchema = z.discriminatedUnion('type', [
   StabilizedEventSchema,
   CreatureDestroyedEventSchema,
   HPMaxBonusChangedEventSchema,
+  HeroicInspirationGrantedEventSchema,
+  HeroicInspirationConsumedEventSchema,
   ResourceSpentEventSchema,
   ResourceRestoredEventSchema,
   HitDieSpentEventSchema,
@@ -238,10 +246,12 @@ export const EventSchema = z.discriminatedUnion('type', [
   SpellCastDeclaredEventSchema,
   SpellSlotConsumedEventSchema,
   PactSlotConsumedEventSchema,
+  FreeCastUsedEventSchema,
   ConcentrationStartedEventSchema,
   ConcentrationBrokenEventSchema,
   TriggerFiredEventSchema,
   ActionEconomyConsumedEventSchema,
+  ActionReadiedEventSchema,
   RecklessAttackActivatedEventSchema,
   StunningStrikeAttemptedEventSchema,
   SavageAttackerUsedEventSchema,
@@ -293,6 +303,7 @@ export const EventSchema = z.discriminatedUnion('type', [
   GuidanceUsedEventSchema,
   UncannyDodgeUsedEventSchema,
   WeaponMasteryActivatedEventSchema,
+  WeaponMasteriesChosenEventSchema,
   MountedEventSchema,
   DismountedEventSchema,
   VehicleAcquiredEventSchema,
@@ -383,10 +394,12 @@ export const EVENT_TYPES = [
   'SpellCastDeclared',
   'SpellSlotConsumed',
   'PactSlotConsumed',
+  'FreeCastUsed',
   'ConcentrationStarted',
   'ConcentrationBroken',
   'TriggerFired',
   'ActionEconomyConsumed',
+  'ActionReadied',
   'RecklessAttackActivated',
   'StunningStrikeAttempted',
   'SavageAttackerUsed',
@@ -435,6 +448,7 @@ export const EVENT_TYPES = [
   'GuidanceUsed',
   'UncannyDodgeUsed',
   'WeaponMasteryActivated',
+  'WeaponMasteriesChosen',
   'Mounted',
   'Dismounted',
   'VehicleAcquired',
@@ -496,6 +510,10 @@ export type {
   HPMaxBonusChangedEvent,
 } from './combat.js';
 export type {
+  HeroicInspirationGrantedEvent,
+  HeroicInspirationConsumedEvent,
+} from './heroic-inspiration.js';
+export type {
   ResourceSpentEvent,
   ResourceRestoredEvent,
   HitDieSpentEvent,
@@ -538,6 +556,10 @@ export {
   CreatureDestroyedEventSchema,
   HPMaxBonusChangedEventSchema,
 } from './combat.js';
+export {
+  HeroicInspirationGrantedEventSchema,
+  HeroicInspirationConsumedEventSchema,
+} from './heroic-inspiration.js';
 export {
   ResourceSpentEventSchema,
   ResourceRestoredEventSchema,
@@ -624,12 +646,14 @@ export {
   SpellCastDeclaredEventSchema,
   SpellSlotConsumedEventSchema,
   PactSlotConsumedEventSchema,
+  FreeCastUsedEventSchema,
   SpellSlotSourceSchema,
 } from './spellcasting.js';
 export type {
   SpellCastDeclaredEvent,
   SpellSlotConsumedEvent,
   PactSlotConsumedEvent,
+  FreeCastUsedEvent,
   SpellSlotSource,
 } from './spellcasting.js';
 export {
@@ -646,6 +670,7 @@ export { TriggerFiredEventSchema } from './triggers.js';
 export type { TriggerFiredEvent } from './triggers.js';
 export {
   ActionEconomyConsumedEventSchema,
+  ActionReadiedEventSchema,
   RecklessAttackActivatedEventSchema,
   StunningStrikeAttemptedEventSchema,
   SavageAttackerUsedEventSchema,
@@ -654,6 +679,7 @@ export {
 } from './action-economy.js';
 export type {
   ActionEconomyConsumedEvent,
+  ActionReadiedEvent,
   RecklessAttackActivatedEvent,
   StunningStrikeAttemptedEvent,
   SavageAttackerUsedEvent,
@@ -762,6 +788,8 @@ export type {
 } from './reactive-spells.js';
 export { WeaponMasteryActivatedEventSchema } from './weapon-mastery.js';
 export type { WeaponMasteryActivatedEvent } from './weapon-mastery.js';
+export { WeaponMasteriesChosenEventSchema } from './weapon-mastery.js';
+export type { WeaponMasteriesChosenEvent } from './weapon-mastery.js';
 export {
   MountedEventSchema,
   DismountedEventSchema,

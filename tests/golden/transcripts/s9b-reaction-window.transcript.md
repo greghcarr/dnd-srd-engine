@@ -30,7 +30,7 @@ Damage rolled: 1d6=[2]+0 piercing.
 
 **Pile of Sandbags** takes 2 damage (2 piercing). (HP 200 -> 198)
 
-**Twin Striker** spends 1 action-surge.
+**Twin Striker** spends 1 Action Surge.
 
 _(Twin Striker consumes action)_
 

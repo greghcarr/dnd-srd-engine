@@ -1,11 +1,19 @@
 import { z } from 'zod';
 import { ItemInstanceSchema } from '../runtime/item-instance.js';
-import { DamageTypeSchema, ULIDSchema } from '../primitives.js';
+import { AbilityScoreSchema, DamageTypeSchema, ULIDSchema } from '../primitives.js';
 import { EventEnvelopeSchema } from './envelope.js';
 
 export const ItemAcquiredEventSchema = EventEnvelopeSchema.extend({
   type: z.literal('ItemAcquired'),
   instance: ItemInstanceSchema,
+  // Slice 499: when set, the reducer also pushes the new instance id
+  // onto this character's `inventory` (so it's reachable by
+  // `engine.plan.consumeItem` / `useItem`). Omitted for the historical
+  // "register the instance in the world, ownership tracked elsewhere"
+  // flow (weapons referenced by id in attacks, loot pools, etc.).
+  // Canonical user: Goodberry's `create-item` mechanic, which mints the
+  // berries straight into the caster's inventory.
+  characterId: ULIDSchema.optional(),
 });
 export type ItemAcquiredEvent = z.infer<typeof ItemAcquiredEventSchema>;
 
@@ -49,7 +57,12 @@ export const ItemBuffAppliedEventSchema = EventEnvelopeSchema.extend({
   damageBonus: z.number().int().default(0),
   extraDamageDice: z.string().optional(),
   extraDamageType: DamageTypeSchema.optional(),
-  sourceEffectInstanceId: ULIDSchema,
+  // Slice 501: Shillelagh-style weapon transformation (see ItemTemporaryBuff).
+  abilityOverride: AbilityScoreSchema.optional(),
+  damageDieOverride: z.string().optional(),
+  damageTypeOverride: DamageTypeSchema.optional(),
+  // Slice 501: optional — non-concentration buffs (Shillelagh) omit it.
+  sourceEffectInstanceId: ULIDSchema.optional(),
   source: z.string().optional(),
 });
 export type ItemBuffAppliedEvent = z.infer<typeof ItemBuffAppliedEventSchema>;

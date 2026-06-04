@@ -69,6 +69,20 @@ describe('computeKnownLanguages', () => {
     ]);
   });
 
+  it("Rogue L1 knows Thieves' Cant via the wired Thieves' Cant feature", () => {
+    const rogue = createPC({
+      name: 'Vex',
+      speciesId: 'human',
+      backgroundId: 'criminal',
+      classId: 'rogue',
+      hpMax: 10,
+    });
+    expect(computeKnownLanguages({ character: rogue, itemInstances: {}, content: CONTENT })).toEqual([
+      'common',
+      'thieves-cant',
+    ]);
+  });
+
   it('non-Druid fighters do not learn Druidic', () => {
     const fighter = createPC({
       name: 'Alyx',

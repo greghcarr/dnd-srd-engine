@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ULIDSchema } from '../primitives.js';
 import { EventEnvelopeSchema } from './envelope.js';
-import { AppliedConditionRefSchema } from '../runtime/effect-instance.js';
+import { AppliedConditionRefSchema, ZoneSchema } from '../runtime/effect-instance.js';
 
 export const ConcentrationStartedEventSchema = EventEnvelopeSchema.extend({
   type: z.literal('ConcentrationStarted'),
@@ -21,6 +21,13 @@ export const ConcentrationStartedEventSchema = EventEnvelopeSchema.extend({
   // scale per-cast effects without the consumer holding onto the cast
   // intent.
   slotLevel: z.number().int().min(0).optional(),
+  // Slice 495: AOE-zone metadata for concentration spells whose area
+  // persists in space (Fog Cloud, Darkness, Silent Image, etc.).
+  // Carried on the event log AND on the EffectInstance the reducer
+  // creates, so consumers can read the zone's center / shape / size
+  // both from the transcript and from live state. Concentration drop
+  // removes the EffectInstance, removing the zone.
+  zone: ZoneSchema.optional(),
 });
 export type ConcentrationStartedEvent = z.infer<typeof ConcentrationStartedEventSchema>;
 

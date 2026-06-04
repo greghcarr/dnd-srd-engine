@@ -16,6 +16,7 @@ import type { SaveRolledEvent } from '../../schemas/events/checks.js';
 import type { Character } from '../../schemas/runtime/character.js';
 import type { RNG } from '../../rng/index.js';
 import { rollDie, rollExpression } from '../../rng/dice.js';
+import { applyHalflingLuckFromFlag } from './_halfling-luck.js';
 import { D20_SIDES } from '../../internal/constants.js';
 import { computeSavingThrow } from '../../derive/save.js';
 import { rollSaveBonusDice } from './_bonus-dice.js';
@@ -23,6 +24,7 @@ import { computeSpellSaveDC } from '../../derive/spell-dc.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { applyAll } from '../apply.js';
+import { planConcentrationOnDamage } from './concentration.js';
 import { newAppliedConditionId } from '../../ids.js';
 import { newEventId } from '../../ids.js';
 import { nowIso } from '../../internal/clock.js';
@@ -32,12 +34,32 @@ import { assertActorCanAct, getEffectiveSpeed, findActorBlockingCondition } from
 import { bresenhamCells, movementCostAt } from '../../derive/terrain.js';
 import { DEFAULT_CELL_SIZE_FEET } from '../../schemas/runtime/location.js';
 
+// Slice 489: per-move movement-modality marker. Default 'walk' preserves
+// pre-489 behavior. Currently load-bearing only for Flyby OA suppression
+// (Hippogriff): when the mover is flying out of an enemy's reach, the
+// trait skips the Opportunity Attack provocation. Other modes ('climb',
+// 'swim') are accepted for future-proofing but don't yet drive behavior.
+export type MovementMode = 'walk' | 'fly' | 'climb' | 'swim';
+
 export interface MoveIntent {
   readonly type: 'Move';
   readonly combatantId: string;
   readonly to: Position;
+  readonly movementMode?: MovementMode;
   readonly at?: string;
 }
+
+// Slice 489: Flyby allowlist. RAW: "The hippogriff doesn't provoke an
+// Opportunity Attack when it flies out of an enemy's reach." When the
+// mover's statblockId is in this set AND `intent.movementMode === 'fly'`,
+// the OA-emission loop below skips. Statblock-id allowlist mirrors the
+// slice-475 CUNNING_ACTION_STATBLOCKS shape; the Hippogriff carries a
+// `{ kind: 'Custom', handlerId: 'flyby' }` marker trait so pack-integrity
+// can verify the wiring exists.
+const FLYBY_STATBLOCKS: ReadonlySet<string> = new Set(['hippogriff']);
+
+const moverHasFlyby = (character: Character): boolean =>
+  character.statblockId !== undefined && FLYBY_STATBLOCKS.has(character.statblockId);
 
 export interface DashIntent {
   readonly type: 'Dash';
@@ -251,25 +273,58 @@ export const planMove = (
   const withinNoProvokeBudget =
     combatant.turnUsage.feetMovedThisTurn + distance <=
     combatant.turnUsage.noProvokeMovementUpToFeet;
-  if (!combatant.turnUsage.disengaged && !withinNoProvokeBudget) {
+  // Slice 489: Flyby (Hippogriff) suppresses OA emission when the move
+  // is a flying movement. Outside an active encounter (or for non-flying
+  // moves), the existing OA-emission path runs unchanged.
+  const moverCharacter = state.characters[intent.combatantId];
+  const suppressOpportunityForFlyby =
+    intent.movementMode === 'fly'
+    && moverCharacter !== undefined
+    && moverHasFlyby(moverCharacter);
+  if (!combatant.turnUsage.disengaged && !withinNoProvokeBudget && !suppressOpportunityForFlyby) {
     const fromPos = combatant.position;
     const toPos = intent.to;
-    const MELEE_REACH = 5;
+    // Slice 552: the reactor's effective melee threat range. Default
+    // is 5 ft; bumps to 10 ft when the reactor's equipped main-hand
+    // weapon carries the `reach` property (Glaive / Halberd / Lance /
+    // Pike / Whip per SRD 5.2.1). Pre-slice this was hardcoded to 5,
+    // so reach-weapon wielders couldn't threaten OAs at their RAW
+    // reach. Recomputed per reactor inside the loop.
+    const DEFAULT_MELEE_REACH = 5;
+    const REACH_PROPERTY_RANGE = 10;
     const enc = state.encounters[encounterId];
     if (enc) {
       for (const other of enc.combatants) {
         if (other.combatantId === intent.combatantId) continue;
         if (!other.position) continue;
+        const reactorChar = state.characters[other.combatantId];
+        // Compute this reactor's effective melee reach from their
+        // main-hand weapon (if any). Off-hand isn't checked: a creature
+        // with reach in off-hand only would be unusual; deferred until
+        // a canonical user appears.
+        let reactorReach = DEFAULT_MELEE_REACH;
+        const mhId = reactorChar?.equipped?.mainHand;
+        if (mhId !== undefined) {
+          const mhInstance = state.itemInstances[mhId];
+          const mhDef = mhInstance !== undefined
+            ? content.items.get(mhInstance.definitionId)
+            : undefined;
+          if (mhDef?.itemKind === 'weapon'
+            && mhDef.attackKind === 'melee'
+            && mhDef.properties.includes('reach')) {
+            reactorReach = REACH_PROPERTY_RANGE;
+          }
+        }
         const wasInReach =
           Math.max(Math.abs(other.position.x - fromPos.x), Math.abs(other.position.y - fromPos.y)) <=
-          MELEE_REACH;
+          reactorReach;
         const stillInReach =
           Math.max(Math.abs(other.position.x - toPos.x), Math.abs(other.position.y - toPos.y)) <=
-          MELEE_REACH;
+          reactorReach;
         if (!wasInReach || stillInReach) continue;
-        const reactorChar = state.characters[other.combatantId];
         // Unconscious / Incapacitated / Stunned / Paralyzed / Petrified
-        // creatures can't take reactions.
+        // creatures can't take reactions (reactorChar resolved above for
+        // reach lookup).
         if (!reactorChar || findActorBlockingCondition(reactorChar) !== undefined) continue;
         // Reaction already spent this round → no opportunity.
         if (other.turnUsage.reactionUsedThisRound) continue;
@@ -652,7 +707,9 @@ export const planThunderStep = (
       ability: 'CON',
       characters: state.characters,
     });
-    const d20 = rollDie(D20_SIDES, rng);
+    const rolls: number[] = [rollDie(D20_SIDES, rng)];
+    // Slice 543: Halfling Luck on this save site.
+    const d20 = applyHalflingLuckFromFlag(rolls[0]!, saveDerivation.hasHalflingLuck, rolls, rng);
     const saveBonus = rollSaveBonusDice(saveDerivation.bonusDice, rng);
     const bonus = saveDerivation.total + saveBonus.total;
     const total = d20 + bonus;
@@ -664,7 +721,7 @@ export const planThunderStep = (
       targetId: aff.combatantId as ULID,
       ability: 'CON',
       dc: dcResult.total,
-      d20: [d20],
+      d20: rolls,
       used: 'none',
       bonus,
       total,
@@ -705,6 +762,21 @@ export const planThunderStep = (
     };
     events.push(damage);
     events.push(...intercept.extraEvents);
+    // Slice 621: per-target concentration save on Thunder Step area damage.
+    const concTarget = stagedState.characters[aff.combatantId];
+    if (concTarget !== undefined) {
+      events.push(
+        ...planConcentrationOnDamage(
+          applyAll(stagedState, [damage, ...intercept.extraEvents]),
+          content,
+          rng,
+          concTarget,
+          intercept.components,
+          damage.id,
+          at,
+        ),
+      );
+    }
     stagedState = applyAll(stagedState, [damage, ...intercept.extraEvents]);
   }
 

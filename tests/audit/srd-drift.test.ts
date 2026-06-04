@@ -440,20 +440,28 @@ describe.runIf(SRD_AVAILABLE)('SRD 5.2.1 drift audit', () => {
 
     it('damage dice (top-level + onFailure) match SRD body', () => {
       const drift: string[] = [];
-      const dieRe = /\b(\d+d\d+)\s+(?:Acid|Bludgeoning|Cold|Fire|Force|Lightning|Necrotic|Piercing|Poison|Psychic|Radiant|Slashing|Thunder)\s+damage/i;
+      // Collect EVERY "Nd M <type> damage" die in the SRD body, not just
+      // the first. Multi-damage spells (Ice Knife: 1d10 Piercing + 2d6
+      // Cold; slice 497) carry one mechanic per damage component, and
+      // each component must match SOME die in the body — comparing every
+      // mechanic to only the first die wrongly flags the second component.
+      const dieRe = /\b(\d+d\d+)\s+(?:Acid|Bludgeoning|Cold|Fire|Force|Lightning|Necrotic|Piercing|Poison|Psychic|Radiant|Slashing|Thunder)\s+damage/gi;
       for (const sp of pack.spells) {
         const s = srd.get(sp.name as string);
         if (!s) continue;
+        const bodyDice = new Set<string>();
+        for (let m = dieRe.exec(s.body); m !== null; m = dieRe.exec(s.body)) {
+          bodyDice.add(m[1]!.toLowerCase());
+        }
+        if (bodyDice.size === 0) continue;
         const effects = (sp.mechanicalEffects as Array<Record<string, unknown>> | undefined) ?? [];
         for (const me of effects) {
           if (me.kind !== 'attack' && me.kind !== 'save') continue;
           const onFail = (me.onFailure as Record<string, unknown> | undefined) ?? {};
           const packDice = (me.damageDice as string | undefined) ?? (onFail.damageDice as string | undefined);
           if (!packDice) continue;
-          const m = dieRe.exec(s.body);
-          if (!m) continue;
-          if (packDice.toLowerCase() !== m[1]!.toLowerCase()) {
-            drift.push(`${sp.id as string}: pack=${packDice} SRD=${m[1]}`);
+          if (!bodyDice.has(packDice.toLowerCase())) {
+            drift.push(`${sp.id as string}: pack=${packDice} SRD=${[...bodyDice].join('/')}`);
           }
         }
       }

@@ -26,6 +26,7 @@ import { nowIso } from '../../internal/clock.js';
 import type { ULID } from '../ids-utils.js';
 import type { Character } from '../../schemas/runtime/character.js';
 import { planBreathWeaponRechargeAtTurnStart } from './breath-weapon.js';
+import { applyHalflingLuckFromFlag, applyHalflingLuckForCharacter } from './_halfling-luck.js';
 import { planRegenerationAtTurnStart } from './regeneration.js';
 
 const DEATH_SAVE_SUCCESS_THRESHOLD = 10;
@@ -48,6 +49,7 @@ const DEATH_SAVE_SUCCESSES_TO_STABILIZE = 3;
  */
 const planAutoExpireConditionsAtTurnStart = (
   state: CampaignState,
+  content: ResolvedContent,
   sourceCharacterId: string,
   round: number,
   causedByEventId: ULID,
@@ -56,7 +58,16 @@ const planAutoExpireConditionsAtTurnStart = (
   const events: ConditionRemovedEvent[] = [];
   for (const character of Object.values(state.characters)) {
     for (const applied of character.appliedConditions) {
-      if (applied.sourceCharacterId !== sourceCharacterId) continue;
+      // Slice 623: by default key the expiry on `sourceCharacterId`
+      // (so a condition with source = caster expires on the caster's
+      // turn). Conditions with `expirySourceFromBearer: true` key on
+      // the BEARER instead (Vex: source = vexed target for the
+      // consumeOnAttack filter, but expiry RAW is "end of YOUR next
+      // turn" — the vexer's, which is the bearer).
+      const expirySource = content.conditions.get(applied.conditionId)?.autoExpiry?.expirySourceFromBearer === true
+        ? character.id
+        : applied.sourceCharacterId;
+      if (expirySource !== sourceCharacterId) continue;
       if (applied.expiresOnRound === undefined) continue;
       if (applied.expiresOnRound > round) continue;
       if (applied.expiryTrigger === 'turnEnd') continue;
@@ -83,6 +94,7 @@ const planAutoExpireConditionsAtTurnStart = (
  */
 const planAutoExpireConditionsAtTurnEnd = (
   state: CampaignState,
+  content: ResolvedContent,
   sourceCharacterId: string,
   round: number,
   causedByEventId: ULID,
@@ -91,7 +103,12 @@ const planAutoExpireConditionsAtTurnEnd = (
   const events: ConditionRemovedEvent[] = [];
   for (const character of Object.values(state.characters)) {
     for (const applied of character.appliedConditions) {
-      if (applied.sourceCharacterId !== sourceCharacterId) continue;
+      // Slice 623: see planAutoExpireConditionsAtTurnStart -- same
+      // expirySourceFromBearer override.
+      const expirySource = content.conditions.get(applied.conditionId)?.autoExpiry?.expirySourceFromBearer === true
+        ? character.id
+        : applied.sourceCharacterId;
+      if (expirySource !== sourceCharacterId) continue;
       if (applied.expiresOnRound === undefined) continue;
       if (applied.expiresOnRound > round) continue;
       if (applied.expiryTrigger !== 'turnEnd') continue;
@@ -118,13 +135,17 @@ const planDeathSaveAtTurnStart = (
   rng: RNG,
   causedByEventId: ULID,
   at: string,
+  state: CampaignState,
+  content: ResolvedContent,
 ): ReadonlyArray<DeathSaveRolledEvent> => {
   if (!character) return [];
   if (character.hp.current > 0) return [];
   if (character.deathSaves.stable) return [];
   if (character.deathSaves.failures >= DEATH_SAVE_FAILURES_TO_DIE) return [];
   if (character.deathSaves.successes >= DEATH_SAVE_SUCCESSES_TO_STABILIZE) return [];
-  const d20 = rollDie(D20_SIDES, rng);
+  const rolls: number[] = [rollDie(D20_SIDES, rng)];
+  // Slice 543: Halfling Luck on death save.
+  const d20 = applyHalflingLuckForCharacter(rolls[0]!, character.id, state, content, rolls, rng);
   const success = d20 >= DEATH_SAVE_SUCCESS_THRESHOLD;
   const critical = d20 === NAT_20;
   const save: DeathSaveRolledEvent = {
@@ -198,12 +219,24 @@ export const planRollInitiative = (
         pendingChoices: state.pendingChoices,
       });
       const adv = effects.advantageFor('initiative');
+      const rolls: number[] = [];
       if (adv.advantage && !adv.disadvantage) {
-        d20 = Math.max(rollDie(D20_SIDES, rng), rollDie(D20_SIDES, rng));
+        const a = rollDie(D20_SIDES, rng);
+        const b = rollDie(D20_SIDES, rng);
+        rolls.push(a, b);
+        d20 = Math.max(a, b);
       } else if (adv.disadvantage && !adv.advantage) {
-        d20 = Math.min(rollDie(D20_SIDES, rng), rollDie(D20_SIDES, rng));
+        const a = rollDie(D20_SIDES, rng);
+        const b = rollDie(D20_SIDES, rng);
+        rolls.push(a, b);
+        d20 = Math.min(a, b);
       } else {
         d20 = rollDie(D20_SIDES, rng);
+        rolls.push(d20);
+      }
+      // Slice 543: Halfling Luck on initiative.
+      if (d20 === 1 && effects.hasHalflingLuck()) {
+        d20 = applyHalflingLuckFromFlag(d20, true, rolls, rng);
       }
       effectModifier = effects.modifierSum('initiative', new Map());
     } else {
@@ -345,6 +378,7 @@ export const planAdvanceTurn = (
   // the next combatant's actions.
   const endTurnExpired = planAutoExpireConditionsAtTurnEnd(
     state,
+    content,
     current.combatantId,
     encounter.round,
     turnEnd.id,
@@ -374,9 +408,12 @@ export const planAdvanceTurn = (
       rng,
       nextTurn.id,
       at,
+      state,
+      content,
     );
     const expired = planAutoExpireConditionsAtTurnStart(
       state,
+      content,
       first.combatantId,
       encounter.round + 1,
       nextTurn.id,
@@ -407,9 +444,12 @@ export const planAdvanceTurn = (
     rng,
     nextTurn.id,
     at,
+    state,
+    content,
   );
   const expired = planAutoExpireConditionsAtTurnStart(
     state,
+    content,
     next.combatantId,
     encounter.round,
     nextTurn.id,
@@ -456,6 +496,8 @@ export const planBeginFirstTurn = (
     rng,
     turnStart.id,
     at,
+    state,
+    content,
   );
   const recharge = planBreathWeaponRechargeAtTurnStart(
     state,

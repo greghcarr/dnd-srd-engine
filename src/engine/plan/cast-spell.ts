@@ -2,6 +2,7 @@ import type { CampaignState } from '../../schemas/runtime/campaign.js';
 import type { ResolvedContent } from '../../content/pack.js';
 import type { Event } from '../../schemas/events/index.js';
 import type {
+  FreeCastUsedEvent,
   PactSlotConsumedEvent,
   SpellCastDeclaredEvent,
   SpellSlotConsumedEvent,
@@ -40,23 +41,31 @@ import {
   newCharacterId,
   newEffectInstanceId,
   newEventId,
+  newItemInstanceId,
   newTrapId,
 } from '../../ids.js';
+import type { ItemBuffAppliedEvent } from '../../schemas/events/inventory.js';
+import type { ResourceSpentEvent } from '../../schemas/events/resources.js';
 import { computeSpellSaveDC, computeSpellAttackBonus } from '../../derive/spell-dc.js';
 import { effectiveSpellList } from '../../derive/effective-spell-list.js';
 import { computeAvailableSpellSlots } from '../../derive/spell-slots.js';
 import { computeAC } from '../../derive/ac.js';
 import { computeSavingThrow } from '../../derive/save.js';
+import { getCreatureType } from '../../derive/creature-type.js';
+import { creatureSize, isLargeOrLarger } from '../../derive/creature-size.js';
 import { rollSaveBonusDice } from './_bonus-dice.js';
 import { abilityModifier } from '../../derive/ability.js';
+import { resolveAttack } from './attack.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { applyAll } from '../apply.js';
+import { dispatchTriggers } from '../triggers/dispatch.js';
 import { buildEffectStack } from '../../derive/effect-stack.js';
 import { isImmuneToCondition } from '../../derive/condition-immunity.js';
 import { isHealingBlocked } from '../../derive/healing-block.js';
-import { planConcentrationBreakOnDrop } from './concentration.js';
-import { assertActorCanAct } from './_actor-state.js';
+import { planConcentrationOnDamage } from './concentration.js';
+import { resolveAttackRoll } from './_attack-roll.js';
+import { assertActorCanAct, findActorBlockingCondition } from './_actor-state.js';
 import { parseSpellDurationMinutes } from '../../internal/spell-duration.js';
 import {
   CANTRIP_LEVEL,
@@ -110,20 +119,80 @@ export interface CastSpellIntent {
   // by magic items that let the bearer cast from a fixed catalog
   // regardless of class.
   readonly ignorePreparation?: boolean;
+  // Slice 486: opts this cast into the once-per-long-rest free-cast
+  // tracker. Validates that the spell is granted with `oncePerLongRest`
+  // preparation (Magic Initiate L1 spell, Warlock Contact Patron) AND
+  // hasn't already been used since the last long rest, then implies
+  // `noSlotCost: true` and emits a FreeCastUsed event so the reducer
+  // records the consumption. Without this flag, the same caster can
+  // still cast the spell normally via an owned slot (RAW: "You can
+  // also cast the spell using any spell slots you have").
+  readonly useFreeCast?: boolean;
+  // Slice 494: required by spells whose mechanicalEffects include a
+  // `weaponAttack` mechanic (True Strike). Names the weapon instance
+  // the caster uses to make the attack. The planner reads this and
+  // delegates to resolveAttack with the caster's spellcasting ability
+  // as the abilityOverride. Throws if a weaponAttack-mechanic spell is
+  // cast without this field set.
+  readonly weaponInstanceId?: string;
+  // Slice 495: required by spells whose mechanicalEffects include a
+  // `zone` mechanic (Fog Cloud, Darkness, Silent Image, etc.). Names
+  // the center of the AOE. The planner reads this + the spell's
+  // `targeting` shape/size and stamps a `zone` field on the emitted
+  // ConcentrationStarted event. Throws if a zone-mechanic spell is
+  // cast without this field set.
+  readonly targetPosition?: { readonly x: number; readonly y: number };
   readonly at?: string;
 }
 
+// Slice 487: returns undefined when the character has no spellcasting
+// class (Magic Initiate Fighter / Rogue / Barbarian). The caller falls
+// back to the GrantSpell entry's `spellcastingAbility` via
+// `resolveCastingAbility` below to compute DC / attack. Pre-487 this
+// threw at this point, blocking non-spellcasters from casting their
+// granted spells through the planner.
 const findCastingClass = (
   character: Character,
   content: ResolvedContent,
   preferred?: string,
-): string => {
+): string | undefined => {
   if (preferred !== undefined) return preferred;
   for (const enrollment of character.classes) {
     const cls = content.classes.get(enrollment.classId);
     if (cls?.spellcasting !== undefined) return enrollment.classId;
   }
-  throw new Error(`Character has no spellcasting class`);
+  return undefined;
+};
+
+// Slice 487: resolves the spellcasting ability the cast should use.
+// Class first (preserves existing behavior for spellcasters); falls back
+// to the GrantSpell entry's `spellcastingAbility` for the spell being
+// cast. Returns undefined when the bearer can't cast the spell via any
+// recognized path; the caller throws an intent-revealing error.
+const resolveCastingAbility = (
+  character: Character,
+  content: ResolvedContent,
+  state: CampaignState,
+  classId: string | undefined,
+  spellId: string,
+): 'INT' | 'WIS' | 'CHA' | undefined => {
+  if (classId !== undefined) {
+    const cls = content.classes.get(classId);
+    const ability = cls?.spellcasting?.ability;
+    if (ability === 'INT' || ability === 'WIS' || ability === 'CHA') return ability;
+  }
+  const effects = buildEffectStack({
+    character,
+    content,
+    itemInstances: state.itemInstances,
+    pendingChoices: state.pendingChoices,
+  });
+  const grant = effects.grantedSpells().find((g) => g.spellId === spellId);
+  const grantAbility = grant?.spellcastingAbility;
+  if (grantAbility === 'INT' || grantAbility === 'WIS' || grantAbility === 'CHA') {
+    return grantAbility;
+  }
+  return undefined;
 };
 
 const characterKnowsSpell = (
@@ -202,6 +271,30 @@ const rollCantripScaling = (
 };
 
 const halveDamage = (totalDamage: number): number => Math.floor(totalDamage / 2);
+
+// Slice 498: exploding ("aceing") damage. Each die in `initialRolls`
+// that already rolled the max face spawns one extra die of `dieSize`;
+// an extra die that also maxes spawns another (chained), with the total
+// number of extra dice capped at `extraCap`. Returns only the extra
+// rolls (the caller appends them to the base rolls). Cap <= 0 -> no
+// extras. Canonical user: Sorcerous Burst (cap = spellcasting mod).
+const rollExplodingExtras = (
+  initialRolls: ReadonlyArray<number>,
+  dieSize: number,
+  extraCap: number,
+  rng: RNG,
+): number[] => {
+  const extras: number[] = [];
+  if (extraCap <= 0) return extras;
+  let pendingExplosions = initialRolls.filter((r) => r === dieSize).length;
+  while (pendingExplosions > 0 && extras.length < extraCap) {
+    pendingExplosions -= 1;
+    const roll = rollDie(dieSize, rng);
+    extras.push(roll);
+    if (roll === dieSize) pendingExplosions += 1;
+  }
+  return extras;
+};
 
 // Shared variant-resolution for buff and save mechanics. The two
 // mechanic kinds share the same `casterChoosesVariant` shape (a
@@ -319,7 +412,8 @@ const planAttackMechanic = (
   mechanic: Extract<SpellMechanic, { kind: 'attack' }>,
   declaredEventId: string,
   at: string,
-  castingClassId: string,
+  castingClassId: string | undefined,
+  castingAbility: 'INT' | 'WIS' | 'CHA',
 ): Event[] => {
   const character = state.characters[intent.characterId];
   if (!character) throw new Error(`Unknown character ${intent.characterId}`);
@@ -327,11 +421,17 @@ const planAttackMechanic = (
     character,
     itemInstances: state.itemInstances,
     content,
-    classId: castingClassId,
+    classId: castingClassId ?? '',
     characters: state.characters,
+    castingAbility,
   });
   const bonusDice = (mechanic.extraDicePerSlotLevel ?? 0) * Math.max(0, intent.slotLevel - spell.level);
-  const cantripSteps = spell.level === CANTRIP_LEVEL ? cantripExtraDice(computeTotalLevel(character)) : 0;
+  // Slice 562: beam-scaling cantrips (Eldritch Blast) scale by BEAM
+  // COUNT, not by extra dice per beam. Skip cantripScalingDice
+  // accumulation so each beam rolls only the base `damageDice`.
+  const cantripSteps = spell.level === CANTRIP_LEVEL && mechanic.cantripBeamScaling !== true
+    ? cantripExtraDice(computeTotalLevel(character))
+    : 0;
   const damageType = resolveAttackDamageType(mechanic, intent, spell.id);
   // Slice 204: spell damage now consults the caster's effect stack
   // for `AddModifier { target: 'damage' }` contributions, gated on the
@@ -348,10 +448,42 @@ const planAttackMechanic = (
   const damageFacts = new Map<string, unknown>([
     ['event.damageType', damageType],
     ['event.spellSchool', spell.school],
+    // Slice 510: enables per-spell damage riders (Warlock Agonizing Blast
+    // adds CHA-mod to Eldritch Blast damage rolls only). Predicate uses
+    // `eq event.spellId '<spell-id>'`.
+    ['event.spellId', spell.id],
   ]);
   const damageModifierBonus = casterEffects.modifierSum('damage', damageFacts);
   const events: Event[] = [];
-  for (const targetId of intent.targetIds) {
+  // Slice 562: cantripBeamScaling caps targetIds at the level-scaled
+  // beam count (Eldritch Blast: 1/2/3/4 beams at L1/5/11/17). Reuses
+  // cantripExtraDice (returns 0/1/2/3 at those tiers); maxBeams = 1 +
+  // that. Rejects exceeding intent so consumers see the gate at plan
+  // time. Each beam is an independent attack roll — base `damageDice`
+  // per beam, NO cantripScalingDice (the scaling IS the beam count).
+  // Repeated target ids are allowed (RAW: "the same or different
+  // creatures"). The schema's strict() rejects spells that author
+  // both cantripBeamScaling AND cantripScalingDice via parse-time
+  // strictness on `cantripScalingDice` set to something incompatible.
+  if (mechanic.cantripBeamScaling === true) {
+    const maxBeams = 1 + cantripExtraDice(computeTotalLevel(character));
+    if (intent.targetIds.length < 1) {
+      throw new Error(`Spell ${spell.id} requires at least one beam target`);
+    }
+    if (intent.targetIds.length > maxBeams) {
+      throw new Error(
+        `Spell ${spell.id} fires ${maxBeams} beam${maxBeams === 1 ? '' : 's'} at character level ${computeTotalLevel(character)}; received ${intent.targetIds.length} target id${intent.targetIds.length === 1 ? '' : 's'}`,
+      );
+    }
+  }
+  // Slice 497: `targetScope: 'first'` makes the attack resolve against
+  // only the primary target (targetIds[0]); a sibling save mechanic
+  // covers the rest of the AOE. Default ('all' / unset) attacks every
+  // target, the historical behavior.
+  const attackTargetIds = mechanic.targetScope === 'first'
+    ? intent.targetIds.slice(0, 1)
+    : intent.targetIds;
+  for (const targetId of attackTargetIds) {
     const target = state.characters[targetId];
     if (!target) continue;
     const targetAC = computeAC({
@@ -360,11 +492,147 @@ const planAttackMechanic = (
       content,
       characters: state.characters,
     });
-    const d20 = rollDie(D20_SIDES, rng);
-    const total = d20 + attackBonus.total;
-    const isCrit = d20 === NAT_20;
-    const isMiss = d20 === NAT_1;
-    const hit = !isMiss && (isCrit || total >= targetAC.total);
+    // Slice 602: spell attacks now consult the target's effect stack
+    // for advantage/disadvantage contributions exactly like weapon
+    // attacks do. RAW (2024 PHB Spellcasting): "If you cast a spell
+    // that has an attack roll, follow the rules for an attack roll."
+    // Faerie Fire's "Attack rolls against an affected creature have
+    // Advantage" is the canonical user — pre-slice it only fired for
+    // weapon attacks because cast-spell.ts rolled a bare d20 here.
+    // Same scope as the target-side branch of planAttack: the three
+    // accumulator queries (grantsAdvantageToAttackers,
+    // imposesDisadvantageOnAttackers, cancelsAdvantageOnAttackers) plus
+    // ranged-spell-in-melee disadvantage. Predicate facts mirror
+    // attack.ts so the same content-side conditions wire through both
+    // paths uniformly.
+    const targetEffects = buildEffectStack({
+      character: target,
+      content,
+      itemInstances: state.itemInstances,
+      pendingChoices: state.pendingChoices,
+    });
+    const targetSideAttackerFacts = new Map<string, unknown>([
+      ['event.attackKind', mechanic.attackKind],
+    ]);
+    const targetGrantsAdvantage = targetEffects.grantsAdvantageToAttackers(targetSideAttackerFacts);
+    const targetBearerFacts = new Map<string, unknown>([
+      ['bearerHasIncapacitated', findActorBlockingCondition(target) !== undefined],
+    ]);
+    const targetCancelsAdvantage = targetEffects.cancelsAdvantageOnAttackers(targetBearerFacts);
+    const attackerSideFacts = new Map<string, unknown>([
+      ['event.attackKind', mechanic.attackKind],
+      ['event.isOpportunityAttack', false],
+      ['bearer.hasIncapacitated', findActorBlockingCondition(target) !== undefined],
+      ['bearer.speedZero', target.speedFeet === 0],
+      ['bearer.canSeeAttacker', undefined],
+    ]);
+    const targetImposesDisadvantage = targetEffects.imposesDisadvantageOnAttackers(attackerSideFacts);
+
+    // RAW (PHB Ranged Attacks in Close Combat): "Aiming a ranged
+    // attack is more difficult when a foe is next to you. When you
+    // make a ranged attack roll with a weapon, a spell, or some
+    // other means, you have Disadvantage on the roll if you are
+    // within 5 feet of an enemy who can see you and who isn't
+    // Incapacitated." Mirrors the planAttack `rangedInMelee` check
+    // (slice 537+); applies to ranged SPELL attacks too.
+    const rangedSpellInMelee = ((): boolean => {
+      if (mechanic.attackKind !== 'ranged') return false;
+      if (!state.activeEncounterId) return false;
+      const enc = state.encounters[state.activeEncounterId];
+      if (!enc) return false;
+      const casterCb = enc.combatants.find((c) => c.combatantId === intent.characterId);
+      const casterPos = casterCb?.position;
+      if (!casterPos) return false;
+      return enc.combatants.some((other) => {
+        if (other.combatantId === intent.characterId) return false;
+        const otherPos = other.position;
+        if (!otherPos) return false;
+        const ch = state.characters[other.combatantId];
+        if (!ch) return false;
+        if (findActorBlockingCondition(ch) !== undefined) return false;
+        const dx = Math.abs(otherPos.x - casterPos.x);
+        const dy = Math.abs(otherPos.y - casterPos.y);
+        return Math.max(dx, dy) <= 5;
+      });
+    })();
+
+    // Slice 611: spell attacks now go through the same resolveAttackRoll
+    // helper as weapon attacks. Side benefit: Halfling Luck (nat-1
+    // reroll), Bless +1d4 / Bane -1d4 bonus dice, and extended crit
+    // ranges (Improved Critical) all fire automatically for spell
+    // attacks — pre-slice they were weapon-only because cast-spell.ts
+    // had its own bare-d20 roll path. RAW (PHB Spellcasting): "If you
+    // cast a spell that has an attack roll, follow the rules for an
+    // attack roll."
+    const casterAttackFacts = new Map<string, unknown>([
+      ['event.attackKind', mechanic.attackKind],
+      ['event.spellId', spell.id],
+      ['event.spellSchool', spell.school],
+      ['event.isOpportunityAttack', false],
+      // Slice 627: the class through which the bearer is casting this
+      // spell (resolved by findCastingClassForSpell -- the first of
+      // the caster's classes that lists the spell in its class spell
+      // list). Used by Innate Sorcery's SetAdvantage to gate the
+      // advantage on Sorcerer-list spells only (closes the slice-623
+      // RAW deviation: "advantage on attack rolls of Sorcerer spells
+      // you cast", not all spells). Undefined for monsters / NPCs
+      // (who don't have a class-based spell list).
+      ['event.spellCastingClassId', castingClassId],
+    ]);
+    // Slice 623: query attacker-side advantage on spell attacks.
+    // Pre-slice this was a gap -- the spell-attack path never folded
+    // attacker-side SetAdvantage effects in (mirror of attack.ts:867
+    // for weapons). Canonical RAW user closed here: Sorcerer L1 Innate
+    // Sorcery, which grants Advantage on the attack rolls of Sorcerer
+    // spells you cast (the slice-622 fuzz review at seed 7006 caught
+    // it never firing). Surfaced via the innate-sorcery-active
+    // condition's new SetAdvantage on:'attack' effect. Slice 627
+    // tightened that to gate on event.spellCastingClassId.
+    const casterSelfAdvantage = casterEffects.advantageFor('attack', casterAttackFacts);
+
+    const effectivelyGrantsAdvantage = !targetCancelsAdvantage && targetGrantsAdvantage;
+    const effectivelyImposesDisadvantage = targetImposesDisadvantage || rangedSpellInMelee;
+    // Slice 623 (continued): also fold the attacker-side advantage
+    // computed above (Innate Sorcery etc.). The cancel-on-tie rule
+    // applies symmetrically: any grant + any impose -> straight roll.
+    const grantsFromAnywhere = effectivelyGrantsAdvantage || casterSelfAdvantage.advantage;
+    const imposesFromAnywhere = effectivelyImposesDisadvantage || casterSelfAdvantage.disadvantage;
+    let advantage: 'none' | 'advantage' | 'disadvantage' = 'none';
+    if (grantsFromAnywhere && imposesFromAnywhere) {
+      advantage = 'none';
+    } else if (grantsFromAnywhere) {
+      advantage = 'advantage';
+    } else if (imposesFromAnywhere) {
+      advantage = 'disadvantage';
+    }
+    // RAW Paralyzed/Unconscious melee auto-crit (slice 568 originally
+    // for weapon attacks): the same rule applies to MELEE spell
+    // attacks. The five RAW melee spell attacks (Shocking Grasp,
+    // Spiritual Weapon, Chill Touch, Flame Blade, Vampiric Touch) get
+    // the auto-crit on hits against Paralyzed/Unconscious/HP-0 targets.
+    const targetAutoCritsFromMelee = ((): boolean => {
+      if (mechanic.attackKind !== 'melee') return false;
+      if (target.hp.current <= 0) return true;
+      return target.appliedConditions.some(
+        (c) => c.conditionId === 'paralyzed'
+          || c.conditionId === 'held-paralyzed-active'
+          || c.conditionId === 'unconscious',
+      );
+    })();
+    const rollResult = resolveAttackRoll({
+      advantage,
+      attackBonus: attackBonus.total,
+      targetAC: targetAC.total,
+      attackerHasHalflingLuck: casterEffects.hasHalflingLuck(),
+      bonusDiceContributions: casterEffects.bonusDiceFor('attack', casterAttackFacts),
+      critThreshold: casterEffects.critThreshold(),
+      forceCritIfHit: targetAutoCritsFromMelee,
+      rng,
+    });
+    // Aliases so the downstream damage-roll / potent-cantrip / damage-
+    // event code keeps its existing variable names.
+    const hit = rollResult.hit;
+    const isCrit = rollResult.critical;
 
     const attackEvent: AttackRolledEvent = {
       id: newEventId() as ULID,
@@ -373,13 +641,24 @@ const planAttackMechanic = (
       attackerId: intent.characterId,
       targetId,
       weaponInstanceId: intent.spellId as ULID,
-      d20: [d20],
-      used: 'none',
-      attackBonus: attackBonus.total,
-      total,
+      d20: rollResult.rolls,
+      used: advantage,
+      attackBonus: rollResult.effectiveAttackBonus,
+      total: rollResult.total,
       targetAC: targetAC.total,
-      hit,
-      critical: isCrit,
+      hit: rollResult.hit,
+      critical: rollResult.critical,
+      ...(rollResult.bonusDice.rolls.length > 0
+        ? {
+            bonusDice: rollResult.bonusDice.rolls.map((b) => ({
+              dice: b.dice,
+              rolls: [...b.rolls],
+              subtract: b.subtract,
+              source: b.source,
+              total: b.total,
+            })),
+          }
+        : {}),
       // Melee vs Ranged Spell Attack, from the mechanic (defaults to
       // 'ranged'). Slice 371: the five RAW melee spell attacks (Shocking
       // Grasp, Spiritual Weapon, Chill Touch, Flame Blade, Vampiric Touch)
@@ -391,6 +670,20 @@ const planAttackMechanic = (
     };
     events.push(attackEvent);
 
+    // Mirrors the weapon-attack AttackRolled dispatch in planAttack so
+    // attack-triggered riders (Hex, Hunter's Mark) fire on spell-attack
+    // hits. The DamageApplied dispatch below covers damage-side
+    // triggers (Repelling Blast) but not riders gated on event.hit.
+    events.push(
+      ...dispatchTriggers({
+        state: applyAll(state, events),
+        content,
+        rng,
+        event: attackEvent,
+        at,
+      }),
+    );
+
     // Evoker L3 Potent Cantrip: a damaging cantrip that misses the attack
     // still deals half damage (no crit, no additional effect). A plain
     // miss skips the target entirely.
@@ -400,7 +693,18 @@ const planAttackMechanic = (
 
     const { rolls: baseRolls, modifier } = rollDamage(mechanic.damageDice, bonusDice, rng, isCrit);
     const scalingRolls = rollCantripScaling(mechanic.cantripScalingDice, cantripSteps, rng, isCrit);
-    const rolls = [...baseRolls, ...scalingRolls];
+    // Slice 498: exploding damage (Sorcerous Burst). Each base/scaling die
+    // that maxed spawns an extra die (chained), capped at the caster's
+    // spellcasting ability modifier.
+    const explodeRolls = mechanic.explodeOnMaxDie === true
+      ? rollExplodingExtras(
+          [...baseRolls, ...scalingRolls],
+          parseDiceExpression(mechanic.damageDice).die,
+          Math.max(0, abilityModifier(character.abilityScores[castingAbility])),
+          rng,
+        )
+      : [];
+    const rolls = [...baseRolls, ...scalingRolls, ...explodeRolls];
     const fullDamage = rolls.reduce((s, v) => s + v, 0) + modifier + damageModifierBonus;
     const damageTotal = potentHalfOnMiss ? halveDamage(Math.max(0, fullDamage)) : fullDamage;
     const damageRolled: DamageRolledEvent = {
@@ -449,10 +753,30 @@ const planAttackMechanic = (
       sourceCharacterId: intent.characterId as ULID,
       source: spell.id,
     };
+    // Slice 621: snapshot pre-damage state so the conc helper sees (a)
+    // whether a prior event in this planner already broke conc -- skip
+    // duplicate save -- and (b) the target's pre-this-damage HP, so a
+    // drop-to-0 from THIS damage classifies as 'unconscious' not
+    // 'failedSave'. Mirrors the attack.ts:1423 fix.
+    const stateBeforeThisDamage = applyAll(state, events);
     events.push(damageApplied);
     events.push(...intercept.extraEvents);
+    const targetForConc = stateBeforeThisDamage.characters[targetId] ?? target;
     events.push(
-      ...planConcentrationBreakOnDrop(target, intercept.components, damageApplied.id, at),
+      ...planConcentrationOnDamage(stateBeforeThisDamage, content, rng, targetForConc, intercept.components, damageApplied.id, at),
+    );
+    // Slice 516: dispatch OnEvent triggers on the spell-attack
+    // DamageApplied so per-spell on-hit riders fire (canonical user:
+    // Warlock Repelling Blast — push 10 ft on Eldritch Blast hits).
+    // Mirrors the resolveAttack damageTriggers dispatch (attack.ts).
+    events.push(
+      ...dispatchTriggers({
+        state: applyAll(state, events),
+        content,
+        rng,
+        event: damageApplied,
+        at,
+      }),
     );
   }
   return events;
@@ -472,7 +796,8 @@ const planSaveMechanic = (
   mechanic: Extract<SpellMechanic, { kind: 'save' }>,
   declaredEventId: string,
   at: string,
-  castingClassId: string,
+  castingClassId: string | undefined,
+  castingAbility: 'INT' | 'WIS' | 'CHA',
 ): SaveMechanicOutcome => {
   const character = state.characters[intent.characterId];
   if (!character) throw new Error(`Unknown character ${intent.characterId}`);
@@ -480,8 +805,9 @@ const planSaveMechanic = (
     character,
     itemInstances: state.itemInstances,
     content,
-    classId: castingClassId,
+    classId: castingClassId ?? '',
     characters: state.characters,
+    castingAbility,
   });
   const bonusDice = (mechanic.extraDicePerSlotLevel ?? 0) * Math.max(0, intent.slotLevel - spell.level);
   const cantripSteps = spell.level === CANTRIP_LEVEL ? cantripExtraDice(computeTotalLevel(character)) : 0;
@@ -519,6 +845,8 @@ const planSaveMechanic = (
     const damageFacts = new Map<string, unknown>([
       ['event.damageType', mechanic.damageType],
       ['event.spellSchool', spell.school],
+      // Slice 510: per-spell damage rider parallel to the attack path.
+      ['event.spellId', spell.id],
     ]);
     saveDamageModifierBonus = casterEffects.modifierSum('damage', damageFacts);
     const { rolls: baseRolls, modifier } = rollDamage(mechanic.damageDice, bonusDice, rng, false);
@@ -538,6 +866,15 @@ const planSaveMechanic = (
   for (const targetId of intent.targetIds) {
     const target = state.characters[targetId];
     if (!target) continue;
+    // Slice 500: type-gated save (Animal Friendship targets Beasts only).
+    // A target whose creature type doesn't match is skipped — no save,
+    // no condition.
+    if (
+      mechanic.targetCreatureType !== undefined &&
+      getCreatureType(target, content) !== mechanic.targetCreatureType
+    ) {
+      continue;
+    }
     const saveDerivation = computeSavingThrow({
       character: target,
       itemInstances: state.itemInstances,
@@ -554,6 +891,12 @@ const planSaveMechanic = (
       // undefined and per-condition gates evaluate false.
       ...(conditionOnFail !== undefined ? { savePreventsCondition: conditionOnFail } : {}),
     });
+    // Slice 503: Ensnaring Strike's "Large or larger creature has
+    // Advantage on this save" — folded into hasAdvantage per-target.
+    const sizeGrantsAdvantage =
+      mechanic.largeCreatureAdvantage === true &&
+      isLargeOrLarger(creatureSize(target, content));
+    const hasAdvantage = saveDerivation.hasAdvantage || sizeGrantsAdvantage;
     // Slice 131: honor save advantage / disadvantage. Pre-slice 131
     // this path always rolled a single d20, silently ignoring effect-
     // stack save-advantage signals (Magic Resistance, Holy Aura,
@@ -561,15 +904,15 @@ const planSaveMechanic = (
     // SaveResult flags. Single d20 still wires when neither advantage
     // nor disadvantage applies (common case).
     const rolls: number[] = [rollDie(D20_SIDES, rng)];
-    if (saveDerivation.hasAdvantage || saveDerivation.hasDisadvantage) {
+    if (hasAdvantage || saveDerivation.hasDisadvantage) {
       rolls.push(rollDie(D20_SIDES, rng));
     }
-    const used = saveDerivation.hasAdvantage
+    const used = hasAdvantage
       ? 'advantage'
       : saveDerivation.hasDisadvantage
         ? 'disadvantage'
         : 'none';
-    const usedD20 = saveDerivation.hasAdvantage
+    const usedD20 = hasAdvantage
       ? Math.max(...rolls)
       : saveDerivation.hasDisadvantage
         ? Math.min(...rolls)
@@ -661,10 +1004,13 @@ const planSaveMechanic = (
           sourceCharacterId: intent.characterId as ULID,
           source: spell.id,
         };
+        // Slice 621: pre-damage state for conc helper (see attack.ts:1423).
+        const stateBeforeThisDamage = applyAll(state, events);
         events.push(damageApplied);
         events.push(...intercept.extraEvents);
+        const targetForConc = stateBeforeThisDamage.characters[targetId] ?? target;
         events.push(
-          ...planConcentrationBreakOnDrop(target, intercept.components, damageApplied.id, at),
+          ...planConcentrationOnDamage(stateBeforeThisDamage, content, rng, targetForConc, intercept.components, damageApplied.id, at),
         );
       }
     }
@@ -678,6 +1024,25 @@ const planSaveMechanic = (
       });
       if (!immune) {
         const appliedConditionId = newAppliedConditionId();
+        // Slice 563: source the condition from the target itself (for
+        // target-relative durations: Vicious Mockery's "end of its
+        // next turn"). Defaults to caster — the historical behavior.
+        const conditionSourceId = mechanic.applyConditionSourceFromTarget === true
+          ? (targetId as ULID)
+          : (intent.characterId as ULID);
+        // Stamp autoExpiry on the apply event when the condition has
+        // it (mirror of the attack-rider applyRiderCondition shape so
+        // turnStart/turnEnd sweeps see the expiresOnRound).
+        const autoExpiry = content.conditions.get(conditionOnFail)?.autoExpiry;
+        const currentEncounterRound = state.activeEncounterId
+          ? state.encounters[state.activeEncounterId]?.round
+          : undefined;
+        const expiryFields = autoExpiry !== undefined && currentEncounterRound !== undefined
+          ? {
+              expiresOnRound: currentEncounterRound + autoExpiry.afterRounds,
+              expiryTrigger: autoExpiry.trigger,
+            }
+          : {};
         const cond: ConditionAppliedEvent = {
           id: newEventId() as ULID,
           at,
@@ -685,8 +1050,11 @@ const planSaveMechanic = (
           targetId,
           conditionId: conditionOnFail,
           appliedConditionId,
-          sourceCharacterId: intent.characterId as ULID,
+          sourceCharacterId: conditionSourceId,
           causedByEventId: saveEvent.id,
+          // Slice 500: Animal Friendship's "ends if damaged" arm.
+          ...(mechanic.conditionEndsOnDamage === true ? { endsOnDamage: true } : {}),
+          ...expiryFields,
         };
         events.push(cond);
         conditionsApplied.push({
@@ -1187,9 +1555,12 @@ const planHpThresholdMechanic = (
       sourceCharacterId: intent.characterId as ULID,
       source: spell.id,
     };
+    // Slice 621: pre-damage state for conc helper (see attack.ts:1423).
+    const stateBeforeThisDamage = applyAll(state, events);
     events.push(damageApplied);
     events.push(...intercept.extraEvents);
-    events.push(...planConcentrationBreakOnDrop(target, intercept.components, damageApplied.id, at));
+    const targetForConc = stateBeforeThisDamage.characters[targetId] ?? target;
+    events.push(...planConcentrationOnDamage(stateBeforeThisDamage, content, rng, targetForConc, intercept.components, damageApplied.id, at));
   }
   return events;
 };
@@ -1247,7 +1618,8 @@ const planTrapMechanic = (
   mechanic: Extract<SpellMechanic, { kind: 'trap' }>,
   declaredEventId: string,
   at: string,
-  castingClassId: string,
+  castingClassId: string | undefined,
+  castingAbility: 'INT' | 'WIS' | 'CHA',
 ): Event[] => {
   const damageType = resolveTrapDamageType(mechanic, intent, spell.id);
 
@@ -1259,8 +1631,9 @@ const planTrapMechanic = (
       character,
       itemInstances: state.itemInstances,
       content,
-      classId: castingClassId,
+      classId: castingClassId ?? '',
       characters: state.characters,
+      castingAbility,
     });
     dc = dcResult.total;
   }
@@ -1319,6 +1692,182 @@ const resolveTrapDamageType = (
   return mechanic.damageType;
 };
 
+// Slice 494: weapon-attack-via-spell mechanic dispatch. Canonical user:
+// True Strike RAW (2024 cantrip): "you make one attack with the weapon
+// used in the spell's casting. The attack uses your spellcasting
+// ability for the attack and damage rolls instead of using Strength or
+// Dexterity." Resolves to a normal resolveAttack call with the
+// caster's spellcasting ability passed as the abilityOverride.
+// Requires `intent.weaponInstanceId` (the weapon used in the spell's
+// casting); throws if absent. Targets the first entry in
+// `intent.targetIds` (single-target attack per RAW).
+//
+// Deferred RAW arms (still consumer-managed / partial):
+//   - Damage-type choice (radiant-or-normal). For now the attack
+//     deals the weapon's printed damage type; the caster cannot
+//     pick Radiant via the engine yet.
+//   - Cantrip-scaling extra Radiant at character levels 5 / 11 / 17
+//     (+1d6 / +2d6 / +3d6). Needs a follow-up that runs the cantrip
+//     scaling against a flat radiant rider; documented as deferred.
+const planWeaponAttackMechanic = (
+  state: CampaignState,
+  content: ResolvedContent,
+  rng: RNG,
+  intent: CastSpellIntent,
+  spell: Spell,
+  castingAbility: 'INT' | 'WIS' | 'CHA',
+  declaredEventId: string,
+  at: string,
+): Event[] => {
+  if (intent.weaponInstanceId === undefined) {
+    throw new Error(
+      `Spell ${spell.id} is a weaponAttack mechanic and requires intent.weaponInstanceId`,
+    );
+  }
+  if (intent.targetIds.length === 0) {
+    throw new Error(`Spell ${spell.id} weaponAttack requires a targetId`);
+  }
+  const targetId = intent.targetIds[0]!;
+  return [...resolveAttack({
+    state,
+    content,
+    rng,
+    attackerId: intent.characterId,
+    targetId,
+    weaponInstanceId: intent.weaponInstanceId,
+    abilityOverride: castingAbility,
+    at,
+  })].map((e, i) => i === 0 ? { ...e, causedByEventId: declaredEventId as ULID } as Event : e);
+};
+
+// Slice 501: weapon-buff mechanic dispatch. Stamps a Shillelagh-style
+// transformation onto the named weapon instance via one ItemBuffApplied
+// (no concentration link: Shillelagh is a 1-minute non-concentration
+// effect, consumer-managed expiry). The damage-type choice (if any) is
+// resolved from intent.casterChoice; a pick outside the allowed list
+// leaves the weapon's normal type. Validates the instance exists and is
+// a weapon so misuse fails at plan time.
+const planWeaponBuffMechanic = (
+  state: CampaignState,
+  content: ResolvedContent,
+  intent: CastSpellIntent,
+  spell: Spell,
+  mechanic: Extract<SpellMechanic, { kind: 'weapon-buff' }>,
+  castingAbility: 'INT' | 'WIS' | 'CHA',
+  declaredEventId: string,
+  at: string,
+): Event[] => {
+  if (intent.weaponInstanceId === undefined) {
+    throw new Error(
+      `Spell ${spell.id} is a weapon-buff mechanic and requires intent.weaponInstanceId`,
+    );
+  }
+  const instance = state.itemInstances[intent.weaponInstanceId];
+  if (instance === undefined) {
+    throw new Error(
+      `Spell ${spell.id} weapon-buff references unknown weapon instance ${intent.weaponInstanceId}`,
+    );
+  }
+  const def = content.items.get(instance.definitionId);
+  if (def === undefined || def.itemKind !== 'weapon') {
+    throw new Error(
+      `Spell ${spell.id} weapon-buff target ${intent.weaponInstanceId} is not a weapon`,
+    );
+  }
+  const chosenType =
+    mechanic.damageTypeChoice !== undefined &&
+    intent.casterChoice?.kind === 'damageType' &&
+    mechanic.damageTypeChoice.allowed.includes(intent.casterChoice.value)
+      ? intent.casterChoice.value
+      : undefined;
+  const event: ItemBuffAppliedEvent = {
+    id: newEventId() as ULID,
+    at,
+    type: 'ItemBuffApplied',
+    instanceId: intent.weaponInstanceId as ULID,
+    attackBonus: 0,
+    damageBonus: 0,
+    ...(mechanic.useSpellcastingAbility === true ? { abilityOverride: castingAbility } : {}),
+    ...(mechanic.damageDieOverride !== undefined ? { damageDieOverride: mechanic.damageDieOverride } : {}),
+    ...(chosenType !== undefined ? { damageTypeOverride: chosenType } : {}),
+    source: spell.name,
+    causedByEventId: declaredEventId as ULID,
+  };
+  return [event];
+};
+
+// Slice 499: item-creation mechanic dispatch. Mints `quantity` fresh
+// instances of `mechanic.itemDefinitionId` straight into the caster's
+// inventory via one ItemAcquired-with-characterId event each. Canonical
+// user: Goodberry (10 single-use `goodberry` consumables). Validates
+// the item definition exists so a typo fails at plan time.
+// Slice 520: stabilize-the-dying mechanic. Emits a `Stabilized` event
+// on the first valid target (0 HP, not yet stable, not dead). Mirrors
+// the create-item shape: tiny, deterministic, no RNG. The event-side
+// reducer (`applyStabilized`) flips `deathSaves.stable = true` and
+// halts the death-save sequence. Ineligible targets produce zero
+// events; the surrounding cast-spell envelope still consumes the
+// spell economy, matching the RAW "spell does nothing" outcome.
+const planStabilizeMechanic = (
+  state: CampaignState,
+  intent: CastSpellIntent,
+  spell: Spell,
+  declaredEventId: string,
+  at: string,
+): Event[] => {
+  const targetId = intent.targetIds?.[0];
+  if (!targetId) {
+    throw new Error(`Spell ${spell.id} stabilize requires a targetId`);
+  }
+  const target = state.characters[targetId];
+  if (!target) {
+    throw new Error(`Spell ${spell.id} stabilize target ${targetId} not found`);
+  }
+  if (target.hp.current !== 0) return [];
+  if (target.deathSaves.stable === true) return [];
+  return [
+    {
+      id: newEventId() as ULID,
+      at,
+      type: 'Stabilized',
+      targetId: targetId as ULID,
+      causedByEventId: declaredEventId as ULID,
+    } as Event,
+  ];
+};
+
+const planCreateItemMechanic = (
+  content: ResolvedContent,
+  intent: CastSpellIntent,
+  spell: Spell,
+  mechanic: Extract<SpellMechanic, { kind: 'create-item' }>,
+  declaredEventId: string,
+): Event[] => {
+  if (content.items.get(mechanic.itemDefinitionId) === undefined) {
+    throw new Error(
+      `Spell ${spell.id} create-item references unknown item '${mechanic.itemDefinitionId}'`,
+    );
+  }
+  const events: Event[] = [];
+  for (let i = 0; i < mechanic.quantity; i += 1) {
+    events.push({
+      id: newEventId() as ULID,
+      at: intent.at ?? nowIso(),
+      type: 'ItemAcquired',
+      instance: {
+        id: newItemInstanceId(),
+        definitionId: mechanic.itemDefinitionId,
+        quantity: 1,
+        attuned: false,
+        identifiedByCharacterIds: [],
+      },
+      characterId: intent.characterId as ULID,
+      causedByEventId: declaredEventId as ULID,
+    } as Event);
+  }
+  return events;
+};
+
 export const planCastSpell = (
   state: CampaignState,
   content: ResolvedContent,
@@ -1340,6 +1889,16 @@ export const planCastSpell = (
   }
 
   const castingClassId = findCastingClass(character, content, intent.castingClassId);
+  // Slice 487: resolve the spellcasting ability used for DC / attack
+  // computations. Class first, GrantSpell fallback. A character with no
+  // spellcasting class and no GrantSpell entry for this spell cannot
+  // cast it via the planner.
+  const castingAbility = resolveCastingAbility(character, content, state, castingClassId, intent.spellId);
+  if (castingAbility === undefined) {
+    throw new Error(
+      `${character.name} cannot cast ${spell.name}: no spellcasting class and no GrantSpell entry for this spell`,
+    );
+  }
   const slotSource = chooseSlotSource(spell, intent, state, content);
 
   const castAsRitual = intent.asRitual === true;
@@ -1347,7 +1906,68 @@ export const planCastSpell = (
     throw new Error(`Spell ${spell.id} cannot be cast as a ritual`);
   }
 
-  const noSlotCost = intent.noSlotCost === true;
+  // Slice 486: useFreeCast implies noSlotCost and gates on the bearer's
+  // GrantSpell oncePerLongRest grants + the usedFreeCastSpellIds tracker.
+  // Slice 566: ALSO supports pool-based free casts (Ranger Favored Enemy
+  // Hunter's Mark: GrantSpell with `freeCastResourceId: 'hunters-mark'`
+  // bypasses the slot by consuming the named resource). Exactly one
+  // path applies per cast; the matched grant's source determines the
+  // event emitted below (FreeCastUsed for the oncePerLongRest path,
+  // ResourceSpent for the pool path).
+  // Computed before the slot-availability gate so the validation errors
+  // surface even when the caster has no slots of the requested level.
+  const useFreeCast = intent.useFreeCast === true;
+  let freeCastPoolResourceId: string | undefined;
+  if (useFreeCast) {
+    const effects = buildEffectStack({
+      character,
+      content,
+      itemInstances: state.itemInstances,
+      pendingChoices: state.pendingChoices,
+    });
+    const grants = effects.grantedSpells().filter((g) => g.spellId === intent.spellId);
+    const onceGrant = grants.find((g) => g.preparation === 'oncePerLongRest');
+    const poolGrant = grants.find((g) => g.freeCastResourceId !== undefined);
+    if (onceGrant !== undefined) {
+      if (character.usedFreeCastSpellIds.includes(intent.spellId)) {
+        throw new Error(
+          `${character.name} has already used the free cast for ${spell.name} since the last long rest`,
+        );
+      }
+    } else if (poolGrant !== undefined) {
+      const resourceId = poolGrant.freeCastResourceId!;
+      const resource = character.resources.find((r) => r.resourceId === resourceId);
+      if (resource === undefined || resource.current <= 0) {
+        throw new Error(
+          `${character.name} cannot use a free cast for ${spell.name}: resource ${resourceId} is depleted or absent`,
+        );
+      }
+      freeCastPoolResourceId = resourceId;
+    } else {
+      throw new Error(
+        `${character.name} cannot use a free cast for ${spell.name}: no oncePerLongRest or pool-based grant for this spell`,
+      );
+    }
+  }
+  // Slice 513: a spell granted to this character with `preparation: 'at-will'`
+  // (Warlock invocations like Armor of Shadows, Fiendish Vigor, Mask of
+  // Many Faces, etc.) is cast without expending a slot RAW. The cast path
+  // walks the bearer's effect-stack GrantSpell entries and checks whether
+  // any grants the cast spell id at-will; if so, slot consumption is
+  // bypassed regardless of the consumer's intent flags.
+  const isAtWillGranted = (() => {
+    if (spell.level === CANTRIP_LEVEL) return false; // cantrips already bypass slots
+    const effects = buildEffectStack({
+      character,
+      content,
+      itemInstances: state.itemInstances,
+      pendingChoices: state.pendingChoices,
+    });
+    return effects.grantedSpells().some(
+      (g) => g.spellId === intent.spellId && g.preparation === 'at-will',
+    );
+  })();
+  const noSlotCost = intent.noSlotCost === true || useFreeCast || isAtWillGranted;
   if (spell.level > CANTRIP_LEVEL && !castAsRitual && !noSlotCost) {
     const available = computeAvailableSpellSlots(character, content.classes);
     if (slotSource === 'pact') {
@@ -1384,6 +2004,34 @@ export const planCastSpell = (
     if (ct === 'reaction') return 'reaction';
     return 'long';
   })();
+  // Slice 603: RAW Produce Flame / Spiritual Weapon shape. The spell's
+  // castingTime says "Bonus Action" — that BA produces the persistent
+  // effect (flame in hand / floating weapon). To actually MAKE THE
+  // ATTACK on the same turn, RAW requires a separate Magic Action:
+  // "Until the spell ends, you can take a Magic action to hurl fire at
+  // a creature." Pre-slice the engine collapsed BA cast + Magic-action
+  // hurl into one BA, letting Druids effectively get a free spell
+  // attack alongside their full Action.
+  //
+  // The fix detects this shape by content shape — BA cast + attack
+  // mechanic + non-instantaneous duration — and treats the cast as
+  // consuming BOTH a BA AND an Action (when targets are supplied so
+  // the planner is actually firing the hurl). This is a stopgap that
+  // gets the action economy right without splitting the cast into two
+  // separate planners (proper RAW would be: cast emits a persistent
+  // effect, a follow-up `MagicAction` intent rolls the hurl).
+  //
+  // Casters who want to cast PF purely for the light (no attack) can
+  // still do so by supplying no targetIds — the targets check below
+  // gates the implicit Action consumption.
+  const hasAttackMechanic = spell.mechanicalEffects.some((m) => m.kind === 'attack');
+  const hasNonInstantaneousDuration =
+    spell.duration.trim().toLowerCase() !== 'instantaneous';
+  const consumesImplicitMagicAction =
+    castingTimeKind === 'bonusAction'
+    && hasAttackMechanic
+    && hasNonInstantaneousDuration
+    && intent.targetIds.length > 0;
   const encounter = state.activeEncounterId ? state.encounters[state.activeEncounterId] : undefined;
   const casterCombatant =
     encounter?.combatants.find((c) => c.combatantId === intent.characterId) ?? undefined;
@@ -1401,6 +2049,11 @@ export const planCastSpell = (
     if (castingTimeKind === 'reaction' && casterCombatant.turnUsage.reactionUsedThisRound) {
       throw new Error(
         `${character.name} cannot cast ${spell.name}: reaction already used this round`,
+      );
+    }
+    if (consumesImplicitMagicAction && casterCombatant.turnUsage.actionUsed) {
+      throw new Error(
+        `${character.name} cannot hurl ${spell.name}: action already used this turn (RAW: a BA cast + Magic action hurl requires both unspent)`,
       );
     }
   }
@@ -1442,6 +2095,16 @@ export const planCastSpell = (
         kind: economyKind,
       });
     }
+    if (consumesImplicitMagicAction) {
+      events.push({
+        id: newEventId() as ULID,
+        at,
+        type: 'ActionEconomyConsumed',
+        encounterId: encounter.id,
+        combatantId: intent.characterId,
+        kind: 'action',
+      });
+    }
   }
 
   if (spell.level > CANTRIP_LEVEL && !castAsRitual && !noSlotCost) {
@@ -1466,6 +2129,37 @@ export const planCastSpell = (
       events.push(consumed);
     }
   }
+  // Slice 486: record the free-cast consumption when useFreeCast was set
+  // (validated above). The reducer appends spellId to the bearer's
+  // usedFreeCastSpellIds; long rest clears it.
+  // Slice 566: for the pool-based free-cast path, emit ResourceSpent
+  // instead (the resource itself recharges on long/short rest per its
+  // GrantResource declaration; no per-cast tracker needed). Exactly
+  // one of the two paths fires per cast.
+  if (useFreeCast) {
+    if (freeCastPoolResourceId !== undefined) {
+      const resourceSpent: ResourceSpentEvent = {
+        id: newEventId() as ULID,
+        at,
+        type: 'ResourceSpent',
+        characterId: intent.characterId as ULID,
+        resourceId: freeCastPoolResourceId,
+        amount: 1,
+        causedByEventId: declared.id,
+      };
+      events.push(resourceSpent);
+    } else {
+      const freeCast: FreeCastUsedEvent = {
+        id: newEventId() as ULID,
+        at,
+        type: 'FreeCastUsed',
+        characterId: intent.characterId,
+        spellId: intent.spellId,
+        causedByEventId: declared.id,
+      };
+      events.push(freeCast);
+    }
+  }
 
   const conditionsApplied: AppliedConditionRef[] = [];
   // Pre-generate the concentration effect ID when the spell concentrates.
@@ -1478,11 +2172,11 @@ export const planCastSpell = (
   for (const mechanic of spell.mechanicalEffects) {
     if (mechanic.kind === 'attack') {
       events.push(
-        ...planAttackMechanic(state, content, rng, intent, spell, mechanic, declared.id, at, castingClassId),
+        ...planAttackMechanic(state, content, rng, intent, spell, mechanic, declared.id, at, castingClassId, castingAbility),
       );
     } else if (mechanic.kind === 'save') {
       const outcome = planSaveMechanic(
-        state, content, rng, intent, spell, mechanic, declared.id, at, castingClassId,
+        state, content, rng, intent, spell, mechanic, declared.id, at, castingClassId, castingAbility,
       );
       events.push(...outcome.events);
       conditionsApplied.push(...outcome.conditionsApplied);
@@ -1524,12 +2218,29 @@ export const planCastSpell = (
       events.push(...planTempHPMechanic(rng, intent, spell, mechanic, declared.id, at));
     } else if (mechanic.kind === 'trap') {
       events.push(
-        ...planTrapMechanic(state, content, intent, spell, mechanic, declared.id, at, castingClassId),
+        ...planTrapMechanic(state, content, intent, spell, mechanic, declared.id, at, castingClassId, castingAbility),
       );
     } else if (mechanic.kind === 'hp-threshold') {
       events.push(
         ...planHpThresholdMechanic(state, content, rng, intent, spell, mechanic, declared.id, at),
       );
+    } else if (mechanic.kind === 'weaponAttack') {
+      events.push(
+        ...planWeaponAttackMechanic(state, content, rng, intent, spell, castingAbility, declared.id, at),
+      );
+    } else if (mechanic.kind === 'weapon-buff') {
+      events.push(
+        ...planWeaponBuffMechanic(state, content, intent, spell, mechanic, castingAbility, declared.id, at),
+      );
+    } else if (mechanic.kind === 'zone') {
+      // Slice 495: handled inline at the ConcentrationStarted construction
+      // below. No events emitted by the dispatch case itself — the zone
+      // metadata is stamped on the ConcentrationStarted event so the
+      // reducer can persist it on the EffectInstance in one shot.
+    } else if (mechanic.kind === 'create-item') {
+      events.push(...planCreateItemMechanic(content, intent, spell, mechanic, declared.id));
+    } else if (mechanic.kind === 'stabilize') {
+      events.push(...planStabilizeMechanic(state, intent, spell, declared.id, at));
     } else {
       events.push(...planHealMechanic(state, content, rng, intent, spell, mechanic, declared.id, at));
     }
@@ -1549,6 +2260,26 @@ export const planCastSpell = (
       events.push(priorBroken);
     }
     const durationMinutes = parseSpellDurationMinutes(spell.duration);
+    // Slice 495: when the spell's mechanicalEffects include a `zone`
+    // entry, read the spell's targeting shape/size + intent.targetPosition
+    // and stamp them on the event so the reducer persists the zone on
+    // the EffectInstance. Validates at plan time so misuse surfaces
+    // before any event commits.
+    const hasZoneMechanic = spell.mechanicalEffects.some((m) => m.kind === 'zone');
+    let zoneField: { shape: 'sphere' | 'cube' | 'cylinder' | 'line' | 'cone'; size: number; center: { x: number; y: number } } | undefined;
+    if (hasZoneMechanic) {
+      if (spell.targeting === undefined) {
+        throw new Error(`Spell ${spell.id} has a zone mechanic but no targeting (shape/size) declared`);
+      }
+      if (intent.targetPosition === undefined) {
+        throw new Error(`Spell ${spell.id} has a zone mechanic and requires intent.targetPosition`);
+      }
+      zoneField = {
+        shape: spell.targeting.shape,
+        size: spell.targeting.size,
+        center: { x: intent.targetPosition.x, y: intent.targetPosition.y },
+      };
+    }
     const started: ConcentrationStartedEvent = {
       id: newEventId() as ULID,
       at,
@@ -1561,6 +2292,7 @@ export const planCastSpell = (
       ...(durationMinutes !== undefined ? { durationMinutes } : {}),
       slotLevel: intent.slotLevel,
       causedByEventId: declared.id,
+      ...(zoneField !== undefined ? { zone: zoneField } : {}),
     };
     events.push(started);
   }

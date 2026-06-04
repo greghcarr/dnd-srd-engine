@@ -12,13 +12,15 @@ A prior version of this doc tracked the **full PHB 2024 spell list** as its deno
 
 - **cast-time**: the spell carries `mechanicalEffects` the engine consumes at cast (`save`, `attack`, `heal`, `buff`, `summon`, `temp-hp`, `trap`, etc.); `engine.plan.castSpell` emits the chain.
 - **zone-tick**: the spell carries an `aura-damage` or `movement-damage` mechanic. Cast emits only `ConcentrationStarted`; damage / conditions fire later via `engine.plan.tickAura({ casterId, targetIds, trigger? })` or `engine.plan.tickMovementDamage({ casterId, targetId, feetMoved })`, per-turn or per-traversal (slices 68-72). Wired, just not on the cast event.
+- **zone-area**: the spell carries a `zone` mechanic (slice 495). Cast emits `ConcentrationStarted` carrying positioned-AOE metadata (`zone: { shape, size, center }`) read from the spell's `targeting` + the intent's `targetPosition`; the EffectInstance persists the zone and concentration drop removes it. The spell's RAW area effect (heavy obscurement, magical darkness, silence, gravity inversion, terrain shaking / reshaping) is consumer-managed against the zone — the engine tracks where the area is, not who's inside it.
+- **weapon-attack**: the spell carries a `weaponAttack` mechanic (slice 494). `engine.plan.castSpell` makes a weapon attack with the named `weaponInstanceId` using the caster's spellcasting ability (canonical user: True Strike). Not exercised by the generic spell-coverage harness (it needs a weapon instance + target), so it's marked `skip` there with that reason.
 - **planner**: handled by a dedicated planner (`planShield`, `planCounterspell`, `planPolymorph`, `planClairvoyance`, `planScrying`, `planArcaneEye`, `planSilentImage`, `planMajorImage`, `planRemoveCurse`, `planThunderStep`, `planDimensionDoor`, `planResurrect`, `planMistyStep`, `planHuntersMark`, `planMagicWeapon`, `planElementalWeapon`, `planSimulacrum`, `planWish`, `planAbsorbElements`). `mechanicalEffects` is empty by design.
 - **deferred**: ships in the pack so the validator + consumer see it, but no mechanical event is emitted, pending the named primitive.
 - **narrative**: intentionally emits nothing (rituals, divination, sensory / utility spells).
 
 ## Totals
 
-**339 in pack**: **183 wired** (148 cast-time, 11 zone-tick, 24 dedicated planner), **70 narrative**, **86 deferred** (genuine mechanical gap, grouped by needed primitive per level below).
+**339 in pack**: **198 wired** (154 cast-time, 11 zone-tick, 25 dedicated planner, 6 zone-area, 1 weapon-attack, 1 weapon-buff), **68 narrative**, **73 deferred** (genuine mechanical gap, grouped by needed primitive per level below). The zone-area + weapon-attack rows landed in slices 494-496 (True Strike; Fog Cloud / Darkness / Silence / Move Earth / Reverse Gravity / Earthquake); slice 497 wired Ice Knife (multi-mechanic attack + AOE-save via the new `targetScope: 'first'` attack field); slice 498 wired Sorcerous Burst (exploding dice via the new `explodeOnMaxDie` attack field); slice 499 wired Goodberry (the new `create-item` mechanic minting consumables into inventory); slice 501 wired Shillelagh (the new `weapon-buff` mechanic imbuing a held weapon with the caster's spellcasting ability, a d8 die, and optional Force damage); slice 503 wired Ensnaring Strike (save mechanic's new `largeCreatureAdvantage` + recurring mechanic's new `extraDicePerSlotLevel`). Note: this catalog's per-spell split has accumulated drift since the slice-337 full reconcile — the per-level `inPack` totals are CI-guarded ([gaps-spells-counts.test.ts](../tests/audit/gaps-spells-counts.test.ts)) but the wired/narrative/deferred split is hand-maintained and a future slice-337-style full reconcile against [spell-coverage.test.ts](../tests/unit/engine/spell-coverage.test.ts) would catch any spells wired in slices 338-444 whose rows weren't moved.
 
 ## Biggest deferred clusters (the priority queue)
 
@@ -26,11 +28,11 @@ The remaining mechanical gap fragments across ~20 small primitives; there is no 
 
 - **Cross-plane travel / long-range teleport** (~11 remaining): blink, banishment, etherealness, plane-shift, teleport, word-of-recall, transport-via-plants, tree-stride, astral-projection, gate, maze. The cleanest in-combat teleport, **dimension-door**, shipped in slice 342 (`planDimensionDoor`); the rest are mostly DM / consumer-side (long-range / cross-plane positioning the engine doesn't model).
 - **HP-threshold tier effect** (2 remaining): divine-word, power-word-heal. The `hp-threshold` mechanic shipped in slice 338 (power-word-kill: destroy / 12d12 psychic) and gained a `condition` arm in slice 339 (power-word-stun: Stunned at or below 150 HP with a recurring CON save, else Speed 0). The remaining two need a multi-threshold tiered variant (divine-word) and a heal + multi-condition-remove arm (power-word-heal).
-- **Non-damage area zones** (~7): darkness, silence, zone-of-truth, tiny-hut, wind-wall, guardian-of-faith, compulsion. Need obscurement / silence / ward zone shapes distinct from the damage-zone `aura-damage` mechanic.
+- **Non-damage area zones** (~5 remaining): zone-of-truth, tiny-hut, wind-wall, guardian-of-faith, compulsion. The slice-495 `zone` primitive wired the positioned-area record for darkness + silence (+ fog-cloud), so the engine now tracks where those zones are; the remaining five need their specific in-zone effect (truth compulsion, ward, deflection) on top of the positioned record.
 - **Beyond-image illusion** (~5): seeming, mislead, project-image, programmed-illusion, mirage-arcane.
 - **Multi-damage AoE** (3 remaining): prismatic-spray, meteor-swarm, prismatic-wall. The save mechanic gained an `additionalDamage` array in slice 341 (flame-strike: fire + radiant); the remaining three also need multi-AoE / RNG-damage-table shapes on top of multi-type.
-- **Terrain shaping** (~5): hallucinatory-terrain, passwall, wall-of-stone, move-earth, mirage-arcane (mostly consumer-side; the engine models no positions).
-- **On-hit smite rider via `castSpell`** (2 remaining): shining-smite, ensnaring-strike. The unconditional-AddDamage path landed in slice 444 via the existing `buff` mechanic + `OnEvent`/`consumeOnTrigger` infrastructure (canonical user: **divine-smite** at L1, with a base 2d8 radiant rider and a Fiend/Undead-gated +1d8 rider on the same condition). The two remaining spells need primitives the slice-444 path doesn't cover: **shining-smite** needs a concurrent concentration buff (the "always-illuminate-target" aura that runs in parallel to the on-hit rider); **ensnaring-strike** needs a save-via-OnEvent TriggerAction (fires a STR save on hit and conditionally applies Restrained with recurring per-turn damage). Both are small, distinct next slices in the smite-rider family. Divine Smite's upcast (+1d8 per slot above L1) stays deferred until the buff mechanic gains slot-level-aware variant selection — L1 Paladins only have L1 slots, so the deviation only matters from L3+ paladin onward.
+- **Terrain shaping** (~4 remaining): hallucinatory-terrain, passwall, wall-of-stone, mirage-arcane (mostly consumer-side; the engine models no positions). Move Earth gained the slice-495 `zone` positioned-area record (the engine tracks the reshapeable 40-ft cube); the actual reshape stays consumer-side.
+- **On-hit smite rider via `castSpell`** (1 remaining): shining-smite. The unconditional-AddDamage path landed in slice 444 via the existing `buff` mechanic + `OnEvent`/`consumeOnTrigger` infrastructure (canonical user: **divine-smite** at L1, with a base 2d8 radiant rider and a Fiend/Undead-gated +1d8 rider on the same condition). Ensnaring Strike closed in slice 503 by composing the existing `save` mechanic (with the new `largeCreatureAdvantage` field) and `recurring` mechanic (with the new `extraDicePerSlotLevel`) — the "Bonus Action, immediately after hitting" cast-trigger timing is consumer-managed (call castSpell after observing AttackRolled.hit), as is the Athletics-action escape. **shining-smite** still needs a concurrent concentration buff (the "always-illuminate-target" aura that runs in parallel to the on-hit rider). Divine Smite's upcast (+1d8 per slot above L1) stays deferred until the buff mechanic gains slot-level-aware variant selection — L1 Paladins only have L1 slots, so the deviation only matters from L3+ paladin onward.
 - **Multi-target movement-restriction / force cage** (3): resilient-sphere, forcecage, wall-of-force.
 - **Advanced / cross-plane summon** (~5): summon-dragon (needs the Draconic Spirit statblock), conjure-fey, planar-binding, planar-ally, create-undead.
 - **Controllable spell-construct (action menu)** (3): arcane-hand, arcane-sword, animate-objects.
@@ -39,34 +41,33 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 ---
 
-## Level 0 (27 in pack): 13 wired, 11 narrative, 3 deferred
+## Level 0 (27 in pack): 17 wired, 10 narrative, 0 deferred
 
-**Wired, cast-time (13):** acid-splash, chill-touch, eldritch-blast, fire-bolt, guidance, poison-spray, produce-flame, ray-of-frost, resistance, sacred-flame, shocking-grasp, starry-wisp, vicious-mockery.
+**Wired, cast-time (14):** acid-splash, chill-touch, eldritch-blast, fire-bolt, guidance, poison-spray, produce-flame, ray-of-frost, resistance, sacred-flame, shocking-grasp, sorcerous-burst (slice 498: exploding ranged spell attack — 1d8 of a caster-chosen type, each 8 spawns another d8 chained, capped at the caster's spellcasting mod, via the new `explodeOnMaxDie` attack field), starry-wisp, vicious-mockery.
 
-**Deferred (3):**
-- **open-die scaling:** sorcerous-burst.
-- **weapon-attack rebrand, not wired through `castSpell`:** shillelagh, true-strike.
+**Wired, weapon-attack (1):** true-strike (slice 494: `weaponAttack` mechanic — makes a weapon attack with the caster's spellcasting ability; cast via `engine.plan.castSpell` with a `weaponInstanceId`).
 
-**Narrative (11):** dancing-lights, druidcraft, elementalism, light, mage-hand, mending, message, minor-illusion, prestidigitation, spare-the-dying, thaumaturgy.
+**Wired, weapon-buff (1):** shillelagh (slice 501: `weapon-buff` mechanic — imbues a held Club / Quarterstaff so attack + damage use the caster's spellcasting ability, the damage die becomes a d8, and the damage type can be Force; stamps a non-concentration `ItemBuffApplied` read by the attack resolver).
 
-## Level 1 (57 in pack): 39 wired, 13 narrative, 5 deferred
+**Wired, stabilize (1):** spare-the-dying (slice 520: new `stabilize` mechanic — emits `Stabilized` on a 0-HP-non-stable target; ineligible targets produce zero events, matching the RAW "spell does nothing" outcome).
 
-**Wired, cast-time (33):** bane, bless, burning-hands, charm-person, chromatic-orb, color-spray, command, cure-wounds, dissonant-whispers, divine-favor, divine-smite (`buff` -> `divine-smite-active` with two melee-hit OnEvent riders: unconditional 2d8 radiant + a Fiend/Undead-gated +1d8 radiant, both `consumeOnTrigger`; slice 444), faerie-fire, false-life, feather-fall, find-familiar, guiding-bolt, healing-word, hellish-rebuke, heroism, hex, hideous-laughter, inflict-wounds, longstrider, mage-armor, magic-missile, protection-from-evil-and-good, ray-of-sickness, sanctuary, searing-smite, shield-of-faith, sleep, thunderwave, unseen-servant.
+**Narrative (10):** dancing-lights, druidcraft, elementalism, light, mage-hand, mending, message, minor-illusion, prestidigitation, thaumaturgy.
+
+## Level 1 (57 in pack): 45 wired, 12 narrative, 0 deferred
+
+**Wired, cast-time (37):** animal-friendship (slice 500: WIS save -> Charmed, gated to Beast targets via the save mechanic's `targetCreatureType` filter + `conditionEndsOnDamage`), bane, bless, burning-hands, charm-person, chromatic-orb, color-spray, command, cure-wounds, dissonant-whispers, divine-favor, divine-smite (`buff` -> `divine-smite-active` with two melee-hit OnEvent riders: unconditional 2d8 radiant + a Fiend/Undead-gated +1d8 radiant, both `consumeOnTrigger`; slice 444), ensnaring-strike (slice 503: two-mechanic — STR save -> Restrained (Large+ creatures get advantage via the new `largeCreatureAdvantage` flag) + per-turn 1d6 piercing recurring damage with +1d6/slot upcast via the new `extraDicePerSlotLevel` field on `recurring`; ticked by the consumer via `tickRecurring`), faerie-fire, false-life, feather-fall, find-familiar, goodberry (slice 499: `create-item` mechanic — mints 10 single-use `goodberry` Heal-1 consumables into the caster's inventory), guiding-bolt, healing-word, hellish-rebuke, heroism, hex, hideous-laughter, ice-knife (slice 497: two-mechanic — ranged spell attack 1d10 piercing vs the primary via `targetScope: 'first'`, then a DEX-save 2d6 cold burst, +1d6/slot, vs the primary + splash), inflict-wounds, longstrider, mage-armor, magic-missile, protection-from-evil-and-good, ray-of-sickness, sanctuary, searing-smite, shield-of-faith, sleep, thunderwave, unseen-servant.
 
 **Wired, zone-tick (2):** entangle, grease (STR / DEX save to restrained / prone on enter; `aura-damage` condition-only variant, fires via `tickAura`).
 
 **Wired, planner (4):** hunters-mark, identify, shield, silent-image.
 
-**Deferred (5):**
-- **on-hit trigger system (save-via-OnEvent variant):** ensnaring-strike (needs a TriggerAction that fires a save chain on hit and conditionally applies Restrained; the always-on smite path used for divine-smite in slice 444 only supports unconditional `AddDamage`).
-- **carry-capacity entity:** floating-disk.
-- **condition target restriction (beast-only Charm):** animal-friendship.
-- **item-creation mechanic for spells:** goodberry.
-- **multi-mechanic shape (attack + AoE-on-hit-or-miss):** ice-knife.
+**Wired, zone-area (1):** fog-cloud (slice 495: `zone` mechanic — 20-ft obscurement sphere positioned at `targetPosition`; in-zone Blinded-equivalent obscurement is consumer-managed).
 
-**Narrative (13):** alarm, comprehend-languages, create-or-destroy-water, detect-evil-and-good, detect-magic, detect-poison-and-disease, disguise-self, expeditious-retreat, fog-cloud, illusory-script, jump, purify-food-and-drink, speak-with-animals.
+**Wired, planner-companion (1):** expeditious-retreat (slice 521: cast applies the `expeditious-retreat-active` marker condition on Self via the `buff` mechanic; the cast itself consumes the bearer's Bonus Action via the existing `castingTime: "Bonus Action"` path; on subsequent turns the bearer invokes the new `planExpeditiousRetreatDash` to spend their BA on a Dash, gated on the condition being active).
 
-## Level 2 (57 in pack): 34 wired, 15 narrative, 8 deferred
+**Narrative (12):** alarm, comprehend-languages, create-or-destroy-water, detect-evil-and-good, detect-magic, detect-poison-and-disease, disguise-self, floating-disk (slice 507: cast emits no mechanical events; the 500-lb-capacity follow-the-caster disk is a consumer-side world entity, engine-out-of-scope per the no-positions stance), illusory-script, jump, purify-food-and-drink, speak-with-animals.
+
+## Level 2 (57 in pack): 36 wired, 15 narrative, 6 deferred
 
 **Wired, cast-time (30):** acid-arrow, aid, barkskin, blindness-deafness, blur, calm-emotions, darkvision, enhance-ability, enlarge-reduce, enthrall (WIS save -> `enthralled-active`: -10 to Perception checks; slice 343), find-steed, flame-blade, gust-of-wind, heat-metal, hold-person, invisibility, lesser-restoration, mind-spike, mirror-image, moonbeam, pass-without-trace, prayer-of-healing, protection-from-poison, scorching-ray, shatter, spider-climb, spiritual-weapon, suggestion, warding-bond, web. (Mirror Image carries a `buff` condition on cast plus the slice-124 `planAttack` deflection pool.)
 
@@ -74,8 +75,10 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 **Wired, planner (2):** magic-weapon, misty-step.
 
-**Deferred (8):**
-- **non-damage area zone:** darkness (obscurement + visibility condition), silence, zone-of-truth.
+**Wired, zone-area (2):** darkness (slice 495: 15-ft magical-darkness sphere; the Darkvision-can't-see-through-it arm is consumer-managed), silence (slice 496: 20-ft silence sphere; in-zone Deafened + Thunder immunity + no-verbal-casting is consumer-managed).
+
+**Deferred (6):**
+- **non-damage area zone (in-zone effect on top of the positioned record):** zone-of-truth.
 - **on-hit rider via `castSpell`:** shining-smite, ray-of-enfeeblement.
 - **recurring-rider primitive:** phantasmal-force.
 - **flight / hover condition:** levitate.
@@ -142,15 +145,16 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 **Narrative (11):** awaken, commune, commune-with-nature, contact-other-plane, creation, dream, hallow, legend-lore, modify-memory, telepathic-bond, teleportation-circle.
 
-## Level 6 (31 in pack): 16 wired, 1 narrative, 14 deferred
+## Level 6 (31 in pack): 17 wired, 1 narrative, 13 deferred
 
 **Wired, cast-time (13):** chain-lightning, circle-of-death, disintegrate, eyebite, flesh-to-stone, freezing-sphere, harm, heal, heroes-feast, mass-suggestion, sunbeam, true-seeing, wind-walk.
 
 **Wired, zone-tick (3):** blade-barrier (DEX save 6d10 `aura-damage`), wall-of-ice (DEX save 10d6 `aura-damage`), wall-of-thorns (DEX save 7d8 `aura-damage`).
 
-**Deferred (14):**
+**Wired, zone-area (1):** move-earth (slice 496: `zone` mechanic — positioned 40-ft reshapeable-terrain cube; the actual terrain reshape is consumer-managed).
+
+**Deferred (13):**
 - **area-warding primitive:** forbiddance, guards-and-wards, globe-of-invulnerability.
-- **terrain primitive:** move-earth.
 - **advanced / cross-plane summon:** conjure-fey, planar-ally, create-undead.
 - **illusion + trigger:** programmed-illusion.
 - **sensor / scrying locator:** find-the-path.
@@ -161,13 +165,15 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 **Narrative (1):** instant-summons.
 
-## Level 7 (20 in pack): 7 wired, 1 narrative, 12 deferred
+## Level 7 (20 in pack): 8 wired, 1 narrative, 11 deferred
 
 **Wired, cast-time (5):** conjure-celestial, delayed-blast-fireball, finger-of-death, fire-storm, regenerate.
 
 **Wired, planner (2):** resurrection, simulacrum.
 
-**Deferred (12):**
+**Wired, zone-area (1):** reverse-gravity (slice 496: `zone` mechanic — positioned 50-ft-radius / 100-ft cylinder; the fall-upward + DEX-save-to-grab arm is consumer-managed against the zone).
+
+**Deferred (11):**
 - **HP-threshold tier effect:** divine-word.
 - **cross-plane travel:** etherealness, plane-shift, teleport.
 - **illusion (+ sensor / terrain):** project-image, mirage-arcane.
@@ -176,16 +182,16 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 - **controllable spell-construct (on-action attack):** arcane-sword.
 - **trap mechanic + caster-chosen trigger / effect:** symbol.
 - **trigger-resume (time-stop on target until trigger):** sequester.
-- **physics primitive (gravity inversion):** reverse-gravity.
 
 **Narrative (1):** magnificent-mansion.
 
-## Level 8 (17 in pack): 8 wired, 1 narrative, 8 deferred
+## Level 8 (17 in pack): 9 wired, 1 narrative, 7 deferred
 
 **Wired, cast-time (8):** befuddlement, dominate-monster, holy-aura, incendiary-cloud, mind-blank, power-word-stun (`hp-threshold` condition arm: Stunned at or below 150 HP with a recurring CON save, else Speed 0; slice 339), sunburst, tsunami.
 
-**Deferred (8):**
-- **multi-stage area-effect (save + terrain destruction + collapse):** earthquake.
+**Wired, zone-area (1):** earthquake (slice 496: `zone` mechanic — positioned 100-ft-radius cylinder; the per-turn DEX/CON saves + difficult terrain + fissure / structure-collapse arms are consumer-managed against the zone).
+
+**Deferred (7):**
 - **cross-plane single-target:** maze.
 - **environment primitive (weather):** control-weather.
 - **extradimensional space:** demiplane.

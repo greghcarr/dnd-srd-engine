@@ -15,6 +15,7 @@ import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { rollDie, rollExpression } from '../../rng/dice.js';
 import { rollSaveAgainstDC } from './_save-roll.js';
 import { applyAll } from '../apply.js';
+import { planConcentrationOnDamage } from './concentration.js';
 import { newEventId } from '../../ids.js';
 import { nowIso } from '../../internal/clock.js';
 import { invariant } from '../../internal/invariants.js';
@@ -174,6 +175,21 @@ export const planBreathWeapon = (
     };
     events.push(damage);
     events.push(...intercept.extraEvents);
+    // Slice 621: per-target concentration save on monster breath damage.
+    const targetCharForConc = stagedState.characters[targetId];
+    if (targetCharForConc !== undefined) {
+      events.push(
+        ...planConcentrationOnDamage(
+          applyAll(stagedState, [damage, ...intercept.extraEvents]),
+          content,
+          rng,
+          targetCharForConc,
+          intercept.components,
+          damage.id,
+          at,
+        ),
+      );
+    }
     stagedState = applyAll(stagedState, [damage, ...intercept.extraEvents]);
   }
 

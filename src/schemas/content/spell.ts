@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   AbilityScoreSchema,
+  CreatureTypeSchema,
   DamageTypeSchema,
   DiceExpressionSchema,
   SpellLevelSchema,
@@ -29,6 +30,36 @@ const SpellAttackMechanicSchema = z
       .optional(),
     extraDicePerSlotLevel: z.number().int().min(0).optional(),
     cantripScalingDice: DiceExpressionSchema.optional(),
+    // Slice 498: exploding ("aceing" / open-die) damage. When true, each
+    // damage die (base + cantrip-scaling) that rolls its maximum face
+    // spawns an extra die of the same size, chained (an extra die that
+    // also maxes spawns another), capped at a total number of extra dice
+    // equal to the caster's spellcasting ability modifier. Canonical
+    // user: Sorcerous Burst ("If you roll an 8 on a d8 for this spell,
+    // you can roll another d8... the maximum number of these d8s you can
+    // add equals your spellcasting ability modifier"). The die size is
+    // read from `damageDice`.
+    explodeOnMaxDie: z.boolean().optional(),
+    // Slice 497: which targets this attack mechanic resolves against when
+    // the cast carries multiple targetIds. `'all'` (default) attacks each
+    // target (the historical behavior). `'first'` attacks only
+    // `targetIds[0]` — used by spells that make ONE attack against a
+    // primary target and then resolve a separate AOE save mechanic
+    // against the primary + splash creatures (Ice Knife: ranged spell
+    // attack vs the primary for 1d10 piercing, then a DEX-save cold
+    // burst vs the primary + everyone within 5 ft). The save mechanic
+    // keeps `'all'` so it covers the whole burst.
+    targetScope: z.enum(['first', 'all']).optional(),
+    // Slice 562: cantrip beam-scaling mode (RAW Eldritch Blast: "Create
+    // an additional beam at character levels 5, 11, and 17"). When
+    // true, the cast-spell planner enforces that `intent.targetIds`
+    // length is in [1, maxBeams] where maxBeams = 1 + cantripExtraDice
+    // (totalLevel) — 1 at L1, 2 at L5, 3 at L11, 4 at L17. Each entry
+    // in targetIds is one beam (an independent attack roll for the
+    // same `damageDice`). RAW per-beam damage is `damageDice` alone;
+    // `cantripScalingDice` is rejected at parse time when this is set
+    // (the "scaling" is the beam count, not extra dice per beam).
+    cantripBeamScaling: z.boolean().optional(),
     // Whether the spell attack is a Melee or Ranged Spell Attack. Stamped
     // on the AttackRolled event so the `event.attackKind` predicate fact
     // is correct (melee-gated riders, the ranged-in-melee disadvantage,
@@ -95,6 +126,34 @@ const SpellSaveMechanicSchema = z.object({
   pushedFeetOnFail: z.number().int().min(0).optional(),
   extraDicePerSlotLevel: z.number().int().min(0).optional(),
   cantripScalingDice: DiceExpressionSchema.optional(),
+  // Slice 500: restrict the save to targets of a specific creature type.
+  // When set, targets whose `getCreatureType` doesn't match are skipped
+  // entirely (no save rolled, no condition applied). Canonical user:
+  // Animal Friendship ("Target a Beast... must succeed on a Wisdom
+  // saving throw or have the Charmed condition"). Reusable for any
+  // type-gated save (beast / fiend / undead-only enchantments).
+  targetCreatureType: CreatureTypeSchema.optional(),
+  // Slice 500: stamp the slice-391 per-instance `endsOnDamage` flag on
+  // the `conditionOnFail` condition, so the damage chokepoint lifts it
+  // on the next positive damage. Canonical user: Animal Friendship
+  // ("If you or one of your allies deals damage to the target, the
+  // spell ends"). Documented RAW deviation: the engine's endsOnDamage
+  // fires on ANY positive damage, not just caster-side damage.
+  conditionEndsOnDamage: z.boolean().optional(),
+  // Slice 503: targets of size Large or larger gain Advantage on the save
+  // (RAW Ensnaring Strike: "A Large or larger creature has Advantage on
+  // this save"). Read per-target in the save planner; ORs into any
+  // existing advantage from the target's effect stack.
+  largeCreatureAdvantage: z.boolean().optional(),
+  // Slice 563: source the on-fail condition from the target itself
+  // instead of the caster. RAW Vicious Mockery: "Disadvantage on the
+  // next attack roll it makes before the end of its next turn" — the
+  // expiry boundary is the TARGET's next turn end, not the caster's.
+  // The condition's autoExpiry sweeps by `sourceCharacterId`, so
+  // setting source = target lets the existing infrastructure handle
+  // the "end of its next turn" cleanup. No effect when the condition
+  // has no autoExpiry; safe to set even for source-agnostic riders.
+  applyConditionSourceFromTarget: z.boolean().optional(),
 })
   // Slice 370: `.strict()` so an authored field the engine doesn't
   // support (e.g. the `onFailure` / `onSuccess` shape that Sacred Flame /
@@ -254,6 +313,12 @@ const SpellRecurringMechanicSchema = z.object({
   flatAmount: z.number().int().min(0).optional(),
   addCasterAbilityMod: AbilityScoreSchema.optional(),
   damageType: DamageTypeSchema.optional(),
+  // Slice 503: per-tick upcast scaling. Each slot level above the spell's
+  // base level adds this many dice of `amountDice` to every tick. Canonical
+  // user: Ensnaring Strike ("The damage increases by 1d6 for each spell
+  // slot level above 1"). The recurring planner reads the cast slot level
+  // from the bound EffectInstance.
+  extraDicePerSlotLevel: z.number().int().min(0).optional(),
 });
 
 // Per-foot-moved damage zone. The classic Spike Growth shape:
@@ -378,6 +443,111 @@ const SpellHpThresholdMechanicSchema = z.object({
   above: HpThresholdArmSchema.optional(),
 });
 
+// Slice 495: positioned AOE-zone spell (Fog Cloud, Darkness, Silent
+// Image, Stinking Cloud, Silence, etc.). The mechanic is a pure marker
+// — when present, the cast-spell planner reads the spell's `targeting`
+// (shape + size) and the intent's `targetPosition` and stamps a `zone`
+// field on the emitted ConcentrationStarted event. The reducer
+// persists the zone on the EffectInstance, so consumers can read the
+// positioned AOE from live state. Concentration drop removes the
+// EffectInstance, removing the zone naturally. The engine doesn't
+// auto-apply the zone's RAW effect (heavy obscurement, magical
+// darkness, illusion render, etc.) — that stays consumer-managed since
+// position-aware enforcement requires the consumer's scene model.
+const SpellZoneMechanicSchema = z
+  .object({
+    kind: z.literal('zone'),
+  })
+  .strict();
+
+// Slice 499: item-creation. Mints `quantity` fresh instances of
+// `itemDefinitionId` directly into the caster's inventory (the planner
+// emits one ItemAcquired-with-characterId per instance). Canonical
+// user: Goodberry ("Ten berries appear in your hand... eat one berry
+// restores 1 Hit Point"), modeled as 10 single-use `goodberry`
+// consumables (the engine's consume path removes a whole instance, so
+// each berry is its own instance rather than one qty-10 stack).
+// Consumers manage the spell's wall-clock expiry (Goodberry's berries
+// vanish after 24h); the engine doesn't time-expire created items.
+const SpellCreateItemMechanicSchema = z
+  .object({
+    kind: z.literal('create-item'),
+    itemDefinitionId: z.string(),
+    quantity: z.number().int().min(1),
+  })
+  .strict();
+
+// Slice 494: weapon-attack-via-spell. Canonical user: True Strike RAW
+// (2024 cantrip): "you make one attack with the weapon used in the
+// spell's casting. The attack uses your spellcasting ability for the
+// attack and damage rolls instead of using Strength or Dexterity."
+// The weapon is named on the cast intent (weaponInstanceId); the
+// mechanic flag drives the cast-spell planner to call resolveAttack
+// with the abilityOverride set to the caster's spellcasting ability.
+// Damage-type choice (radiant-or-normal) and cantrip-scaling extra
+// radiant are deferred — the first ship leaves damage at the weapon's
+// printed type and skips the L5/L11/L17 bonus.
+const SpellWeaponAttackMechanicSchema = z
+  .object({
+    kind: z.literal('weaponAttack'),
+  })
+  .strict();
+
+// Slice 501: weapon-transformation buff. Canonical user: Shillelagh
+// (2024 Druid cantrip): imbues a held Club or Quarterstaff so its
+// attack + damage rolls use the caster's spellcasting ability instead
+// of Strength, its damage die becomes a d8, and (caster's choice) its
+// damage can be Force. The weapon is named on the cast intent
+// (`weaponInstanceId`); the planner stamps an `ItemBuffApplied` (no
+// concentration link, since Shillelagh is a 1-minute non-concentration
+// effect with consumer-managed expiry) carrying the chosen overrides
+// onto the instance. The attack resolver + attack-bonus derive read
+// them back when the weapon is next used.
+//
+// - `useSpellcastingAbility`: when true, attack + damage use the caster's
+//   spellcasting ability (stamped as the buff's `abilityOverride`).
+// - `damageDieOverride`: replaces the weapon's printed damage die
+//   (Shillelagh: `1d8`).
+// - `damageTypeChoice`: the caster may pick one of `allowed` to override
+//   the weapon's damage type. The planner reads `intent.casterChoice`
+//   (kind 'damageType'); when the pick is in `allowed` it stamps a fixed
+//   `damageTypeOverride`, otherwise the weapon's normal type stands.
+//
+// Documented RAW deviation: Shillelagh's damage-type choice is per-hit
+// ("If the attack deals damage, it can be Force damage or the weapon's
+// normal damage type"). The engine collapses it to a single cast-time
+// choice. Force is universally at-least-as-good as bludgeoning, so the
+// collapse rarely changes outcomes.
+const SpellWeaponBuffMechanicSchema = z
+  .object({
+    kind: z.literal('weapon-buff'),
+    useSpellcastingAbility: z.boolean().optional(),
+    damageDieOverride: DiceExpressionSchema.optional(),
+    damageTypeChoice: z
+      .object({
+        allowed: z.array(DamageTypeSchema).min(1),
+      })
+      .optional(),
+  })
+  .strict();
+
+// Slice 520: stabilize-the-dying mechanic. Canonical user: Spare the
+// Dying (2024 Necromancy cantrip): "Choose a creature within range
+// that has 0 Hit Points and isn't dead. The creature becomes Stable."
+// The target is named on the cast intent (`targetIds[0]`); the
+// mechanic flag drives the cast-spell planner to emit a `Stabilized`
+// event (slice's existing `applyStabilized` reducer sets
+// `deathSaves.stable = true`). The planner gates the event on the
+// target being at 0 HP and not yet stable; an unmet gate emits zero
+// events (the cast still consumes its slot / spell economy via the
+// surrounding cast-spell envelope, mirroring the RAW "spell does
+// nothing" outcome on an ineligible target).
+const SpellStabilizeMechanicSchema = z
+  .object({
+    kind: z.literal('stabilize'),
+  })
+  .strict();
+
 export const SpellMechanicSchema = z.discriminatedUnion('kind', [
   SpellAttackMechanicSchema,
   SpellSaveMechanicSchema,
@@ -393,6 +563,11 @@ export const SpellMechanicSchema = z.discriminatedUnion('kind', [
   SpellSummonMechanicSchema,
   SpellTrapMechanicSchema,
   SpellHpThresholdMechanicSchema,
+  SpellWeaponAttackMechanicSchema,
+  SpellWeaponBuffMechanicSchema,
+  SpellZoneMechanicSchema,
+  SpellCreateItemMechanicSchema,
+  SpellStabilizeMechanicSchema,
 ]);
 export type SpellMechanic = z.infer<typeof SpellMechanicSchema>;
 

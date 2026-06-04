@@ -100,7 +100,8 @@ export const planTickRecurringSave = (
   let dc: number;
   let saveAbility: AbilityScore;
   let onSuccess: 'removeCondition' | undefined;
-  let onFail: 'consumeAction' | 'dodge' | undefined;
+  let onFail: 'consumeAction' | 'dodge' | 'escalateToCondition' | undefined;
+  let escalateToConditionId: string | undefined;
   if (instanceFixed !== undefined) {
     dc = instanceFixed.dc;
     saveAbility = instanceFixed.ability;
@@ -112,27 +113,35 @@ export const planTickRecurringSave = (
     saveAbility = def.ability;
     onSuccess = def.onSuccess;
     onFail = def.onFail;
-    const casterId = intent.casterId ?? applied.sourceCharacterId;
-    if (casterId === undefined) {
-      throw new Error(
-        `Cannot tick recurring save for '${intent.conditionId}' on ${target.name}: no casterId in intent and no sourceCharacterId on the applied condition`,
-      );
+    escalateToConditionId = def.escalateToConditionId;
+    // Slice 488: condition-definition `fixedDC` skips caster / spellcasting-class
+    // resolution entirely (Cockatrice CON DC 11). When unset, fall back to the
+    // source caster's spell DC (Hold Person, etc.).
+    if (def.fixedDC !== undefined) {
+      dc = def.fixedDC;
+    } else {
+      const casterId = intent.casterId ?? applied.sourceCharacterId;
+      if (casterId === undefined) {
+        throw new Error(
+          `Cannot tick recurring save for '${intent.conditionId}' on ${target.name}: no casterId in intent and no sourceCharacterId on the applied condition`,
+        );
+      }
+      const caster = state.characters[casterId];
+      if (!caster) throw new Error(`Unknown caster ${casterId}`);
+      const castingClassId =
+        intent.castingClassId ?? findPrimarySpellcastingClass(caster, content);
+      if (castingClassId === undefined) {
+        throw new Error(`Caster ${caster.name} has no spellcasting class`);
+      }
+      dc = computeSpellSaveDC({
+        character: caster,
+        itemInstances: state.itemInstances,
+        content,
+        pendingChoices: state.pendingChoices,
+        classId: castingClassId,
+        characters: state.characters,
+      }).total;
     }
-    const caster = state.characters[casterId];
-    if (!caster) throw new Error(`Unknown caster ${casterId}`);
-    const castingClassId =
-      intent.castingClassId ?? findPrimarySpellcastingClass(caster, content);
-    if (castingClassId === undefined) {
-      throw new Error(`Caster ${caster.name} has no spellcasting class`);
-    }
-    dc = computeSpellSaveDC({
-      character: caster,
-      itemInstances: state.itemInstances,
-      content,
-      pendingChoices: state.pendingChoices,
-      classId: castingClassId,
-      characters: state.characters,
-    }).total;
   }
 
   const at = intent.at ?? nowIso();
@@ -199,6 +208,36 @@ export const planTickRecurringSave = (
         }
       }
     }
+  }
+  // Slice 488: escalation arm. On a failed save, remove the current
+  // condition and apply the target condition (Cockatrice Restrained ->
+  // Petrified). The condition reducer enforces immunity (statblock
+  // conditionImmunities + effect-stack GrantConditionImmunity), so the
+  // planner emits both events unconditionally and lets the reducer
+  // canonicalize. Source carries through from the original applied
+  // condition so the escalated condition's `sourceCharacterId` still
+  // names the Cockatrice / Medusa / etc. that bit the target.
+  if (!success && onFail === 'escalateToCondition' && escalateToConditionId !== undefined) {
+    const removed: ConditionRemovedEvent = {
+      id: newEventId() as ULID,
+      at,
+      type: 'ConditionRemoved',
+      targetId: intent.targetId as ULID,
+      conditionId: intent.conditionId,
+      causedByEventId: saveEvent.id,
+    };
+    events.push(removed);
+    const escalated: ConditionAppliedEvent = {
+      id: newEventId() as ULID,
+      at,
+      type: 'ConditionApplied',
+      targetId: intent.targetId as ULID,
+      conditionId: escalateToConditionId,
+      appliedConditionId: newAppliedConditionId(),
+      sourceCharacterId: applied.sourceCharacterId,
+      causedByEventId: saveEvent.id,
+    };
+    events.push(escalated);
   }
 
   if (success && onSuccess === 'removeCondition') {

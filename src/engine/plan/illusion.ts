@@ -21,6 +21,7 @@ import type { ActionEconomyConsumedEvent } from '../../schemas/events/action-eco
 import { computeSpellSaveDC } from '../../derive/spell-dc.js';
 import { computeAbilityCheck } from '../../derive/ability-check.js';
 import { rollDie } from '../../rng/dice.js';
+import { applyHalflingLuckFromFlag } from './_halfling-luck.js';
 import { D20_SIDES } from '../../internal/constants.js';
 import { newEventId, newIllusionId, newEffectInstanceId } from '../../ids.js';
 import { nowIso } from '../../internal/clock.js';
@@ -315,11 +316,13 @@ export const planInvestigateIllusion = (
     : check.hasDisadvantage
       ? 'disadvantage'
       : 'none';
-  const usedD20 = check.hasAdvantage
+  let usedD20 = check.hasAdvantage
     ? Math.max(...rolls)
     : check.hasDisadvantage
       ? Math.min(...rolls)
       : rolls[0]!;
+  // Slice 543: Halfling Luck on Investigation check.
+  usedD20 = applyHalflingLuckFromFlag(usedD20, check.hasHalflingLuck, rolls, rng);
   const total = usedD20 + check.total;
   const success = total >= illusion.investigationDC;
   events.push({

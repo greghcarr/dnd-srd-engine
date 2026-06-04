@@ -33,6 +33,8 @@ const buildFighter = (name: string, weaponDefId: string): { char: Character; wea
     classes: [{ classId: 'fighter', level: 5, hitDiceRemaining: 5 }],
     abilityScores: { STR: 16, DEX: 14, CON: 14, INT: 10, WIS: 10, CHA: 10 },
     hp: { current: 44, max: 44, temp: 0 },
+    // Slice 502: master the weapon this fighter wields so its mastery applies.
+    weaponMasteries: [weaponDefId],
   });
   return { char, weaponId: makeItemInstance(weaponDefId).id };
 };

@@ -28,3 +28,17 @@ export const PactSlotConsumedEventSchema = EventEnvelopeSchema.extend({
   characterId: ULIDSchema,
 });
 export type PactSlotConsumedEvent = z.infer<typeof PactSlotConsumedEventSchema>;
+
+// Slice 486: emitted when a cast consumes a oncePerLongRest free cast
+// from a GrantSpell grant (Magic Initiate, Warlock Contact Patron).
+// Reducer pushes `spellId` onto the bearer's `usedFreeCastSpellIds`;
+// the long-rest reducer clears that list. Cast-spell planner emits
+// this alongside SpellCastDeclared (no SpellSlotConsumed) when the
+// intent's `useFreeCast: true` flag is set and the validation gate
+// passes.
+export const FreeCastUsedEventSchema = EventEnvelopeSchema.extend({
+  type: z.literal('FreeCastUsed'),
+  characterId: ULIDSchema,
+  spellId: z.string(),
+});
+export type FreeCastUsedEvent = z.infer<typeof FreeCastUsedEventSchema>;

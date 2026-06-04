@@ -464,6 +464,17 @@
       "mastery": "Cleave"
     },
     {
+      "id": "greatsword",
+      "itemKind": "weapon",
+      "name": "Greatsword",
+      "category": "martial",
+      "attackKind": "melee",
+      "damageType": "slashing",
+      "damageDice": "2d6",
+      "properties": ["heavy", "two-handed"],
+      "mastery": "Graze"
+    },
+    {
       "id": "rapier",
       "itemKind": "weapon",
       "name": "Rapier",

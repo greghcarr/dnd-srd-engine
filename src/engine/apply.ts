@@ -21,6 +21,10 @@ import {
   applyResourceSpent,
 } from './reducers/resources.js';
 import {
+  applyHeroicInspirationGranted,
+  applyHeroicInspirationConsumed,
+} from './reducers/heroic-inspiration.js';
+import {
   applyLongRestEnded,
   applyLongRestStarted,
   applyShortRestEnded,
@@ -57,6 +61,7 @@ import {
 } from './reducers/level-up.js';
 import { applyAbilityCheckRolled, applySaveRolled } from './reducers/checks.js';
 import {
+  applyFreeCastUsed,
   applyPactSlotConsumed,
   applySpellCastDeclared,
   applySpellSlotConsumed,
@@ -68,6 +73,7 @@ import {
 import { applyTriggerFired } from './reducers/triggers.js';
 import {
   applyActionEconomyConsumed,
+  applyActionReadied,
   applyRecklessAttackActivated,
   applyStunningStrikeAttempted,
   applySavageAttackerUsed,
@@ -130,7 +136,7 @@ import {
   applyBreathWeaponFired,
   applyBreathWeaponRecharged,
 } from './reducers/breath-weapon.js';
-import { applyWeaponMasteryActivated } from './reducers/weapon-mastery.js';
+import { applyWeaponMasteryActivated, applyWeaponMasteriesChosen } from './reducers/weapon-mastery.js';
 import {
   applyMounted,
   applyDismounted,
@@ -220,6 +226,12 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
       case 'Stabilized':
         applyStabilized(draft, event);
         break;
+      case 'HeroicInspirationGranted':
+        applyHeroicInspirationGranted(draft, event);
+        break;
+      case 'HeroicInspirationConsumed':
+        applyHeroicInspirationConsumed(draft, event);
+        break;
       case 'CreatureDestroyed':
         applyCreatureDestroyed(draft, event);
         break;
@@ -307,6 +319,9 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
       case 'PactSlotConsumed':
         applyPactSlotConsumed(draft, event);
         break;
+      case 'FreeCastUsed':
+        applyFreeCastUsed(draft, event);
+        break;
       case 'ConcentrationStarted':
         applyConcentrationStarted(draft, event);
         break;
@@ -318,6 +333,9 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
         break;
       case 'ActionEconomyConsumed':
         applyActionEconomyConsumed(draft, event);
+        break;
+      case 'ActionReadied':
+        applyActionReadied(draft, event);
         break;
       case 'RecklessAttackActivated':
         applyRecklessAttackActivated(draft, event);
@@ -494,6 +512,9 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
         break;
       case 'WeaponMasteryActivated':
         applyWeaponMasteryActivated(draft, event);
+        break;
+      case 'WeaponMasteriesChosen':
+        applyWeaponMasteriesChosen(draft, event);
         break;
       case 'Mounted':
         applyMounted(draft, event);

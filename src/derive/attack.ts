@@ -8,6 +8,7 @@ import { computeTotalLevel } from '../schemas/runtime/character.js';
 import type { Weapon } from '../schemas/content/item.js';
 import type { EffectAccumulator } from '../effects/builder.js';
 import type { DiceExpression, DamageType } from '../schemas/primitives.js';
+import { EXHAUSTION_ATTACK_PENALTY_PER_LEVEL } from '../internal/constants.js';
 
 export interface AttackBreakdownEntry {
   readonly source: string;
@@ -29,12 +30,61 @@ export interface ComputeAttackInput {
   // on condition effects that touch attack bonuses. Callers without
   // source-relative attack content can omit (formulas drop to 0).
   readonly characters?: Readonly<Record<string, Character>>;
+  // Slice 494: explicit ability override. When set, the attack bonus
+  // uses this ability mod instead of chooseAttackAbility's
+  // weapon-property-driven default. Canonical user: True Strike RAW
+  // ("uses your spellcasting ability for the attack and damage rolls
+  // instead of using Strength or Dexterity"). Callers without an
+  // override pass undefined and the existing class-derived path applies.
+  readonly abilityOverride?: 'STR' | 'DEX' | 'CON' | 'INT' | 'WIS' | 'CHA';
 }
+
+// Slice 623: Monk Martial Arts "Dexterous Attacks." RAW 2024 Monk L1
+// Martial Arts: while unarmed or wielding only Monk weapons and not
+// wearing armor or wielding a shield, you can use Dex instead of Str
+// for attack and damage rolls of Unarmed Strikes and Monk weapons.
+// Monk weapons = Simple Melee + Martial Melee with the Light property
+// (not Two-Handed). Unarmed Strike always qualifies.
+//
+// Pre-slice the engine implemented only the Martial Arts die scaling
+// (and only for unarmed-strike); the STR->DEX swap on monk-eligible
+// weapons (javelin, shortsword, scimitar, ...) was missing. The
+// slice-622 fuzz review at seed 7007 surfaced a monk wielding a
+// javelin attacking with STR (+1) when RAW says DEX (+2).
+export const martialArtsApplies = (character: Character, weapon: Weapon): boolean => {
+  const monkLevel = character.classes.find((c) => c.classId === 'monk')?.level ?? 0;
+  if (monkLevel < 1) return false;
+  // RAW gate: unarmored AND not wielding a shield. Both checked at
+  // equipped slots; the armor slot is unset for an unarmored monk and
+  // the shield slot is unset for a non-shield-wielding monk.
+  if (character.equipped.armor !== undefined) return false;
+  if (character.equipped.shield !== undefined) return false;
+  if (weapon.id === 'unarmed-strike') return true;
+  if (weapon.attackKind !== 'melee') return false;
+  if (weapon.category === 'simple') return true;
+  if (
+    weapon.category === 'martial'
+    && weapon.properties.includes('light')
+    && !weapon.properties.includes('two-handed')
+  ) {
+    return true;
+  }
+  return false;
+};
 
 const chooseAttackAbility = (character: Character, weapon: Weapon): 'STR' | 'DEX' => {
   const isFinesse = weapon.properties.includes('finesse');
   const isRanged = weapon.attackKind === 'ranged';
   if (isRanged && !weapon.properties.includes('thrown')) return 'DEX';
+  // Slice 623: monk "Dexterous Attacks" swaps STR -> DEX on monk-
+  // eligible weapons (mirror of the finesse rule). Picks the better
+  // of the two; in practice DEX > STR for any reasonable monk build.
+  if (martialArtsApplies(character, weapon)) {
+    return abilityModifier(character.abilityScores.DEX) >=
+      abilityModifier(character.abilityScores.STR)
+      ? 'DEX'
+      : 'STR';
+  }
   if (isFinesse) {
     return abilityModifier(character.abilityScores.DEX) >=
       abilityModifier(character.abilityScores.STR)
@@ -44,7 +94,13 @@ const chooseAttackAbility = (character: Character, weapon: Weapon): 'STR' | 'DEX
   return 'STR';
 };
 
-const isWeaponProficient = (
+// Recognized property-qualified proficiency tokens: a class can declare
+// e.g. "martial-light" (any martial weapon with the Light property) or
+// "martial-finesse" (any martial weapon with the Finesse property).
+// RAW shape for Monk ("Simple + Martial light") and Rogue ("Simple +
+// Martial finesse-or-light"). Extensible to any "<category>-<property>"
+// combination the content needs without enumerating weapons one by one.
+export const isWeaponProficient = (
   character: Character,
   weapon: Weapon,
   content: ResolvedContent,
@@ -52,9 +108,16 @@ const isWeaponProficient = (
   for (const enrollment of character.classes) {
     const cls = content.classes.get(enrollment.classId);
     if (!cls) continue;
-    if (cls.weaponProficiencies.includes(weapon.id)) return true;
-    if (cls.weaponProficiencies.includes(weapon.category)) return true;
-    if (cls.weaponProficiencies.includes('all')) return true;
+    for (const token of cls.weaponProficiencies) {
+      if (token === weapon.id) return true;
+      if (token === weapon.category) return true;
+      if (token === 'all') return true;
+      const prefix = `${weapon.category}-`;
+      if (token.startsWith(prefix)) {
+        const requiredProperty = token.substring(prefix.length);
+        if (weapon.properties?.some((p) => p === requiredProperty)) return true;
+      }
+    }
   }
   return false;
 };
@@ -82,8 +145,10 @@ const attackAbility = (
   character: Character,
   weapon: Weapon,
   effects: EffectAccumulator,
-): { ability: 'STR' | 'DEX'; mod: number } => {
-  const ability = chooseAttackAbility(character, weapon);
+  override?: 'STR' | 'DEX' | 'CON' | 'INT' | 'WIS' | 'CHA',
+): { ability: 'STR' | 'DEX' | 'CON' | 'INT' | 'WIS' | 'CHA'; mod: number } => {
+  // Slice 494: override (True Strike) bypasses chooseAttackAbility.
+  const ability = override ?? chooseAttackAbility(character, weapon);
   const baseScore = character.abilityScores[ability];
   const floor = effects.effectiveAbilityScoreFloor(ability)?.value;
   const increase = effects.effectiveAbilityScoreIncrease(ability);
@@ -93,7 +158,12 @@ const attackAbility = (
 export const computeAttackBonus = (input: ComputeAttackInput): AttackResult => {
   const { instance, weapon } = resolveWeapon(input);
   const effects = buildEffectStack(input);
-  const { ability, mod } = attackAbility(input.character, weapon, effects);
+  // Ability override precedence: the per-attack input override (True
+  // Strike, slice 494) wins; otherwise a weapon-buff override (Shillelagh,
+  // slice 501) sourced from the instance's temporaryBuff; otherwise the
+  // weapon-property default.
+  const abilityOverride = input.abilityOverride ?? instance.temporaryBuff?.abilityOverride;
+  const { ability, mod } = attackAbility(input.character, weapon, effects, abilityOverride);
   const breakdown: AttackBreakdownEntry[] = [{ source: `${ability}-mod`, value: mod }];
 
   if (isWeaponProficient(input.character, weapon, input.content)) {
@@ -135,6 +205,17 @@ export const computeAttackBonus = (input: ComputeAttackInput): AttackResult => {
   const enchantment = resolveEnchantment(instance, input.content);
   if (enchantment?.attackBonus !== undefined && enchantment.attackBonus !== 0) {
     breakdown.push({ source: `enchantment:${enchantment.id}`, value: enchantment.attackBonus });
+  }
+
+  // Slice 569: RAW PHB 2024 Exhaustion: -2 per level on every d20 Test
+  // (ability checks + saves + ATTACK ROLLS). Pre-slice the penalty was
+  // applied to checks (derive/ability-check.ts) and saves (derive/save.ts)
+  // but NOT attack rolls — an exhausted character's to-hit was unaffected.
+  if (input.character.exhaustion > 0) {
+    breakdown.push({
+      source: 'exhaustion',
+      value: EXHAUSTION_ATTACK_PENALTY_PER_LEVEL * input.character.exhaustion,
+    });
   }
 
   const total = breakdown.reduce((acc, e) => acc + e.value, 0);

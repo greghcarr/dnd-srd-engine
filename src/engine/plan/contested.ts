@@ -3,6 +3,7 @@ import type { ResolvedContent } from '../../content/pack.js';
 import type { Event } from '../../schemas/events/index.js';
 import type { RNG } from '../../rng/index.js';
 import { rollDie } from '../../rng/dice.js';
+import { applyHalflingLuckFromFlag, applyHalflingLuckForCharacter } from './_halfling-luck.js';
 import { newEventId, newAppliedConditionId } from '../../ids.js';
 import { D20_SIDES } from '../../internal/constants.js';
 import { nowIso } from '../../internal/clock.js';
@@ -59,7 +60,7 @@ export interface GrappleIntent {
 
 export const planGrapple = (
   state: CampaignState,
-  _content: ResolvedContent,
+  content: ResolvedContent,
   rng: RNG,
   intent: GrappleIntent,
 ): ReadonlyArray<Event> => {
@@ -70,7 +71,9 @@ export const planGrapple = (
   const at = intent.at ?? nowIso();
   const ability = intent.targetAbility ?? 'STR';
   const dc = unarmedSaveDC(attacker);
-  const d20 = rollDie(D20_SIDES, rng);
+  const rolls: number[] = [rollDie(D20_SIDES, rng)];
+  // Slice 543: Halfling Luck on contested target save.
+  const d20 = applyHalflingLuckForCharacter(rolls[0]!, intent.targetId, state, content, rolls, rng);
   const bonus = abilityModifier(target.abilityScores[ability]);
   const total = d20 + bonus;
   const success = total >= dc;
@@ -113,7 +116,7 @@ export interface ShoveIntent {
 
 export const planShove = (
   state: CampaignState,
-  _content: ResolvedContent,
+  content: ResolvedContent,
   rng: RNG,
   intent: ShoveIntent,
 ): ReadonlyArray<Event> => {
@@ -123,7 +126,9 @@ export const planShove = (
   invariant(target !== undefined, `Target ${intent.targetId} not found`);
   const at = intent.at ?? nowIso();
   const dc = unarmedSaveDC(attacker);
-  const d20 = rollDie(D20_SIDES, rng);
+  const rolls: number[] = [rollDie(D20_SIDES, rng)];
+  // Slice 543: Halfling Luck on contested target STR save.
+  const d20 = applyHalflingLuckForCharacter(rolls[0]!, intent.targetId, state, content, rolls, rng);
   const bonus = abilityModifier(target.abilityScores.STR);
   const total = d20 + bonus;
   const success = total >= dc;
@@ -214,7 +219,9 @@ export const planHide = (
     pendingChoices: state.pendingChoices,
     characters: state.characters,
   });
-  const d20 = rollDie(D20_SIDES, rng);
+  const rolls: number[] = [rollDie(D20_SIDES, rng)];
+  // Slice 543: Halfling Luck on Hide DEX (Stealth) check.
+  const d20 = applyHalflingLuckFromFlag(rolls[0]!, derivation.hasHalflingLuck, rolls, rng);
   const total = d20 + derivation.total;
   const success = total >= dc;
   const events: Event[] = [];

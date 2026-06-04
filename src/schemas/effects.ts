@@ -106,6 +106,12 @@ export type TriggerAction =
   // bearer reduces an enemy to 0 HP). Emits a TempHPGranted event,
   // which uses max-not-additive temp-HP semantics (slice 75).
   | { kind: 'GrantTempHP'; amount: number | Formula }
+  // Slice 516: emit a `CreaturePushed` event targeting the triggering
+  // event's target, pushing them up to `distanceFeet` away from the
+  // bearer (the engine doesn't model positions, so the event is
+  // informational — consumers apply the position change). Canonical
+  // user: Warlock Repelling Blast (Eldritch Blast pushes 10 ft on hit).
+  | { kind: 'PushTarget'; distanceFeet: number }
   | { kind: 'ApplyCondition'; conditionId: string; durationRounds?: number }
   // Retaliation variant of ApplyCondition: stamps the condition on
   // the attacker of the triggering event instead of the target. Used
@@ -156,6 +162,10 @@ export const TriggerActionSchema: z.ZodType<TriggerAction> = z.union([
   z.object({
     kind: z.literal('GrantTempHP'),
     amount: z.union([z.number(), FormulaSchema]),
+  }),
+  z.object({
+    kind: z.literal('PushTarget'),
+    distanceFeet: z.number().int().min(0),
   }),
   z.object({
     kind: z.literal('ApplyCondition'),
@@ -298,7 +308,7 @@ export type Effect =
   | { kind: 'Regeneration'; perTurn: number; suppressedBy: DamageType[] }
   | { kind: 'GrantResource'; resourceId: string; max: number | Formula; recharge: Recharge; diceSize?: number }
   | { kind: 'GrantSpellSlots'; level: SpellLevel; count: number; source: 'full' | 'half' | 'third' | 'pact' }
-  | { kind: 'GrantSpell'; spellId: string; preparation: 'always-prepared' | 'prepared' | 'known' | 'at-will' | 'oncePerLongRest' | 'oncePerShortRest'; spellcastingAbility?: AbilityScore }
+  | { kind: 'GrantSpell'; spellId: string; preparation: 'always-prepared' | 'prepared' | 'known' | 'at-will' | 'oncePerLongRest' | 'oncePerShortRest'; spellcastingAbility?: AbilityScore; freeCastResourceId?: string }
   | { kind: 'OnEvent'; id?: string; trigger: { eventType: string; filter?: Predicate }; actions: TriggerAction[]; oncePer?: 'turn' | 'round' | 'shortRest' | 'longRest'; requiresReaction?: boolean; consumeOnTrigger?: boolean }
   | { kind: 'RecoverResource'; resourceId: string; amount: number | 'all' | Formula; when: 'shortRest' | 'longRest' | 'turnStart' | 'turnEnd' | 'dawn' }
   | { kind: 'GrantAction'; actionId: string; name: string; cost: 'action' | 'bonusAction' | 'reaction' | 'free'; resourceCost?: { resourceId: string; amount: number } }
@@ -333,6 +343,63 @@ export type Effect =
   // save (and no additional effect). Read by `planCastSpell` from the
   // caster's effect stack.
   | { kind: 'GrantPotentCantrip' }
+  // Slice 505: Wizard L1 Ritual Adept. Presence marker for the wizard's
+  // "cast spellbook spells as Rituals without preparing them" capability.
+  // The cast pathway (`planCastSpell` with `intent.asRitual: true`) is
+  // already operationally permissive enough to cover this on its own —
+  // `characterKnowsSpell` accepts `knownSpells` (the wizard's spellbook)
+  // alone, and `asRitual` skips slot + action consumption. The marker
+  // exists so the wire is observable in the effect stack (replacing a
+  // misleading `Custom { handlerId: 'ritual-adept' }` content stub) and
+  // available to a future RAW-tightening slice that gates ritual casting
+  // strictly on a ritual-casting class feature.
+  | { kind: 'GrantRitualAdept' }
+  // Slice 511: indirection primitive that lets an effect projection
+  // include another Feat's effects by id. Canonical user: Warlock
+  // Eldritch Invocations — each invocation is authored as a Feat
+  // (`category: 'invocation'`), and the warlock's per-tier invocation
+  // OfferChoice's options each grant the chosen invocation via
+  // `GrantFeat { featId }`. Expanded by `expandGrantFeatEffects` in
+  // `src/derive/effect-stack.ts` before reaching `applyEffectToBuilder`
+  // (the builder switch sees only fully-expanded leaf effects), with
+  // cycle protection. Unlike adding the feat to `character.featsTaken`,
+  // GrantFeat does NOT surface the feat in `getEffectiveFeatIds`; it
+  // only projects the feat's effects into the effect stack.
+  | { kind: 'GrantFeat'; featId: string }
+  // Slice 518: Warlock L1 Pact of the Blade invocation presence marker.
+  // Read by `planConjurePactWeapon` to gate the conjure action on the
+  // bearer having the invocation. The conjure planner takes the
+  // weapon-definition choice + optional damage-type override at intent
+  // time and stamps an `ItemBuffApplied` on the conjured weapon
+  // (abilityOverride 'CHA' + damageTypeOverride; reuses slice-501's
+  // `temporaryBuff` shape).
+  | { kind: 'GrantPactBlade' }
+  // Slice 519 marker. Presence flag indicating the bearer has the Pact
+  // of the Chain invocation (warlock). Projected via
+  // `EffectAccumulator.markPactChain()` / `hasPactChain()`. Authored
+  // alongside a `GrantSpell find-familiar 'at-will'` companion that
+  // gives the warlock the free-cast of Find Familiar; this marker is
+  // the gate for any future Chain-specific surface (special familiar
+  // forms enforcement, the "forgo one attack" reaction arm). Today the
+  // special-form list and the familiar attack-via-reaction arm are
+  // consumer-managed; the marker exists so a later slice can wire them
+  // without changing the feat-side authoring.
+  | { kind: 'GrantPactChain' }
+  // Slice 538: Halfling Luck. Presence marker for the reroll-on-natural-1
+  // mechanic. RAW: "When you roll a 1 on the d20 of a D20 Test, you can
+  // reroll the die, and you must use the new roll." Projected via
+  // `EffectAccumulator.markHalflingLuck()` / `hasHalflingLuck()`. The
+  // attack-roll site reads the accessor and rerolls when the chosen d20
+  // is a natural 1. Save / check / other d20 sites stay deferred to
+  // follow-up slices that wire the same helper at each site.
+  | { kind: 'GrantHalflingLuck' }
+  // Slice 542: Heroic Inspiration on Long Rest. RAW: "You gain
+  // Heroic Inspiration whenever you finish a Long Rest." Wired
+  // on Human Resourceful; future features that grant per-long-
+  // rest Inspiration share the same marker. The long-rest planner
+  // walks each participant's effect stack for the marker and
+  // emits HeroicInspirationGranted.
+  | { kind: 'GrantHeroicInspirationOnLongRest' }
   // Cross-character effect: while this is active on a character, attacks
   // against that character are made with advantage. Used by Faerie Fire,
   // Hex (kind of), Hunter's Mark variants. The attack planner consults
@@ -601,6 +668,13 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       max: z.union([z.number().int().min(0), FormulaSchema]),
       recharge: RechargeSchema,
       diceSize: z.number().int().optional(),
+      // Slice 613: optional human-readable label for the resource, used
+      // by user-facing surfaces (transcript formatter, web demo) so the
+      // ResourceSpent line reads "spends 1 Relentless Endurance" not
+      // "spends 1 relentless-endurance". Decouples slugs (machine ids)
+      // from display strings. Unset → consumers fall back to a
+      // title-cased version of the slug.
+      label: z.string().optional(),
     }),
     z.object({
       kind: z.literal('GrantSpellSlots'),
@@ -620,6 +694,16 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
         'oncePerShortRest',
       ]),
       spellcastingAbility: AbilityScoreSchema.optional(),
+      // Slice 566: pool-based free-cast bypass. When set, a cast of
+      // `spellId` with `useFreeCast: true` consumes 1 from the named
+      // resource (emits ResourceSpent) and skips the slot. Composes
+      // with `preparation: 'always-prepared'` for the canonical RAW
+      // shape "always prepared + N free casts per long rest": Ranger
+      // Favored Enemy grants Hunter's Mark always-prepared with
+      // `freeCastResourceId: 'hunters-mark'`, and a sibling
+      // GrantResource pumps the resource's max (2 at L1, 3/4/5/6 at
+      // L5/9/13/17) under the SAME `recharge: 'longRest'` policy.
+      freeCastResourceId: z.string().optional(),
     }),
     z.object({
       kind: z.literal('OnEvent'),
@@ -706,6 +790,25 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
     }),
     z.object({
       kind: z.literal('GrantPotentCantrip'),
+    }),
+    z.object({
+      kind: z.literal('GrantRitualAdept'),
+    }),
+    z.object({
+      kind: z.literal('GrantFeat'),
+      featId: z.string(),
+    }),
+    z.object({
+      kind: z.literal('GrantPactBlade'),
+    }),
+    z.object({
+      kind: z.literal('GrantPactChain'),
+    }),
+    z.object({
+      kind: z.literal('GrantHalflingLuck'),
+    }),
+    z.object({
+      kind: z.literal('GrantHeroicInspirationOnLongRest'),
     }),
     z.object({
       kind: z.literal('GrantAdvantageToAttackers'),
@@ -832,6 +935,12 @@ export const EFFECT_KINDS = [
   'BoostHealing',
   'GrantEvasion',
   'GrantPotentCantrip',
+  'GrantRitualAdept',
+  'GrantFeat',
+  'GrantPactBlade',
+  'GrantPactChain',
+  'GrantHalflingLuck',
+  'GrantHeroicInspirationOnLongRest',
   'GrantAdvantageToAttackers',
   'ImposeDisadvantageOnAttackers',
   'CancelAdvantageOnAttackers',

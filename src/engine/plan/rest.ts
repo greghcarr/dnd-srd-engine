@@ -1,13 +1,16 @@
 import type { CampaignState } from '../../schemas/runtime/campaign.js';
+import type { ResolvedContent } from '../../content/pack.js';
 import type {
   LongRestEndedEvent,
   LongRestStartedEvent,
   ShortRestEndedEvent,
   ShortRestStartedEvent,
 } from '../../schemas/events/rest.js';
+import type { HeroicInspirationGrantedEvent } from '../../schemas/events/heroic-inspiration.js';
 import type { Event } from '../../schemas/events/index.js';
 import { newEventId } from '../../ids.js';
 import { nowIso } from '../../internal/clock.js';
+import { buildEffectStack } from '../../derive/effect-stack.js';
 import type { ULID } from '../../engine/ids-utils.js';
 
 export interface LongRestIntent {
@@ -58,8 +61,18 @@ export const planShortRest = (
 
 export const planLongRest = (
   state: CampaignState,
-  intent: LongRestIntent,
+  contentOrIntent: ResolvedContent | LongRestIntent,
+  maybeIntent?: LongRestIntent,
 ): ReadonlyArray<Event> => {
+  // Slice 542 backward-compatible signature: callers that don't
+  // supply content get the same behavior as before (no
+  // HeroicInspirationGranted auto-emission). Callers that supply
+  // content get the auto-grant for participants with the
+  // GrantHeroicInspirationOnLongRest marker on their effect stack.
+  const intent: LongRestIntent = maybeIntent ?? (contentOrIntent as LongRestIntent);
+  const content: ResolvedContent | undefined = maybeIntent !== undefined
+    ? (contentOrIntent as ResolvedContent)
+    : undefined;
   const at = intent.at ?? nowIso();
   const expectedDurationMinutes = state.settings.grittyRest
     ? LONG_REST_GRITTY_MINUTES
@@ -77,5 +90,31 @@ export const planLongRest = (
     type: 'LongRestEnded',
     causedByEventId: start.id,
   };
-  return [start, end];
+  const events: Event[] = [start, end];
+  // Slice 542: auto-emit HeroicInspirationGranted for each
+  // participant whose effect stack carries the
+  // GrantHeroicInspirationOnLongRest marker (Human Resourceful,
+  // etc.). Requires content for buildEffectStack.
+  if (content !== undefined) {
+    for (const participantId of intent.participantIds) {
+      const character = state.characters[participantId];
+      if (!character) continue;
+      const effects = buildEffectStack({
+        character,
+        content,
+        itemInstances: state.itemInstances,
+        pendingChoices: state.pendingChoices,
+      });
+      if (!effects.hasHeroicInspirationOnLongRest()) continue;
+      const granted: HeroicInspirationGrantedEvent = {
+        id: newEventId() as ULID,
+        at,
+        type: 'HeroicInspirationGranted',
+        characterId: participantId as ULID,
+        causedByEventId: end.id,
+      };
+      events.push(granted);
+    }
+  }
+  return events;
 };

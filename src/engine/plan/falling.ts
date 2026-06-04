@@ -7,10 +7,11 @@ import { newEventId } from '../../ids.js';
 import { nowIso } from '../../internal/clock.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
-import { planConcentrationBreakOnDrop } from './concentration.js';
+import { planConcentrationOnDamage } from './concentration.js';
 import type { ULID } from '../ids-utils.js';
 import type { Character } from '../../schemas/runtime/character.js';
 import type { ItemInstance } from '../../schemas/runtime/item-instance.js';
+import type { RNG } from '../../rng/index.js';
 import { collectEffectsFromCharacter } from '../../derive/effect-stack.js';
 
 const FALLING_FEET_PER_DIE = 10;
@@ -58,6 +59,7 @@ const hasFallingProtection = (
 export const planFalling = (
   state: CampaignState,
   content: ResolvedContent,
+  rng: RNG,
   intent: FallingIntent,
 ): ReadonlyArray<Event> => {
   const character = state.characters[intent.characterId];
@@ -128,7 +130,10 @@ export const planFalling = (
     components: intercept.components,
     source: `falling ${intent.distanceFeet} ft`,
   };
-  const concentrationBreak = planConcentrationBreakOnDrop(
+  const concentrationBreak = planConcentrationOnDamage(
+    state,
+    content,
+    rng,
     character,
     intercept.components,
     damageApplied.id,

@@ -1,13 +1,22 @@
+import { createEngine, replay, applyAll, type Campaign, type ContentPack } from 'dnd-srd-engine';
 import { createEngineHost, type EngineHost } from './engine-host.js';
-import { mountCombatSandbox, type CombatSandbox } from './modes/combat-sandbox.js';
+import { mountFuzzReplay, type FuzzReplay } from './modes/fuzz-replay.js';
 import { mountEventInspector, type EventInspector } from './modes/event-inspector.js';
-import { mountGridView, type GridView } from './modes/grid-view.js';
-import { mountRulesLab, type RulesLab } from './modes/rules-lab.js';
 import { mountPendingChoiceResolver, type PendingChoiceResolver } from './ui/pending-choice.js';
-import { SCENARIOS, type DemoScenario, type DemoSession } from './scenarios/index.js';
+import { runBattle, type FuzzBattleResult, type FuzzRest, type FuzzVs } from '../scripts/combat-fuzz-core.js';
+
+// Slice 600: the demo no longer dispatches user-chosen actions.
+// Instead it runs the same randomized battle the combat-fuzz CLI
+// produces, then lets the user scrub forward and back through the
+// committed event log. Every panel — the fuzz-replay header, the map,
+// the event inspector — re-renders against the slice of events
+// `0..cursor` whenever the cursor moves.
 
 const DEFAULT_SEED = 42;
-const DEFAULT_SCENARIO_ID = 'goblin-skirmish';
+const DEFAULT_LEVEL = 1;
+const DEFAULT_MODE = '1v1';
+const DEFAULT_VS: FuzzVs = 'pc';
+const DEFAULT_REST: FuzzRest = 'none';
 
 const status = document.getElementById('status');
 const setStatus = (text: string): void => {
@@ -16,175 +25,283 @@ const setStatus = (text: string): void => {
 
 const resetBtn = document.getElementById('btn-reset') as HTMLButtonElement | null;
 const seedInput = document.getElementById('seed-input') as HTMLInputElement | null;
-const sandboxRoot = document.getElementById('combat-sandbox-root');
-const gridRoot = document.getElementById('grid-view-root');
+const modeSelect = document.getElementById('mode-select') as HTMLSelectElement | null;
+const vsSelect = document.getElementById('vs-select') as HTMLSelectElement | null;
+const levelInput = document.getElementById('level-input') as HTMLInputElement | null;
+const restSelect = document.getElementById('rest-select') as HTMLSelectElement | null;
+const fuzzRoot = document.getElementById('fuzz-replay-root');
 const inspectorRoot = document.getElementById('event-inspector-root');
 const choiceRoot = document.getElementById('pending-choice-root');
-const rulesLabRoot = document.getElementById('rules-lab-root');
-const scenarioSelect = document.getElementById('scenario-select') as HTMLSelectElement | null;
-const scenarioHint = document.getElementById('scenario-hint') as HTMLParagraphElement | null;
 
-// URL hash format: `#seed=42&mode=combat`. We only read/write `seed` for
-// now; `mode` lands when the second mode does. Keep this tolerant of
-// unknown keys so future hash params don't strand sessions.
+interface FuzzConfig {
+  readonly seed: number;
+  readonly mode: '1v1' | '2v2';
+  readonly vs: FuzzVs;
+  readonly level: number;
+  readonly rest: FuzzRest;
+}
+
 const readHashParams = (): URLSearchParams => {
   const raw = location.hash.startsWith('#') ? location.hash.slice(1) : location.hash;
   return new URLSearchParams(raw);
 };
 
-const writeHash = (seed: number, scenarioId: string): void => {
-  const params = readHashParams();
-  params.set('seed', String(seed));
-  params.set('scenario', scenarioId);
+const parseIntOr = (raw: string | null, fallback: number, min?: number, max?: number): number => {
+  if (raw === null) return fallback;
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n)) return fallback;
+  if (min !== undefined && n < min) return min;
+  if (max !== undefined && n > max) return max;
+  return n;
+};
+
+const readConfigFromHash = (): FuzzConfig => {
+  const p = readHashParams();
+  const modeRaw = p.get('mode');
+  const vsRaw = p.get('vs');
+  const restRaw = p.get('rest');
+  return {
+    seed: parseIntOr(p.get('seed'), DEFAULT_SEED, 0),
+    mode: modeRaw === '2v2' ? '2v2' : '1v1',
+    vs: vsRaw === 'monster' ? 'monster' : 'pc',
+    level: parseIntOr(p.get('level'), DEFAULT_LEVEL, 1, 5),
+    rest: restRaw === 'short' || restRaw === 'long' ? restRaw : 'none',
+  };
+};
+
+const readCursorFromHash = (totalEvents: number): number => {
+  const raw = readHashParams().get('step');
+  if (raw === null) return totalEvents;
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n)) return totalEvents;
+  if (n < 0) return 0;
+  if (n > totalEvents) return totalEvents;
+  return n;
+};
+
+const writeHash = (cfg: FuzzConfig, cursor: number, totalEvents: number): void => {
+  const params = new URLSearchParams();
+  params.set('seed', String(cfg.seed));
+  params.set('mode', cfg.mode);
+  params.set('vs', cfg.vs);
+  params.set('level', String(cfg.level));
+  params.set('rest', cfg.rest);
+  // Only emit `step` when the user has scrubbed off the end — keeps
+  // the URL clean during normal viewing.
+  if (cursor !== totalEvents) params.set('step', String(cursor));
   const next = `#${params.toString()}`;
   if (location.hash !== next) {
     history.replaceState(null, '', next);
   }
 };
 
-const readHashSeed = (): number => {
-  const raw = readHashParams().get('seed');
-  if (raw === null) return DEFAULT_SEED;
-  const parsed = Number.parseInt(raw, 10);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_SEED;
+const findEncounterId = (campaign: Campaign): string => {
+  const active = campaign.state.activeEncounterId;
+  if (active) return active;
+  // Pre-encounter slice (cursor=0). Pick the first encounter that
+  // *will* be created — runBattle commits createEncounter ~early, but
+  // the cursor may be earlier than that. Fall back to scanning the
+  // full campaign's keys to find the eventual id.
+  const keys = Object.keys(campaign.state.encounters);
+  if (keys.length > 0) return keys[0]!;
+  return '';
 };
 
-const readHashScenarioId = (): string => {
-  const raw = readHashParams().get('scenario');
-  if (raw === null) return DEFAULT_SCENARIO_ID;
-  return SCENARIOS.some((s) => s.id === raw) ? raw : DEFAULT_SCENARIO_ID;
-};
+// Slice 610: per-session cache of `cursor → Campaign` so scrubbing
+// doesn't re-replay-from-genesis every step. Forward steps reuse the
+// prior cursor's state and apply just the new events; backward jumps
+// reuse the nearest cached prefix ≤ target, only replaying the gap.
+//
+// Slice 616: LRU eviction. JS Map preserves insertion order, so
+// "least recently used" = first non-pinned key in iteration order. On
+// every cache hit we delete + re-insert to move the key to the most-
+// recently-used end. The cursor=0 and cursor=totalEvents anchors are
+// pinned (never evicted) so the from-genesis and from-end paths stay
+// instant. Cap defaults to SCRUB_CACHE_MAX_SLOTS = 128 which bounds
+// memory at ~1-2 MB for typical L1 battles even with exhaustive
+// scrubbing; small battles never hit the cap.
+const SCRUB_CACHE_MAX_SLOTS = 128;
 
-const findScenario = (id: string): DemoScenario => {
-  const found = SCENARIOS.find((s) => s.id === id);
-  return found ?? SCENARIOS[0]!;
-};
-
-const activeCombatantId = (
-  campaign: {
-    state: {
-      encounters: Record<
-        string,
-        { combatants: ReadonlyArray<{ combatantId: string; initiativeOrder: number }>; activeIndex: number }
-      >;
-      activeEncounterId?: string;
-    };
-  },
-): string | undefined => {
-  const id = campaign.state.activeEncounterId;
-  if (!id) return undefined;
-  const enc = campaign.state.encounters[id];
-  if (!enc) return undefined;
-  return enc.combatants[enc.activeIndex]?.combatantId;
-};
-
-interface DemoState {
-  readonly host: EngineHost;
-  readonly scenario: DemoSession;
-  readonly scenarioDef: DemoScenario;
-  readonly idToName: ReadonlyMap<string, string>;
+interface ScrubCache {
+  readonly entries: Map<number, Campaign>;
+  readonly pinned: ReadonlySet<number>;
+  readonly maxSlots: number;
 }
 
-const startSession = (scenarioDef: DemoScenario, seed: number): DemoState => {
-  const scenario = scenarioDef.build({ seed });
-  const host = createEngineHost(scenario.engine, scenario.campaign);
-  const idToName = new Map<string, string>();
-  for (const [name, id] of Object.entries(scenario.combatants)) idToName.set(id, name);
+const createScrubCache = (pinnedCursors: ReadonlyArray<number>, maxSlots = SCRUB_CACHE_MAX_SLOTS): ScrubCache => ({
+  entries: new Map(),
+  pinned: new Set(pinnedCursors),
+  maxSlots,
+});
 
-  host.subscribe((c) => {
-    const enc = c.state.encounters[scenario.encounterId];
-    const initiative = enc?.combatants
-      .slice()
-      .sort((a, b) => a.initiativeOrder - b.initiativeOrder)
-      .map((cb) => `${idToName.get(cb.combatantId) ?? cb.combatantId}@${cb.initiative}`);
-    const active = activeCombatantId(c);
-    const activeCb = enc?.combatants.find((cb) => cb.combatantId === active);
-    const activeChar = active ? c.state.characters[active] : undefined;
-    const charSummary = Object.values(c.state.characters).map((ch) => ({
-      name: ch.name,
-      hp: `${ch.hp.current}/${ch.hp.max}`,
-      conditions: ch.appliedConditions.map((a) => a.conditionId),
-    }));
-    console.log('[demo] commit', {
-      events: c.events.length,
-      cursor: c.cursor,
-      active: active ? idToName.get(active) : undefined,
-      activeTurnUsage: activeCb?.turnUsage,
-      activeConditions: activeChar?.appliedConditions.map((a) => a.conditionId),
-      initiative,
-      characters: charSummary,
-    });
-  });
-
-  return { host, scenario, scenarioDef, idToName };
+const cacheSet = (cache: ScrubCache, cursor: number, campaign: Campaign): void => {
+  cache.entries.set(cursor, campaign);
+  // Evict LRU non-pinned keys until under the cap.
+  while (cache.entries.size > cache.maxSlots) {
+    let evicted = false;
+    for (const key of cache.entries.keys()) {
+      if (cache.pinned.has(key)) continue;
+      cache.entries.delete(key);
+      evicted = true;
+      break;
+    }
+    // If every remaining entry is pinned, the cap is smaller than the
+    // pin set — stop trying to evict (would loop forever).
+    if (!evicted) break;
+  }
 };
 
-const renderReady = (session: DemoState): void => {
-  const initialActive = activeCombatantId(session.host.getCampaign());
-  console.log('[demo] scenario ready', {
-    scenarioId: session.scenarioDef.id,
-    schemaVersion: session.scenario.engine.schemaVersion,
-    seed: session.scenario.seed,
-    encounterId: session.scenario.encounterId,
-    combatants: session.scenario.combatants,
-    initialEvents: session.host.getCampaign().events.length,
-    activeCombatant: initialActive ? session.idToName.get(initialActive) : undefined,
-  });
-  setStatus(
-    `${session.scenarioDef.title} (seed ${session.scenario.seed}). ` +
-      `${session.host.getCampaign().events.length} seed events committed. ` +
-      `${initialActive ? `${session.idToName.get(initialActive)}'s turn` : 'No active combatant'}.`,
-  );
-  if (scenarioHint) {
-    scenarioHint.textContent = session.scenarioDef.hint ?? '';
-    scenarioHint.hidden = !session.scenarioDef.hint;
+const cacheGet = (cache: ScrubCache, cursor: number): Campaign | undefined => {
+  const hit = cache.entries.get(cursor);
+  if (hit === undefined) return undefined;
+  // Touch: move to MRU end. Pinned entries don't need touching since
+  // they never evict, but the move is harmless.
+  cache.entries.delete(cursor);
+  cache.entries.set(cursor, hit);
+  return hit;
+};
+
+const buildScrubbed = (full: Campaign, cursor: number, cache: ScrubCache): Campaign => {
+  const hit = cacheGet(cache, cursor);
+  if (hit !== undefined) return hit;
+
+  // Find the largest cached prefix ≤ cursor.
+  let bestKey = -1;
+  for (const key of cache.entries.keys()) {
+    if (key <= cursor && key > bestKey) bestKey = key;
   }
+
+  let state;
+  if (bestKey >= 0) {
+    const base = cache.entries.get(bestKey)!;
+    // applyAll on the prior state + just the gap of new events. For a
+    // single-step forward (bestKey = cursor - 1) this is one event.
+    state = applyAll(base.state, full.events.slice(bestKey, cursor));
+  } else {
+    state = replay(full.events.slice(0, cursor));
+  }
+
+  const scrubbed: Campaign = {
+    ...full,
+    events: full.events.slice(0, cursor),
+    state,
+    cursor,
+  };
+  cacheSet(cache, cursor, scrubbed);
+  return scrubbed;
+};
+
+interface DemoSession {
+  readonly host: EngineHost;
+  readonly fullCampaign: Campaign;
+  readonly encounterId: string;
+  readonly result: FuzzBattleResult;
+  /** Slice 610: per-session scrub cache; reset on each session start. */
+  readonly scrubCache: ScrubCache;
+}
+
+const startSession = (pack: ContentPack, cfg: FuzzConfig, cursor: number): DemoSession => {
+  const result = runBattle({
+    seed: cfg.seed,
+    pack,
+    level: cfg.level,
+    rest: cfg.rest,
+    teamSize: cfg.mode === '2v2' ? 2 : 1,
+    vs: cfg.vs,
+  });
+  const fullCampaign = result.campaign;
+  const encounterId = findEncounterId(fullCampaign);
+  const engine = createEngine({ contentPacks: [pack] });
+  // Slice 616: pin cursor=0 (genesis) and cursor=totalEvents (end). These
+  // are the natural anchors for scrub navigation and stay free of LRU
+  // eviction so the from-start and from-end paths never re-replay.
+  const totalEvents = fullCampaign.events.length;
+  const scrubCache = createScrubCache([0, totalEvents]);
+  // Seed both pinned anchors so the pin promise actually holds (a pin
+  // marks an entry as eviction-immune IF it's in the cache; it doesn't
+  // auto-populate). Cursor 0 is the empty-state replay; cursor=total is
+  // the full campaign.
+  cacheSet(scrubCache, totalEvents, fullCampaign);
+  // Compute + cache the genesis (cursor=0) entry. buildScrubbed sets
+  // it internally on the miss path.
+  buildScrubbed(fullCampaign, 0, scrubCache);
+  const initialCampaign = cursor === fullCampaign.events.length
+    ? fullCampaign
+    : buildScrubbed(fullCampaign, cursor, scrubCache);
+  const host = createEngineHost(engine, initialCampaign);
+  return { host, fullCampaign, encounterId, result, scrubCache };
 };
 
 async function boot(): Promise<void> {
   setStatus('Loading starter pack...');
   const { loadStarterPack } = await import('dnd-srd-engine/starter-pack');
+  const pack = loadStarterPack();
 
-  setStatus('Building scenario...');
-  const starter = loadStarterPack();
+  let cfg = readConfigFromHash();
 
-  let seed = readHashSeed();
-  let scenarioId = readHashScenarioId();
-  writeHash(seed, scenarioId);
-  if (seedInput) seedInput.value = String(seed);
-
-  // Populate the scenario picker.
-  if (scenarioSelect) {
-    scenarioSelect.innerHTML = '';
-    for (const def of SCENARIOS) {
-      const opt = document.createElement('option');
-      opt.value = def.id;
-      opt.textContent = def.title;
-      opt.title = def.description;
-      scenarioSelect.appendChild(opt);
-    }
-    scenarioSelect.value = scenarioId;
+  setStatus(`Running fuzz battle seed=${cfg.seed}...`);
+  let session = startSession(pack, cfg, Number.POSITIVE_INFINITY);
+  let cursor = readCursorFromHash(session.fullCampaign.events.length);
+  if (cursor !== session.fullCampaign.events.length) {
+    session.host.replaceCampaign(buildScrubbed(session.fullCampaign, cursor, session.scrubCache));
   }
 
-  let session = startSession(findScenario(scenarioId), seed);
-  let sandbox: CombatSandbox | undefined;
-  let gridView: GridView | undefined;
+  // Reflect parsed config back into the toolbar inputs so the user
+  // sees the resolved values, even when the URL was minimal.
+  if (seedInput) seedInput.value = String(cfg.seed);
+  if (modeSelect) modeSelect.value = cfg.mode;
+  if (vsSelect) vsSelect.value = cfg.vs;
+  if (levelInput) levelInput.value = String(cfg.level);
+  if (restSelect) restSelect.value = cfg.rest;
+
+  writeHash(cfg, cursor, session.fullCampaign.events.length);
+
+  let fuzz: FuzzReplay | undefined;
   let inspector: EventInspector | undefined;
   let resolver: PendingChoiceResolver | undefined;
+
+  const onSeek = (next: number): void => {
+    cursor = next;
+    // Sync the panel's internal cursor BEFORE notifying subscribers — its
+    // render() reads cursor from its closure, so a stale value would make
+    // the outcome banner flash the wrong state for one frame on hash-
+    // driven seeks.
+    fuzz?.setCursor(cursor);
+    session.host.replaceCampaign(buildScrubbed(session.fullCampaign, cursor, session.scrubCache));
+    writeHash(cfg, cursor, session.fullCampaign.events.length);
+  };
+
+  const renderReady = (): void => {
+    const winnerName = session.result.winner !== null
+      ? session.fullCampaign.state.characters[session.result.winner]?.name ?? '(unknown)'
+      : '(no winner)';
+    setStatus(
+      `seed ${cfg.seed}  ·  ${cfg.mode}${cfg.vs === 'monster' ? ' vs monster' : ''}  ·  L${cfg.level}  ·  ` +
+      `${session.fullCampaign.events.length} events  ·  ` +
+      `${session.result.rounds} rounds  ·  winner: ${winnerName}`,
+    );
+  };
+
   const mountPanels = (): void => {
-    if (sandboxRoot) {
-      sandbox = mountCombatSandbox({
+    if (fuzzRoot) {
+      const resolvedWinnerName = session.result.winner !== null
+        ? session.fullCampaign.state.characters[session.result.winner]?.name ?? null
+        : null;
+      fuzz = mountFuzzReplay({
         host: session.host,
-        scenario: session.scenario,
-        root: sandboxRoot,
+        totalEvents: session.fullCampaign.events.length,
+        initialCursor: cursor,
+        encounterId: session.encounterId,
+        seed: cfg.seed,
+        winner: session.result.winner,
+        winnerName: resolvedWinnerName,
+        rounds: session.result.rounds,
+        teamACharacterIds: session.result.teamACharacterIds,
+        teamBCharacterIds: session.result.teamBCharacterIds,
+        pack,
+        root: fuzzRoot,
+        onSeek,
         onStatus: setStatus,
-      });
-    }
-    if (gridRoot) {
-      gridView = mountGridView({
-        host: session.host,
-        scenario: session.scenario,
-        root: gridRoot,
       });
     }
     if (inspectorRoot) {
@@ -194,54 +311,63 @@ async function boot(): Promise<void> {
       resolver = mountPendingChoiceResolver({ host: session.host, root: choiceRoot, onStatus: setStatus });
     }
   };
-  mountPanels();
-  // Rules Lab is stateless w.r.t. the campaign — mount once, persists
-  // across Reset clicks. Each Run-audit click rebuilds engines from
-  // scratch using the loaded starter pack.
-  let rulesLab: RulesLab | undefined;
-  if (rulesLabRoot) {
-    rulesLab = mountRulesLab({ starter, root: rulesLabRoot, onStatus: setStatus });
-  }
-  void rulesLab;
-  renderReady(session);
 
-  const reset = (newSeed: number, newScenarioId: string): void => {
-    seed = newSeed;
-    scenarioId = newScenarioId;
-    writeHash(seed, scenarioId);
-    if (seedInput) seedInput.value = String(seed);
-    if (scenarioSelect) scenarioSelect.value = scenarioId;
-    sandbox?.unmount();
-    gridView?.unmount();
+  mountPanels();
+  renderReady();
+
+  const restart = (): void => {
+    fuzz?.unmount();
     inspector?.unmount();
     resolver?.unmount();
-    session = startSession(findScenario(scenarioId), seed);
+    session = startSession(pack, cfg, Number.POSITIVE_INFINITY);
+    cursor = session.fullCampaign.events.length;
+    writeHash(cfg, cursor, session.fullCampaign.events.length);
     mountPanels();
-    renderReady(session);
+    renderReady();
   };
 
   if (resetBtn) {
     resetBtn.disabled = false;
     resetBtn.addEventListener('pointerdown', () => {
-      const raw = seedInput?.value ?? String(seed);
-      const parsed = Number.parseInt(raw, 10);
-      const nextSeed = Number.isFinite(parsed) && parsed >= 0 ? parsed : seed;
-      reset(nextSeed, scenarioId);
+      const nextSeed = seedInput
+        ? parseIntOr(seedInput.value, cfg.seed, 0)
+        : cfg.seed;
+      const nextMode: '1v1' | '2v2' = modeSelect?.value === '2v2' ? '2v2' : '1v1';
+      const nextVs: FuzzVs = vsSelect?.value === 'monster' ? 'monster' : 'pc';
+      const nextLevel = levelInput
+        ? parseIntOr(levelInput.value, cfg.level, 1, 5)
+        : cfg.level;
+      const restRaw = restSelect?.value;
+      const nextRest: FuzzRest = restRaw === 'short' || restRaw === 'long' ? restRaw : 'none';
+      cfg = { seed: nextSeed, mode: nextMode, vs: nextVs, level: nextLevel, rest: nextRest };
+      if (seedInput) seedInput.value = String(cfg.seed);
+      setStatus(`Running fuzz battle seed=${cfg.seed}...`);
+      restart();
     });
   }
 
-  if (scenarioSelect) {
-    scenarioSelect.addEventListener('change', () => {
-      reset(seed, scenarioSelect.value);
-    });
-  }
-
-  // React to manual edits of the URL hash (back/forward, paste).
+  // React to manual URL hash edits (back/forward, paste).
   window.addEventListener('hashchange', () => {
-    const nextSeed = readHashSeed();
-    const nextScenario = readHashScenarioId();
-    if (nextSeed !== seed || nextScenario !== scenarioId) {
-      reset(nextSeed, nextScenario);
+    const nextCfg = readConfigFromHash();
+    const cfgChanged =
+      nextCfg.seed !== cfg.seed ||
+      nextCfg.mode !== cfg.mode ||
+      nextCfg.vs !== cfg.vs ||
+      nextCfg.level !== cfg.level ||
+      nextCfg.rest !== cfg.rest;
+    if (cfgChanged) {
+      cfg = nextCfg;
+      if (seedInput) seedInput.value = String(cfg.seed);
+      if (modeSelect) modeSelect.value = cfg.mode;
+      if (vsSelect) vsSelect.value = cfg.vs;
+      if (levelInput) levelInput.value = String(cfg.level);
+      if (restSelect) restSelect.value = cfg.rest;
+      restart();
+      return;
+    }
+    const nextCursor = readCursorFromHash(session.fullCampaign.events.length);
+    if (nextCursor !== cursor) {
+      onSeek(nextCursor);
     }
   });
 }

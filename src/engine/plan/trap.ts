@@ -3,6 +3,7 @@ import type { ResolvedContent } from '../../content/pack.js';
 import type { Event } from '../../schemas/events/index.js';
 import type { RNG } from '../../rng/index.js';
 import { rollDie, rollExpression } from '../../rng/dice.js';
+import { applyHalflingLuckFromFlag } from './_halfling-luck.js';
 import { newEventId } from '../../ids.js';
 import { D20_SIDES } from '../../internal/constants.js';
 import { nowIso } from '../../internal/clock.js';
@@ -12,6 +13,7 @@ import { rollSaveBonusDice } from './_bonus-dice.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { applyAll } from '../apply.js';
+import { planConcentrationOnDamage } from './concentration.js';
 import type { SaveRolledEvent } from '../../schemas/events/checks.js';
 import type {
   DamageAppliedEvent,
@@ -93,11 +95,13 @@ export const planTriggerTrap = (
     : saveDerivation.hasDisadvantage
       ? 'disadvantage'
       : 'none';
-  const usedD20 = saveDerivation.hasAdvantage
+  let usedD20 = saveDerivation.hasAdvantage
     ? Math.max(...rolls)
     : saveDerivation.hasDisadvantage
       ? Math.min(...rolls)
       : rolls[0]!;
+  // Slice 543: Halfling Luck on trap save.
+  usedD20 = applyHalflingLuckFromFlag(usedD20, saveDerivation.hasHalflingLuck, rolls, rng);
   const saveBonus = rollSaveBonusDice(saveDerivation.bonusDice, rng);
   const bonus = saveDerivation.total + saveBonus.total;
   const total = usedD20 + bonus;
@@ -159,6 +163,19 @@ export const planTriggerTrap = (
     };
     events.push(damage);
     events.push(...intercept.extraEvents);
+    // Slice 621: trap damage triggers CON save on a concentrating
+    // triggering character. Same shape as slice 601/612/620 wirings.
+    events.push(
+      ...planConcentrationOnDamage(
+        applyAll(state, events),
+        content,
+        rng,
+        target,
+        intercept.components,
+        damage.id,
+        at,
+      ),
+    );
   }
 
   const triggered: TrapTriggeredEvent = {

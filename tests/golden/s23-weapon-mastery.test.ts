@@ -12,7 +12,7 @@ import type { ItemAcquiredEvent } from '../../src/schemas/events/inventory.js';
 describe('golden: weapon mastery (Slice 23)', () => {
   it('Sap on a longsword applies the sapped condition', async () => {
     const engine = createEngine({ contentPacks: [TEST_PACK], rng: seededRNG(23) });
-    const attacker = buildFighter({ name: 'Cassius', STR: 18, level: 5 });
+    const attacker = buildFighter({ name: 'Cassius', STR: 18, level: 5, weaponMasteries: ['longsword'] });
     const target = buildFighter({ name: 'Goblin' });
     const sword = makeItemInstance('longsword');
 
@@ -38,7 +38,7 @@ describe('golden: weapon mastery (Slice 23)', () => {
 
   it('Vex applies vexing-active to the attacker, keyed to the struck target', () => {
     const engine = createEngine({ contentPacks: [TEST_PACK], rng: seededRNG(23) });
-    const attacker = buildFighter({ name: 'A' });
+    const attacker = buildFighter({ name: 'A', weaponMasteries: ['rapier'] });
     const target = buildFighter({ name: 'T' });
     const rapier = makeItemInstance('rapier');
     let campaign = engine.createCampaign({ name: 's23-vex' });
@@ -71,7 +71,7 @@ describe('golden: weapon mastery (Slice 23)', () => {
 
   it('Slow on a longbow applies slowed-10ft', async () => {
     const engine = createEngine({ contentPacks: [TEST_PACK], rng: seededRNG(23) });
-    const attacker = buildFighter({ name: 'Archer', DEX: 18, level: 5 });
+    const attacker = buildFighter({ name: 'Archer', DEX: 18, level: 5, weaponMasteries: ['longbow'] });
     const target = buildFighter({ name: 'Runner' });
     const bow = makeItemInstance('longbow');
     let campaign = engine.createCampaign({ name: 's23-slow' });
@@ -119,26 +119,37 @@ describe('golden: weapon mastery (Slice 23)', () => {
     expect(engine).toBeDefined();
   });
 
-  it('Graze deals ability mod damage', () => {
-    // No test-pack weapon has Graze mastery (Graze is a Greatsword/Greataxe
-    // property). Demonstrate Graze via a manual weapon via planner unit
-    // test; here we just verify the Sap mastery activation event records.
+  it('Graze deals ability mod damage on a MISS (RAW gate)', () => {
+    // Slice 626: tightened from the pre-slice "mislabeled Sap" stub
+    // (TEST_PACK gained a greatsword with Graze mastery in this slice,
+    // so the test can finally exercise the real path). Graze fires
+    // only when the attack roll misses (slice 624 invariant); pre-
+    // slice this case fired Sap with a longsword and called itself
+    // "Graze" -- not actually testing Graze.
     const engine = createEngine({ contentPacks: [TEST_PACK], rng: seededRNG(7) });
-    const a = buildFighter({ name: 'A', STR: 16 });
+    const a = buildFighter({ name: 'A', STR: 16, weaponMasteries: ['greatsword'] });
     const t = buildFighter({ name: 'T' });
-    const sword = makeItemInstance('longsword');
-    let campaign = engine.createCampaign({ name: 's23-graze-na' });
+    const greatsword = makeItemInstance('greatsword');
+    let campaign = engine.createCampaign({ name: 's23-graze' });
     campaign = commit(campaign, [
-      { id: eventId(), at: isoTimestamp(), type: 'ItemAcquired', instance: sword } satisfies ItemAcquiredEvent,
+      { id: eventId(), at: isoTimestamp(), type: 'ItemAcquired', instance: greatsword } satisfies ItemAcquiredEvent,
       { id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: a } satisfies CharacterCreatedEvent,
       { id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: t } satisfies CharacterCreatedEvent,
     ]);
-    const events = engine.plan.weaponMastery(campaign.state, {
-      mastery: 'Sap',
+    const result = engine.plan.weaponMastery(campaign.state, {
+      mastery: 'Graze',
       attackerId: a.id,
       targetId: t.id,
-      weaponInstanceId: sword.id,
-    }).events;
-    expect(events.some((e) => e.type === 'WeaponMasteryActivated')).toBe(true);
+      weaponInstanceId: greatsword.id,
+      attackHit: false,
+    });
+    expect(result.events.some((e) => e.type === 'WeaponMasteryActivated')).toBe(true);
+    // STR 16 = +3 mod -> 3 slashing damage on the miss.
+    const dmg = result.events.find((e) => e.type === 'DamageApplied') as
+      | { components: ReadonlyArray<{ amount: number; type: string }> }
+      | undefined;
+    expect(dmg, 'Graze emits a DamageApplied for the STR mod').toBeDefined();
+    expect(dmg!.components[0]?.amount).toBe(3);
+    expect(dmg!.components[0]?.type).toBe('slashing');
   });
 });

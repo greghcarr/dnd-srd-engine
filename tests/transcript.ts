@@ -17,6 +17,8 @@ interface FormatterContext {
   readonly stateBefore: CampaignState;
   readonly stateAfter: CampaignState;
   readonly content: ResolvedContent;
+  /** Slice 613: resource-id → label + killing-blow lookup, computed once per formatTranscript call. */
+  readonly resources: ResourceSummary;
 }
 
 const characterName = (state: CampaignState, id: string): string =>
@@ -41,15 +43,80 @@ const spellName = (content: ResolvedContent, id: string): string =>
 const conditionName = (content: ResolvedContent, id: string): string =>
   content.conditions.get(id)?.name ?? id;
 
+// Slice 613: title-case the slug as a fallback when a resource has
+// no `label` in content. `relentless-endurance` → `Relentless Endurance`.
+const titleizeSlug = (slug: string): string =>
+  slug
+    .split('-')
+    .map((part) => (part.length > 0 ? part[0]!.toUpperCase() + part.slice(1) : part))
+    .join(' ');
+
+interface ResourceSummary {
+  /** resourceId → display label from content (or title-cased slug if unlabeled). */
+  readonly labels: ReadonlyMap<string, string>;
+  /** resourceIds whose `PreventFatalDamageConsumingResource` semantics earn the "prevents the killing blow" wording. */
+  readonly preventsKillingBlow: ReadonlySet<string>;
+}
+
+const summarizeResources = (content: ResolvedContent): ResourceSummary => {
+  const labels = new Map<string, string>();
+  const preventsKillingBlow = new Set<string>();
+  const visitEffects = (effects: ReadonlyArray<unknown>): void => {
+    for (const eff of effects) {
+      if (typeof eff !== 'object' || eff === null) continue;
+      const e = eff as { kind?: string; resourceId?: string; label?: string };
+      if (e.kind === 'GrantResource' && typeof e.resourceId === 'string') {
+        if (typeof e.label === 'string' && !labels.has(e.resourceId)) {
+          labels.set(e.resourceId, e.label);
+        }
+      }
+      if (e.kind === 'PreventFatalDamageConsumingResource' && typeof e.resourceId === 'string') {
+        preventsKillingBlow.add(e.resourceId);
+      }
+    }
+  };
+  // Slice 613: walk every content surface that can carry effects.
+  // Species traits are flat effect arrays; class features hang off
+  // `level → features[] → effects[]`; feats carry `effects[]`; etc.
+  for (const sp of content.species.values()) visitEffects(sp.traits);
+  for (const feat of content.feats.values()) visitEffects(feat.effects);
+  for (const cls of content.classes.values()) {
+    for (const lvl of Object.values(cls.levelTable)) {
+      for (const feature of lvl.features) visitEffects(feature.effects);
+    }
+  }
+  for (const sub of content.subclasses.values()) {
+    for (const features of Object.values(sub.levelGrants)) {
+      for (const feature of features) visitEffects(feature.effects);
+    }
+  }
+  for (const bg of content.backgrounds.values()) visitEffects(bg.traits);
+  return { labels, preventsKillingBlow };
+};
+
+const resourceLabel = (summary: ResourceSummary, resourceId: string): string =>
+  summary.labels.get(resourceId) ?? titleizeSlug(resourceId);
+
 const encounterLabel = (state: CampaignState, id: string): string => {
   const name = state.encounters[id]?.name;
   return name !== undefined ? `"${name}"` : 'the encounter';
 };
 
+// Slice 604: RAW HP minimum is 0 (PHB Damage at 0 HP: "When you take
+// damage that would reduce your HP to 0, you have any remaining damage
+// carried over to determine instant death, but your HP becomes 0").
+// The engine tracks the post-damage signed value internally so the
+// instant-death threshold (excess >= max HP) can be computed; the
+// transcript clamps every HP display at 0 so a reader doesn't see
+// "-7/9" and wonder if the engine has a bug.
+const displayHp = (value: number): number => Math.max(0, value);
+
 const hpChange = (before: number | undefined, after: number | undefined): string => {
   if (before === undefined || after === undefined) return '';
-  if (before === after) return '';
-  return ` (HP ${before} -> ${after})`;
+  const beforeShown = displayHp(before);
+  const afterShown = displayHp(after);
+  if (beforeShown === afterShown) return '';
+  return ` (HP ${beforeShown} -> ${afterShown})`;
 };
 
 // Render a roll's component breakdown next to the flat bonus so a reader
@@ -66,6 +133,33 @@ const formatBreakdown = (
     (e) => `${e.value >= 0 ? '+' : ''}${e.value} ${e.source}`,
   );
   return ` (${parts.join(', ')})`;
+};
+
+// Slice 626: render the d20 array for attack / save / check rolls in a
+// way that surfaces ALL dice when Halfling Lucky's reroll grew the
+// array beyond the expected 1 (no advantage) or 2 (advantage /
+// disadvantage). Pre-slice the formatter showed only `event.d20[0]`
+// for any length other than 2 -- which collapsed length-3 (lucky-
+// reroll) arrays to a single die in the transcript, making
+// "[disadvantage] d20(19)" look bizarre (it was actually disadvantage
+// rolling a 1 + something, halfling-rerolled the 1, used the new 19).
+//
+// Format:
+//   length 1: "15" -- straight roll, no advantage
+//   length 2: "15/3" -- advantage / disadvantage pair
+//   length 3+ with adv/dis: "15/1→18" -- pair + reroll(s) after →
+//   length 2 with no-adv: "1→19" -- single + lucky reroll
+// The "→" marks the lucky reroll(s). Used inferred from `usedLabel`.
+const formatD20Rolls = (
+  rolls: ReadonlyArray<number>,
+  usedLabel: 'none' | 'advantage' | 'disadvantage',
+): string => {
+  if (rolls.length === 0) return '?';
+  const baseLen = usedLabel === 'none' ? 1 : 2;
+  if (rolls.length <= baseLen) return rolls.join('/');
+  const base = rolls.slice(0, baseLen).join('/');
+  const rerolls = rolls.slice(baseLen).join('→');
+  return `${base}→${rerolls}`;
 };
 
 const sumDamage = (event: Extract<Event, { type: 'DamageApplied' }>): { total: number; summary: string } => {
@@ -135,12 +229,29 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
     }
     case 'Stabilized':
       return `**${characterName(stateBefore, event.targetId)}** stabilized.`;
+    case 'HeroicInspirationGranted':
+      return `**${characterName(stateBefore, event.characterId)}** gains Heroic Inspiration.`;
+    case 'HeroicInspirationConsumed':
+      return `**${characterName(stateBefore, event.characterId)}** spends Heroic Inspiration${event.appliedTo !== undefined ? ` (${event.appliedTo})` : ''}.`;
     case 'CreatureDestroyed':
       return `**${characterName(stateBefore, event.targetId)}** is destroyed${event.sourceCharacterId !== undefined ? ` by **${characterName(stateBefore, event.sourceCharacterId)}**` : ''}.`;
-    case 'ResourceSpent':
-      return `**${characterName(stateBefore, event.characterId)}** spends ${event.amount} ${event.resourceId}.`;
+    case 'ResourceSpent': {
+      // Slice 605 originally hardcoded `resourceId === 'relentless-endurance'`
+      // for the killing-blow wording. Slice 613 moved both the display
+      // label AND the killing-blow flag into content: GrantResource carries
+      // an optional `label`, and `PreventFatalDamageConsumingResource`
+      // entries identify resources that earn the special wording. Any
+      // future species/feat shipping the same effect-shape inherits the
+      // right wording automatically.
+      const who = characterName(stateBefore, event.characterId);
+      const label = resourceLabel(ctx.resources, event.resourceId);
+      if (ctx.resources.preventsKillingBlow.has(event.resourceId)) {
+        return `**${who}**'s ${label} prevents the killing blow (drops to 1 HP).`;
+      }
+      return `**${who}** spends ${event.amount} ${label}.`;
+    }
     case 'ResourceRestored':
-      return `**${characterName(stateBefore, event.characterId)}** restores ${event.amount === 'all' ? 'all' : event.amount} ${event.resourceId}.`;
+      return `**${characterName(stateBefore, event.characterId)}** restores ${event.amount === 'all' ? 'all' : event.amount} ${resourceLabel(ctx.resources, event.resourceId)}.`;
     case 'HitDieSpent':
       return `**${characterName(stateBefore, event.characterId)}** spends a hit die (d${event.die}=${event.rolled}+${event.conMod}=${event.healed} HP).`;
     case 'ShortRestStarted':
@@ -176,7 +287,7 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       const attacker = characterName(stateBefore, event.attackerId);
       const target = characterName(stateBefore, event.targetId);
       const advLabel = event.used === 'none' ? '' : ` [${event.used}]`;
-      const rollLabel = event.d20.length === 2 ? `${event.d20[0]}/${event.d20[1]}` : `${event.d20[0]}`;
+      const rollLabel = formatD20Rolls(event.d20, event.used);
       const verdict = event.critical
         ? 'CRITICAL HIT!'
         : event.hit
@@ -196,12 +307,17 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       );
       return `Damage rolled${event.critical ? ' (critical, doubled dice)' : ''}: ${parts.join(', ')}.`;
     }
-    case 'SaveRolled':
-      return `**${characterName(stateBefore, event.targetId)}** ${event.ability} save: d20(${event.d20[0]}) + ${event.bonus}${formatBreakdown(event.breakdown)} = ${event.total} vs DC ${event.dc} -> ${event.success ? 'success' : 'failure'}.`;
+    case 'SaveRolled': {
+      const saveAdvLabel = event.used === 'none' ? '' : ` [${event.used}]`;
+      const saveRollLabel = formatD20Rolls(event.d20, event.used);
+      return `**${characterName(stateBefore, event.targetId)}** ${event.ability} save${saveAdvLabel}: d20(${saveRollLabel}) + ${event.bonus}${formatBreakdown(event.breakdown)} = ${event.total} vs DC ${event.dc} -> ${event.success ? 'success' : 'failure'}.`;
+    }
     case 'AbilityCheckRolled': {
       const label = event.skill !== undefined ? event.skill : `${event.ability} check`;
+      const checkAdvLabel = event.used === 'none' ? '' : ` [${event.used}]`;
+      const checkRollLabel = formatD20Rolls(event.d20, event.used);
       const dcLine = event.dc !== undefined ? ` vs DC ${event.dc} -> ${event.success === true ? 'success' : 'failure'}` : '';
-      return `**${characterName(stateBefore, event.characterId)}** ${label}: d20(${event.d20[0]}) + ${event.bonus}${formatBreakdown(event.breakdown)} = ${event.total}${dcLine}.`;
+      return `**${characterName(stateBefore, event.characterId)}** ${label}${checkAdvLabel}: d20(${checkRollLabel}) + ${event.bonus}${formatBreakdown(event.breakdown)} = ${event.total}${dcLine}.`;
     }
     case 'LevelUpResolved': {
       const hpLabel = event.hpRoll !== undefined ? `rolled d? = ${event.hpRoll}, total +${event.hpGained}` : `average, +${event.hpGained}`;
@@ -222,6 +338,8 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       return `Slot consumed: ${ordinal(event.slotLevel)}-level.`;
     case 'PactSlotConsumed':
       return `Pact slot consumed.`;
+    case 'FreeCastUsed':
+      return `Free cast used: ${spellName(content, event.spellId)}.`;
     case 'ConcentrationStarted': {
       const caster = characterName(stateBefore, event.casterId);
       const spell = spellName(content, event.spellId);
@@ -237,6 +355,8 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       return `_(${event.triggerId.split(':').slice(1).join(':')} triggers for ${characterName(stateBefore, event.characterId)})_`;
     case 'ActionEconomyConsumed':
       return `_(${characterName(stateBefore, event.combatantId)} consumes ${event.kind})_`;
+    case 'ActionReadied':
+      return `**${characterName(stateBefore, event.combatantId)}** readies an action (trigger: ${event.trigger}).`;
     case 'RecklessAttackActivated':
       return `**${characterName(stateBefore, event.combatantId)}** attacks recklessly.`;
     case 'StunningStrikeAttempted':
@@ -455,9 +575,21 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       return `**${who}** identifies ${item}.`;
     }
     case 'ShieldCast': {
+      // Slice 605: Shield fires post-hit in the current engine (slice-592
+      // documented limitation: the attack planner doesn't yet split
+      // AttackRolled from damage emission, so a Shield-as-reaction can't
+      // retroactively undo damage on the triggering hit). The +5 AC bump
+      // still applies to subsequent attacks until the start of the
+      // caster's next turn. Wording was previously misleading: the old
+      // "turns the hit into a miss" branch was true mathematically (the
+      // bumped AC would have made the original attack miss) but the
+      // damage was already applied. New wording is honest about what
+      // actually happened.
       const who = characterName(stateBefore, event.casterId);
-      const outcome = event.preventedHit ? 'turns the hit into a miss' : 'the attack still lands';
-      return `**${who}** casts Shield: +5 AC, ${outcome}.`;
+      const outcome = event.preventedHit
+        ? '+5 AC (would have prevented this hit; damage already applied per post-hit Shield limitation)'
+        : '+5 AC for subsequent attacks (this attack still lands)';
+      return `**${who}** casts Shield: ${outcome}.`;
     }
     case 'GuidanceUsed': {
       const who = characterName(stateBefore, event.targetId);
@@ -510,6 +642,13 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
         ? ` against **${characterName(stateBefore, event.targetId)}**`
         : '';
       return `Mastery: ${event.mastery}${targetLabel} (${who}).`;
+    }
+    case 'WeaponMasteriesChosen': {
+      const who = characterName(stateBefore, event.characterId);
+      const list = event.weaponDefinitionIds.length > 0
+        ? event.weaponDefinitionIds.join(', ')
+        : 'none';
+      return `**${who}** masters: ${list}.`;
     }
     case 'Mounted': {
       const rider = characterName(stateBefore, event.riderId);
@@ -733,10 +872,12 @@ export const formatTranscript = (
   if (options.title !== undefined) {
     paragraphs.push(`# ${options.title}`);
   }
+  // Slice 613: compute the resource-id summary once, reuse per event.
+  const resources = summarizeResources(content);
   let state = emptyCampaignState();
   for (const event of events) {
     const next = apply(state, event);
-    const chunk = formatEvent(event, { stateBefore: state, stateAfter: next, content });
+    const chunk = formatEvent(event, { stateBefore: state, stateAfter: next, content, resources });
     for (const line of chunk.split('\n')) {
       if (line === '') continue;
       paragraphs.push(line);

@@ -40,6 +40,10 @@ export {
   type ResolveChoiceIntent,
 } from './level-up.js';
 export {
+  planOfferCharacterChoices,
+  type OfferCharacterChoicesIntent,
+} from './offer-character-choices.js';
+export {
   planSave,
   planAbilityCheck,
   type SaveIntent,
@@ -85,6 +89,8 @@ export {
 } from './movement.js';
 export { planActionSurge, type ActionSurgeIntent } from './action-surge.js';
 export { planSacredWeapon, type SacredWeaponIntent } from './sacred-weapon.js';
+export { planChooseWeaponMasteries, type ChooseWeaponMasteriesIntent } from './choose-weapon-masteries.js';
+export { planConjurePactWeapon, type ConjurePactWeaponIntent } from './conjure-pact-weapon.js';
 export { planInnateSorcery, type InnateSorceryIntent } from './innate-sorcery.js';
 export { planSelfRestoration, type SelfRestorationIntent } from './self-restoration.js';
 export { planSuperiorDefense, type SuperiorDefenseIntent } from './superior-defense.js';
@@ -99,7 +105,34 @@ export { planFlurryOfBlows, type FlurryOfBlowsIntent } from './flurry-of-blows.j
 export { planPatientDefense, type PatientDefenseIntent } from './patient-defense.js';
 export { planStepOfTheWind, type StepOfTheWindIntent } from './step-of-the-wind.js';
 export { planAdrenalineRush, type AdrenalineRushIntent } from './adrenaline-rush.js';
+export { planStonecunning, type StonecunningIntent } from './stonecunning.js';
+export { planDragonbornBreath, type DragonbornBreathIntent } from './dragonborn-breath.js';
+export { planConsumeHeroicInspiration, type ConsumeHeroicInspirationIntent } from './heroic-inspiration.js';
+export { planSecondWind, type SecondWindIntent } from './second-wind.js';
+export { planUseHealersKit, type UseHealersKitIntent } from './use-healers-kit.js';
+export { planRage, type RageIntent } from './rage.js';
+export { planHelp, type HelpIntent, type HelpMode } from './help.js';
+export { planReady, type ReadyIntent } from './ready.js';
+export { planBardicInspiration, type BardicInspirationIntent } from './bardic-inspiration.js';
+export { planLayOnHands, type LayOnHandsIntent, type LayOnHandsMode } from './lay-on-hands.js';
+export { planSearch, type SearchIntent } from './search.js';
+export { planStudy, type StudyIntent } from './study.js';
+export { planInfluence, type InfluenceIntent } from './influence.js';
+export { planUtilize, type UtilizeIntent } from './utilize.js';
+export { planCloudsJaunt, type CloudsJauntIntent } from './clouds-jaunt.js';
+export { planStonesEndurance, type StonesEnduranceIntent, type StonesEnduranceOutcome } from './stones-endurance.js';
+export { planStormsThunder, type StormsThunderIntent, type StormsThunderOutcome } from './storms-thunder.js';
 export { planNimbleEscape, type NimbleEscapeIntent, type NimbleEscapeMode } from './nimble-escape.js';
+export { planCunningAction, type CunningActionIntent, type CunningActionMode } from './cunning-action.js';
+export { planExpeditiousRetreatDash, type ExpeditiousRetreatDashIntent } from './expeditious-retreat.js';
+export {
+  planStirgeDrain,
+  planDetachStirge,
+  findStirgeAttachedTarget,
+  STIRGE_ATTACHED_CONDITION_ID,
+  type StirgeDrainIntent,
+  type DetachStirgeIntent,
+} from './stirge-drain.js';
 export { planTurnUndead, type TurnUndeadIntent } from './turn-undead.js';
 export { planIntimidatingPresence, type IntimidatingPresenceIntent } from './intimidating-presence.js';
 export { planDragonWings, type DragonWingsIntent } from './dragon-wings.js';

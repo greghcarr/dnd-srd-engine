@@ -34,6 +34,8 @@ import {
   planEndEncounter,
   planLevelUp,
   planResolveChoice,
+  planOfferCharacterChoices,
+  type OfferCharacterChoicesIntent,
   planSave,
   planAbilityCheck,
   planCastSpell,
@@ -53,6 +55,8 @@ import {
   planDimensionDoor,
   planActionSurge,
   planSacredWeapon,
+  planChooseWeaponMasteries,
+  planConjurePactWeapon,
   planInnateSorcery,
   planSelfRestoration,
   planSuperiorDefense,
@@ -67,7 +71,28 @@ import {
   planPatientDefense,
   planStepOfTheWind,
   planAdrenalineRush,
+  planStonecunning,
+  planDragonbornBreath,
+  planConsumeHeroicInspiration,
+  planSecondWind,
+  planUseHealersKit,
+  planRage,
+  planHelp,
+  planReady,
+  planBardicInspiration,
+  planLayOnHands,
+  planSearch,
+  planStudy,
+  planInfluence,
+  planUtilize,
+  planCloudsJaunt,
+  planStonesEndurance,
+  planStormsThunder,
   planNimbleEscape,
+  planCunningAction,
+  planExpeditiousRetreatDash,
+  planStirgeDrain,
+  planDetachStirge,
   planTurnUndead,
   planIntimidatingPresence,
   planDragonWings,
@@ -185,6 +210,8 @@ import {
   type DimensionDoorIntent,
   type ActionSurgeIntent,
   type SacredWeaponIntent,
+  type ChooseWeaponMasteriesIntent,
+  type ConjurePactWeaponIntent,
   type InnateSorceryIntent,
   type SelfRestorationIntent,
   type SuperiorDefenseIntent,
@@ -199,7 +226,30 @@ import {
   type PatientDefenseIntent,
   type StepOfTheWindIntent,
   type AdrenalineRushIntent,
+  type StonecunningIntent,
+  type DragonbornBreathIntent,
+  type ConsumeHeroicInspirationIntent,
+  type SecondWindIntent,
+  type UseHealersKitIntent,
+  type RageIntent,
+  type HelpIntent,
+  type ReadyIntent,
+  type BardicInspirationIntent,
+  type LayOnHandsIntent,
+  type SearchIntent,
+  type StudyIntent,
+  type InfluenceIntent,
+  type UtilizeIntent,
+  type CloudsJauntIntent,
+  type StonesEnduranceIntent,
+  type StonesEnduranceOutcome,
+  type StormsThunderIntent,
+  type StormsThunderOutcome,
   type NimbleEscapeIntent,
+  type CunningActionIntent,
+  type ExpeditiousRetreatDashIntent,
+  type StirgeDrainIntent,
+  type DetachStirgeIntent,
   type TurnUndeadIntent,
   type IntimidatingPresenceIntent,
   type DragonWingsIntent,
@@ -314,6 +364,7 @@ export interface Engine {
     endEncounter(state: CampaignState, intent: Omit<EndEncounterIntent, 'type'>): PlanResult;
     levelUp(state: CampaignState, intent: Omit<LevelUpIntent, 'type'>): PlanResult;
     resolveChoice(state: CampaignState, intent: Omit<ResolveChoiceIntent, 'type'>): PlanResult;
+    offerCharacterChoices(state: CampaignState, intent: Omit<OfferCharacterChoicesIntent, 'type'>): PlanResult;
     save(state: CampaignState, intent: Omit<SaveIntent, 'type'>): PlanResult;
     abilityCheck(state: CampaignState, intent: Omit<AbilityCheckIntent, 'type'>): PlanResult;
     castSpell(state: CampaignState, intent: Omit<CastSpellIntent, 'type'>): PlanResult;
@@ -338,6 +389,8 @@ export interface Engine {
     dimensionDoor(state: CampaignState, intent: Omit<DimensionDoorIntent, 'type'>): PlanResult;
     actionSurge(state: CampaignState, intent: Omit<ActionSurgeIntent, 'type'>): PlanResult;
     sacredWeapon(state: CampaignState, intent: Omit<SacredWeaponIntent, 'type'>): PlanResult;
+    chooseWeaponMasteries(state: CampaignState, intent: Omit<ChooseWeaponMasteriesIntent, 'type'>): PlanResult;
+    conjurePactWeapon(state: CampaignState, intent: Omit<ConjurePactWeaponIntent, 'type'>): PlanResult;
     innateSorcery(state: CampaignState, intent: Omit<InnateSorceryIntent, 'type'>): PlanResult;
     selfRestoration(state: CampaignState, intent: Omit<SelfRestorationIntent, 'type'>): PlanResult;
     superiorDefense(state: CampaignState, intent: Omit<SuperiorDefenseIntent, 'type'>): PlanResult;
@@ -352,7 +405,34 @@ export interface Engine {
     patientDefense(state: CampaignState, intent: Omit<PatientDefenseIntent, 'type'>): PlanResult;
     stepOfTheWind(state: CampaignState, intent: Omit<StepOfTheWindIntent, 'type'>): PlanResult;
     adrenalineRush(state: CampaignState, intent: Omit<AdrenalineRushIntent, 'type'>): PlanResult;
+    stonecunning(state: CampaignState, intent: Omit<StonecunningIntent, 'type'>): PlanResult;
+    dragonbornBreath(state: CampaignState, intent: Omit<DragonbornBreathIntent, 'type'>): PlanResult;
+    consumeHeroicInspiration(state: CampaignState, intent: Omit<ConsumeHeroicInspirationIntent, 'type'>): PlanResult;
+    secondWind(state: CampaignState, intent: Omit<SecondWindIntent, 'type'>): PlanResult;
+    useHealersKit(state: CampaignState, intent: Omit<UseHealersKitIntent, 'type'>): PlanResult;
+    rage(state: CampaignState, intent: Omit<RageIntent, 'type'>): PlanResult;
+    help(state: CampaignState, intent: Omit<HelpIntent, 'type'>): PlanResult;
+    ready(state: CampaignState, intent: Omit<ReadyIntent, 'type'>): PlanResult;
+    bardicInspiration(state: CampaignState, intent: Omit<BardicInspirationIntent, 'type'>): PlanResult;
+    layOnHands(state: CampaignState, intent: Omit<LayOnHandsIntent, 'type'>): PlanResult;
+    search(state: CampaignState, intent: Omit<SearchIntent, 'type'>): PlanResult;
+    study(state: CampaignState, intent: Omit<StudyIntent, 'type'>): PlanResult;
+    influence(state: CampaignState, intent: Omit<InfluenceIntent, 'type'>): PlanResult;
+    utilize(state: CampaignState, intent: Omit<UtilizeIntent, 'type'>): PlanResult;
+    cloudsJaunt(state: CampaignState, intent: Omit<CloudsJauntIntent, 'type'>): PlanResult;
+    stonesEndurance(
+      state: CampaignState,
+      intent: Omit<StonesEnduranceIntent, 'type'>,
+    ): StonesEnduranceOutcome;
+    stormsThunder(
+      state: CampaignState,
+      intent: Omit<StormsThunderIntent, 'type'>,
+    ): StormsThunderOutcome;
     nimbleEscape(state: CampaignState, intent: Omit<NimbleEscapeIntent, 'type'>): PlanResult;
+    cunningAction(state: CampaignState, intent: Omit<CunningActionIntent, 'type'>): PlanResult;
+    expeditiousRetreatDash(state: CampaignState, intent: Omit<ExpeditiousRetreatDashIntent, 'type'>): PlanResult;
+    stirgeDrain(state: CampaignState, intent: Omit<StirgeDrainIntent, 'type'>): PlanResult;
+    detachStirge(state: CampaignState, intent: Omit<DetachStirgeIntent, 'type'>): PlanResult;
     turnUndead(state: CampaignState, intent: Omit<TurnUndeadIntent, 'type'>): PlanResult;
     intimidatingPresence(state: CampaignState, intent: Omit<IntimidatingPresenceIntent, 'type'>): PlanResult;
     dragonWings(state: CampaignState, intent: Omit<DragonWingsIntent, 'type'>): PlanResult;
@@ -500,11 +580,11 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
       return { events: planShortRest(state, { type: 'ShortRest', ...intent }) };
     },
     longRest(state, intent) {
-      return { events: planLongRest(state, { type: 'LongRest', ...intent }) };
+      return { events: planLongRest(state, content, { type: 'LongRest', ...intent }) };
     },
     rest(state, intent) {
       if (intent.type === 'ShortRest') return { events: planShortRest(state, intent) };
-      return { events: planLongRest(state, intent) };
+      return { events: planLongRest(state, content, intent) };
     },
     attack(state, intent) {
       return { events: planAttack(state, content, rng, { type: 'Attack', ...intent }) };
@@ -550,6 +630,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     resolveChoice(state, intent) {
       return { events: planResolveChoice(state, content, { type: 'ResolveChoice', ...intent }) };
+    },
+    offerCharacterChoices(state, intent) {
+      return { events: planOfferCharacterChoices(state, content, { type: 'OfferCharacterChoices', ...intent }) };
     },
     save(state, intent) {
       return { events: planSave(state, content, rng, { type: 'Save', ...intent }) };
@@ -632,6 +715,12 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     sacredWeapon(state, intent) {
       return { events: planSacredWeapon(state, content, { type: 'SacredWeapon', ...intent }) };
     },
+    chooseWeaponMasteries(state, intent) {
+      return { events: planChooseWeaponMasteries(state, content, { type: 'ChooseWeaponMasteries', ...intent }) };
+    },
+    conjurePactWeapon(state, intent) {
+      return { events: planConjurePactWeapon(state, content, { type: 'ConjurePactWeapon', ...intent }) };
+    },
     innateSorcery(state, intent) {
       return { events: planInnateSorcery(state, content, { type: 'InnateSorcery', ...intent }) };
     },
@@ -679,8 +768,71 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     adrenalineRush(state, intent) {
       return { events: planAdrenalineRush(state, content, { type: 'AdrenalineRush', ...intent }) };
     },
+    stonecunning(state, intent) {
+      return { events: planStonecunning(state, { type: 'Stonecunning', ...intent }) };
+    },
+    dragonbornBreath(state, intent) {
+      return { events: planDragonbornBreath(state, content, rng, { type: 'DragonbornBreath', ...intent }) };
+    },
+    consumeHeroicInspiration(state, intent) {
+      return { events: planConsumeHeroicInspiration(state, { type: 'ConsumeHeroicInspiration', ...intent }) };
+    },
+    secondWind(state, intent) {
+      return { events: planSecondWind(state, content, rng, { type: 'SecondWind', ...intent }) };
+    },
+    useHealersKit(state, intent) {
+      return { events: planUseHealersKit(state, content, { type: 'UseHealersKit', ...intent }) };
+    },
+    rage(state, intent) {
+      return { events: planRage(state, content, { type: 'Rage', ...intent }) };
+    },
+    help(state, intent) {
+      return { events: planHelp(state, content, { type: 'Help', ...intent }) };
+    },
+    ready(state, intent) {
+      return { events: planReady(state, content, { type: 'Ready', ...intent }) };
+    },
+    bardicInspiration(state, intent) {
+      return { events: planBardicInspiration(state, content, { type: 'BardicInspiration', ...intent }) };
+    },
+    layOnHands(state, intent) {
+      return { events: planLayOnHands(state, content, { type: 'LayOnHands', ...intent }) };
+    },
+    search(state, intent) {
+      return { events: planSearch(state, content, rng, { type: 'Search', ...intent }) };
+    },
+    study(state, intent) {
+      return { events: planStudy(state, content, rng, { type: 'Study', ...intent }) };
+    },
+    influence(state, intent) {
+      return { events: planInfluence(state, content, rng, { type: 'Influence', ...intent }) };
+    },
+    utilize(state, intent) {
+      return { events: planUtilize(state, content, rng, { type: 'Utilize', ...intent }) };
+    },
+    cloudsJaunt(state, intent) {
+      return { events: planCloudsJaunt(state, content, { type: 'CloudsJaunt', ...intent }) };
+    },
+    stonesEndurance(state, intent) {
+      return planStonesEndurance(state, content, rng, { type: 'StonesEndurance', ...intent });
+    },
+    stormsThunder(state, intent) {
+      return planStormsThunder(state, content, rng, { type: 'StormsThunder', ...intent });
+    },
     nimbleEscape(state, intent) {
       return { events: planNimbleEscape(state, content, rng, { type: 'NimbleEscape', ...intent }) };
+    },
+    cunningAction(state, intent) {
+      return { events: planCunningAction(state, content, rng, { type: 'CunningAction', ...intent }) };
+    },
+    expeditiousRetreatDash(state, intent) {
+      return { events: planExpeditiousRetreatDash(state, { type: 'ExpeditiousRetreatDash', ...intent }) };
+    },
+    stirgeDrain(state, intent) {
+      return { events: planStirgeDrain(state, content, rng, { type: 'StirgeDrain', ...intent }) };
+    },
+    detachStirge(state, intent) {
+      return { events: planDetachStirge(state, content, { type: 'DetachStirge', ...intent }) };
     },
     turnUndead(state, intent) {
       return { events: planTurnUndead(state, content, rng, { type: 'TurnUndead', ...intent }) };
@@ -725,7 +877,7 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
       return { events: planMultiattack(state, content, rng, { type: 'Multiattack', ...intent }) };
     },
     falling(state, intent) {
-      return { events: planFalling(state, content, { type: 'Falling', ...intent }) };
+      return { events: planFalling(state, content, rng, { type: 'Falling', ...intent }) };
     },
     grapple(state, intent) {
       return { events: planGrapple(state, content, rng, { type: 'Grapple', ...intent }) };

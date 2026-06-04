@@ -33,6 +33,68 @@ export const categorize = (event: Event): EventCategory => {
   return 'state-change';
 };
 
+// Slice 608: human-readable label for each event type so observers see
+// "Attack roll" instead of "AttackRolled". Falls back to a CamelCase
+// split for unmapped types so a newly-added event type still reads as
+// English ("WeaponLoaded" → "Weapon loaded") without forcing a sync
+// update to this table.
+const HUMAN_LABELS: Partial<Record<string, string>> = {
+  AttackRolled: 'Attack roll',
+  DamageRolled: 'Damage roll',
+  DamageApplied: 'Damage applied',
+  SaveRolled: 'Saving throw',
+  AbilityCheckRolled: 'Ability check',
+  DeathSaveRolled: 'Death save',
+  InitiativeRolled: 'Initiative',
+  HitDieSpent: 'Hit die spent',
+  TurnStarted: 'Turn started',
+  TurnEnded: 'Turn ended',
+  RoundEnded: 'Round ended',
+  EncounterCreated: 'Encounter created',
+  EncounterStarted: 'Encounter started',
+  EncounterEnded: 'Encounter ended',
+  ConditionApplied: 'Condition applied',
+  ConditionRemoved: 'Condition removed',
+  ActionEconomyConsumed: 'Action used',
+  CombatantMoved: 'Move',
+  CombatantPlaced: 'Placed',
+  SpellCastDeclared: 'Spell cast',
+  SpellSlotConsumed: 'Slot consumed',
+  PactSlotConsumed: 'Pact slot consumed',
+  FreeCastUsed: 'Free cast',
+  ConcentrationStarted: 'Concentration started',
+  ConcentrationBroken: 'Concentration broken',
+  CharacterCreated: 'Character joined',
+  CreatureDestroyed: 'Creature destroyed',
+  ItemAcquired: 'Item acquired',
+  ItemEquipped: 'Item equipped',
+  ItemUnequipped: 'Item unequipped',
+  ItemConsumed: 'Item consumed',
+  ResourceSpent: 'Resource spent',
+  ResourceRestored: 'Resource restored',
+  Healed: 'Healed',
+  TempHPGranted: 'Temp HP granted',
+  ShieldCast: 'Shield',
+  GuidanceUsed: 'Guidance',
+  AbsorbElementsCast: 'Absorb Elements',
+  HeroicInspirationSpent: 'Heroic Inspiration',
+  ShortRestStarted: 'Short rest started',
+  ShortRestEnded: 'Short rest ended',
+  LongRestStarted: 'Long rest started',
+  LongRestEnded: 'Long rest ended',
+  OpportunityAvailable: 'Opportunity attack offered',
+  ChoiceRequired: 'Choice required',
+  ChoiceResolved: 'Choice resolved',
+  LevelUpResolved: 'Level up',
+};
+
+const splitCamelCase = (s: string): string => {
+  const spaced = s.replace(/([a-z])([A-Z])/g, '$1 $2');
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase();
+};
+
+export const humanLabel = (type: string): string => HUMAN_LABELS[type] ?? splitCamelCase(type);
+
 // One-line "what happened" preview. Pulls the most relevant fields for
 // the type so the user gets a sense of the event without expanding.
 // Truthy-only — if a field is undefined, omit it.
@@ -136,7 +198,11 @@ export const createEventRow = (event: Event, index: number): HTMLLIElement => {
     </details>
   `;
   li.querySelector('.event-index')!.textContent = `#${index}`;
-  li.querySelector('.event-type')!.textContent = event.type;
+  // Slice 608: human label for primary display; the raw type slug stays
+  // available as a tooltip for engine-developer debugging.
+  const typeEl = li.querySelector<HTMLElement>('.event-type')!;
+  typeEl.textContent = humanLabel(event.type);
+  typeEl.title = event.type;
   li.querySelector('.event-preview')!.textContent = previewFor(event);
   li.querySelector('.event-payload')!.textContent = JSON.stringify(event, null, 2);
   return li;

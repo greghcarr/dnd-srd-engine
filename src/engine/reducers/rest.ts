@@ -119,6 +119,10 @@ export const applyLongRestEnded = (
     }
     character.spellSlotsUsed = {};
     character.pactSlotsUsed = 0;
+    // Slice 486: clear consumed once-per-long-rest free casts (Magic
+    // Initiate, Warlock Contact Patron). Safe to overwrite as a fresh
+    // empty array even when the participant never cast one this rest.
+    character.usedFreeCastSpellIds = [];
     // Slice 293. Reset per-long-rest item time budgets (Boots of
     // Speed's 10-min/LR cumulative activation pool). The field is
     // optional; only instances that have been activated since the

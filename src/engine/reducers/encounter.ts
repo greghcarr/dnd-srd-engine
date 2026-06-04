@@ -158,6 +158,11 @@ export const applyTurnStarted = (
   active.turnUsage.stunningStrikeUsedThisTurn = false;
   active.turnUsage.savageAttackerUsedThisTurn = false;
   active.turnUsage.noProvokeMovementUpToFeet = 0;
+  // Slice 572: a readied action expires at the start of the next
+  // turn (RAW: "lets you act using your Reaction before the start of
+  // your next turn"). Clearing on TurnStarted matches the RAW
+  // expiry window.
+  active.turnUsage.readiedAction = undefined;
 };
 
 export const applyTurnEnded = (

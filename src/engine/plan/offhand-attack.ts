@@ -10,6 +10,7 @@ import type {
 import type { DamageAppliedEvent } from '../../schemas/events/combat.js';
 import type { RNG } from '../../rng/index.js';
 import { rollDie, parseDiceExpression } from '../../rng/dice.js';
+import { applyHalflingLuckFromFlag } from './_halfling-luck.js';
 import { applyMartialArtsDieScaling, tryBuildDeflectedAttack } from './attack.js';
 import { findMirrorImage } from '../../derive/mirror-image.js';
 import { newEventId } from '../../ids.js';
@@ -20,9 +21,11 @@ import { abilityModifier } from '../../derive/ability.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { isMagicWeaponAttack } from '../../derive/magicality.js';
+import { canUseWeaponMastery } from '../../derive/weapon-mastery.js';
 import { buildEffectStack } from '../../derive/effect-stack.js';
 import { applyAll } from '../apply.js';
-import { planConcentrationBreakOnDrop } from './concentration.js';
+import { planConcentrationOnDamage } from './concentration.js';
+import { resolveAttackRoll } from './_attack-roll.js';
 import { D20_SIDES, NAT_20, NAT_1 } from '../../internal/constants.js';
 import type { ULID } from '../ids-utils.js';
 import { assertActorCanAct } from './_actor-state.js';
@@ -76,8 +79,12 @@ export const planOffHandAttack = (
   // Nick mastery: the off-hand attack becomes part of the Attack action
   // instead of a Bonus Action, once per turn. RAW 2024.
   const NICK_TRIGGER_ID = 'mastery:nick';
+  // Slice 502: Nick applies only if the attacker mastered this weapon
+  // kind (and is proficient). Without it the off-hand attack still
+  // happens but costs the Bonus Action as normal (graceful, not a throw).
   const nickAvailable =
     weaponDef.mastery === 'Nick' &&
+    canUseWeaponMastery(attacker, weaponDef, content) &&
     (attacker.triggerCounters[NICK_TRIGGER_ID]?.firedThisTurn !== true);
   if (!nickAvailable && active.bonusActionUsed) {
     throw new Error('Bonus action already used this turn');
@@ -152,12 +159,72 @@ export const planOffHandAttack = (
     });
     if (deflectedEvents !== undefined) return [...economyEvents, ...deflectedEvents];
   }
-  const d20 = rollDie(D20_SIDES, rng);
-  const total = d20 + attackBonusResult.total;
-  const naturalHit = d20 === NAT_20;
-  const naturalMiss = d20 === NAT_1;
-  const hit = !naturalMiss && (naturalHit || total >= acResult.total);
-  const critical = naturalHit;
+  // Slice 614: route through the shared resolveAttackRoll helper to
+  // pick up the same target-side advantage (Faerie Fire, Restrained,
+  // Paralyzed, Prone-melee), attacker-side disadvantage (Blur, Dodge),
+  // Bless / Bane bonus dice, extended crit ranges, and Paralyzed/HP-0
+  // melee auto-crit that weapon + spell attacks use (slices 602 + 611).
+  // Pre-slice the off-hand path rolled a bare d20 with Halfling Luck
+  // and no other attack-side condition awareness — same shape as the
+  // pre-slice-602 spell-attack gap.
+  const targetEffects = buildEffectStack({
+    character: target,
+    content,
+    itemInstances: state.itemInstances,
+    pendingChoices: state.pendingChoices,
+    characters: state.characters,
+  });
+  const targetSideAttackerFacts = new Map<string, unknown>([
+    ['event.attackKind', weaponDef.attackKind],
+  ]);
+  const targetGrantsAdvantage = targetEffects.grantsAdvantageToAttackers(targetSideAttackerFacts);
+  const targetCancelsAdvantage = targetEffects.cancelsAdvantageOnAttackers(new Map([
+    ['bearerHasIncapacitated', target.appliedConditions.some((c) => ['incapacitated', 'stunned', 'paralyzed', 'unconscious'].includes(c.conditionId))],
+  ]));
+  const attackerSideFacts = new Map<string, unknown>([
+    ['event.attackKind', weaponDef.attackKind],
+    ['event.isOpportunityAttack', false],
+    ['bearer.hasIncapacitated', target.appliedConditions.some((c) => ['incapacitated', 'stunned', 'paralyzed', 'unconscious'].includes(c.conditionId))],
+    ['bearer.speedZero', target.speedFeet === 0],
+    ['bearer.canSeeAttacker', undefined],
+  ]);
+  const targetImposesDisadvantage = targetEffects.imposesDisadvantageOnAttackers(attackerSideFacts);
+  const effectivelyGrantsAdvantage = !targetCancelsAdvantage && targetGrantsAdvantage;
+  let advantage: 'none' | 'advantage' | 'disadvantage' = 'none';
+  if (effectivelyGrantsAdvantage && targetImposesDisadvantage) advantage = 'none';
+  else if (effectivelyGrantsAdvantage) advantage = 'advantage';
+  else if (targetImposesDisadvantage) advantage = 'disadvantage';
+
+  // Paralyzed/Unconscious/HP-0 melee auto-crit also fires on off-hand
+  // melee attacks (light-weapon melee is what off-hand is).
+  const targetAutoCritsFromMelee = ((): boolean => {
+    if (weaponDef.attackKind !== 'melee') return false;
+    if (target.hp.current <= 0) return true;
+    return target.appliedConditions.some(
+      (c) => c.conditionId === 'paralyzed'
+        || c.conditionId === 'held-paralyzed-active'
+        || c.conditionId === 'unconscious',
+    );
+  })();
+  const attackerFacts = new Map<string, unknown>([
+    ['event.attackKind', weaponDef.attackKind],
+    ['event.isOpportunityAttack', false],
+  ]);
+  const rollResult = resolveAttackRoll({
+    advantage,
+    attackBonus: attackBonusResult.total,
+    targetAC: acResult.total,
+    attackerHasHalflingLuck: attackerEffects.hasHalflingLuck(),
+    bonusDiceContributions: attackerEffects.bonusDiceFor('attack', attackerFacts),
+    critThreshold: attackerEffects.critThreshold(),
+    forceCritIfHit: targetAutoCritsFromMelee,
+    rng,
+  });
+  const rolls = rollResult.rolls;
+  const d20 = rollResult.usedRoll;
+  const total = rollResult.total;
+  const hit = rollResult.hit;
+  const critical = rollResult.critical;
 
   const attackRolled: AttackRolledEvent = {
     id: newEventId() as ULID,
@@ -166,9 +233,9 @@ export const planOffHandAttack = (
     attackerId: intent.attackerId,
     targetId: intent.targetId,
     weaponInstanceId: intent.weaponInstanceId,
-    d20: [d20],
-    used: 'none',
-    attackBonus: attackBonusResult.total,
+    d20: rolls,
+    used: advantage,
+    attackBonus: rollResult.effectiveAttackBonus,
     total,
     targetAC: acResult.total,
     hit,
@@ -194,7 +261,7 @@ export const planOffHandAttack = (
     : abilityMod < 0
       ? abilityMod
       : 0;
-  const damageExpression = applyMartialArtsDieScaling(attacker, weaponDef.id, weaponDef.damageDice);
+  const damageExpression = applyMartialArtsDieScaling(attacker, weaponDef, weaponDef.damageDice);
   const parsed = parseDiceExpression(damageExpression);
   const totalRolls = critical ? parsed.count * 2 : parsed.count;
   const damageRolls: number[] = [];
@@ -243,7 +310,10 @@ export const planOffHandAttack = (
     components: intercept.components,
     causedByEventId: damageRolled.id,
   };
-  const concentrationBreak = planConcentrationBreakOnDrop(
+  const concentrationBreak = planConcentrationOnDamage(
+    state,
+    content,
+    rng,
     target,
     intercept.components,
     damageApplied.id,

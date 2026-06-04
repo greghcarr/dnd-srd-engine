@@ -54,3 +54,21 @@ export const SavageAttackerUsedEventSchema = EventEnvelopeSchema.extend({
   causedByEventId: ULIDSchema.optional(),
 });
 export type SavageAttackerUsedEvent = z.infer<typeof SavageAttackerUsedEventSchema>;
+
+// Slice 572: RAW PHB 2024 Ready action. Records that the combatant
+// took the Ready action on their turn, consuming their Action and
+// pending a Reaction that will fire when the named trigger happens.
+// The reducer marks `turnUsage.readiedAction = { trigger }` (and
+// `actionUsed: true` via the sibling ActionEconomyConsumed event the
+// planner emits). The trigger description is a consumer-supplied
+// free-form string ("when the goblin enters the room") that the
+// engine doesn't itself interpret; the consumer determines when the
+// trigger fires and invokes the readied planner (a follow-up engine
+// surface; for now the readied action is a state marker only).
+export const ActionReadiedEventSchema = EventEnvelopeSchema.extend({
+  type: z.literal('ActionReadied'),
+  encounterId: ULIDSchema,
+  combatantId: ULIDSchema,
+  trigger: z.string(),
+});
+export type ActionReadiedEvent = z.infer<typeof ActionReadiedEventSchema>;

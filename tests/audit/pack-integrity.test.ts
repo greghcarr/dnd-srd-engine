@@ -232,10 +232,14 @@ describe('pack integrity: conditions with effects are reachable', () => {
             (k === 'conditionId' ||
               k === 'allyConditionId' ||
               k === 'conditionOnFail' ||
+              k === 'conditionOnSuccess' ||
+              k === 'applyConditionId' ||
               k === 'bearerConditionId') &&
             typeof v === 'string'
           ) {
             referenced.add(v);
+          } else if (k === 'eligibleConditionIds' && Array.isArray(v)) {
+            for (const id of v) if (typeof id === 'string') referenced.add(id);
           }
           walk(v);
         }
@@ -399,9 +403,10 @@ describe('pack integrity: wired spells do not apply effect-less conditions', () 
     // Engine-hardcoded base RAW conditions (mechanics live in engine code,
     // not in the condition's effects array):
     'charmed',
-    'deafened',
     'exhaustion',
     'incapacitated',
+    // (Slice 580 added a hearing-gated auto-fail to `deafened`, so it's
+    // no longer effect-less. Removed from this allowlist.)
     // Engine-read markers (the mechanic lives in a planner / the attack
     // resolver / an id-keyed allowlist, not in the effects array):
     'guided', // consumed by planConsumeGuidance (rolls the d4)
@@ -410,6 +415,7 @@ describe('pack integrity: wired spells do not apply effect-less conditions', () 
     'cursed-inert-active', // slice 368: recurringSave { onFail: 'dodge' } drives it (save-or-Dodge); the mechanic is the recurring save, not the effects array
     'resisted', // slice 369: consumer-invoked planConsumeResistance rolls the 1d4 reduction (mirrors Absorb Elements); the marker just says Resistance is active
     'addled', // slice 380: Open Hand Technique (Addle); the opportunity-attack planner reads the id to bar OAs (the "can't make Opportunity Attacks" restriction isn't an effect primitive)
+    'expeditious-retreat-active', // slice 521: marker condition read by planExpeditiousRetreatDash to gate the per-turn Bonus-Action-Dash arm (the BA-Dash isn't an effect primitive)
     // (The slice-361 "known-open bugs" group is now empty — all four were fixed in slices 366-369.)
     // Consumer-managed / narrative (no clean engine model):
     'commanded-approach-active',
@@ -480,7 +486,26 @@ describe('pack integrity: every Custom handlerId has a backing implementation', 
   const BACKED_INDIRECTLY: ReadonlyMap<string, string> = new Map([
     ['martial-arts', 'attack planner: martialArtsDie / applyMartialArtsDieScaling key off the monk class + weapon, not the handlerId'],
     ['slow-fall', 'planFalling reduces fall damage via its `useSlowFall` arm (5 x monk level), keyed off the intent flag'],
-    ['ritual-adept', 'cast-spell planner: characterKnowsSpell accepts knownSpells (the wizard spellbook), so asRitual: true on a ritual-tagged spellbook entry already passes the gate. The marker is the discoverable surface; the mechanic is engine-default. A future preparation-enforcement slice would convert this to a referenced handler.'],
+    // Slice 505: ritual-adept was promoted from a Custom-handler stub to a
+    // real `GrantRitualAdept` marker effect (observable in the effect
+    // stack via `hasRitualAdept()`). Removed from this allowlist when the
+    // pack no longer carried the Custom handlerId.
+    // Slice 535: narrative-only Halfling traits. The engine cannot model
+    // positional gates (Nimbleness = move-through-larger; Naturally
+    // Stealthy = Hide-with-larger-creature-obscurement). The markers are
+    // declaratively present so consumers (a position-aware UI / VTT) can
+    // detect them and enforce the narrative rule. No engine-side handler
+    // is required because the rule lives entirely in the consumer.
+    ['halfling-nimbleness', 'narrative marker: positional move-through-larger-creature rule; consumer-managed (engine has no position model)'],
+    ['halfling-naturally-stealthy', 'narrative marker: Hide-with-larger-creature-obscurement rule; consumer-managed (engine has no LOS / obscurement model)'],
+    // Slice 536: narrative-only Elf Trance trait.
+    ['elf-trance', 'narrative marker: no-sleep + magic-cant-put-to-sleep + 4-hour Long Rest; consumer-managed (engine does not model sleep state, magical-sleep gates, or rest-wall-clock duration)'],
+    // Slice 537/542: Human Resourceful (Heroic Inspiration on Long
+    // Rest) was previously a narrative Custom marker; slice 542
+    // promoted it to a real GrantHeroicInspirationOnLongRest effect
+    // primitive (observable in the effect stack via
+    // hasHeroicInspirationOnLongRest()). Removed from this allowlist
+    // when the Custom-marker form left the pack.
   ]);
 
   it('every Custom handlerId is referenced in engine source or allowlisted as indirectly backed', () => {

@@ -45,6 +45,10 @@ export const applyChoiceRequired = (
     oneOf: event.oneOf,
     forCharacterId: event.characterId,
     triggerEventId: event.id,
+    // Slice 618: persist the content-side choiceId so the
+    // planOfferCharacterChoices planner can dedupe across repeated
+    // calls without relying on prompt-text matching.
+    promptKey: event.promptKey,
   };
   character.pendingChoiceIds.push(event.choiceId);
 };

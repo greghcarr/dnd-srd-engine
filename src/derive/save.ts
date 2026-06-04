@@ -22,6 +22,17 @@ export interface SaveResult {
   // Slice 331: unrolled per-roll bonus dice (AddBonusDie on saves). The
   // pure derivation surfaces them; the planner rolls them.
   readonly bonusDice: ReadonlyArray<BonusDieContribution>;
+  // Slice 539: Halfling Luck flag (surfaced from the bearer's effect
+  // stack). When true and the chosen d20 of the save is a natural 1,
+  // the planner rerolls once and uses the new die per RAW.
+  readonly hasHalflingLuck: boolean;
+  // Slice 576: auto-fail flag (RAW: Paralyzed / Stunned / Petrified /
+  // Unconscious auto-fail STR + DEX saves). The pack carries
+  // SetAdvantage entries with mode: 'auto-fail'; the EffectAccumulator
+  // tracks them via `autoFail` per ability; this exposes the flag to
+  // the save planner so the d20 + modifiers are bypassed and the save
+  // emits as a forced failure.
+  readonly hasAutoFail: boolean;
 }
 
 export interface ComputeSaveInput {
@@ -43,6 +54,14 @@ export interface ComputeSaveInput {
   // magical sources (cast-spell, traps spell-armed, recurring saves
   // on spell-applied conditions, etc.) pass `true`.
   readonly sourceIsMagical?: boolean;
+  // Slice 515: tells the save resolver whether this is a Constitution
+  // save to maintain Concentration (the per-hit save triggered by
+  // `planConcentrationBreakOnDrop`). Surfaces as `event.isConcentrationCheck`
+  // in the SetAdvantage condition facts so predicates like Warlock
+  // Eldritch Mind ("advantage on Constitution saving throws to maintain
+  // Concentration") can gate on it. Default false; only the
+  // concentration-break planner sets it true.
+  readonly isConcentrationCheck?: boolean;
   // Slice 291: the condition id this save's outcome would prevent or
   // end, when known. Cast-spell save mechanics with `conditionOnFail`
   // pass the conditionId here (the save's failure applies that
@@ -142,6 +161,10 @@ export const computeSavingThrow = (input: ComputeSaveInput): SaveResult => {
     ['bearer.speedZero', bearerSpeedZero],
     // Slice 291: per-condition save-advantage gate (Antitoxin).
     ['event.savePreventsCondition', input.savePreventsCondition],
+    // Slice 515: per-Concentration-check save-advantage gate (Eldritch
+    // Mind invocation: "advantage on Constitution saving throws to
+    // maintain Concentration").
+    ['event.isConcentrationCheck', input.isConcentrationCheck === true],
   ]);
   const adv = effects.advantageFor(target, facts);
   // Slice 131: Magic Resistance contributes advantage to the save
@@ -157,10 +180,17 @@ export const computeSavingThrow = (input: ComputeSaveInput): SaveResult => {
     breakdown,
     hasAdvantage: effectiveAdvantage && !adv.disadvantage,
     hasDisadvantage: adv.disadvantage && !effectiveAdvantage,
+    hasHalflingLuck: effects.hasHalflingLuck(),
     // Slice 331: the pending per-roll bonus dice for this save (Bless
     // +1d4 / Bane -1d4 via AddBonusDie). Returned unrolled (this is a
     // pure derivation); the planner that rolls the save rolls these too
     // and folds them into the SaveRolled total + breakdown.
     bonusDice: effects.bonusDiceFor(target, facts),
+    // Slice 576: auto-fail (RAW: Paralyzed / Stunned / Petrified /
+    // Unconscious auto-fail STR + DEX). The EffectAccumulator already
+    // tracks `autoFail` per ability via SetAdvantage mode: 'auto-fail'
+    // entries — slice 567's pack-declaration tests verified the data
+    // shape. This exposes the flag so the save planner can force-fail.
+    hasAutoFail: adv.autoFail,
   };
 };

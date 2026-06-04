@@ -17,9 +17,11 @@
 //      matches, update the regex here in the same slice (keep the guard
 //      alive, the way gaps-spells-counts requires its header format).
 //
-// Only source-derivable, drift-prone counts are guarded. Test counts,
-// percentages, and the spell wired/narrative/deferred split are out of
-// scope (the first two are circular, the third is gaps-spells-counts').
+// Only source-derivable, drift-prone counts are guarded. Test counts
+// stay out of scope (circular). Percentages were out of scope too until
+// slice 631 added derivable wired-vs-total spell percentage guards
+// (source: the gaps-spells.md per-level catalog, which is itself audit-
+// pinned to the pack via gaps-spells-counts.test.ts).
 
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -50,6 +52,31 @@ const itemsByKind = pack.items.reduce<Record<string, number>>((acc, i) => {
   return acc;
 }, {});
 
+// Slice 631: derive the spell wired/narrative/deferred/total split from
+// the gaps-spells.md per-level catalog (the canonical per-level wiring
+// source). Headers parse as:
+//   ## Level N (P in pack): W wired, R narrative, X deferred
+// The gaps-spells-counts audit pins the inPack numbers to the pack; we
+// piggyback on that and sum the wired / narrative / deferred per level
+// for the front-door-doc citations + the rounded percentage.
+const SPELL_HEADER_RE =
+  /^## Level (\d+) \((\d+) in pack\): (\d+) wired, (\d+) narrative, (\d+) deferred\s*$/gm;
+const spellsDoc = readFileSync(resolve(REPO_ROOT, 'docs/gaps-spells.md'), 'utf8');
+let wiredTotal = 0;
+let narrativeTotal = 0;
+let deferredTotal = 0;
+let inPackTotal = 0;
+{
+  let m: RegExpExecArray | null;
+  while ((m = SPELL_HEADER_RE.exec(spellsDoc)) !== null) {
+    inPackTotal += Number(m[2]);
+    wiredTotal += Number(m[3]);
+    narrativeTotal += Number(m[4]);
+    deferredTotal += Number(m[5]);
+  }
+}
+const spellWiredPct = Math.round((wiredTotal / inPackTotal) * 100);
+
 // Ground truth, computed from source so it auto-tracks the pack.
 const GT = {
   conditionsTotal: pack.conditions.length,
@@ -65,8 +92,13 @@ const GT = {
   tool: itemsByKind.tool ?? 0,
   gear: itemsByKind.gear ?? 0,
   magic: itemsByKind.magic ?? 0,
-  effectKinds: EFFECT_KINDS.length, // 52 (includes Custom)
-  primitives: EFFECT_KINDS.length - 1, // 51 (excludes the Custom escape hatch)
+  effectKinds: EFFECT_KINDS.length, // includes Custom escape hatch
+  primitives: EFFECT_KINDS.length - 1, // excludes the Custom escape hatch
+  spellsWired: wiredTotal,
+  spellsNarrative: narrativeTotal,
+  spellsDeferred: deferredTotal,
+  spellsTotal: inPackTotal,
+  spellWiredPct,
 } as const;
 
 const readDoc = (rel: string): string => readFileSync(resolve(REPO_ROOT, rel), 'utf8');
@@ -144,6 +176,85 @@ const CHECKS: ReadonlyArray<CountCheck> = [
     label: 'effect primitives',
     pattern: /about (\d+) \*\*effect primitives\*\*/,
     expected: [GT.primitives],
+  },
+  // EFFECT_KINDS drift hit 5 front-door citations between alpha.15 and
+  // the 0.2.0 release: README "52 declarative primitives", README
+  // "currently 52 primitives plus the `Custom` escape hatch", README
+  // "(N primitives + `Custom` escape hatch in `EFFECT_KINDS`)", and
+  // status.md "N wired primitives ... (M `EFFECT_KINDS` entries total)".
+  // Promote each to a pinned citation so the next bump trips CI in the
+  // same slice instead of waiting for the next release-doc-review.
+  {
+    file: 'README.md',
+    label: 'declarative primitives (Why this engine bullet)',
+    pattern: /(\d+) declarative primitives express the bulk/,
+    expected: [GT.primitives],
+  },
+  {
+    file: 'README.md',
+    label: 'currently N primitives plus the Custom escape hatch (Architecture bullet)',
+    pattern: /currently (\d+) primitives plus the `Custom` escape hatch/,
+    expected: [GT.primitives],
+  },
+  {
+    file: 'README.md',
+    label: 'N primitives + Custom escape hatch (Status bullet)',
+    pattern: /\((\d+) primitives \+ `Custom` escape hatch in `EFFECT_KINDS`\)/,
+    expected: [GT.primitives],
+  },
+  {
+    file: 'docs/status.md',
+    label: 'Effect-primitive vocabulary row (N wired primitives + M EFFECT_KINDS entries total)',
+    pattern: /(\d+) wired primitives plus the `Custom` escape hatch\*\* \((\d+) `EFFECT_KINDS` entries total/,
+    expected: [GT.primitives, GT.effectKinds],
+  },
+  // Slice 631: spell wired-vs-total percentage + split, derived from
+  // gaps-spells.md (which is itself audit-pinned to the pack).
+  {
+    file: 'README.md',
+    label: 'spell mechanical wiring (pct + W/T + narrative + deferred)',
+    pattern:
+      /Spell mechanical wiring ~(\d+)% \((\d+)\/(\d+) wired, (\d+) narrative, (\d+) schema-only/,
+    expected: [
+      GT.spellWiredPct,
+      GT.spellsWired,
+      GT.spellsTotal,
+      GT.spellsNarrative,
+      GT.spellsDeferred,
+    ],
+  },
+  {
+    file: 'docs/status.md',
+    label: 'headline spell wiring aggregate (pct + W/T + narrative + deferred)',
+    pattern:
+      /~(\d+)% of spells \((\d+)\/(\d+) wired, with (\d+) narrative \+ (\d+) schema-only\)/,
+    expected: [
+      GT.spellWiredPct,
+      GT.spellsWired,
+      GT.spellsTotal,
+      GT.spellsNarrative,
+      GT.spellsDeferred,
+    ],
+  },
+  {
+    file: 'docs/status.md',
+    label: 'Spells (mechanically wired) row (W/T + narrative + deferred)',
+    pattern:
+      /(\d+)\/(\d+) wired \(cast-time `mechanicalEffects`[^)]*\); (\d+) narrative-only and (\d+) schema-only/,
+    expected: [GT.spellsWired, GT.spellsTotal, GT.spellsNarrative, GT.spellsDeferred],
+  },
+  {
+    file: 'docs/status.md',
+    label: 'Spells content-gaps row (wired count + narrative + deferred)',
+    pattern: /Wired count (\d+) \([^)]*\); (\d+) ship narrative-only and (\d+) schema-only/,
+    expected: [GT.spellsWired, GT.spellsNarrative, GT.spellsDeferred],
+  },
+  {
+    file: 'docs/getting-started.md',
+    label: 'spell wiring (W + narrative + deferred)',
+    pattern:
+      /\d+ spells \(the complete SRD 5\.2\.1 catalog; (\d+) mechanically wired, (\d+) narrative-only, (\d+) schema-only\)/,
+    expected: [GT.spellsWired, GT.spellsNarrative, GT.spellsDeferred],
   },
 ];
 

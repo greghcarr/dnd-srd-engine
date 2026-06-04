@@ -2,100 +2,164 @@
 
 Notable changes to this project. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The bump policy and pre-release roadmap are documented in [VERSIONING.md](VERSIONING.md).
 
+Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the live file below carries only a compact pointer per slice (one headline + one-sentence summary) so the file stays bounded regardless of project age. Convention adopted in slice 628.
+
 ## Unreleased
 
-## 0.1.0-alpha.15 - 2026-05-26
+**Release (slice 632): bump to 0.2.0-alpha.0**
+Promotes the post-alpha.15 cohort (~160 slices) to a tagged release; fixes one EFFECT_KINDS drift surfaced by `release:doc-review` and adds four pinned CHECKs for the front-door primitive citations so the next vocabulary bump trips CI in the same slice.
+Detail: [slice-632.md](docs/changelog/slice-632.md).
 
-**Release (slice 471): bump to 0.1.0-alpha.15**
+## 0.2.0-alpha.0 - 2026-06-03
 
-Promotes the post-alpha.14 cohort (slices 437-470) to a tagged release. `package.json` bumped from `0.1.0-alpha.14` to `0.1.0-alpha.15`; `package-lock.json` updated to match. `SCHEMA_VERSION` stays 1: the cohort's two persisted-shape touches (slice 467 added `turnUsage.savageAttackerUsedThisTurn`, slice 468 added the `InitiativeSwapped` event) are both purely additive with safe defaults, so old saves parse unchanged. The full suite is green; doc-counts + doc-links + doc-size audits all pass.
+**Release (slice 632): bump to 0.2.0-alpha.0**
 
-Cohort, in two arcs:
+Promotes the post-alpha.15 cohort (slices 472-631, ~160 slices) to a tagged release. The minor-pre-1.0 bump (the "escape hatch" per [VERSIONING.md](VERSIONING.md)) marks this cycle's chapter status — full L1 SRD coverage now floor-guarded by audit, plus the documented breaking changes below — without claiming beta-ready API stability. `package.json` bumps `0.1.0-alpha.15` → `0.2.0-alpha.0`; `package-lock.json` updated to match. `SCHEMA_VERSION` stays 1: no breaking persisted-shape changes in this cycle.
 
-- **Infra + docs sustainability (437-443):** the active-cycle CHANGELOG invariant that finally stopped the split-treadmill (437, `58.9 KB -> 9.5 KB` by evicting eight frozen release narratives to the per-range archives), the doc-links audit blind-spot fix for empty hrefs that the bulk re-rooting briefly produced (437 also), the broken-link fix in CLAUDE.md (438), the case-only link-mismatch hardening (439), documenting the PR-based `dev` -> `main` integration as standard (440), de-numbering the stale "Layer N" test labels (441), cutting CI turnaround from ~7 min per push to fast per-slice feedback (442), and syncing CLAUDE.md's branch section for fresh-agent readiness (443).
-- **L1 playability arc (444-470):** the level-by-level direction shift. Three batches landed: species trait sweep (444-465) - Halfling Brave, Elf Fey Ancestry + Keen Senses, Darkvision / Dwarven Resilience / Gnomish Cunning, Rogue Thieves' Cant + Sprite natural weapons, Wolf / Dire Wolf / Brown Bear / Mastiff knock-prone, Goblin Nimble Escape, Zombie Undead Fortitude, Wizard Ritual Adept, Orc Adrenaline Rush + Relentless Endurance, Kobold Sunlight Sensitivity + the Undead sunlight sweep, Sprite + Ghoul Bite natural weapons, Cleric Turn Undead, monster Multiattack content declaration (canonical user: Ghoul), Human Skillful, Goliath species (closing the last empty playable species); background mechanics (466-469) - backgrounds auto-project their Origin Feat + Sage RAW correction (466), Savage Attacker (467, the Soldier mechanic), Alert (468, the Criminal mechanic), Magic Initiate (Cleric / Wizard) (469, the Sage / Acolyte mechanics); plus CHANGELOG cohort archives (454 → slices 444-450, 460 → slices 451-459, 470 → slices 460-468). Net result: every L1 species has wired traits, every L1 class feature is wired, every 2024 SRD background lights up end-to-end (proficiencies + Origin Feat mechanics) through the slice-466 auto-projection, and the monster Multiattack primitive is shipped for the next-arc encounter sweep.
+### Highlights
 
-Per-slice detail for the whole cohort is in the per-cohort archives under [docs/changelog/](docs/changelog/):
-- [archive-slices-444-450.md](docs/changelog/archive-slices-444-450.md) (L1 arc part 1)
-- [archive-slices-451-459.md](docs/changelog/archive-slices-451-459.md) (L1 arc part 2)
-- [archive-slices-460-468.md](docs/changelog/archive-slices-460-468.md) (L1 arc part 3 - background mechanics)
-- The pre-arc infra slices (437-443) plus slices 461 + 469-470 remain on the live release narrative below; future archive slices will continue to evict cohorts as they age.
+- **L1 SRD floor (slices 530-619).** Every printed L1 species trait, class feature, weapon mastery, and SRD spell mechanic is now wired and floor-guarded by [tests/audit/srd-l1-complete.test.ts](tests/audit/srd-l1-complete.test.ts) (slice 619). The L1 fuzz cycle (slices 620-627) surfaced and closed RAW bugs in concentration RAW dispatch, rider-damage concentration triggers, Vex auto-expiry, Innate Sorcery's class gate, Monk Dexterous Attacks + Martial Arts Die scaling, the Graze hit/miss gate, and the on-hit mastery 0-damage gate. `engine.plan.offerCharacterChoices` now drains L1 OfferChoice entries on fresh characters (slice 618).
+- **Fuzz tooling + web replay (slices 583-624).** New combat-fuzz CLI generates seeded markdown transcripts of L1-L5 PCs (and monsters) fighting each other; pool-based loadouts (slice 622) exercise 25+ distinct spells per seed across 7+ masteries. The web demo pivoted to a fuzz-replay viewer (slices 599-616) with LRU-bounded scrub cache, per-step incremental replay, and observer-review-driven readability polish.
+- **Doc overhaul (slices 628-631).** CHANGELOG sustainability (pointer-per-slice + detail-per-file: live file 59 KB → 12 KB, growth per slice 4-9 KB → ~150 B); CLAUDE.md split into agent-only file (72 lines) plus [CONTRIBUTING.md](CONTRIBUTING.md) (288 lines), new [docs/architecture.md](docs/architecture.md), new [docs/engine-scope.md](docs/engine-scope.md) (the engine-tracks-vs-consumer-tracks reference); comprehensive feature tutorial at [docs/tutorial.md](docs/tutorial.md) with every typecheck-tagged block compiled against the real public API; numerical accuracy sweep that promoted the spell-wired percentage + EFFECT_KINDS citations to permanent CHECKs (doc-counts audit grew from 10 to 19 cases).
+- **Engine vocabulary growth.** `EFFECT_KINDS` grew from 53 entries at alpha.15 to 61 (60 primitives + Custom). Spell mechanical wiring rose from 182/339 (~54%) to 198/339 (~58%). New planners across the cycle include polymorph / wild shape, simulacrum, wish, breath weapon (dragonborn), wholeness-of-body, peerless skill, cutting words, divine intervention, paladin's smite, frenzy, plus the action-economy planners (cunning action, second wind, lay on hands, search, study, influence, utilize, help, ready, dodge, dash, disengage).
+- **Content depth.** Pact-boon completion (slices 517-519: Tome, Blade with `planConjurePactWeapon`, Chain with at-will Find Familiar); Warlock invocations content sweep (slices 513-516); monster Multiattack with Pack-Tactics-aware monsters; species coverage (Goliath, Tiefling Fiendish Legacy, Dragonborn Draconic Ancestry, Halfling Luck, Elf Trance, Dwarven Toughness, Dwarf Stonecunning).
 
-**Content (slice 469): Magic Initiate x 2 (Cleric + Wizard) - Sage and Acolyte light up end-to-end**
+### Breaking changes
 
-The final pair of Origin Feats. After slice 466's auto-projection (background -> effective feat list -> effect stack) and slices 467 / 468's mechanic wiring for Savage Attacker / Alert, the only remaining "background ships with no effect" rows were Sage and Acolyte, both pending their Magic Initiate origin feats. This slice closes both with a pure-content slice: no engine work beyond what the slice-212 `GrantSpell` consumer already does.
+#### Slice 603: `engine.plan.castSpell` on Produce Flame (and equivalent BA-cast + persistent + attack-mechanic spells) now requires Action available
 
-RAW (SRD 5.2.1 Magic Initiate):
-- **Two Cantrips**: "Learn two cantrips of your choice from the Cleric, Druid, or Wizard spell list."
-- **Level 1 Spell**: "Choose a level 1 spell from the same list... You always have that spell prepared. You can cast it once without a spell slot, and you regain the ability to cast it in that way when you finish a Long Rest. You can also cast the spell using any spell slots you have."
-- **Repeatable**: different list each time. The pack already ships separate `magic-initiate-cleric` / `magic-initiate-wizard` feats, one per list; each background's Origin Feat fixes the list (Acolyte -> Cleric list, Sage -> Wizard list).
+**Pre-slice:** `engine.plan.castSpell({ spellId: 'produce-flame', targetIds: [...] })` succeeded if the caster had a Bonus Action available. The cast consumed only the BA but rolled the hurl-attack inline, so a consumer could "cast PF" while their Action was already used elsewhere.
 
-**Each feat ships two OfferChoice traits** ([src/content/packs/starter-pack.json](src/content/packs/starter-pack.json)), `when: 'onAcquire'`, each carrying `GrantSpell` per option:
-- Cantrip OfferChoice (`oneOf: 2`): over the full SRD list for that class (7 Cleric, 15 Wizard). `preparation: 'always-prepared'` so the chosen cantrips appear on the bearer's effective spell list and can be cast at-will via the existing `cast-spell` planner.
-- L1 OfferChoice (`oneOf: 1`): over the full SRD L1 list (15 Cleric, 30 Wizard). `preparation: 'oncePerLongRest'` — the slice-219 marker for "free cast" semantics. The spell still appears on `effectiveSpellList` so it's also castable using slots per RAW; the once-per-long-rest gate is consumer-tracked (same sibling-deferral as the slice-353 Warlock Contact Patron and slice-219 Cleric Divine Intervention).
-- `spellcastingAbility`: hard-coded to the canonical default per RAW (`WIS` for Cleric list, `INT` for Wizard list). The player's choice across INT/WIS/CHA is deferred as a future refinement; for the auto-projected origin-feat path, the canonical default is the right out-of-the-box behavior.
+**Post-slice:** the same call now throws if the caster's Action is already used when targets are supplied, with message: `"<Caster> cannot hurl <spell>: action already used this turn (RAW: a BA cast + Magic action hurl requires both unspent)"`. The cast consumes BOTH a Bonus Action AND an Action when targets are supplied (matching RAW: BA cast produces the flame, Magic action hurls). Cast-without-hurl (no targetIds) keeps the BA-only behavior.
 
-**End-to-end through the background pipeline**: a consumer building an Acolyte / Sage character does **not** seed `featsTaken`. The slice-466 auto-projection delivers `magic-initiate-cleric` / `magic-initiate-wizard` to the effect stack from the background's `originFeatId`. The OfferChoice surfaces a pending choice on character acquisition; the consumer resolves it; the GrantSpell entries land on the bearer's `grantedSpells()` accumulator + `effectiveSpellList`.
+**Why:** RAW correction. SRD 5.2.1 Produce Flame: "Casting Time: Bonus Action ... Until the spell ends, you can take a Magic action to hurl fire at a creature." The hurl IS a separate action. Pre-slice the engine collapsed cast + hurl into one BA, giving casters a free spell attack alongside their full Action.
 
-**Tests** at [tests/unit/engine/slice-469-magic-initiate.test.ts](tests/unit/engine/slice-469-magic-initiate.test.ts) — 7 cases: (1, 2) Acolyte without choices resolved has no granted spells, Acolyte who picks Sacred Flame + Guidance + Cure Wounds has them granted with the right preparation modes and WIS ability; (3) the L1 spell appears on `effectiveSpellList` (castable via slots); (4, 5) Sage equivalents for Wizard list with INT ability; (6, 7) catalog-conformance checks pinning the OfferChoice shapes to the SRD list sizes (7 / 15 cleric, 15 / 30 wizard) so any future spell add / remove that walks past the catalog fails the audit.
+**Migration:** consumers calling `castSpell` for Produce Flame inside a turn where Action is consumed should either:
+- Cast without targets (BA only, no attack rolled) — gets the flame for light/utility.
+- Wait until next turn to hurl — call `castSpell` separately when Action is free. (The engine doesn't yet model the persistent-flame state across turns; the proper-RAW split planner is tracked as an open follow-up in [slice 603's archive entry](docs/changelog/archive-slices-599-603.md).)
 
-**Audit (content slice):**
-- *RAW match*: SRD 5.2.1 Magic Initiate exactly. The cantrip + L1 spell selection arms ship via OfferChoice over the full SRD lists. The "Spell Change at each level" arm (replace one chosen spell on level-up) is deferred — needs a `when: 'onLevelUp'` mode for OfferChoice the engine supports today but the SRD-replace shape is not yet conveyed by the OfferChoice schema. The free-cast-per-long-rest gate is consumer-tracked, matching the established pattern from slices 219 + 353.
-- *Names*: `magic-initiate-cleric-cantrips` / `magic-initiate-cleric-l1` (and Wizard variants) mirror the existing `wizard-scholar` / `rogue-expertise-l1` / `rogue-expertise-l6` choice-id naming (subject-feature-variant).
-- *DRY*: a single helper in the generator script produces both feats' OfferChoice arrays from the same SRD lists; the pack carries the resulting JSON inline so there's no runtime indirection.
-- *SRP*: feat ships the choice surface; OfferChoice + GrantSpell are the existing primitives; `effectiveSpellList` does the union; no engine code touched.
-- *Magic numbers*: only the `oneOf: 2` and `oneOf: 1` per RAW; the cantrip / spell counts are content-driven from the SRD lists.
-- *Mechanical outcomes asserted*: no-choice-resolved -> no grants; chosen cantrips -> always-prepared; chosen L1 -> oncePerLongRest; spellcasting ability matches list (WIS / INT); spells appear on `effectiveSpellList`; OfferChoice shapes match the SRD list sizes.
+**Detection:** an existing campaign with a logged Produce Flame cast on a turn where Action was already used would still REPLAY correctly (replay-equivalence holds for committed events; the rejection happens at plan time only). The break only surfaces when new intents are planned.
 
-**Closes the L1 background arc.** Every 2024 SRD background that ships in the starter pack (Soldier, Sage, Criminal, Acolyte) now lights up end-to-end: ability-score options, skill / tool proficiencies, languages, and Origin Feat mechanics. A consumer building any of the four with default `featsTaken: []` gets the RAW behavior automatically through the slice-466 auto-projection.
+### RNG-stream changes (per-seed reproducibility shifts)
 
-**Open follow-ups:**
-- **Once-per-long-rest free-cast gate**: a per-feat resource the engine auto-tracks (granted via the GrantSpell `oncePerLongRest` preparation, consumed by a cast with `noSlotCost: true`) would close the consumer-responsibility gap for Magic Initiate's L1-spell free cast, Warlock Contact Patron, and any other future once-per-long-rest cast. Sibling primitive opportunity. *Still open.*
-- **Spell Change at level-up** (RAW: "Whenever you gain a new level, you can replace one of the spells you chose for this feat"): needs an OfferChoice mode that exposes a "replace one of your prior selections" semantic on level-up. The schema's `when: 'onLevelUp'` is there but the replace-prior-pick shape isn't expressed. *Still open.*
-- **spellcastingAbility player choice** (RAW: pick INT/WIS/CHA at feat acquisition): a third OfferChoice on each feat over the three abilities, with each option re-projecting the GrantSpell entries with that ability. Deferred for now; the canonical defaults match the linked backgrounds' ability options. *Still open.*
-- **Magic Initiate (Druid)**: not currently in the pack as a feat; would mirror the Cleric / Wizard wiring over the Druid list once that list is fully present. *Still open.*
+Per [docs/determinism.md](docs/determinism.md), per-seed RNG reproducibility is version-sensitive. The following slices in this cycle changed RNG consumption patterns:
 
-**Docs (slice 470): archive slices 460-468 (L1 background-mechanics arc) to free CHANGELOG headroom**
+- Slice 601: CON save on every damage to a concentrating creature.
+- Slice 602: 2 d20 rolls on spell attacks vs advantage-granting targets.
+- Slice 611: Halfling Luck reroll + Bless bonus dice on spell attacks.
+- Slice 612: per-component CON saves (one per damage source instead of one totaled).
+- Slice 614: 2 d20 rolls on off-hand attacks vs advantage-granting targets.
 
-Pure CHANGELOG-archive operation. The live CHANGELOG had reached 62 KB after the slice-466 / 467 / 468 / 469 background arc — over the comfortable single-Read threshold. Moved the nine-slice cohort 460-468 to [docs/changelog/archive-slices-460-468.md](docs/changelog/archive-slices-460-468.md), continuing from [docs/changelog/archive-slices-451-459.md](docs/changelog/archive-slices-451-459.md) (L1 arc part 2). Slice 469 stays inline as the most-recent slice. Live CHANGELOG drops to ~25 KB; archive holds the full per-slice detail with sibling-rooted links (`../../src/...`, `../../tests/...`). Archive index in [docs/changelog/README.md](docs/changelog/README.md) updated.
+A transcript from `combat-fuzz --seed N` generated on `0.1.0-alpha.15` will NOT byte-match the same command on `0.2.0-alpha.0` if any of these paths fired. Consumers depending on cross-version per-seed reproducibility should snapshot the resulting `CampaignState` alongside the seed.
 
-**Docs (slice 443): sync CLAUDE.md's branch section to the PR flow (fresh-agent readiness)**
+### Cycle inventory
 
-CLAUDE.md is the auto-loaded manual a fresh agent reads first, but its "Branch structure" still described the old "user merges `dev` into `main` on his cadence" local-merge framing and never mentioned the PR-based integration adopted in slice 440 (only DEVELOPMENT.md did). A fresh agent would get the correct "don't push without instruction" rule but a stale mental model of *how* integration happens. Updated [CLAUDE.md](CLAUDE.md) "Branch structure" to state `dev` integrates into `main` only through a CI-gated PR (with the `gh pr create` command + the per-push-vs-PR-gate split from slice 442), pointing to DEVELOPMENT.md for the full flow; broadened the git-safety line to "don't push, open a PR, or merge to `main` without instruction." Also fixed a stale parallel-authoring summary line that said "engine on `main`" (contradicting the dev-only rule; the underlying parallel-authoring.md was corrected in slice 433 but this CLAUDE.md summary wasn't). Pattern-checked the front-door docs for other local-merge framing: none remain. No code/content/public-surface change.
+Per-slice detail for slices 472-621 lives in per-cohort `docs/changelog/archive-slices-NNN-MMM.md` files (the pre-slice-628 convention) plus the inline pointers below for slices 622-631 (the post-slice-628 per-slice-file convention). The pointer list below indexes both.
 
-**Infra (slice 442): cut CI turnaround (~7 min per push -> fast per-slice feedback)**
+**Tests + docs (slice 631): numerical accuracy sweep + audit extension**
+Extended doc-counts.test.ts to derive the spell wired/narrative/deferred/total split + rounded percentage from gaps-spells.md and pin five front-door-doc citations against the derived values. Updated stale percentages (README "~54%" → "~58%"; status.md "196/339" / "182" → "198/339"). Rewrote the two genuinely unmeasurable percentages ("~75% of planned EFFECT_KINDS", "~95% of printed mechanics") qualitatively per "CI-guarded or not stated."
+Detail: [slice-631.md](docs/changelog/slice-631.md).
 
-CI ran a 3-way Node matrix (20/22/24) where every entry did `npm ci` + typecheck + coverage-instrumented suite + build, so the expensive trio ran 3x, with no concurrency cancellation (a re-push left the stale run going). Restructured [.github/workflows/ci.yml](.github/workflows/ci.yml) so the felt per-slice cost drops without weakening the gate on `main`:
+**Docs (slice 630): comprehensive feature tutorial**
+New docs/tutorial.md walks every major capability end-to-end in one running example (install → engine → character → L1 choices → equip → derive → encounter → attack → spell → reaction → masteries → rests → level-up → event stream → save/load/replay → undo → custom content → custom handlers → determinism → engine scope). Every typecheck-tagged block compiles against the real public API via the doc-examples audit.
+Detail: [slice-630.md](docs/changelog/slice-630.md).
 
-- **Fast per-push `test` matrix**: Node 20/22/24 each run `npm test` (`vitest run`, no coverage) on every push/PR. Cross-Node compatibility is still exercised on all three; coverage % is Node-invariant for this no-native-deps library, so it no longer runs 3x.
-- **Integration-time `quality` job**: typecheck + coverage (80% thresholds) + build, once on Node 22, gated via `if:` to pull requests and pushes to `main`. Routine `dev` pushes skip it; `main` is never shipped without it (dev -> main is PR-only). The CI coverage run drops the `html` reporter (text + json-summary suffice; thresholds read json-summary); local `npm run test:coverage` still emits html.
-- **Concurrency cancellation**: a top-level `concurrency` group keyed on workflow + ref cancels a ref's in-flight run on re-push (no more ~14-min double-waits). Does not affect the deploy-*.yml workflows.
-- **Nightly deep fuzz**: new [.github/workflows/nightly-fuzz.yml](.github/workflows/nightly-fuzz.yml) runs the property suite at `FAST_CHECK_NUM_RUNS=1000` on a daily schedule (+ manual dispatch), so deep fuzzing is continuous instead of never-in-CI while per-push fuzz stays at the smoke level (50).
-- **`structuredClone` in [tests/property/content-pack-validator.test.ts](tests/property/content-pack-validator.test.ts)**: replaces the `JSON.parse(JSON.stringify())` whole-pack deep clone done each fast-check iteration. Identical semantics on the plain-JSON pack; the file drops from ~43s to ~36s (the per-iteration Zod parse of the full pack, not the clone, is the remaining dominant cost) and the local pre-commit suite benefits too.
+**Docs (slice 629): CLAUDE.md split + engine-scope reference + tone polish**
+Split the 464-line CLAUDE.md by audience: agent safety + pointers stay in CLAUDE.md (72 lines); universal contributor norms expand CONTRIBUTING.md (288 lines); architecture internals move to docs/architecture.md (new); engine-tracks-vs-consumer-tracks reference lands at docs/engine-scope.md (new).
+Detail: [slice-629.md](docs/changelog/slice-629.md).
 
-Quality is preserved: no tests deleted, coverage thresholds enforced before any merge to `main`, replay / RNG-capture / contract layers all still run, and local pre-commit still runs the full `vitest run` + `tsc` per slice. Documented the per-push-vs-gate split in DEVELOPMENT.md. Deliberately not done (low-risk bundle): test sharding + coverage-merge (the lever for sub-3-min single-run wall-clock, more plumbing) and hardcoding vitest `maxForks` (helps a 4-vCPU runner but can slow many-core local machines). No engine/content/public-surface change.
+**Docs (slice 628): CHANGELOG sustainability — pointer-per-slice + detail-per-file**
+Live CHANGELOG no longer holds verbose per-slice entries; full detail lives at `docs/changelog/slice-NNN.md`. Live file shrank from ~59 KB to ~10 KB; growth per slice now ~150 bytes instead of 4-9 KB.
+Detail: [slice-628.md](docs/changelog/slice-628.md).
 
-**Infra (slice 441): de-number the stale "Layer N" test labels (closes the slice-435 follow-up)**
+**Engine + tests (slice 627): Innate Sorcery advantage gates on Sorcerer-list spells**
+Multiclass sorcerer/wizard casting a wizard-only spell (e.g. Acid Arrow) no longer gets the advantage; predicate gates on `event.spellCastingClassId === 'sorcerer'`.
+Detail: [slice-627.md](docs/changelog/slice-627.md).
 
-Test-file headers and a few docs carried "Layer N" labels from an older 9+-layer testing scheme that no longer matched CLAUDE.md's current 1-7 Required-layers list (property tests were "Layer 7" and the feature-coverage matrix "Layer 8", but neither is a required layer; replay / RNG were "Layer 5 / 6" but are now 4 / 5). The numbers had drifted twice, so rather than re-number (which re-bitrots on the next reorder) the labels are now **de-numbered** to reference the standard by name. Updated `tests/property/*.test.ts` (7 files), `tests/coverage/features.test.ts`, and the `describe` labels in `tests/golden/{s2-combat-round,replay-equivalence,rng-capture}.test.ts` + `tests/integration/property.test.ts`; reconciled the stale inventory in [docs/status.md](docs/status.md) (was citing "Layers 5-11") and [docs/web-demo-plan.md](docs/web-demo-plan.md) ("Layer 9 contract test"); softened the one CLAUDE.md cross-reference. Left untouched by design: the SRD audit's own internally-consistent "Layer 1-4" scheme ([docs/srd-5.2.1-audit-classes.md](docs/srd-5.2.1-audit-classes.md), a different domain) and the frozen CHANGELOG archives (historical record). Verified the de-numbered `describe` labels carry no snapshot keys (only `tests/coverage/features.test.ts` uses snapshots, and only its comment changed) and the affected tests pass. No code/content/public-surface change.
+**Engine + tests + transcript (slice 626): three follow-up closures**
+On-hit masteries skip the rider on a 0-damage hit; s23 Graze test actually tests Graze; transcript shows all d20 rolls when Halfling Lucky reroll grew the array.
+Detail: [slice-626.md](docs/changelog/slice-626.md).
 
-**Docs (slice 440): document the PR-based dev -> main integration as standard**
+**Engine + tests (slice 625): Martial Arts Die scales monk weapons too**
+Sibling fix to slice 623: `applyMartialArtsDieScaling` now keys off the same `martialArtsApplies` helper. Monk sickle / dagger / scimitar now roll the L1 1d6 instead of the weapon's native die.
+Detail: [slice-625.md](docs/changelog/slice-625.md).
 
-Adopted a pull-request integration flow for `dev` -> `main` (replacing the local `git merge` that shipped a broken doc link straight to a red `main` in the slice-438 episode). Updated DEVELOPMENT.md: the "Branches" / "Working flow" now states that `main` is integrated only through a CI-gated PR (`gh pr create --base main --head dev`, merge when green), the branch-from rules note `dev` is the sole branch that integrates into `main` (via PR), and the "Cutting a release" step 7 ships through the PR before tagging on the merged `main`. The git-safety rule is unchanged: the PR process changes *how* `dev` integrates into `main`, not the rule that a human authorizes the push / PR / merge. Doc-only.
+**Engine + tests (slice 624): Graze weapon mastery fires on MISS only**
+`WeaponMasteryIntent` gained `attackHit?: boolean`; planner invariants enforce Graze=miss, Sap/Vex/Slow/Topple/Push/Cleave=hit. Fuzz dispatch gates accordingly.
+Detail: [slice-624.md](docs/changelog/slice-624.md).
 
-**Infra (slice 439): doc-links audit now catches case-only link mismatches**
+**Engine + tests (slice 623): three RAW bugs the slice-622 fuzz review surfaced**
+Vex autoExpiry now keys on bearer's turn-end (new `expirySourceFromBearer` flag); Innate Sorcery advantage on spell attacks wired; Monk Martial Arts "Dexterous Attacks" (STR→DEX) extended to monk weapons.
+Detail: [slice-623.md](docs/changelog/slice-623.md).
 
-The third and last of the "passes on a dev Mac, fails on Linux CI / GitHub" link classes (after empty hrefs in slice 437 and repo-escaping links in slice 438). macOS resolves `[x](docs/Status.md)` against the real `docs/status.md` (case-insensitive filesystem), so a wrong-case link passed the audit locally but would 404 on case-sensitive Linux CI and on GitHub. [tests/audit/doc-links.test.ts](tests/audit/doc-links.test.ts) now resolves each within-repo link by walking its path segments and requiring an exact-case match at each level (replacing the case-insensitive `existsSync`); on a mismatch it reports the correct casing (e.g. "case mismatch: should be docs/status.md"). Also dropped a stale unused `statSync` import. Verified it catches both wrong-case directory and wrong-case file segments and still passes clean. No code/content change.
+**Tooling + tests (slice 622): pool-based fuzz loadouts**
+Per-class loadouts replaced with pools (weapon / armor / cantrip / L1-spell). Each seed exercises a different swath: 12→25 distinct spells, 3→7+ masteries, 15→42 items, 10→25 monsters.
+Detail: [slice-622.md](docs/changelog/slice-622.md).
 
-**Fix (slice 438): CI doc-links failure - repo-escaping link in CLAUDE.md**
+---
 
-The doc-links audit failed in CI (but not locally): the project CLAUDE.md linked the global house-style file as `[~/.claude/CLAUDE.md](../../../.claude/CLAUDE.md)`, a path that resolves *above* the repo root. It passed on the dev machine (whose home dir has `~/.claude/CLAUDE.md` at exactly that relative position) but 404s in CI and on GitHub, neither of which can escape the repo. Two fixes: (1) the global config isn't a repo file, so it's now referenced as plain `~/.claude/CLAUDE.md` code text rather than a dead link; (2) hardened [tests/audit/doc-links.test.ts](tests/audit/doc-links.test.ts) to flag any link resolving above the repo root as broken, deterministically, so a non-portable link can no longer pass locally and fail in CI. Verified the audit catches an injected repo-escaping link and still passes clean. No code/content change.
+Per-slice detail for slices 620-621 (L1 fuzz concentration RAW work) is archived at [docs/changelog/archive-slices-620-621.md](docs/changelog/archive-slices-620-621.md).
 
-**Docs (slice 437): make the CHANGELOG sustainable - live file holds only the active cycle**
+Per-slice detail for slices 615-619 (web tooling polish, determinism docs, OfferCharacterChoices L1 cascade, SRD floor audit) is archived at [docs/changelog/archive-slices-615-619.md](docs/changelog/archive-slices-615-619.md).
 
-The live CHANGELOG kept hovering at 57-59 KB despite repeated "splits" because the splits only moved per-slice *detail* to cohort archives while eight frozen release narratives (alpha.6-13, ~84% of the bytes) plus a 33-entry archive index stayed inline forever; each split reclaimed detail but added a pointer, so the floor never dropped. Restructured to an active-cycle-only invariant: the live CHANGELOG now holds only `## Unreleased` + the latest tagged release + a compact "Older releases" pointer (58.9 KB -> 9.5 KB). Evicted the alpha.6-13 release narratives to [docs/changelog/released-versions-alpha-6-13.md](docs/changelog/released-versions-alpha-6-13.md) and moved the global per-cohort archive index to [docs/changelog/README.md](docs/changelog/README.md), both link-re-rooted and under the ceiling. Codified the rule in CLAUDE.md "Doc size discipline" (on every release, evict the previously-latest release narrative + its cohort pointers; released narratives split by version range as they grow) and added the eviction step to the DEVELOPMENT.md "Cutting a release" checklist. The bulk re-rooting surfaced (and the slice fixed) a blind spot in [tests/audit/doc-links.test.ts](tests/audit/doc-links.test.ts): its link regex required a non-empty href, so an empty `[text]()` link (which renders dead on GitHub, and which the re-rooting briefly produced) slipped through; hardened it to flag empty hrefs. Test-only audit change otherwise; doc-links + doc-size green.
+Per-slice detail for slices 611-614 (`resolveAttackRoll` helper; per-component concentration saves; content-driven `ResourceSpent` wording; audit-rigor pass) is archived at [docs/changelog/archive-slices-611-614.md](docs/changelog/archive-slices-611-614.md).
 
+Per-slice detail for slices 604-610 (observer-review polish: HP display clamp, RE + Shield wording, Beast-name regression, scrub cache) is archived at [docs/changelog/archive-slices-604-610.md](docs/changelog/archive-slices-604-610.md).
+
+Per-slice detail for slices 599-603 (web demo becomes fuzz-replay viewer; engine fixes — auto-trigger CON save on damage, spell-attack target-advantage, Produce Flame BA+Action) is archived at [docs/changelog/archive-slices-599-603.md](docs/changelog/archive-slices-599-603.md).
+
+Per-slice detail for slices 593-598 (combat-fuzz expansion: level-up to L2-5; rest cycles; 2v2; PC-vs-monster; 10 monster variety; species + class L1 BAs) is archived at [docs/changelog/archive-slices-593-598.md](docs/changelog/archive-slices-593-598.md).
+
+Per-slice detail for slices 588-592 (combat-fuzz hardening: species resource grants; weapon mastery + RAW proficiency fixes for Rogue/Monk/Wizard; buff/utility spell policy; Shield reaction post-hit) is archived at [docs/changelog/archive-slices-588-592.md](docs/changelog/archive-slices-588-592.md).
+
+Per-slice detail for slices 583-587 (spell-coverage aura-damage harness; Rules Lab removal; combat-fuzz CLI introduction; spell-attack trigger dispatch fix; transcript advantage fix) is archived at [docs/changelog/archive-slices-583-587.md](docs/changelog/archive-slices-583-587.md).
+
+Per-slice detail for slices 580-582 (Option-C closure: Deafened auto-fail hearing checks; Frightened movement-gate audit; minimal encumbrance — Petrified ×10 + Goliath Powerful Build) is archived at [docs/changelog/archive-slices-580-582.md](docs/changelog/archive-slices-580-582.md).
+
+Per-slice detail for slices 576-579 (auto-fail save consumption; `consumeOnCheck` + `consumeOnSave` + planBardicInspiration + Help-on-check; planLayOnHands; Search/Study/Influence/Utilize) is archived at [docs/changelog/archive-slices-576-579.md](docs/changelog/archive-slices-576-579.md).
+
+Per-slice detail for slices 573-575 (per-class L1 end-to-end scenarios; CI-guarded L1 invariants audit; condition behavior tests + INCAPACITATING parity audit) is archived at [docs/changelog/archive-slices-573-575.md](docs/changelog/archive-slices-573-575.md).
+
+Per-slice detail for slices 571-572 (planHelp — both modes; planReady) is archived at [docs/changelog/archive-slices-571-572.md](docs/changelog/archive-slices-571-572.md).
+
+Per-slice detail for slices 569-570 (Exhaustion attack-roll + Speed penalties; Incapacitated → concentration-break on apply) is archived at [docs/changelog/archive-slices-569-570.md](docs/changelog/archive-slices-569-570.md).
+
+Per-slice detail for slices 567-568 (condition effect-list completeness sweep + three attack-resolution gates: within-5-ft auto-crit, Prone asymmetric attacker advantage, Grappled non-grappler disadvantage) is archived at [docs/changelog/archive-slices-567-568.md](docs/changelog/archive-slices-567-568.md).
+
+Per-slice detail for slices 565-566 (Hex ability-disadvantage rider; Favored Enemy Hunter's Mark pool-based free-cast) is archived at [docs/changelog/archive-slices-565-566.md](docs/changelog/archive-slices-565-566.md).
+
+Per-slice detail for slices 562-564 (Eldritch Blast multi-beam scaling; Vicious Mockery disadvantage rider; per-caster L1 spellcasting math test suite) is archived at [docs/changelog/archive-slices-562-564.md](docs/changelog/archive-slices-562-564.md).
+
+Per-slice detail for slices 560-561 (Human / Tiefling Medium-or-Small size choice; Druid Magician cantrip choice + audit clarifications) is archived at [docs/changelog/archive-slices-560-561.md](docs/changelog/archive-slices-560-561.md).
+
+Per-slice detail for slices 553-559 (Goliath Giant Ancestry × 6 arms cohort + 3 missing focus variants) is archived at [docs/changelog/archive-slices-553-559.md](docs/changelog/archive-slices-553-559.md).
+
+Per-slice detail for slices 549-552 (post-L1-audit fixes: Rogue Sneak Attack finesse/ranged weapon gate; Cover bonus on Dex saves; Forest Gnome Speak with Animals per-rest cap; Reach property OA threat range) is archived at [docs/changelog/archive-slices-549-552.md](docs/changelog/archive-slices-549-552.md).
+
+Per-slice detail for slices 545-548 (final L1 deep-audit closure: planSecondWind; Healer's Kit + planUseHealersKit; Savage Attacker audit-clarification; planRage + raging condition) is archived at [docs/changelog/archive-slices-545-548.md](docs/changelog/archive-slices-545-548.md).
+
+Per-slice detail for slices 541-544 (L1 SRD primitive completion: Dragonborn Breath Weapon; Heroic Inspiration first-class resource; Halfling Luck cohort sweep) is archived at [docs/changelog/archive-slices-541-544.md](docs/changelog/archive-slices-541-544.md).
+
+Per-slice detail for slices 536-540 (L1 species coverage tail: Elf Trance; Human Resourceful narrative marker; Halfling Luck primitive + attack/save/check arms; Dwarf Stonecunning) is archived at [docs/changelog/archive-slices-536-540.md](docs/changelog/archive-slices-536-540.md).
+
+Per-slice detail for slices 530-535 (L1 species coverage sweep: Tiefling Fiendish Legacy + Otherworldly Presence; Dragonborn Draconic Ancestry + Damage Resistance; Elf + Gnome Lineage choices; Human Versatile; Dwarven Toughness; Halfling Nimbleness + Naturally Stealthy) is archived at [docs/changelog/archive-slices-530-535.md](docs/changelog/archive-slices-530-535.md).
+
+Per-slice detail for slices 525-529 (at-will monster spellcasting; Pact of the Chain familiar combat-surface; cross-monster sweep) is archived at [docs/changelog/archive-slices-525-529.md](docs/changelog/archive-slices-525-529.md).
+
+Per-slice detail for slices 520-524 (Spare the Dying + stabilize; Expeditious Retreat; Venomous Snake; Pseudodragon Bite; Sphinx of Wonder Rend) is archived at [docs/changelog/archive-slices-520-524.md](docs/changelog/archive-slices-520-524.md).
+
+Per-slice detail for slices 517-519 (Pact boon completion: ChoiceResolved cascade + Pact of the Tome; Pact of the Blade + planConjurePactWeapon; Pact of the Chain + at-will Find Familiar) is archived at [docs/changelog/archive-slices-517-519.md](docs/changelog/archive-slices-517-519.md).
+
+Per-slice detail for slices 513-516 (Warlock invocation content sweep: 6 invocations + at-will GrantSpell slot bypass; Ascendant Step + Gift of the Depths; Eldritch Mind; Repelling Blast + PushTarget) is archived at [docs/changelog/archive-slices-513-516.md](docs/changelog/archive-slices-513-516.md).
+
+Per-slice detail for slices 506-512 (L1-completion polish: Cleric Divine Order test, Floating Disk reclassification, Skilled origin feat, stale-note sweep, Warlock invocation foundation) is archived at [docs/changelog/archive-slices-506-512.md](docs/changelog/archive-slices-506-512.md).
+
+Per-slice detail for slices 501-505 (Shillelagh + weapon-buff; Ensnaring Strike; Weapon Mastery enforcement; Rogue Thieves' Cant sweep; Wizard Ritual Adept marker) is archived at [docs/changelog/archive-slices-501-505.md](docs/changelog/archive-slices-501-505.md).
+
+Per-slice detail for slices 482-486 (Animated Armor / Death Dog Multiattacks, Boar Bloodied Fury, Worg Bite, Magic Initiate Druid, once-per-long-rest free-cast tracker) is archived at [docs/changelog/archive-slices-482-486.md](docs/changelog/archive-slices-482-486.md).
+
+Per-slice detail for slices 472-481 (post-alpha.15 iconic-encounter content sweep) is archived at [docs/changelog/archive-slices-472-481.md](docs/changelog/archive-slices-472-481.md).
 
 ## Older releases
 
-Tagged release `0.1.0-alpha.14` lives in [docs/changelog/released-versions-alpha-14.md](docs/changelog/released-versions-alpha-14.md); `0.1.0-alpha.6` through `0.1.0-alpha.13` live in [docs/changelog/released-versions-alpha-6-13.md](docs/changelog/released-versions-alpha-6-13.md); `0.1.0-alpha.0` through `0.1.0-alpha.5` (the pre-rename `ttrpg-engine-dnd` package, all unpublished from npm in May 2026 on IP-cleanup grounds) live in [docs/changelog/released-versions.md](docs/changelog/released-versions.md). Per-cohort slice-detail archives are indexed in [docs/changelog/README.md](docs/changelog/README.md).
+Tagged release `0.1.0-alpha.15` lives in [docs/changelog/released-versions-alpha-15.md](docs/changelog/released-versions-alpha-15.md); `0.1.0-alpha.14` lives in [docs/changelog/released-versions-alpha-14.md](docs/changelog/released-versions-alpha-14.md); `0.1.0-alpha.6` through `0.1.0-alpha.13` live in [docs/changelog/released-versions-alpha-6-13.md](docs/changelog/released-versions-alpha-6-13.md); `0.1.0-alpha.0` through `0.1.0-alpha.5` (the pre-rename `ttrpg-engine-dnd` package, all unpublished from npm in May 2026 on IP-cleanup grounds) live in [docs/changelog/released-versions.md](docs/changelog/released-versions.md). Per-cohort slice-detail archives are indexed in [docs/changelog/README.md](docs/changelog/README.md).

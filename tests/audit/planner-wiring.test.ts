@@ -72,8 +72,21 @@ const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
   // several return a derived outcome the consumer branches on):
   'dodge', 'shield', 'sanctuaryWardSave', 'protection', 'consumeGuidance',
   'consumeResistance', 'cuttingWords', 'uncannyDodge', 'superiorDefense', 'paladinsSmite', 'breathWeapon',
+  // Slice 558: Stone's Endurance is a reaction-style planner; returns
+  // StonesEnduranceOutcome the consumer branches on (mirror of
+  // uncannyDodge). Consumer invokes it after observing a DamageApplied
+  // event on a Goliath with Stone's Endurance ancestry.
+  'stonesEndurance',
+  // Slice 559: Storm's Thunder is the sibling reaction; returns
+  // StormsThunderOutcome with the thunder damage dealt to the attacker.
+  'stormsThunder',
   // Per-moment ticks / duration sweeps (called at turn boundaries / on movement):
   'expireSpellDurations', 'tickAura', 'tickMovementDamage', 'tickRecurring', 'tickRecurringSave', 'triggerTrap',
+  // Stirge Blood Drain (slice 490): drain fires at the stirge's turn-start
+  // (consumer-driven, mirrors tickRecurringSave); detachStirge is an
+  // action invoked by the target or an adjacent ally to remove the
+  // attachment.
+  'stirgeDrain', 'detachStirge',
   // Special-cast / placed-entity / multi-arg spell planners:
   'magicWeapon', 'removeCurse', 'mistyStep', 'thunderStep', 'dimensionDoor',
   'silentImage', 'majorImage', 'clairvoyance', 'scrying', 'arcaneEye', 'divineIntervention',
@@ -90,6 +103,11 @@ const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
   'grantInitialHeroPoints', 'spendHeroPoint',
   // Travel / rest / resurrection / attack follow-ups:
   'rest', 'forcedMarch', 'resurrect', 'cleave',
+  // Slice 618: post-CharacterCreated choice cascade — consumer invokes
+  // after committing CharacterCreated to drain L1 OfferChoice entries
+  // (Fighter Fighting Style, future L1 origin-feat picks). Not a player
+  // action and not part of the action-economy dispatch.
+  'offerCharacterChoices',
 ]);
 
 describe('planner-wiring audit: every engine.plan method is dispatch-routed or allowlisted', () => {

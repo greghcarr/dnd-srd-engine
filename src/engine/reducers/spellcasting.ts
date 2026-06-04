@@ -2,6 +2,7 @@ import type { Draft } from 'immer';
 import type { CampaignState } from '../../schemas/runtime/campaign.js';
 import type { Character } from '../../schemas/runtime/character.js';
 import type {
+  FreeCastUsedEvent,
   PactSlotConsumedEvent,
   SpellCastDeclaredEvent,
   SpellSlotConsumedEvent,
@@ -38,4 +39,18 @@ export const applyPactSlotConsumed = (
 ): void => {
   const character = requireCharacter(state, event.characterId);
   character.pactSlotsUsed += 1;
+};
+
+// Slice 486: records that the bearer's once-per-long-rest free cast for
+// `spellId` has been used. Conditions dedupe by id, so push only when
+// absent (defensive; the planner's pre-emit gate already rejects a
+// repeat free cast). Cleared by `applyLongRestEnded`.
+export const applyFreeCastUsed = (
+  state: Draft<CampaignState>,
+  event: FreeCastUsedEvent,
+): void => {
+  const character = requireCharacter(state, event.characterId);
+  if (!character.usedFreeCastSpellIds.includes(event.spellId)) {
+    character.usedFreeCastSpellIds.push(event.spellId);
+  }
 };

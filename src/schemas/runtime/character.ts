@@ -5,6 +5,7 @@ import {
   CharacterLevelSchema,
   DamageTypeSchema,
   ExhaustionLevelSchema,
+  SizeSchema,
   ULIDSchema,
 } from '../primitives.js';
 
@@ -122,12 +123,26 @@ export const CharacterSchema = z.object({
   name: z.string().min(1),
   playerId: z.string().optional(),
   speciesId: z.string(),
+  // Slice 560: optional size override for species that offer a size
+  // choice at character creation (RAW Human / Tiefling are Medium or
+  // Small). When set, `creatureSize` returns this in preference to
+  // the species's base size. Additive + defaulted to undefined, so
+  // old saves load unchanged and characters without a choice fall
+  // back to species size as before.
+  sizeOverride: SizeSchema.optional(),
   backgroundId: z.string(),
   classes: z.array(ClassEnrollmentSchema).min(1),
   abilityScores: AbilityScoresSchema,
   hp: HPSchema,
   deathSaves: DeathSavesSchema.default({ successes: 0, failures: 0, stable: false }),
   exhaustion: ExhaustionLevelSchema.default(0),
+  // Slice 542: Heroic Inspiration (RAW: "You can have only one
+  // Heroic Inspiration at a time"). Boolean rather than count.
+  // Granted on Long Rest by features with the GrantHeroic
+  // InspirationOnLongRest marker (Human Resourceful, etc.); spent
+  // via planConsumeHeroicInspiration. Additive default; old saves
+  // load clean.
+  heroicInspiration: z.boolean().default(false),
   // Optional explicit walk-speed override. When set (transformations,
   // summons, a consumer pinning a custom value), it wins. When absent,
   // the walk speed derives from the species' / statblock's walk speed
@@ -159,6 +174,22 @@ export const CharacterSchema = z.object({
     )
     .default({}),
   pactSlotsUsed: z.number().int().min(0).default(0),
+  // Slice 486: tracks which `oncePerLongRest`-granted spell IDs have
+  // consumed their free cast since the last long rest. Magic Initiate
+  // (Cleric / Wizard / Druid), Warlock Contact Patron, and any other
+  // feature that GrantSpell-with-`oncePerLongRest` populates this when
+  // the consumer passes `useFreeCast: true` on the cast intent. Cleared
+  // by `applyLongRestEnded`. Empty by default; pre-slice-486 saves load
+  // clean.
+  usedFreeCastSpellIds: z.array(z.string()).default([]),
+  // Slice 502: the weapon definition ids this character has chosen for
+  // the 2024 Weapon Mastery feature (Fighter 3, Barbarian / Paladin /
+  // Ranger / Rogue 2). A weapon's mastery property applies only when its
+  // id is in this list AND the character is proficient with it (see
+  // `canUseWeaponMastery`). Populated via `planChooseWeaponMasteries`,
+  // re-choosable on a Long Rest (consumer-managed timing). Empty by
+  // default; pre-slice-502 saves load clean.
+  weaponMasteries: z.array(z.string()).default([]),
   concentrationEffectId: ULIDSchema.optional(),
   triggerCounters: z
     .record(

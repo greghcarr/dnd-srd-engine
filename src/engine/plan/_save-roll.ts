@@ -6,6 +6,7 @@ import type { RNG } from '../../rng/index.js';
 import { rollDie } from '../../rng/dice.js';
 import { computeSavingThrow } from '../../derive/save.js';
 import { rollSaveBonusDice } from './_bonus-dice.js';
+import { coverDexSaveBonus, type CoverKind } from './attack.js';
 import { newEventId } from '../../ids.js';
 import { D20_SIDES } from '../../internal/constants.js';
 import type { ULID } from '../ids-utils.js';
@@ -32,6 +33,13 @@ export interface RollSaveInput {
   // Optional causation link stamped on the emitted SaveRolled (the
   // breath-weapon chain points its save at the BreathWeaponFired marker).
   readonly causedByEventId?: string;
+  // Slice 550: optional cover modifier. RAW (SRD 5.2.1 Cover): "A
+  // target with half cover has a +2 bonus to AC and Dexterity saving
+  // throws. A target with three-quarters cover has a +5 bonus..."
+  // Applied only when ability === 'DEX' (RAW scopes it to Dex saves
+  // alone). Caller-supplied per save site since the engine doesn't
+  // model positions; consumers (UI / VTT) determine cover and pass it.
+  readonly cover?: CoverKind;
 }
 
 // Rolls a fixed-DC saving throw for `targetId` against `dc`, baking the
@@ -63,17 +71,43 @@ export const rollSaveAgainstDC = (input: RollSaveInput): SaveRollResult | undefi
     : derivation.hasDisadvantage
       ? 'disadvantage'
       : 'none';
-  const usedD20 = derivation.hasAdvantage
+  let usedD20 = derivation.hasAdvantage
     ? Math.max(...rolls)
     : derivation.hasDisadvantage
       ? Math.min(...rolls)
       : rolls[0]!;
+  // Slice 539: Halfling Luck (save arm). RAW: "When you roll a 1 on
+  // the d20 of a D20 Test, you can reroll the die, and you must use
+  // the new roll." Fires when the chosen d20 is a natural 1 AND the
+  // target carries the marker (surfaced via SaveResult.hasHalflingLuck).
+  // The reroll is appended to the d20 array; no second reroll.
+  if (usedD20 === 1 && derivation.hasHalflingLuck) {
+    const reroll = rollDie(D20_SIDES, input.rng);
+    rolls.push(reroll);
+    usedD20 = reroll;
+  }
   // Slice 331: per-roll save bonus dice (Bless +1d4 / Bane -1d4), rolled
   // after the d20(s) and folded into the bonus + total + breakdown.
   const saveBonus = rollSaveBonusDice(derivation.bonusDice, input.rng);
-  const bonus = derivation.total + saveBonus.total;
+  // Slice 550: cover bonus on Dex saves. Other abilities ignore cover.
+  const coverBonus = input.ability === 'DEX' && input.cover !== undefined
+    ? coverDexSaveBonus(input.cover)
+    : 0;
+  const coverBreakdown = coverBonus > 0
+    ? [{ source: `cover (${input.cover!})`, value: coverBonus }]
+    : [];
+  const bonus = derivation.total + saveBonus.total + coverBonus;
   const total = usedD20 + bonus;
-  const success = total >= input.dc;
+  // Slice 576: RAW auto-fail (Paralyzed / Stunned / Petrified /
+  // Unconscious force-fail STR + DEX saves). The d20 + modifiers are
+  // computed normally so the rolled values still appear on the event
+  // (transcript visibility); the `success` is forced to false. The
+  // breakdown gets an `'auto-fail'` source entry so a sheet display
+  // can show the reason.
+  const success = derivation.hasAutoFail ? false : total >= input.dc;
+  const autoFailBreakdown = derivation.hasAutoFail
+    ? [{ source: 'auto-fail', value: 0 }]
+    : [];
   const event: SaveRolledEvent = {
     id: newEventId() as ULID,
     at: input.at,
@@ -87,7 +121,12 @@ export const rollSaveAgainstDC = (input: RollSaveInput): SaveRollResult | undefi
     total,
     success,
     ...(input.causedByEventId !== undefined ? { causedByEventId: input.causedByEventId } : {}),
-    breakdown: [...derivation.breakdown, ...saveBonus.breakdown],
+    breakdown: [
+      ...derivation.breakdown,
+      ...saveBonus.breakdown,
+      ...coverBreakdown,
+      ...autoFailBreakdown,
+    ],
   };
   return { event, success };
 };

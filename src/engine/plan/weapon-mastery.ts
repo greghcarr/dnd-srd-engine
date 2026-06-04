@@ -3,6 +3,7 @@ import type { ResolvedContent } from '../../content/pack.js';
 import type { Event } from '../../schemas/events/index.js';
 import type { RNG } from '../../rng/index.js';
 import { rollDie } from '../../rng/dice.js';
+import { applyHalflingLuckForCharacter } from './_halfling-luck.js';
 import { newEventId, newAppliedConditionId } from '../../ids.js';
 import { D20_SIDES } from '../../internal/constants.js';
 import { nowIso } from '../../internal/clock.js';
@@ -15,11 +16,12 @@ import type { WeaponMasteryActivatedEvent } from '../../schemas/events/weapon-ma
 import type { ConditionAppliedEvent, DamageAppliedEvent } from '../../schemas/events/combat.js';
 import type { CombatantMovedEvent } from '../../schemas/events/movement.js';
 import type { SaveRolledEvent } from '../../schemas/events/checks.js';
-import { planConcentrationBreakOnDrop } from './concentration.js';
+import { planConcentrationOnDamage } from './concentration.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { isMagicWeaponAttack } from '../../derive/magicality.js';
 import { creatureSize, isLargeOrSmaller } from '../../derive/creature-size.js';
+import { canUseWeaponMastery } from '../../derive/weapon-mastery.js';
 import { applyAll } from '../apply.js';
 
 const UNARMED_DC_BASE = 8;
@@ -71,6 +73,27 @@ export interface WeaponMasteryIntent {
   readonly attackerId: string;
   readonly targetId: string;
   readonly weaponInstanceId: string;
+  // Slice 624: did the attack roll that prompted this mastery
+  // activation HIT or MISS? Required for masteries with hit/miss-
+  // specific RAW (Graze is miss-only; Sap/Vex/Slow/Topple/Push are
+  // hit-and-damage-only). Optional for backwards compatibility with
+  // call sites that don't have the context; the planner gates based
+  // on the mastery's RAW shape (see invariants below). The slice-622
+  // L1 fuzz at seed 6009 surfaced the bug this gate fixes: Graze
+  // fired on a HIT because the dispatch unconditionally called the
+  // planner regardless of attack outcome.
+  readonly attackHit?: boolean;
+  // Slice 626: did the attack actually deal damage? Sap/Vex/Slow/
+  // Topple/Push RAW says "If you hit AND deal damage to the creature"
+  // -- a hit reduced to 0 by resistance/immunity shouldn't fire them.
+  // Cleave RAW only requires the hit ("you can make a melee attack
+  // roll with the weapon against a second creature"), no damage gate.
+  // Graze doesn't need this (it deals the damage; the attack roll
+  // missed). When supplied, the planner refuses to fire a damage-gated
+  // mastery for which `attackDealtDamage === false`. Optional for
+  // backwards compatibility with legacy callers; absence is treated
+  // as "presume the damage condition is met" so old goldens pass.
+  readonly attackDealtDamage?: boolean;
   readonly at?: string;
 }
 
@@ -96,8 +119,61 @@ export const planWeaponMastery = (
     weapon.mastery === intent.mastery,
     `Weapon ${weaponInst.definitionId} mastery is ${weapon.mastery ?? 'none'}, not ${intent.mastery}`,
   );
-
+  // Slice 502: RAW gate — the attacker may use this weapon's mastery only
+  // if they chose its kind for the Weapon Mastery feature and are
+  // proficient with it.
+  invariant(
+    canUseWeaponMastery(attacker, weapon, content),
+    `${attacker.name} has not mastered ${weaponInst.definitionId} (${intent.mastery})`,
+  );
+  // Slice 624: RAW hit/miss gate. Graze fires only when the attack
+  // misses ("if your attack roll with this weapon misses a creature");
+  // every other RAW mastery (Sap, Vex, Slow, Topple, Push, Cleave)
+  // fires on a hit-and-damage. Nick/Flex aren't gated on attack outcome
+  // (Nick is a Light off-hand timing tweak; Flex is the engine's
+  // versatile 1H/2H toggle). When the caller supplies `attackHit`, the
+  // planner refuses to fire a mastery whose RAW shape doesn't match.
+  // When the caller omits it (legacy / golden tests built before this
+  // gate), the planner accepts the call for backward compatibility but
+  // a future slice should require `attackHit` for these masteries.
+  if (intent.attackHit !== undefined) {
+    if (intent.mastery === 'Graze') {
+      invariant(
+        intent.attackHit === false,
+        `Graze fires only when the attack misses (RAW: "If your attack roll with this weapon misses a creature, you can deal damage..."); attackHit was true`,
+      );
+    } else if (
+      intent.mastery === 'Sap'
+      || intent.mastery === 'Vex'
+      || intent.mastery === 'Slow'
+      || intent.mastery === 'Topple'
+      || intent.mastery === 'Push'
+      || intent.mastery === 'Cleave'
+    ) {
+      invariant(
+        intent.attackHit === true,
+        `${intent.mastery} fires only on a hit (RAW); attackHit was false`,
+      );
+    }
+    // Nick / Flex have no RAW hit-or-miss gate; the planner already
+    // no-ops on them (their effects live in the attack planner).
+  }
   const at = intent.at ?? nowIso();
+  // Slice 626: damage-dealt gate. RAW Sap/Vex/Slow/Topple/Push all
+  // include "and deal damage to the creature" in the trigger -- a hit
+  // reduced to 0 by resistance/immunity shouldn't fire them. Cleave
+  // doesn't require damage (just the hit); Graze deals the damage
+  // itself. When the caller supplies attackDealtDamage=false for a
+  // damage-gated mastery, the planner emits just the activation event
+  // and skips the on-hit rider. Borderline-RAW situation: a resisted
+  // hit shouldn't fire the rider, but also shouldn't crash the planner.
+  const damageGatedMasteries = new Set(['Sap', 'Vex', 'Slow', 'Topple', 'Push']);
+  if (
+    damageGatedMasteries.has(intent.mastery)
+    && intent.attackDealtDamage === false
+  ) {
+    return [recordMasteryEvent(intent.mastery, intent.attackerId, intent.targetId, intent.weaponInstanceId, at)];
+  }
   const events: Event[] = [
     recordMasteryEvent(intent.mastery, intent.attackerId, intent.targetId, intent.weaponInstanceId, at),
   ];
@@ -146,7 +222,9 @@ export const planWeaponMastery = (
       break;
     case 'Topple': {
       const dc = masterySaveDC(attacker);
-      const d20 = rollDie(D20_SIDES, rng);
+      const rolls: number[] = [rollDie(D20_SIDES, rng)];
+      // Slice 543: Halfling Luck on Topple target CON save.
+      const d20 = applyHalflingLuckForCharacter(rolls[0]!, intent.targetId, state, content, rolls, rng);
       const conBonus = abilityModifier(target.abilityScores.CON);
       const total = d20 + conBonus;
       const success = total >= dc;
@@ -157,7 +235,7 @@ export const planWeaponMastery = (
         targetId: intent.targetId,
         ability: 'CON',
         dc,
-        d20: [d20],
+        d20: rolls,
         used: 'none',
         bonus: conBonus,
         total,
@@ -246,7 +324,7 @@ export const planWeaponMastery = (
         events.push(grazeDamage);
         events.push(...intercept.extraEvents);
         events.push(
-          ...planConcentrationBreakOnDrop(target, grazeDamage.components, grazeDamage.id, at),
+          ...planConcentrationOnDamage(state, content, rng, target, grazeDamage.components, grazeDamage.id, at),
         );
       }
       break;

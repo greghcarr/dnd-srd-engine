@@ -27,9 +27,18 @@ export interface ComputeSpellDCInput {
   // on condition effects that touch spell save DC / spell attack
   // bonus. Callers without source-relative content can omit.
   readonly characters?: Readonly<Record<string, Character>>;
+  // Slice 487: explicit spellcasting-ability override. When set, the
+  // DC / attack computation uses this ability instead of the bearer's
+  // spellcasting-class ability. Lets Magic Initiate on a non-spellcaster
+  // (Fighter / Rogue / Barbarian) compute DC / attack from the
+  // GrantSpell entry's `spellcastingAbility` since the bearer has no
+  // class with spellcasting. Callers with a spellcasting class can
+  // omit the field and the existing class-derived path applies.
+  readonly castingAbility?: 'INT' | 'WIS' | 'CHA';
 }
 
 const lookupSpellcastingAbility = (input: ComputeSpellDCInput): 'INT' | 'WIS' | 'CHA' | undefined => {
+  if (input.castingAbility !== undefined) return input.castingAbility;
   const cls = input.content.classes.get(input.classId);
   if (!cls?.spellcasting) return undefined;
   const ability = cls.spellcasting.ability;

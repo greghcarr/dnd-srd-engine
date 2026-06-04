@@ -18,12 +18,14 @@ import type { ItemTemporaryBuff } from '../../schemas/runtime/item-instance.js';
 import type { RNG } from '../../rng/index.js';
 import { rollDie, parseDiceExpression } from '../../rng/dice.js';
 import { newEventId, newAppliedConditionId } from '../../ids.js';
-import { computeAttackBonus } from '../../derive/attack.js';
+import { computeAttackBonus, martialArtsApplies } from '../../derive/attack.js';
+import type { Weapon } from '../../schemas/content/item.js';
 import { computeAC } from '../../derive/ac.js';
 import { buildEffectStack, collectEffectsFromCharacter, getEffectiveFeatIds } from '../../derive/effect-stack.js';
 import { cunningStrikeForgoDice, cunningStrikeMinLevel, type CunningStrikeOption } from './cunning-strike.js';
 import { getCreatureType } from '../../derive/creature-type.js';
-import { creatureSize } from '../../derive/creature-size.js';
+import { creatureSize, isLargeOrSmaller } from '../../derive/creature-size.js';
+import { canUseWeaponMastery } from '../../derive/weapon-mastery.js';
 import { abilityModifier, effectiveAbilityScore } from '../../derive/ability.js';
 import { computeActionEconomyBudget } from '../../derive/action-economy.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
@@ -33,13 +35,18 @@ import { resolveEnchantment } from '../../derive/enchantment.js';
 import { evaluatePredicate } from '../../effects/predicate.js';
 import { rollSaveAgainstDC } from './_save-roll.js';
 import { rollBonusDice } from './_bonus-dice.js';
+import { resolveAttackRoll } from './_attack-roll.js';
+import {
+  GIANT_ANCESTRY_RESOURCE_ID,
+  validateGoliathAncestry,
+} from './_giant-ancestry.js';
 import {
   findMirrorImage,
   mirrorImageThreshold,
   duplicateAC as computeDuplicateAC,
   type MirrorImageState,
 } from '../../derive/mirror-image.js';
-import { planConcentrationBreakOnDrop } from './concentration.js';
+import { planConcentrationOnDamage } from './concentration.js';
 import { dispatchTriggers } from '../triggers/dispatch.js';
 import { applyAll } from '../apply.js';
 import { D20_SIDES, NAT_20, NAT_1 } from '../../internal/constants.js';
@@ -212,6 +219,14 @@ export const coverACBonus = (cover: CoverKind): number => {
   }
 };
 
+// Slice 550: RAW (SRD 5.2.1 Cover): "A target with half cover has a
+// +2 bonus to AC and Dexterity saving throws. A target with three-
+// quarters cover has a +5 bonus to AC and Dexterity saving throws."
+// The bonus is identical in magnitude to coverACBonus but the save
+// arm applies ONLY to Dexterity saves (not STR/CON/INT/WIS/CHA), so
+// the save site reads this helper after checking the ability.
+export const coverDexSaveBonus = (cover: CoverKind): number => coverACBonus(cover);
+
 export interface AttackIntent {
   readonly type: 'Attack';
   readonly attackerId: string;
@@ -289,15 +304,67 @@ export interface AttackIntent {
   // The reroll only fires on a hit; a miss with this flag set does NOT
   // consume the per-turn use (RAW: "when you hit").
   readonly useSavageAttacker?: boolean;
+  // Slice 555: Goliath Giant Ancestry → Fire's Burn opt-in. RAW: "When
+  // you hit a target with an attack roll and deal damage to it, you
+  // can also deal 1d10 Fire damage to that target." Validates Goliath
+  // species + Fire's Burn ancestry choice resolved + giant-ancestry
+  // resource > 0. The +1d10 fire rides the damage roll on hit; on
+  // miss no resource is consumed (RAW "When you hit"). Engine
+  // mirrors the slice-467 Savage Attacker shape — pre-validate, fire
+  // at damage-roll site, emit a marker event so reducers can track.
+  readonly useGiantAncestryFiresBurn?: boolean;
+  // Slice 556: Goliath Giant Ancestry → Frost's Chill opt-in. RAW:
+  // "When you hit a target with an attack roll and deal damage to it,
+  // you can also deal 1d6 Cold damage to that target and reduce its
+  // Speed by 10 feet until the start of your next turn." Same dial
+  // shape as Fire's Burn; the speed reduction lands as a temporary
+  // condition (`frosts-chill-slowed`) sourced by the attacker so its
+  // autoExpiry fires on the attacker's next turn-start.
+  readonly useGiantAncestryFrostsChill?: boolean;
+  // Slice 557: Goliath Giant Ancestry → Hill's Tumble opt-in. RAW:
+  // "When you hit a Large or smaller creature with an attack roll and
+  // deal damage to it, you can give that target the Prone condition."
+  // Same dial shape as the sibling arms; rejects pre-attack if the
+  // target is larger than Large.
+  readonly useGiantAncestryHillsTumble?: boolean;
+  // Slice 491: consumer-supplied per-attack fact for "the attacker
+  // moved 20+ feet straight toward this target immediately before the
+  // hit." Canonical user: Boar Gore ("If the target is a Medium or
+  // smaller creature and the boar moved 20+ feet straight toward it
+  // immediately before the hit, the target takes an extra 1d6 piercing
+  // and has the Prone condition"). The engine doesn't track movement
+  // direction or "movement immediately before the hit" — same shape as
+  // bearer.lightLevel / attackerHasAllyAdjacentToTarget: the consumer
+  // signals the combined predicate as one boolean. Opt-in: undefined
+  // produces no charge bonus. Surfaces as
+  // `event.attackerChargedThisTarget` in the onHit rider's condition
+  // predicate facts.
+  readonly chargedAtTarget?: boolean;
+  // Slice 494: override which ability mod drives the attack + damage
+  // roll. Default (undefined) uses chooseDamageAbility (STR / DEX
+  // depending on weapon properties). Canonical user: True Strike RAW
+  // ("The attack uses your spellcasting ability for the attack and
+  // damage rolls instead of using Strength or Dexterity"). The
+  // planWeaponAttackMechanic resolves the caster's spellcasting ability
+  // and passes it here.
+  readonly abilityOverride?: 'STR' | 'DEX' | 'CON' | 'INT' | 'WIS' | 'CHA';
 }
 
 const chooseDamageAbility = (
-  attacker: { abilityScores: { STR: number; DEX: number } },
-  weapon: { properties: ReadonlyArray<string>; attackKind: 'melee' | 'ranged' },
+  attacker: Character,
+  weapon: Weapon,
 ): 'STR' | 'DEX' => {
   const isFinesse = weapon.properties.includes('finesse');
   const isRanged = weapon.attackKind === 'ranged';
   if (isRanged && !weapon.properties.includes('thrown')) return 'DEX';
+  // Slice 623: Martial Arts "Dexterous Attacks" applies to damage
+  // too (mirror of chooseAttackAbility in derive/attack.ts).
+  if (martialArtsApplies(attacker, weapon)) {
+    return abilityModifier(attacker.abilityScores.DEX) >=
+      abilityModifier(attacker.abilityScores.STR)
+      ? 'DEX'
+      : 'STR';
+  }
   if (isFinesse) {
     return abilityModifier(attacker.abilityScores.DEX) >=
       abilityModifier(attacker.abilityScores.STR)
@@ -318,15 +385,25 @@ export const martialArtsDie = (monkLevel: number): string | undefined => {
   return undefined;
 };
 
-// When a Monk uses an Unarmed Strike whose natural die is smaller than
-// their Martial Arts die, the Martial Arts die replaces it. Other
-// weapons (and non-Monks) keep their natural die.
+// Slice 625: RAW 2024 Martial Arts Die: "You can roll 1d6 in place of
+// the normal damage of your Unarmed Strike OR Monk weapons." Pre-slice
+// the engine narrowed this to unarmed-strike only (via the
+// `weaponDefId !== 'unarmed-strike'` early-return); the slice-624 fuzz
+// review at seed 5508 surfaced the gap: a monk wielding a sickle
+// (Light simple melee, monk-eligible) still rolled the sickle's 1d4
+// when the Martial Arts L1 die is 1d6. Fix: reuse `martialArtsApplies`
+// (the slice-623 helper) so both arms of Martial Arts -- Dexterous
+// Attacks (STR→DEX swap) and Martial Arts Die scaling -- share the
+// same RAW gate (monk + monk-eligible weapon + no armor + no shield).
+// The replacement rule still applies: substitute the Martial Arts die
+// only when it's larger than the weapon's native die (RAW: "you can
+// roll" -- always optional, but max(weaponDie, maDie) is correct).
 export const applyMartialArtsDieScaling = (
-  attacker: { classes: ReadonlyArray<{ classId: string; level: number }> },
-  weaponDefId: string,
+  attacker: Character,
+  weapon: Weapon,
   naturalDamageDice: string,
 ): string => {
-  if (weaponDefId !== 'unarmed-strike') return naturalDamageDice;
+  if (!martialArtsApplies(attacker, weapon)) return naturalDamageDice;
   const monk = attacker.classes.find((c) => c.classId === 'monk');
   const lvl = monk?.level ?? 0;
   const maDie = martialArtsDie(lvl);
@@ -369,12 +446,38 @@ export interface ResolveAttackInput {
   readonly cunningStrike?: ReadonlyArray<CunningStrikeOption>;
   // Slice 467: see AttackIntent.useSavageAttacker doc comment above.
   readonly useSavageAttacker?: boolean;
+  // Slice 555: see AttackIntent.useGiantAncestryFiresBurn doc comment above.
+  readonly useGiantAncestryFiresBurn?: boolean;
+  // Slice 556: see AttackIntent.useGiantAncestryFrostsChill doc comment above.
+  readonly useGiantAncestryFrostsChill?: boolean;
+  // Slice 557: see AttackIntent.useGiantAncestryHillsTumble doc comment above.
+  readonly useGiantAncestryHillsTumble?: boolean;
+  // Slice 491: see AttackIntent.chargedAtTarget doc comment above.
+  readonly chargedAtTarget?: boolean;
+  // Slice 494: see AttackIntent.abilityOverride doc comment above.
+  readonly abilityOverride?: 'STR' | 'DEX' | 'CON' | 'INT' | 'WIS' | 'CHA';
 }
 
 const CUNNING_STRIKE_LEVEL = 5;
 const IMPROVED_CUNNING_STRIKE_LEVEL = 11;
 // Slice 467: feat id read by resolveAttack to gate the per-attack reroll.
+// The savage-attacker feat in the pack carries an empty effects array
+// intentionally: the engine keys off the id string here rather than off
+// a declarative effect primitive. Consumers opt in per attack via
+// AttackIntent.useSavageAttacker. Once-per-turn enforcement uses
+// turnUsage.savageAttackerUsedThisTurn (only inside an active
+// encounter; out-of-encounter use is unbounded by consumer
+// responsibility, mirror of Stunning Strike). The reroll fires at the
+// damage-roll site below; the discarded set rides on SavageAttackerUsed.
+// (Slice 547 audit-clarification note: an earlier "deep audit" agent
+// misread the empty effects array as "feat does nothing"; the feat is
+// fully wired, just by id-match rather than by effect declaration.)
 const SAVAGE_ATTACKER_FEAT_ID = 'savage-attacker';
+// Slice 490: weapon + condition ids used by the attached-stirge gate.
+// While a stirge is attached to a target, it cannot make Proboscis
+// attacks; the resolver rejects the attempt up front.
+const STIRGE_PROBOSCIS_WEAPON_ID = 'stirge-proboscis';
+const STIRGE_ATTACHED_CONDITION_ID = 'stirge-attached';
 
 // The attacker's Sneak Attack die count, read from the `cunningStrikeEligible`
 // AddDamage rider so it tracks the pack's per-level wiring rather than a
@@ -424,13 +527,19 @@ const assertCunningStrikeUsable = (
   }
 };
 
-// "Next attack roll" one-shot conditions (Sap / Vex). After the bearer
-// makes an attack roll, remove any `consumeOnAttack` condition it carries
-// so the advantage/disadvantage applies to exactly one attack. A
-// source-keyed condition (Vex's `vexing-active`, which stamps
-// `sourceCharacterId` = the vexed target) is consumed only when the bearer
-// attacks that source; an unkeyed one (Sap's `sapped`) is consumed on any
-// attack. Conditions dedupe by id on apply, so id-based removal is precise.
+// "Next attack roll" one-shot conditions (Sap / Vex / viciously-mocked).
+// After the bearer makes an attack roll, remove any `consumeOnAttack`
+// condition it carries so the advantage/disadvantage applies to exactly
+// one attack. Three source-key cases:
+// 1. Unsourced (Sap's `sapped`) — consumes on any attack.
+// 2. Source = the bearer themselves (slice 563: Vicious Mockery's
+//    `viciously-mocked`, sourced to the target so the autoExpiry
+//    fires at end of bearer's own next turn) — also consumes on any
+//    attack since the bearer is "themselves" relative to the rider.
+// 3. Source = a specific other creature (Vex's `vexing-active`,
+//    stamps `sourceCharacterId` = the vexed target) — consumed only
+//    when the bearer attacks THAT source.
+// Conditions dedupe by id on apply, so id-based removal is precise.
 const buildConsumeOnAttackRemovals = (
   attacker: Character,
   targetId: string,
@@ -440,13 +549,37 @@ const buildConsumeOnAttackRemovals = (
   attacker.appliedConditions
     .filter((applied) => {
       if (content.conditions.get(applied.conditionId)?.consumeOnAttack !== true) return false;
-      return applied.sourceCharacterId === undefined || applied.sourceCharacterId === targetId;
+      if (applied.sourceCharacterId === undefined) return true;
+      if (applied.sourceCharacterId === attacker.id) return true; // self-sourced
+      return applied.sourceCharacterId === targetId;
     })
     .map((applied) => ({
       id: newEventId() as ULID,
       at,
       type: 'ConditionRemoved',
       targetId: attacker.id as ULID,
+      conditionId: applied.conditionId,
+    }));
+
+// Slice 484: target-side mirror of `consumeOnAttack`. After the bearer
+// is targeted by an attack roll, remove any `consumeOnIncomingAttack`
+// condition it carries so a rider (typically GrantAdvantageToAttackers)
+// applies to exactly one incoming attack. RAW user: Worg's Bite. No
+// source-keyed filter (RAW "next attack" doesn't constrain the attacker).
+const buildConsumeOnIncomingAttackRemovals = (
+  target: Character,
+  content: ResolvedContent,
+  at: string,
+): ConditionRemovedEvent[] =>
+  target.appliedConditions
+    .filter((applied) =>
+      content.conditions.get(applied.conditionId)?.consumeOnIncomingAttack === true,
+    )
+    .map((applied) => ({
+      id: newEventId() as ULID,
+      at,
+      type: 'ConditionRemoved',
+      targetId: target.id as ULID,
       conditionId: applied.conditionId,
     }));
 
@@ -465,11 +598,57 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   if (!weaponDef || weaponDef.itemKind !== 'weapon') {
     throw new Error(`Item ${weaponInstance.definitionId} is not a weapon`);
   }
+  // Slice 490: a stirge that has attached to a target cannot make
+  // Proboscis attacks until it detaches. Look for any character carrying
+  // the slice-490 `stirge-attached` condition sourced by this attacker;
+  // if one exists AND the chosen weapon is the Stirge Proboscis, reject
+  // the attack. Other weapons (none currently shipped on the stirge)
+  // are unrestricted.
+  if (weaponDef.id === STIRGE_PROBOSCIS_WEAPON_ID) {
+    const stirgeIsAttached = Object.values(state.characters).some((c) =>
+      c.appliedConditions.some(
+        (ac) => ac.conditionId === STIRGE_ATTACHED_CONDITION_ID && ac.sourceCharacterId === input.attackerId,
+      ),
+    );
+    if (stirgeIsAttached) {
+      throw new Error(
+        `${attacker.name} cannot make Proboscis attacks while attached to a target`,
+      );
+    }
+  }
   // Slice 467: Savage Attacker validation. The reroll itself fires
   // below at the damage-roll site (only when the attack actually hits,
   // matching RAW "when you hit"); the validation here rejects malformed
   // intents up front so the consumer sees the error before any d20 is
   // committed.
+  // Slice 555: Goliath Fire's Burn validation (mirror of Savage
+  // Attacker shape). The +1d10 fire fires only on hit + only when the
+  // consumer opts in via useGiantAncestryFiresBurn; the resource is
+  // consumed only on hit (RAW "when you hit"). Pre-attack validation
+  // rejects malformed intents up front so consumers see the error
+  // before any d20 is committed.
+  // Slice 555/556/557: Goliath Giant Ancestry attack-rider validation.
+  // Each opt-in dial triggers the same precondition check (Goliath +
+  // resolved ancestry + giant-ancestry resource > 0) — extracted to
+  // the shared helper after the third sibling arrived in slice 557.
+  if (input.useGiantAncestryFiresBurn === true) {
+    validateGoliathAncestry(attacker, state, 'fires-burn', "Fire's Burn");
+  }
+  if (input.useGiantAncestryFrostsChill === true) {
+    validateGoliathAncestry(attacker, state, 'frosts-chill', "Frost's Chill");
+  }
+  if (input.useGiantAncestryHillsTumble === true) {
+    validateGoliathAncestry(attacker, state, 'hills-tumble', "Hill's Tumble");
+    // Slice 557: Hill's Tumble RAW gate — "When you hit a Large or
+    // smaller creature." Larger targets (Huge / Gargantuan) are not
+    // valid; reject before any damage is rolled.
+    const tSize = creatureSize(target, content);
+    if (!isLargeOrSmaller(tSize)) {
+      throw new Error(
+        `${target.name} is ${tSize}, larger than Large — Hill's Tumble only fells Large or smaller creatures`,
+      );
+    }
+  }
   if (input.useSavageAttacker === true) {
     if (!getEffectiveFeatIds(attacker, content).includes(SAVAGE_ATTACKER_FEAT_ID)) {
       throw new Error(`${attacker.name} does not have the Savage Attacker feat`);
@@ -493,6 +672,7 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     content,
     weaponInstanceId: input.weaponInstanceId,
     characters: state.characters,
+    ...(input.abilityOverride !== undefined ? { abilityOverride: input.abilityOverride } : {}),
   });
 
   const cover = input.cover ?? 'none';
@@ -529,8 +709,15 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     const cb = enc.combatants.find((c) => c.combatantId === input.targetId);
     return cb?.turnUsage.recklessAttackActive === true;
   })();
+  // Slice 568: surface event.attackKind to target-side predicate gates
+  // (Prone's RAW asymmetry: melee Advantage, ranged Disadvantage). Same
+  // fact name as the attackerFacts map and the trigger-dispatch fact,
+  // so a content gate reads one canonical path.
+  const targetSideAttackerFacts = new Map<string, unknown>([
+    ['event.attackKind', weaponDef.attackKind],
+  ]);
   const targetGrantsAdvantage =
-    targetEffects.grantsAdvantageToAttackers() || targetRecklessGrantsAdvantage;
+    targetEffects.grantsAdvantageToAttackers(targetSideAttackerFacts) || targetRecklessGrantsAdvantage;
   // Slice 199: target may carry `CancelAdvantageOnAttackers` (Rogue
   // L18 Elusive). Build a small bearer-facts map so a predicate-gated
   // entry can consult the target's own state — Elusive's gate is
@@ -553,13 +740,13 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     return chooseDamageAbility(attacker, weaponDef) === 'STR';
   })();
   // RAW PHB Equipment: "Small creatures have Disadvantage with Heavy
-  // weapons." Look up the attacker's species → size; if Small AND
-  // weapon has the `heavy` property, contribute disadvantage.
+  // weapons." Look up the attacker's effective size (via creatureSize
+  // derive — picks up slice-560's `sizeOverride` for Human/Tiefling
+  // Medium-or-Small choices, plus monster statblock sizes for NPCs);
+  // if Small AND weapon has the `heavy` property, contribute disadvantage.
   const heavyForSmall = ((): boolean => {
     if (!weaponDef.properties.includes('heavy')) return false;
-    const species = content.species.get(attacker.speciesId);
-    if (!species) return false;
-    return species.size === 'Small';
+    return creatureSize(attacker, content) === 'Small';
   })();
   // RAW PHB ch.1 "Ranged Attacks in Close Combat": ranged attacks have
   // disadvantage if a hostile creature who isn't Incapacitated is
@@ -665,6 +852,12 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   // true and the Frightened disadvantage fires). Consumers that
   // model line of sight pass `false` to bypass when the source is
   // out of sight.
+  // Slice 483: `bearer.bloodied` is derived engine-side (HP <= floor(max/2),
+  // 2024 RAW). Unlike `bearer.lightLevel` / `bearer.canSeeFearSource` (scene
+  // facts the engine can't observe), bloodied state lives entirely in
+  // character HP that the engine already owns, so no consumer wiring is
+  // needed. Boar Bloodied Fury reads this fact.
+  const attackerBloodied = attacker.hp.current <= Math.floor(attacker.hp.max / 2);
   const attackerSelfAdvantageFacts = new Map<string, unknown>([
     ['target.canLocateInvisible', targetCanLocateInvisible],
     ['bearer.canSeeFearSource', input.bearerCanSeeFearSource],
@@ -678,6 +871,17 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     // both its check-disadvantage and its attack-disadvantage on the
     // same fact name so a consumer populates it once per intent.
     ['bearer.lightLevel', input.lightLevel],
+    ['bearer.bloodied', attackerBloodied],
+    // Slice 568: Grappled's "Disadvantage on attacks against any
+    // target other than the grappler" arm. True iff the attacker is
+    // currently Grappled AND the attack's target is NOT the grappler
+    // (the condition's sourceCharacterId). The Grappled condition's
+    // SetAdvantage on attack disadvantage gates on this being true.
+    ['bearer.targetIsNotGrappler', ((): boolean => {
+      const grappled = attacker.appliedConditions.find((c) => c.conditionId === 'grappled');
+      if (grappled === undefined) return false;
+      return grappled.sourceCharacterId !== input.targetId;
+    })()],
   ]);
   const attackerSelfAdvantage = attackerEffects.advantageFor('attack', attackerSelfAdvantageFacts);
   // Build a small facts map for type-conditional ImposeDisadvantage
@@ -731,6 +935,10 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     // ResolveAttackInput.targetCanSeeAttacker above. Undefined
     // defaults to default-apply (predicate is `not eq value:false`).
     ['bearer.canSeeAttacker', input.targetCanSeeAttacker],
+    // Slice 568: Prone's asymmetric attacker advantage (melee
+    // Advantage, ranged Disadvantage) gates on event.attackKind. Same
+    // fact name as the trigger-dispatch map and targetSideAttackerFacts.
+    ['event.attackKind', weaponDef.attackKind],
   ]);
   const targetImposesDisadvantage =
     targetEffects.imposesDisadvantageOnAttackers(attackerFacts)
@@ -802,32 +1010,55 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     });
     if (deflectedEvents !== undefined) return deflectedEvents;
   }
-  const rolls: number[] = [rollDie(D20_SIDES, rng)];
-  if (advantage !== 'none') {
-    rolls.push(rollDie(D20_SIDES, rng));
-  }
-  const usedRoll =
-    advantage === 'advantage'
-      ? Math.max(...rolls)
-      : advantage === 'disadvantage'
-        ? Math.min(...rolls)
-        : (rolls[0] ?? 0);
-  // Slice 330: per-roll bonus dice (Bless +1d4 / Bane -1d4 via
-  // AddBonusDie). Rolled here, after the d20(s), and folded into the
-  // attack bonus so `total === usedRoll + attackBonus` still holds; the
-  // per-die detail is recorded on the event. No RNG consumed when none
-  // apply (the common case), so unblessed attacks keep their RNG stream.
-  const attackBonusDice = rollBonusDice(attackerEffects.bonusDiceFor('attack', attackerFacts), rng);
-  const effectiveAttackBonus = attackBonusResult.total + attackBonusDice.total;
-  const total = usedRoll + effectiveAttackBonus;
-  const naturalHit = usedRoll === NAT_20;
-  const naturalMiss = usedRoll === NAT_1;
-  const hit = !naturalMiss && (naturalHit || total >= acResult.total);
-  // Improved Critical / Superior Critical (and similar) lower the
-  // crit threshold via ExpandCritRange. Default 20. A crit only
-  // counts on a hit (a 19 that misses AC is just a miss).
-  const critThreshold = attackerEffects.critThreshold();
-  const critical = hit && usedRoll >= critThreshold;
+  // Slice 611: the d20 roll + advantage resolution + Halfling Luck
+  // reroll + Bless/Bane bonus-dice fold + crit threshold all live in
+  // a shared helper now, used by both weapon attacks (here) and spell
+  // attacks (cast-spell.ts). The pre-roll advantage state and crit
+  // threshold are still computed locally; this helper just executes
+  // the dice + arithmetic.
+  const critThresholdNow = attackerEffects.critThreshold();
+  const rollResult = resolveAttackRoll({
+    advantage,
+    attackBonus: attackBonusResult.total,
+    targetAC: acResult.total,
+    attackerHasHalflingLuck: attackerEffects.hasHalflingLuck(),
+    bonusDiceContributions: attackerEffects.bonusDiceFor('attack', attackerFacts),
+    critThreshold: critThresholdNow,
+    rng,
+  });
+  const rolls = rollResult.rolls;
+  const usedRoll = rollResult.usedRoll;
+  const attackBonusDice = rollResult.bonusDice;
+  const effectiveAttackBonus = rollResult.effectiveAttackBonus;
+  const total = rollResult.total;
+  const naturalHit = rollResult.naturalHit;
+  const naturalMiss = rollResult.naturalMiss;
+  const hit = rollResult.hit;
+  // Slice 568: RAW Paralyzed / Unconscious "Any attack that hits the
+  // creature is a critical hit if the attacker is within 5 feet of
+  // the creature." The engine doesn't track positional adjacency, so
+  // melee attacks are taken as the proxy for "within 5 feet" (the
+  // common case: 5 ft melee reach). Reach weapons at 10 ft would
+  // RAW-correctly NOT auto-crit, but the engine over-grants here
+  // until positional state is modeled. Matches the existing
+  // melee-vs-incapacitated approximations elsewhere in the planner.
+  // Triggers on paralyzed (incl. held-paralyzed-active for Hold Person
+  // / Hold Monster — both compose Paralyzed in RAW), unconscious, or
+  // HP <= 0 (the synthetic-unconscious case findActorBlockingCondition
+  // also returns for).
+  // Slice 611: the base crit (`usedRoll >= critThreshold`) lives in
+  // resolveAttackRoll; this re-derives the combined crit including
+  // the melee-auto-crit branch.
+  const targetAutoCritsFromMelee = ((): boolean => {
+    if (weaponDef.attackKind !== 'melee') return false;
+    if (target.hp.current <= 0) return true;
+    return target.appliedConditions.some(
+      (c) => c.conditionId === 'paralyzed'
+        || c.conditionId === 'held-paralyzed-active'
+        || c.conditionId === 'unconscious',
+    );
+  })();
+  const critical = rollResult.critical || (hit && targetAutoCritsFromMelee);
 
   // RAW Rogue Sneak Attack (and equivalent content triggers): the
   // ally-adjacent path requires *another* positioned, non-incapacitated
@@ -870,8 +1101,12 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   };
 
   // Sap / Vex are spent by this attack roll (RAW "next attack roll").
+  // Slice 484: target-side mirror; Worg's bite-target condition is spent
+  // by the next attack against the target (RAW "next attack roll made
+  // against the target").
   const consumed = buildConsumeOnAttackRemovals(attacker, input.targetId, content, at);
-  const stateAfterAttack = applyAll(state, [attackRolled, ...consumed]);
+  const targetConsumed = buildConsumeOnIncomingAttackRemovals(target, content, at);
+  const stateAfterAttack = applyAll(state, [attackRolled, ...consumed, ...targetConsumed]);
   const attackTriggers = dispatchTriggers({
     state: stateAfterAttack,
     content,
@@ -882,10 +1117,16 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   });
 
   if (!hit) {
-    return [attackRolled, ...consumed, ...attackTriggers];
+    return [attackRolled, ...consumed, ...targetConsumed, ...attackTriggers];
   }
 
-  const damageAbility = chooseDamageAbility(attacker, weaponDef);
+  // Slice 494: when input.abilityOverride is set (True Strike), the damage
+  // roll uses that ability instead of STR/DEX. Slice 501: a Shillelagh-
+  // style weapon buff supplies the same override via the instance's
+  // temporaryBuff (precedence: per-attack input > weapon buff > default).
+  const damageAbility = input.abilityOverride
+    ?? weaponInstance.temporaryBuff?.abilityOverride
+    ?? chooseDamageAbility(attacker, weaponDef);
   const damageBaseScore = attacker.abilityScores[damageAbility];
   const damageScoreFloor = attackerEffects.effectiveAbilityScoreFloor(damageAbility)?.value;
   const damageScoreIncrease = attackerEffects.effectiveAbilityScoreIncrease(damageAbility);
@@ -907,10 +1148,15 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     weaponDef.properties.includes('versatile') &&
     weaponDef.versatileDice !== undefined &&
     wieldedTwoHanded;
-  const baseDamageExpression = useFlex && weaponDef.versatileDice !== undefined
-    ? weaponDef.versatileDice
-    : weaponDef.damageDice;
-  const damageExpression = applyMartialArtsDieScaling(attacker, weaponDef.id, baseDamageExpression);
+  // Slice 501: a Shillelagh-style weapon buff overrides the damage die
+  // (Shillelagh: `1d8`), taking precedence over the weapon's printed /
+  // versatile dice.
+  const buffDamageDieOverride = weaponInstance.temporaryBuff?.damageDieOverride;
+  const baseDamageExpression = buffDamageDieOverride
+    ?? (useFlex && weaponDef.versatileDice !== undefined
+      ? weaponDef.versatileDice
+      : weaponDef.damageDice);
+  const damageExpression = applyMartialArtsDieScaling(attacker, weaponDef, baseDamageExpression);
   const parsed = parseDiceExpression(damageExpression);
   const totalRolls = critical ? parsed.count * 2 : parsed.count;
   // Slice 467: Savage Attacker reroll. RAW (SRD 5.2.1): "you can roll
@@ -980,7 +1226,13 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   // enchantment like Frost Brand / Flame Tongue).
   const enchantment = resolveEnchantment(weaponInstance, content);
   const enchantmentDamageBonus = enchantment?.damageBonus ?? 0;
-  const effectiveDamageType = enchantment?.weaponDamageType ?? weaponDef.damageType;
+  // Slice 501: a Shillelagh-style weapon buff can override the damage type
+  // (Shillelagh's "can be Force damage" choice), taking precedence over an
+  // enchantment's type and the weapon's printed type.
+  const effectiveDamageType =
+    weaponInstance.temporaryBuff?.damageTypeOverride
+    ?? enchantment?.weaponDamageType
+    ?? weaponDef.damageType;
   // Slice 117: consume the effect stack's 'damage' modifier sum.
   // Predicate-gated entries (Dueling: melee + off-hand-no-weapon;
   // Frenzy: melee) use the facts populated below. Predicate-less
@@ -1007,6 +1259,11 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     // is the canonical user; future weapon-specific item buffs plug
     // in by gating on the same fact).
     ['event.weaponId', weaponInstance.definitionId],
+    // Slice 548: damage-ability fact (STR / DEX). Lets predicate-gated
+    // AddModifier effects scope to "STR-based attacks only" (Rage's
+    // damage bonus is the canonical user — RAW "When you make an
+    // attack using Strength... you gain a bonus to the damage").
+    ['event.damageAbility', damageAbility],
   ]);
   const damageModifierBonus = attackerEffects.modifierSum('damage', damageFacts);
   const damageRollPayload: DamageRoll = {
@@ -1042,6 +1299,11 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     ['target.creatureType', getCreatureType(target, content)],
     ['target.speciesId', target.speciesId],
     ['target.creatureSize', creatureSize(target, content)],
+    // Slice 491: consumer-supplied "did the attacker charge this target"
+    // fact (Boar Gore "moved 20+ ft straight toward it immediately
+    // before the hit"). Opt-in: undefined evaluates to false in the
+    // predicate, so unconditional onHit riders are unaffected.
+    ['event.attackerChargedThisTarget', input.chargedAtTarget === true],
   ]);
   // Slice 324: a rider gated `requiresCritical` fires only on a crit.
   const applicableRiders = [...(weaponDef.onHit ?? []), ...(enchantment?.onHit ?? [])].filter(
@@ -1055,6 +1317,20 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
       : [],
   );
 
+  // Slice 555: Goliath Fire's Burn rider rolls here when opted in
+  // (pre-validated up front). RAW: +1d10 Fire damage on hit. Crits
+  // double the dice per general crit semantics (mirror of
+  // rollExtraDamageDice's `critical` handling).
+  const firesBurnRoll = input.useGiantAncestryFiresBurn === true
+    ? rollExtraDamageDice('1d10', 'fire', rng, critical)
+    : undefined;
+  // Slice 556: Goliath Frost's Chill rider — RAW +1d6 Cold damage
+  // on hit. The speed-reduction condition is applied separately
+  // below via the events tail; only the damage roll lives here.
+  const frostsChillRoll = input.useGiantAncestryFrostsChill === true
+    ? rollExtraDamageDice('1d6', 'cold', rng, critical)
+    : undefined;
+
   const damageRolled: DamageRolledEvent = {
     id: newEventId() as ULID,
     at,
@@ -1066,6 +1342,8 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
       damageRollPayload,
       ...(extraDamageRoll === undefined ? [] : [extraDamageRoll]),
       ...onHitRiderRolls,
+      ...(firesBurnRoll === undefined ? [] : [firesBurnRoll]),
+      ...(frostsChillRoll === undefined ? [] : [frostsChillRoll]),
     ],
     critical,
     causedByEventId: attackRolled.id,
@@ -1108,6 +1386,18 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     const riderTotal = rider.rolls.reduce((s, v) => s + v, 0) + rider.modifier;
     rawComponents.push({ amount: Math.max(0, riderTotal), type: rider.type });
   }
+  // Slice 555: fold Fire's Burn damage into rawComponents so it flows
+  // through mitigation (resistance / immunity / vulnerability apply).
+  if (firesBurnRoll !== undefined) {
+    const fbTotal = firesBurnRoll.rolls.reduce((s, v) => s + v, 0) + firesBurnRoll.modifier;
+    rawComponents.push({ amount: Math.max(0, fbTotal), type: firesBurnRoll.type });
+  }
+  // Slice 556: fold Frost's Chill cold damage into rawComponents
+  // (mitigation applies — cold resistance halves it per RAW).
+  if (frostsChillRoll !== undefined) {
+    const fcTotal = frostsChillRoll.rolls.reduce((s, v) => s + v, 0) + frostsChillRoll.modifier;
+    rawComponents.push({ amount: Math.max(0, fcTotal), type: frostsChillRoll.type });
+  }
   const attackIsMagical = isMagicWeaponAttack(
     weaponInstance,
     weaponDef,
@@ -1149,8 +1439,16 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     // attacks; the spell / trap damage emitters already set it.
     sourceCharacterId: input.attackerId as ULID,
   };
-  const concentrationBreak = planConcentrationBreakOnDrop(
-    target,
+  // Slice 621: pass post-rider state so the helper sees (a) whether a
+  // rider (Hex / Hunter's Mark) already broke concentration -- skip the
+  // duplicate save -- and (b) the target's post-rider HP, so "main
+  // damage drops to 0" classifies as 'unconscious' not 'failedSave'.
+  const targetAfterRiders = stateBeforeMainDamage.characters[input.targetId] ?? target;
+  const concentrationBreak = planConcentrationOnDamage(
+    stateBeforeMainDamage,
+    content,
+    rng,
+    targetAfterRiders,
     intercept.components,
     damageApplied.id,
     at,
@@ -1177,7 +1475,27 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   //   - slice 321 applyConditionId: apply the condition unconditionally
   //     (no save) — the 2024 poison-bite shape (Couatl's Bite).
   const onHitRiderEvents: Event[] = [];
+  // Slice 484: read the rider condition's declarative `autoExpiry`
+  // metadata and stamp `expiresOnRound` + `expiryTrigger` when inside an
+  // active encounter so `planAdvanceTurn` lifts the condition at the
+  // matching boundary. Mirrors the cast-spell.ts treatment for spell
+  // buffs. Outside an encounter the stamping is skipped and the consumer
+  // manages expiry (existing slice-286 behavior). Conditions without
+  // autoExpiry are unaffected.
+  const currentEncounterRound = state.activeEncounterId
+    ? state.encounters[state.activeEncounterId]?.round
+    : undefined;
   const applyRiderCondition = (conditionId: string): void => {
+    const autoExpiry = content.conditions.get(conditionId)?.autoExpiry;
+    const expiryFields: {
+      expiresOnRound?: number;
+      expiryTrigger?: 'turnStart' | 'turnEnd';
+    } = autoExpiry !== undefined && currentEncounterRound !== undefined
+      ? {
+          expiresOnRound: currentEncounterRound + autoExpiry.afterRounds,
+          expiryTrigger: autoExpiry.trigger,
+        }
+      : {};
     onHitRiderEvents.push({
       id: newEventId() as ULID,
       at,
@@ -1186,6 +1504,7 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
       conditionId,
       appliedConditionId: newAppliedConditionId(),
       sourceCharacterId: input.attackerId as ULID,
+      ...expiryFields,
     } satisfies ConditionAppliedEvent);
   };
   const destroyTarget = (): void => {
@@ -1237,13 +1556,71 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     if (rider.destroy !== undefined && hpWithin(rider.destroy.hpThreshold)) destroyTarget();
   }
 
+  // Slice 556: Frost's Chill applies the speed-reduction condition on
+  // hit (reuses the same applyRiderCondition helper above so the
+  // autoExpiry on the condition lifts the slow at the start of the
+  // attacker's next turn — the condition's sourceCharacterId is set
+  // to the attacker, matching how `expiresOnRound + turnStart` resolves).
+  if (frostsChillRoll !== undefined) {
+    applyRiderCondition('frosts-chill-slowed');
+  }
+  // Slice 557: Hill's Tumble applies Prone on hit. The Large-or-
+  // smaller gate was already enforced pre-attack; if we got here on
+  // a hit, the target qualifies. Reuses the same applyRiderCondition
+  // helper for source attribution; `prone` carries no autoExpiry, so
+  // it persists until the target spends half their movement to stand.
+  if (input.useGiantAncestryHillsTumble === true) {
+    applyRiderCondition('prone');
+  }
+
+  // Slice 555: Fire's Burn consumes 1 giant-ancestry use ONLY on hit
+  // (RAW "When you hit a target with an attack roll and deal damage
+  // to it"). The miss path returns early at line 1038-1040, so this
+  // branch is reached only when hit=true.
+  const firesBurnResource: ReadonlyArray<Event> = firesBurnRoll !== undefined
+    ? [{
+        id: newEventId() as ULID,
+        at,
+        type: 'ResourceSpent',
+        characterId: input.attackerId as ULID,
+        resourceId: GIANT_ANCESTRY_RESOURCE_ID,
+        amount: 1,
+      }]
+    : [];
+  // Slice 556: Frost's Chill same — 1 use of giant-ancestry on hit.
+  const frostsChillResource: ReadonlyArray<Event> = frostsChillRoll !== undefined
+    ? [{
+        id: newEventId() as ULID,
+        at,
+        type: 'ResourceSpent',
+        characterId: input.attackerId as ULID,
+        resourceId: GIANT_ANCESTRY_RESOURCE_ID,
+        amount: 1,
+      }]
+    : [];
+  // Slice 557: Hill's Tumble same — 1 use of giant-ancestry on hit.
+  const hillsTumbleResource: ReadonlyArray<Event> = input.useGiantAncestryHillsTumble === true
+    ? [{
+        id: newEventId() as ULID,
+        at,
+        type: 'ResourceSpent',
+        characterId: input.attackerId as ULID,
+        resourceId: GIANT_ANCESTRY_RESOURCE_ID,
+        amount: 1,
+      }]
+    : [];
+
   return [
     attackRolled,
     ...consumed,
+    ...targetConsumed,
     ...attackTriggers,
     damageRolled,
     ...savageAttackerEvent,
     damageApplied,
+    ...firesBurnResource,
+    ...frostsChillResource,
+    ...hillsTumbleResource,
     ...damageTriggers,
     ...onHitRiderEvents,
     ...intercept.extraEvents,
@@ -1381,6 +1758,11 @@ export const planAttack = (
     ...(intent.lightLevel !== undefined ? { lightLevel: intent.lightLevel } : {}),
     ...(intent.cunningStrike !== undefined ? { cunningStrike: intent.cunningStrike } : {}),
     ...(intent.useSavageAttacker === true ? { useSavageAttacker: true } : {}),
+    ...(intent.useGiantAncestryFiresBurn === true ? { useGiantAncestryFiresBurn: true } : {}),
+    ...(intent.useGiantAncestryFrostsChill === true ? { useGiantAncestryFrostsChill: true } : {}),
+    ...(intent.useGiantAncestryHillsTumble === true ? { useGiantAncestryHillsTumble: true } : {}),
+    ...(intent.chargedAtTarget === true ? { chargedAtTarget: true } : {}),
+    ...(intent.abilityOverride !== undefined ? { abilityOverride: intent.abilityOverride } : {}),
     at,
   });
   // If we fired a Loading weapon, append a WeaponLoaded event so the
@@ -1444,6 +1826,11 @@ export const planCleave = (
   }
   if (weaponDef.mastery !== 'Cleave') {
     throw new Error(`Weapon ${weaponDef.name} does not have the Cleave mastery`);
+  }
+  // Slice 502: RAW gate — the attacker may use Cleave only if they chose
+  // this weapon kind for the Weapon Mastery feature and are proficient.
+  if (!canUseWeaponMastery(attacker, weaponDef, content)) {
+    throw new Error(`${attacker.name} has not mastered ${weaponDef.name} (Cleave)`);
   }
   if (weaponDef.attackKind !== 'melee') {
     throw new Error('Cleave requires a melee weapon');
