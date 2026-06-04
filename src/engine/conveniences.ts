@@ -60,6 +60,7 @@ export const performIntent = (
     CunningAction: (i) => engine.plan.cunningAction(campaign.state, i),
     ExpeditiousRetreatDash: (i) => engine.plan.expeditiousRetreatDash(campaign.state, i),
     TurnUndead: (i) => engine.plan.turnUndead(campaign.state, i),
+    DivineSpark: (i) => engine.plan.divineSpark(campaign.state, i),
     IntimidatingPresence: (i) => engine.plan.intimidatingPresence(campaign.state, i),
     DragonWings: (i) => engine.plan.dragonWings(campaign.state, i),
     PreserveLife: (i) => engine.plan.preserveLife(campaign.state, i),

@@ -104,6 +104,7 @@ const PLANNERS: ReadonlyArray<PlannerExpectation> = [
   // Wired today.
   { classId: 'barbarian', featureId: 'reckless-attack', plannerExport: 'planRecklessAttack' },
   { classId: 'cleric', featureId: 'turn-undead', plannerExport: 'planTurnUndead' },
+  { classId: 'cleric', featureId: 'divine-spark', plannerExport: 'planDivineSpark' }, // slice 635
   { classId: 'druid', featureId: 'wild-shape', plannerExport: 'planWildShape' },
   { classId: 'druid', featureId: 'wild-companion', plannerExport: 'planWildCompanion' },
   { classId: 'fighter', featureId: 'action-surge', plannerExport: 'planActionSurge' },
@@ -114,14 +115,6 @@ const PLANNERS: ReadonlyArray<PlannerExpectation> = [
   { classId: 'sorcerer', featureId: 'metamagic', plannerExport: 'planMetamagic' },
 
   // Xfail today. Remaining planners that must land before L2 is complete.
-  {
-    classId: 'cleric',
-    featureId: 'divine-spark',
-    plannerExport: 'planDivineSpark',
-    xfail: true,
-    xfailReason:
-      'L2 Cleric Channel Divinity option: BA cast that heals or deals necrotic/radiant. Needs a per-CD-option dispatch surface plus a heal/damage planner.',
-  },
   {
     classId: 'monk',
     featureId: 'uncanny-metabolism',

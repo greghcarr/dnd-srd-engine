@@ -94,6 +94,7 @@ import {
   planStirgeDrain,
   planDetachStirge,
   planTurnUndead,
+  planDivineSpark,
   planIntimidatingPresence,
   planDragonWings,
   planPreserveLife,
@@ -252,6 +253,7 @@ import {
   type StirgeDrainIntent,
   type DetachStirgeIntent,
   type TurnUndeadIntent,
+  type DivineSparkIntent,
   type IntimidatingPresenceIntent,
   type DragonWingsIntent,
   type PreserveLifeIntent,
@@ -437,6 +439,7 @@ export interface Engine {
     stirgeDrain(state: CampaignState, intent: Omit<StirgeDrainIntent, 'type'>): PlanResult;
     detachStirge(state: CampaignState, intent: Omit<DetachStirgeIntent, 'type'>): PlanResult;
     turnUndead(state: CampaignState, intent: Omit<TurnUndeadIntent, 'type'>): PlanResult;
+    divineSpark(state: CampaignState, intent: Omit<DivineSparkIntent, 'type'>): PlanResult;
     intimidatingPresence(state: CampaignState, intent: Omit<IntimidatingPresenceIntent, 'type'>): PlanResult;
     dragonWings(state: CampaignState, intent: Omit<DragonWingsIntent, 'type'>): PlanResult;
     preserveLife(state: CampaignState, intent: Omit<PreserveLifeIntent, 'type'>): PlanResult;
@@ -840,6 +843,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     turnUndead(state, intent) {
       return { events: planTurnUndead(state, content, rng, { type: 'TurnUndead', ...intent }) };
+    },
+    divineSpark(state, intent) {
+      return { events: planDivineSpark(state, content, rng, { type: 'DivineSpark', ...intent }) };
     },
     intimidatingPresence(state, intent) {
       return { events: planIntimidatingPresence(state, content, rng, { type: 'IntimidatingPresence', ...intent }) };
