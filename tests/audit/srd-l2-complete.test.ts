@@ -48,6 +48,8 @@ import { eventId, isoTimestamp } from '../fixtures/index.js';
 import { newCharacterId } from '../../src/ids.js';
 import type { CharacterCreatedEvent } from '../../src/schemas/events/progression.js';
 import type { ChoiceRequiredEvent } from '../../src/schemas/events/level-up.js';
+import { evaluateFormula } from '../../src/effects/index.js';
+import type { Formula } from '../../src/schemas/formula.js';
 
 const PACK = loadStarterPack();
 const plan = planNs as Record<string, unknown>;
@@ -119,14 +121,30 @@ const PLANNERS: ReadonlyArray<PlannerExpectation> = [
 // Mechanical correctness of the resource (per-rest reset, max
 // scaling) is covered by per-class tests; this section pins that the
 // resource is at least declared at L2 so consumers building L2
-// characters see it.
+// characters see it AND that the L2 max value matches RAW.
+//
+// Slice 639: extended from "GrantResource is present" to "the L2 max
+// value evaluates to the RAW number." Caught two failure modes that
+// the earlier section couldn't see: a literal max getting silently
+// changed, and a Formula max whose evaluation at L2 drifts from RAW.
+// The RAW max values at L2 per the SRD 5.2.1 class tables:
+//   - fighter   Action Surge column @ L2 = 1
+//   - cleric    Channel Divinity column @ L2 = 2
+//   - druid     Wild Shape column @ L2 = 2 (PHB 2024 / SRD 5.2.1)
+//   - monk      Focus Points column @ L2 = 2 ("Your Monk level")
+//   - sorcerer  Sorcery Points column @ L2 = 2 ("Your Sorcerer level")
 // ────────────────────────────────────────────────────────────────────
-const RESOURCE_BEARING_L2_FEATURES: ReadonlyArray<{ classId: string; featureId: string }> = [
-  { classId: 'fighter', featureId: 'action-surge' },
-  { classId: 'cleric', featureId: 'channel-divinity' },
-  { classId: 'druid', featureId: 'wild-shape' },
-  { classId: 'monk', featureId: 'monks-focus' },
-  { classId: 'sorcerer', featureId: 'font-of-magic' },
+const RESOURCE_BEARING_L2_FEATURES: ReadonlyArray<{
+  classId: string;
+  featureId: string;
+  resourceId: string;
+  l2Max: number;
+}> = [
+  { classId: 'fighter', featureId: 'action-surge', resourceId: 'action-surge', l2Max: 1 },
+  { classId: 'cleric', featureId: 'channel-divinity', resourceId: 'channel-divinity', l2Max: 2 },
+  { classId: 'druid', featureId: 'wild-shape', resourceId: 'wild-shape', l2Max: 2 },
+  { classId: 'monk', featureId: 'monks-focus', resourceId: 'ki', l2Max: 2 },
+  { classId: 'sorcerer', featureId: 'font-of-magic', resourceId: 'sorcery-points', l2Max: 2 },
 ];
 
 // ────────────────────────────────────────────────────────────────────
@@ -203,17 +221,49 @@ describe('slice 633: SRD L2 completeness audit', () => {
     }
   });
 
-  describe('Section 3: L2 resource scaffolding (GrantResource effect on feature)', () => {
-    for (const { classId, featureId } of RESOURCE_BEARING_L2_FEATURES) {
-      it(`${classId} / ${featureId} ships with a GrantResource effect`, () => {
+  describe('Section 3: L2 resource scaffolding (GrantResource effect + RAW max at L2)', () => {
+    for (const { classId, featureId, resourceId, l2Max } of RESOURCE_BEARING_L2_FEATURES) {
+      it(`${classId} / ${featureId} ships GrantResource (${resourceId}) with L2 max = ${l2Max}`, () => {
         const feature = findL2Feature(classId, featureId);
         expect(feature, `feature ${featureId} missing on ${classId} L2`).toBeDefined();
-        const effects = feature!.effects ?? [];
-        const grantResource = effects.find((e) => e.kind === 'GrantResource');
+        const effects = (feature!.effects ?? []) as Array<{
+          kind: string;
+          resourceId?: string;
+          max?: number | Formula;
+        }>;
+        const grantResource = effects.find(
+          (e) => e.kind === 'GrantResource' && e.resourceId === resourceId,
+        );
         expect(
           grantResource,
-          `${classId}/${featureId} L2 entry has no GrantResource effect (got ${effects.map((e) => e.kind).join(', ') || 'none'})`,
+          `${classId}/${featureId} L2 entry has no GrantResource for '${resourceId}' (got ${effects.map((e) => e.kind).join(', ') || 'none'})`,
         ).toBeDefined();
+
+        // Resolve the max: literal number or evaluated Formula. The
+        // Formula path needs a context the audit synthesizes — at L2
+        // for the relevant class — so a {kind:'level', classId} formula
+        // returns 2. Constructed minimal context: only the fields the
+        // resource-max formulas in the pack actually read.
+        const maxField = grantResource!.max;
+        let evaluatedMax: number;
+        if (typeof maxField === 'number') {
+          evaluatedMax = maxField;
+        } else if (maxField !== undefined) {
+          evaluatedMax = evaluateFormula(maxField as Formula, {
+            abilityScores: { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 },
+            proficiencyBonus: 2,
+            classLevels: new Map([[classId, 2]]),
+            totalLevel: 2,
+          });
+        } else {
+          throw new Error(
+            `${classId}/${featureId} GrantResource has no max field`,
+          );
+        }
+        expect(
+          evaluatedMax,
+          `${classId}/${featureId} L2 max evaluates to ${evaluatedMax}, RAW expects ${l2Max}`,
+        ).toBe(l2Max);
       });
     }
   });
