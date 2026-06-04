@@ -135,6 +135,123 @@ describe('slice 648: Deflect Attacks', () => {
     expect(used!.remainingDamage).toBe(out.remainingDamage);
   });
 
+  // Slice 658: counter arm. RAW: "If you reduce the damage to 0,
+  // you can expend 1 Focus Point to redirect ... 2x Martial Arts die
+  // + DEX mod ... DEX save."
+
+  it('counter arm: fires when remainingDamage === 0 AND counterTargetId supplied AND ki available', () => {
+    // L3 Monk DEX 16 against incomingDamage = 1; reduction is
+    // 1d10 + 3 + 3 = [7,16] -> remainingDamage = 0 always. Counter
+    // target supplied + 2 ki points available.
+    const monk = CharacterSchema.parse({
+      ...buildMonk(3, 16),
+      resources: [{ resourceId: 'ki', current: 2, max: 2 }],
+    });
+    const target = buildAttacker();
+    const s = startEncounter(monk, target);
+    const out = s.engine.plan.deflectAttacks(s.campaign.state, {
+      monkId: monk.id,
+      triggeringAttackEventId: newEventId(),
+      incomingDamage: 1,
+      damageType: 'piercing',
+      counterTargetId: target.id,
+    });
+    expect(out.remainingDamage).toBe(0);
+    expect(out.counterFired, 'counter should have fired').toBe(true);
+    expect(typeof out.counterSaveSuccess).toBe('boolean');
+    // ResourceSpent (ki 1) must be emitted.
+    expect(
+      out.events.some((e) => e.type === 'ResourceSpent' && (e as { resourceId?: string }).resourceId === 'ki'),
+    ).toBe(true);
+    // SaveRolled must be emitted.
+    expect(out.events.some((e) => e.type === 'SaveRolled')).toBe(true);
+  });
+
+  it('counter arm: does NOT fire when remainingDamage > 0', () => {
+    // incomingDamage = 100 -> reduction can never zero it.
+    const monk = CharacterSchema.parse({
+      ...buildMonk(3, 16),
+      resources: [{ resourceId: 'ki', current: 2, max: 2 }],
+    });
+    const target = buildAttacker();
+    const s = startEncounter(monk, target);
+    const out = s.engine.plan.deflectAttacks(s.campaign.state, {
+      monkId: monk.id,
+      triggeringAttackEventId: newEventId(),
+      incomingDamage: 100,
+      damageType: 'piercing',
+      counterTargetId: target.id,
+    });
+    expect(out.remainingDamage).toBeGreaterThan(0);
+    expect(out.counterFired).toBe(false);
+  });
+
+  it('counter arm: does NOT fire when ki is 0 (even if remainingDamage === 0)', () => {
+    const monk = CharacterSchema.parse({
+      ...buildMonk(3, 16),
+      resources: [{ resourceId: 'ki', current: 0, max: 2 }],
+    });
+    const target = buildAttacker();
+    const s = startEncounter(monk, target);
+    const out = s.engine.plan.deflectAttacks(s.campaign.state, {
+      monkId: monk.id,
+      triggeringAttackEventId: newEventId(),
+      incomingDamage: 1,
+      damageType: 'piercing',
+      counterTargetId: target.id,
+    });
+    expect(out.remainingDamage).toBe(0);
+    expect(out.counterFired).toBe(false);
+  });
+
+  it('counter arm: does NOT fire when no counterTargetId supplied (back-compat with slice 648)', () => {
+    const monk = CharacterSchema.parse({
+      ...buildMonk(3, 16),
+      resources: [{ resourceId: 'ki', current: 2, max: 2 }],
+    });
+    const target = buildAttacker();
+    const s = startEncounter(monk, target);
+    const out = s.engine.plan.deflectAttacks(s.campaign.state, {
+      monkId: monk.id,
+      triggeringAttackEventId: newEventId(),
+      incomingDamage: 1,
+      damageType: 'piercing',
+      // No counterTargetId.
+    });
+    expect(out.remainingDamage).toBe(0);
+    expect(out.counterFired).toBe(false);
+  });
+
+  it('counter arm: damage type matches the incoming attack', () => {
+    // Sweep seeds to find one where the counter target fails the save
+    // (so DamageApplied actually fires), then verify the damage type.
+    let proven = false;
+    for (let seed = 1; seed < 30 && !proven; seed += 1) {
+      const monk = CharacterSchema.parse({
+        ...buildMonk(3, 16),
+        resources: [{ resourceId: 'ki', current: 2, max: 2 }],
+      });
+      const target = buildAttacker(); // DEX 12 -> mod +1, low save
+      const s = startEncounter(monk, target, seed);
+      const out = s.engine.plan.deflectAttacks(s.campaign.state, {
+        monkId: monk.id,
+        triggeringAttackEventId: newEventId(),
+        incomingDamage: 1,
+        damageType: 'slashing',
+        counterTargetId: target.id,
+      });
+      if (!out.counterFired || out.counterSaveSuccess) continue;
+      const damageApplied = out.events.find(
+        (e): e is import('../../../src/schemas/events/combat.js').DamageAppliedEvent =>
+          e.type === 'DamageApplied' && (e as { source?: string }).source === 'deflect-attacks-counter',
+      );
+      expect(damageApplied, `seed ${seed}: no counter DamageApplied emitted`).toBeDefined();
+      expect(damageApplied!.components.some((c) => c.type === 'slashing')).toBe(true);
+      proven = true;
+    }
+    expect(proven, 'expected at least one seed to produce counter DamageApplied').toBe(true);
+  });
+
   it('rejects: non-monk, monk under L3, non-deflectable damage type, reaction already used', () => {
     const wizard = CharacterSchema.parse({
       id: newCharacterId(),
