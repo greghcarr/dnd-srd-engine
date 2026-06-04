@@ -154,17 +154,7 @@ const PLANNERS: ReadonlyArray<PlannerExpectation> = [
   { classOrSubclassId: 'oath-of-devotion', featureId: 'sacred-weapon', plannerExport: 'planSacredWeapon' },
   { classOrSubclassId: 'rogue', featureId: 'steady-aim', plannerExport: 'planSteadyAim' }, // slice 646
   { classOrSubclassId: 'thief', featureId: 'fast-hands', plannerExport: 'planFastHands' }, // slice 647
-
-  // Xfail today. One L3 feature still needs a standalone planner.
-  // Content currently ships effects:[].
-  {
-    classOrSubclassId: 'monk',
-    featureId: 'deflect-attacks',
-    plannerExport: 'planDeflectAttacks',
-    xfail: true,
-    xfailReason:
-      "L3 Monk feature: reaction to reduce incoming weapon-attack damage by 1d10 + DEX + monk level; on full reduction with the same hand, can spend 1 Focus Point to make an unarmed-strike counter or throw the deflected weapon. Needs reaction + damage-reduction primitive.",
-  },
+  { classOrSubclassId: 'monk', featureId: 'deflect-attacks', plannerExport: 'planDeflectAttacks' }, // slice 648
 ];
 
 // ────────────────────────────────────────────────────────────────────

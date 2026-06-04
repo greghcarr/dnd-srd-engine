@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine + schema (slice 648): Monk L3 Deflect Attacks planner (reduction arm)**
+Reaction-style planner returning `DeflectAttacksOutcome { reduction, remainingDamage }` (mirrors `cuttingWords` / `shield` shape). Gates on Monk L3+, B/P/S damage, reaction-available. Reduction = 1d10 + DEX + monk level. Counter arm (Focus Point + DEX save + 2× Martial Arts die counter damage) and damage-pipeline auto-integration deferred. **Closes the last L3 planner xfail; all three L3 planner xfails are now wired (slices 646-648).** L3 punch list reduces to 4 non-planner content stubs + L3 hardening cycle.
+Detail: [slice-648.md](docs/changelog/slice-648.md).
+
 **Engine + schema (slice 647): Rogue Thief L3 Fast Hands planner**
 BA dispatcher: gates on Rogue L3+ Thief, emits `ActionEconomyConsumed { bonusAction } + FastHandsActivated { mode }` where mode is `'sleightOfHand' | 'utilize' | 'useMagicItem'`. Consumer chains to `planAbilityCheck` / `planUtilize` / `planUseItem` per mode. Marker-only event avoids double-action-consumption from inline composition. Closes the second L3 planner xfail; 1 remaining (planDeflectAttacks).
 Detail: [slice-647.md](docs/changelog/slice-647.md).

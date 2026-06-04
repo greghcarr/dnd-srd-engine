@@ -72,6 +72,11 @@ const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
   // several return a derived outcome the consumer branches on):
   'dodge', 'shield', 'sanctuaryWardSave', 'protection', 'consumeGuidance',
   'consumeResistance', 'cuttingWords', 'uncannyDodge', 'superiorDefense', 'paladinsSmite', 'breathWeapon',
+  // Slice 648: Monk L3 Deflect Attacks. Reaction-style planner that
+  // returns DeflectAttacksOutcome (reduction + remainingDamage) the
+  // consumer subtracts from a pending DamageApplied. Consumer
+  // invokes after observing an AttackRolled hit + DamageRolled.
+  'deflectAttacks',
   // Slice 558: Stone's Endurance is a reaction-style planner; returns
   // StonesEnduranceOutcome the consumer branches on (mirror of
   // uncannyDodge). Consumer invokes it after observing a DamageApplied

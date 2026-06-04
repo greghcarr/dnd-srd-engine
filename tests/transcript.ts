@@ -367,6 +367,8 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       return `Steady Aim consumed.`;
     case 'FastHandsActivated':
       return `**${characterName(stateBefore, event.combatantId)}** uses Fast Hands (${event.mode}).`;
+    case 'DeflectAttacksUsed':
+      return `**${characterName(stateBefore, event.combatantId)}** deflects ${event.incomingDamage} -> ${event.remainingDamage} damage (reduction ${event.reduction}).`;
     case 'StunningStrikeAttempted':
       return `**${characterName(stateBefore, event.combatantId)}** attempts a Stunning Strike against **${characterName(stateBefore, event.targetId)}**.`;
     case 'SavageAttackerUsed':

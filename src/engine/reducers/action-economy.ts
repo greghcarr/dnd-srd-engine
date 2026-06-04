@@ -7,6 +7,7 @@ import type {
   SteadyAimActivatedEvent,
   SteadyAimConsumedEvent,
   FastHandsActivatedEvent,
+  DeflectAttacksUsedEvent,
   StunningStrikeAttemptedEvent,
   SavageAttackerUsedEvent,
 } from '../../schemas/events/action-economy.js';
@@ -143,6 +144,20 @@ export const applyFastHandsActivated = (
   invariant(combatant !== undefined, `Combatant ${event.combatantId} not in encounter`);
   // No-op state mutation; the BA flag is set by the paired
   // ActionEconomyConsumed event.
+};
+
+// Slice 648: Monk L3 Deflect Attacks. Marker-only (transcript +
+// follow-up audit hook). The reaction-used flag is set by the
+// paired ActionEconomyConsumed { reaction } event the planner
+// emits alongside this one.
+export const applyDeflectAttacksUsed = (
+  state: Draft<CampaignState>,
+  event: DeflectAttacksUsedEvent,
+): void => {
+  const encounter = state.encounters[event.encounterId];
+  invariant(encounter !== undefined, `Encounter ${event.encounterId} not found`);
+  const combatant = encounter.combatants.find((c) => c.combatantId === event.combatantId);
+  invariant(combatant !== undefined, `Combatant ${event.combatantId} not in encounter`);
 };
 
 export const applyStunningStrikeAttempted = (

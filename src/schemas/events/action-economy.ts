@@ -66,6 +66,24 @@ export const FastHandsActivatedEventSchema = EventEnvelopeSchema.extend({
 });
 export type FastHandsActivatedEvent = z.infer<typeof FastHandsActivatedEventSchema>;
 
+// Slice 648: Monk L3 Deflect Attacks. Reaction marker emitted when
+// the monk reduces an incoming attack's B/P/S damage. Records the
+// rolled reduction amount, the incoming damage before reduction,
+// and the remaining damage after reduction. The consumer subtracts
+// the reduction from the pending DamageApplied (the engine's
+// damage pipeline doesn't yet auto-integrate reaction reductions;
+// damage-pipeline integration is a deferred follow-up).
+export const DeflectAttacksUsedEventSchema = EventEnvelopeSchema.extend({
+  type: z.literal('DeflectAttacksUsed'),
+  encounterId: ULIDSchema,
+  combatantId: ULIDSchema,
+  triggeringAttackEventId: ULIDSchema,
+  reduction: z.number().int().min(0),
+  incomingDamage: z.number().int().min(0),
+  remainingDamage: z.number().int().min(0),
+});
+export type DeflectAttacksUsedEvent = z.infer<typeof DeflectAttacksUsedEventSchema>;
+
 // Monk Stunning Strike attempt marker. Records the monk used their
 // once-per-turn Stunning Strike; the reducer sets the corresponding
 // turnUsage flag. The actual save + condition application are emitted

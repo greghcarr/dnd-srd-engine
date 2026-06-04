@@ -68,6 +68,7 @@ import {
   planRecklessAttack,
   planSteadyAim,
   planFastHands,
+  planDeflectAttacks,
   planStunningStrike,
   planFlurryOfBlows,
   planPatientDefense,
@@ -229,6 +230,8 @@ import {
   type RecklessAttackIntent,
   type SteadyAimIntent,
   type FastHandsIntent,
+  type DeflectAttacksIntent,
+  type DeflectAttacksOutcome,
   type StunningStrikeIntent,
   type FlurryOfBlowsIntent,
   type PatientDefenseIntent,
@@ -415,6 +418,7 @@ export interface Engine {
     recklessAttack(state: CampaignState, intent: Omit<RecklessAttackIntent, 'type'>): PlanResult;
     steadyAim(state: CampaignState, intent: Omit<SteadyAimIntent, 'type'>): PlanResult;
     fastHands(state: CampaignState, intent: Omit<FastHandsIntent, 'type'>): PlanResult;
+    deflectAttacks(state: CampaignState, intent: Omit<DeflectAttacksIntent, 'type'>): DeflectAttacksOutcome;
     stunningStrike(state: CampaignState, intent: Omit<StunningStrikeIntent, 'type'>): PlanResult;
     flurryOfBlows(state: CampaignState, intent: Omit<FlurryOfBlowsIntent, 'type'>): PlanResult;
     patientDefense(state: CampaignState, intent: Omit<PatientDefenseIntent, 'type'>): PlanResult;
@@ -777,6 +781,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     fastHands(state, intent) {
       return { events: planFastHands(state, content, { type: 'FastHands', ...intent }) };
+    },
+    deflectAttacks(state, intent) {
+      return planDeflectAttacks(state, content, rng, { type: 'DeflectAttacks', ...intent });
     },
     stunningStrike(state, intent) {
       return { events: planStunningStrike(state, content, rng, { type: 'StunningStrike', ...intent }) };

@@ -102,6 +102,11 @@ export { planMagicWeapon, type MagicWeaponIntent } from './magic-weapon.js';
 export { planRecklessAttack, type RecklessAttackIntent } from './reckless-attack.js';
 export { planSteadyAim, type SteadyAimIntent } from './steady-aim.js';
 export { planFastHands, type FastHandsIntent, type FastHandsMode } from './fast-hands.js';
+export {
+  planDeflectAttacks,
+  type DeflectAttacksIntent,
+  type DeflectAttacksOutcome,
+} from './deflect-attacks.js';
 export { planStunningStrike, type StunningStrikeIntent } from './stunning-strike.js';
 export { planFlurryOfBlows, type FlurryOfBlowsIntent } from './flurry-of-blows.js';
 export { planPatientDefense, type PatientDefenseIntent } from './patient-defense.js';
