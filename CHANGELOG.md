@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Tests (slice 653): L3 floor Section 6 — OfferChoice cascade verification**
+Verifies the 3 L3 OfferChoices wired in slices 649/652 actually fire via `engine.plan.offerCharacterChoices` for a fresh L3 character: Barbarian Primal Knowledge (6 skill options), Druid Circle of the Land Cantrip (11 cantrip options), Druid Circle of the Land Spells (4 SRD lands). All 3 pass — the cascade is sound. First slice of the L3 RAW-completeness push (8-slice plan after the user requested it).
+Detail: [slice-653.md](docs/changelog/slice-653.md).
+
 **Content (slice 652): Druid Circle of the Land Spells (L3 tier)**
 Closes the last L3 content stub. SRD 5.2.1 ships 4 lands (Arid / Polar / Temperate / Tropical) — not 2014's 8. OfferChoice over 4 land options at L3, each granting 3 always-prepared spells (Arid: Blur / Burning Hands / Fire Bolt; Polar: Fog Cloud / Hold Person / Ray of Frost; Temperate: Misty Step / Shocking Grasp / Sleep; Tropical: Acid Splash / Ray of Sickness / Web). L5/L7/L9 tier expansions deferred to those tiers. **L3 punch list is now fully closed for content + planners.** Ready to tag `v0.4.0-alpha.0` ("L3 SRD complete").
 Detail: [slice-652.md](docs/changelog/slice-652.md).

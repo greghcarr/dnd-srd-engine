@@ -65,6 +65,14 @@ import * as planNs from '../../src/engine/plan/index.js';
 import { loadStarterPack } from '../../src/content/packs/starter.js';
 import { evaluateFormula } from '../../src/effects/index.js';
 import type { Formula } from '../../src/schemas/formula.js';
+import { createEngine } from '../../src/engine/index.js';
+import { seededRNG } from '../../src/rng/seeded.js';
+import { commit } from '../../src/engine/commit.js';
+import { CharacterSchema, type Character } from '../../src/schemas/runtime/character.js';
+import { newCharacterId } from '../../src/ids.js';
+import { eventId, isoTimestamp } from '../fixtures/index.js';
+import type { CharacterCreatedEvent } from '../../src/schemas/events/progression.js';
+import type { ChoiceRequiredEvent } from '../../src/schemas/events/level-up.js';
 
 const PACK = loadStarterPack();
 const plan = planNs as Record<string, unknown>;
@@ -403,5 +411,117 @@ describe('slice 645: SRD L3 completeness audit', () => {
         ).toBe(check.recharge);
       });
     }
+  });
+
+  describe('Section 6: L3 OfferChoice cascade (fresh L3 character emits the right ChoiceRequired)', () => {
+    // Slice 653: behavioral tests verifying that the L3 OfferChoices
+    // wired in slices 649 + 652 actually fire when a fresh L3
+    // character is built and `engine.plan.offerCharacterChoices` is
+    // called. Mirror of the L2 floor's Section 4 Wizard Scholar
+    // test (slice 633). Three L3 OfferChoices ship today:
+    //   - Barbarian L3 Primal Knowledge (6 skill options)
+    //   - Druid Circle of the Land L3 Bonus Cantrip (11 cantrip options)
+    //   - Druid Circle of the Land L3 Spells (4 land options)
+    const buildL3Character = (
+      classId: string,
+      overrides?: Partial<Character>,
+    ): Character =>
+      CharacterSchema.parse({
+        id: newCharacterId(),
+        name: `L3 ${classId}`,
+        speciesId: 'human',
+        backgroundId: 'soldier',
+        classes: [{ classId, level: 3, hitDiceRemaining: 3 }],
+        abilityScores: { STR: 14, DEX: 14, CON: 14, INT: 12, WIS: 12, CHA: 12 },
+        hp: { current: 24, max: 24, temp: 0, maxBonus: 0 },
+        ...overrides,
+      });
+
+    const findChoice = (
+      events: ReadonlyArray<unknown>,
+      promptKey: string,
+    ): ChoiceRequiredEvent | undefined =>
+      events.find(
+        (e): e is ChoiceRequiredEvent =>
+          (e as { type?: string }).type === 'ChoiceRequired' &&
+          (e as { promptKey?: string }).promptKey === promptKey,
+      );
+
+    it('fresh L3 Barbarian emits Primal Knowledge ChoiceRequired with 6 skill options', () => {
+      const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(1) });
+      const barb = buildL3Character('barbarian');
+      let campaign = engine.createCampaign({ name: 'l3-primal-knowledge' });
+      campaign = commit(campaign, [
+        {
+          id: eventId(),
+          at: isoTimestamp(),
+          type: 'CharacterCreated',
+          snapshot: barb,
+        } satisfies CharacterCreatedEvent,
+      ]);
+      const { events } = engine.plan.offerCharacterChoices(campaign.state, {
+        characterId: barb.id,
+      });
+      const choice = findChoice(events, 'barbarian-primal-knowledge');
+      expect(choice, 'L3 Barbarian Primal Knowledge did not emit ChoiceRequired').toBeDefined();
+      const optionIds = choice?.options.map((o) => o.id).sort();
+      expect(optionIds).toEqual([
+        'animal-handling',
+        'athletics',
+        'intimidation',
+        'nature',
+        'perception',
+        'survival',
+      ]);
+    });
+
+    it('fresh L3 Druid with Circle of the Land emits Bonus Cantrip ChoiceRequired with 11 druid cantrip options', () => {
+      const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(1) });
+      const druid = buildL3Character('druid', {
+        classes: [{ classId: 'druid', level: 3, hitDiceRemaining: 3, subclassId: 'circle-of-the-land' }],
+        abilityScores: { STR: 8, DEX: 14, CON: 14, INT: 12, WIS: 16, CHA: 10 },
+        hp: { current: 22, max: 22, temp: 0, maxBonus: 0 },
+      });
+      let campaign = engine.createCampaign({ name: 'l3-circle-cantrip' });
+      campaign = commit(campaign, [
+        {
+          id: eventId(),
+          at: isoTimestamp(),
+          type: 'CharacterCreated',
+          snapshot: druid,
+        } satisfies CharacterCreatedEvent,
+      ]);
+      const { events } = engine.plan.offerCharacterChoices(campaign.state, {
+        characterId: druid.id,
+      });
+      const choice = findChoice(events, 'circle-of-the-land-cantrip');
+      expect(choice, 'L3 Druid Circle Cantrip did not emit ChoiceRequired').toBeDefined();
+      expect(choice?.options.length).toBe(11);
+    });
+
+    it('fresh L3 Druid with Circle of the Land emits Land-type ChoiceRequired with the 4 SRD lands', () => {
+      const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(1) });
+      const druid = buildL3Character('druid', {
+        classes: [{ classId: 'druid', level: 3, hitDiceRemaining: 3, subclassId: 'circle-of-the-land' }],
+        abilityScores: { STR: 8, DEX: 14, CON: 14, INT: 12, WIS: 16, CHA: 10 },
+        hp: { current: 22, max: 22, temp: 0, maxBonus: 0 },
+      });
+      let campaign = engine.createCampaign({ name: 'l3-circle-spells' });
+      campaign = commit(campaign, [
+        {
+          id: eventId(),
+          at: isoTimestamp(),
+          type: 'CharacterCreated',
+          snapshot: druid,
+        } satisfies CharacterCreatedEvent,
+      ]);
+      const { events } = engine.plan.offerCharacterChoices(campaign.state, {
+        characterId: druid.id,
+      });
+      const choice = findChoice(events, 'circle-of-the-land-type');
+      expect(choice, 'L3 Druid Circle Spells did not emit ChoiceRequired').toBeDefined();
+      const optionIds = choice?.options.map((o) => o.id).sort();
+      expect(optionIds).toEqual(['arid', 'polar', 'temperate', 'tropical']);
+    });
   });
 });
