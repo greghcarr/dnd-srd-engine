@@ -6,6 +6,56 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Release (slice 632): bump to 0.2.0-alpha.0**
+Promotes the post-alpha.15 cohort (~160 slices) to a tagged release; fixes one EFFECT_KINDS drift surfaced by `release:doc-review` and adds four pinned CHECKs for the front-door primitive citations so the next vocabulary bump trips CI in the same slice.
+Detail: [slice-632.md](docs/changelog/slice-632.md).
+
+## 0.2.0-alpha.0 - 2026-06-03
+
+**Release (slice 632): bump to 0.2.0-alpha.0**
+
+Promotes the post-alpha.15 cohort (slices 472-631, ~160 slices) to a tagged release. The minor-pre-1.0 bump (the "escape hatch" per [VERSIONING.md](VERSIONING.md)) marks this cycle's chapter status — full L1 SRD coverage now floor-guarded by audit, plus the documented breaking changes below — without claiming beta-ready API stability. `package.json` bumps `0.1.0-alpha.15` → `0.2.0-alpha.0`; `package-lock.json` updated to match. `SCHEMA_VERSION` stays 1: no breaking persisted-shape changes in this cycle.
+
+### Highlights
+
+- **L1 SRD floor (slices 530-619).** Every printed L1 species trait, class feature, weapon mastery, and SRD spell mechanic is now wired and floor-guarded by [tests/audit/srd-l1-complete.test.ts](tests/audit/srd-l1-complete.test.ts) (slice 619). The L1 fuzz cycle (slices 620-627) surfaced and closed RAW bugs in concentration RAW dispatch, rider-damage concentration triggers, Vex auto-expiry, Innate Sorcery's class gate, Monk Dexterous Attacks + Martial Arts Die scaling, the Graze hit/miss gate, and the on-hit mastery 0-damage gate. `engine.plan.offerCharacterChoices` now drains L1 OfferChoice entries on fresh characters (slice 618).
+- **Fuzz tooling + web replay (slices 583-624).** New combat-fuzz CLI generates seeded markdown transcripts of L1-L5 PCs (and monsters) fighting each other; pool-based loadouts (slice 622) exercise 25+ distinct spells per seed across 7+ masteries. The web demo pivoted to a fuzz-replay viewer (slices 599-616) with LRU-bounded scrub cache, per-step incremental replay, and observer-review-driven readability polish.
+- **Doc overhaul (slices 628-631).** CHANGELOG sustainability (pointer-per-slice + detail-per-file: live file 59 KB → 12 KB, growth per slice 4-9 KB → ~150 B); CLAUDE.md split into agent-only file (72 lines) plus [CONTRIBUTING.md](CONTRIBUTING.md) (288 lines), new [docs/architecture.md](docs/architecture.md), new [docs/engine-scope.md](docs/engine-scope.md) (the engine-tracks-vs-consumer-tracks reference); comprehensive feature tutorial at [docs/tutorial.md](docs/tutorial.md) with every typecheck-tagged block compiled against the real public API; numerical accuracy sweep that promoted the spell-wired percentage + EFFECT_KINDS citations to permanent CHECKs (doc-counts audit grew from 10 to 19 cases).
+- **Engine vocabulary growth.** `EFFECT_KINDS` grew from 53 entries at alpha.15 to 61 (60 primitives + Custom). Spell mechanical wiring rose from 182/339 (~54%) to 198/339 (~58%). New planners across the cycle include polymorph / wild shape, simulacrum, wish, breath weapon (dragonborn), wholeness-of-body, peerless skill, cutting words, divine intervention, paladin's smite, frenzy, plus the action-economy planners (cunning action, second wind, lay on hands, search, study, influence, utilize, help, ready, dodge, dash, disengage).
+- **Content depth.** Pact-boon completion (slices 517-519: Tome, Blade with `planConjurePactWeapon`, Chain with at-will Find Familiar); Warlock invocations content sweep (slices 513-516); monster Multiattack with Pack-Tactics-aware monsters; species coverage (Goliath, Tiefling Fiendish Legacy, Dragonborn Draconic Ancestry, Halfling Luck, Elf Trance, Dwarven Toughness, Dwarf Stonecunning).
+
+### Breaking changes
+
+#### Slice 603: `engine.plan.castSpell` on Produce Flame (and equivalent BA-cast + persistent + attack-mechanic spells) now requires Action available
+
+**Pre-slice:** `engine.plan.castSpell({ spellId: 'produce-flame', targetIds: [...] })` succeeded if the caster had a Bonus Action available. The cast consumed only the BA but rolled the hurl-attack inline, so a consumer could "cast PF" while their Action was already used elsewhere.
+
+**Post-slice:** the same call now throws if the caster's Action is already used when targets are supplied, with message: `"<Caster> cannot hurl <spell>: action already used this turn (RAW: a BA cast + Magic action hurl requires both unspent)"`. The cast consumes BOTH a Bonus Action AND an Action when targets are supplied (matching RAW: BA cast produces the flame, Magic action hurls). Cast-without-hurl (no targetIds) keeps the BA-only behavior.
+
+**Why:** RAW correction. SRD 5.2.1 Produce Flame: "Casting Time: Bonus Action ... Until the spell ends, you can take a Magic action to hurl fire at a creature." The hurl IS a separate action. Pre-slice the engine collapsed cast + hurl into one BA, giving casters a free spell attack alongside their full Action.
+
+**Migration:** consumers calling `castSpell` for Produce Flame inside a turn where Action is consumed should either:
+- Cast without targets (BA only, no attack rolled) — gets the flame for light/utility.
+- Wait until next turn to hurl — call `castSpell` separately when Action is free. (The engine doesn't yet model the persistent-flame state across turns; the proper-RAW split planner is tracked as an open follow-up in [slice 603's archive entry](docs/changelog/archive-slices-599-603.md).)
+
+**Detection:** an existing campaign with a logged Produce Flame cast on a turn where Action was already used would still REPLAY correctly (replay-equivalence holds for committed events; the rejection happens at plan time only). The break only surfaces when new intents are planned.
+
+### RNG-stream changes (per-seed reproducibility shifts)
+
+Per [docs/determinism.md](docs/determinism.md), per-seed RNG reproducibility is version-sensitive. The following slices in this cycle changed RNG consumption patterns:
+
+- Slice 601: CON save on every damage to a concentrating creature.
+- Slice 602: 2 d20 rolls on spell attacks vs advantage-granting targets.
+- Slice 611: Halfling Luck reroll + Bless bonus dice on spell attacks.
+- Slice 612: per-component CON saves (one per damage source instead of one totaled).
+- Slice 614: 2 d20 rolls on off-hand attacks vs advantage-granting targets.
+
+A transcript from `combat-fuzz --seed N` generated on `0.1.0-alpha.15` will NOT byte-match the same command on `0.2.0-alpha.0` if any of these paths fired. Consumers depending on cross-version per-seed reproducibility should snapshot the resulting `CampaignState` alongside the seed.
+
+### Cycle inventory
+
+Per-slice detail for slices 472-621 lives in per-cohort `docs/changelog/archive-slices-NNN-MMM.md` files (the pre-slice-628 convention) plus the inline pointers below for slices 622-631 (the post-slice-628 per-slice-file convention). The pointer list below indexes both.
+
 **Tests + docs (slice 631): numerical accuracy sweep + audit extension**
 Extended doc-counts.test.ts to derive the spell wired/narrative/deferred/total split + rounded percentage from gaps-spells.md and pin five front-door-doc citations against the derived values. Updated stale percentages (README "~54%" → "~58%"; status.md "196/339" / "182" → "198/339"). Rewrote the two genuinely unmeasurable percentages ("~75% of planned EFFECT_KINDS", "~95% of printed mechanics") qualitatively per "CI-guarded or not stated."
 Detail: [slice-631.md](docs/changelog/slice-631.md).

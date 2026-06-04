@@ -92,8 +92,8 @@ const GT = {
   tool: itemsByKind.tool ?? 0,
   gear: itemsByKind.gear ?? 0,
   magic: itemsByKind.magic ?? 0,
-  effectKinds: EFFECT_KINDS.length, // 52 (includes Custom)
-  primitives: EFFECT_KINDS.length - 1, // 51 (excludes the Custom escape hatch)
+  effectKinds: EFFECT_KINDS.length, // includes Custom escape hatch
+  primitives: EFFECT_KINDS.length - 1, // excludes the Custom escape hatch
   spellsWired: wiredTotal,
   spellsNarrative: narrativeTotal,
   spellsDeferred: deferredTotal,
@@ -176,6 +176,37 @@ const CHECKS: ReadonlyArray<CountCheck> = [
     label: 'effect primitives',
     pattern: /about (\d+) \*\*effect primitives\*\*/,
     expected: [GT.primitives],
+  },
+  // EFFECT_KINDS drift hit 5 front-door citations between alpha.15 and
+  // the 0.2.0 release: README "52 declarative primitives", README
+  // "currently 52 primitives plus the `Custom` escape hatch", README
+  // "(N primitives + `Custom` escape hatch in `EFFECT_KINDS`)", and
+  // status.md "N wired primitives ... (M `EFFECT_KINDS` entries total)".
+  // Promote each to a pinned citation so the next bump trips CI in the
+  // same slice instead of waiting for the next release-doc-review.
+  {
+    file: 'README.md',
+    label: 'declarative primitives (Why this engine bullet)',
+    pattern: /(\d+) declarative primitives express the bulk/,
+    expected: [GT.primitives],
+  },
+  {
+    file: 'README.md',
+    label: 'currently N primitives plus the Custom escape hatch (Architecture bullet)',
+    pattern: /currently (\d+) primitives plus the `Custom` escape hatch/,
+    expected: [GT.primitives],
+  },
+  {
+    file: 'README.md',
+    label: 'N primitives + Custom escape hatch (Status bullet)',
+    pattern: /\((\d+) primitives \+ `Custom` escape hatch in `EFFECT_KINDS`\)/,
+    expected: [GT.primitives],
+  },
+  {
+    file: 'docs/status.md',
+    label: 'Effect-primitive vocabulary row (N wired primitives + M EFFECT_KINDS entries total)',
+    pattern: /(\d+) wired primitives plus the `Custom` escape hatch\*\* \((\d+) `EFFECT_KINDS` entries total/,
+    expected: [GT.primitives, GT.effectKinds],
   },
   // Slice 631: spell wired-vs-total percentage + split, derived from
   // gaps-spells.md (which is itself audit-pinned to the pack).
