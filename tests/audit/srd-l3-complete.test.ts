@@ -63,6 +63,8 @@
 import { describe, expect, it } from 'vitest';
 import * as planNs from '../../src/engine/plan/index.js';
 import { loadStarterPack } from '../../src/content/packs/starter.js';
+import { evaluateFormula } from '../../src/effects/index.js';
+import type { Formula } from '../../src/schemas/formula.js';
 
 const PACK = loadStarterPack();
 const plan = planNs as Record<string, unknown>;
@@ -325,6 +327,84 @@ describe('slice 645: SRD L3 completeness audit', () => {
           effects.length,
           `${stub.kind} ${stub.ownerId}/${stub.featureId} unexpectedly grew effects — flip this entry to a wired check`,
         ).toBe(0);
+      });
+    }
+  });
+
+  describe('Section 5: L3 resource scaffolding (GrantResource max + recharge at L3)', () => {
+    // Slice 650: mirrors slice 639/640's L2 resource pin pattern, but
+    // for the resources that scale to / come online at L3:
+    //   - Barbarian:  rage uses scale to 3 at L3 (per RAW, the
+    //                 "rage-uses-3" L3 feature ships a fresh
+    //                 GrantResource max:3 that overrides the L1
+    //                 max:2 grant).
+    //   - Paladin:    Channel Divinity comes online at L3
+    //                 (channel-divinity-paladin grants max:2 with
+    //                 short-rest recharge — same shape as Cleric's
+    //                 L2 grant; the L11 / L17 paladin tier-up grants
+    //                 are tracked separately).
+    //   - Sorcerer:   Sorcery Points scale to 3 at L3 (the L2 grant
+    //                 uses a {kind:'level', classId:'sorcerer'}
+    //                 formula; evaluates to 3 at L3).
+    //   - Monk:       Focus Points (legacy resourceId 'ki') scale to
+    //                 3 at L3 (same level formula on monks-focus at
+    //                 L2; evaluates to 3 at L3).
+    //
+    // Each row: (classId, level-the-grant-lives-at, featureId,
+    // resourceId, l3Max, recharge). The pin reads the GrantResource
+    // off the grant-owner feature and asserts the L3 evaluation +
+    // recharge.
+    interface L3ResourceCheck {
+      readonly classId: string;
+      readonly grantLevel: '1' | '2' | '3';
+      readonly featureId: string;
+      readonly resourceId: string;
+      readonly l3Max: number;
+      readonly recharge: 'shortRest' | 'longRest';
+    }
+    const L3_RESOURCE_CHECKS: ReadonlyArray<L3ResourceCheck> = [
+      { classId: 'barbarian', grantLevel: '3', featureId: 'rage-uses-3', resourceId: 'rage', l3Max: 3, recharge: 'longRest' },
+      { classId: 'paladin', grantLevel: '3', featureId: 'channel-divinity-paladin', resourceId: 'channel-divinity', l3Max: 2, recharge: 'shortRest' },
+      { classId: 'sorcerer', grantLevel: '2', featureId: 'font-of-magic', resourceId: 'sorcery-points', l3Max: 3, recharge: 'longRest' },
+      { classId: 'monk', grantLevel: '2', featureId: 'monks-focus', resourceId: 'ki', l3Max: 3, recharge: 'shortRest' },
+    ];
+    for (const check of L3_RESOURCE_CHECKS) {
+      it(`${check.classId} / ${check.featureId} (L${check.grantLevel}): GrantResource ${check.resourceId} max evaluates to ${check.l3Max} at L3, recharge = ${check.recharge}`, () => {
+        const cls = PACK.classes?.find((c) => c.id === check.classId);
+        expect(cls, `class ${check.classId} missing`).toBeDefined();
+        const feature = cls!.levelTable?.[check.grantLevel]?.features?.find(
+          (f) => f.id === check.featureId,
+        ) as { effects?: ReadonlyArray<{ kind: string; resourceId?: string; max?: number | Formula; recharge?: string }> } | undefined;
+        expect(feature, `${check.classId} L${check.grantLevel} feature ${check.featureId} missing`).toBeDefined();
+        const grantResource = (feature!.effects ?? []).find(
+          (e) => e.kind === 'GrantResource' && e.resourceId === check.resourceId,
+        );
+        expect(
+          grantResource,
+          `${check.classId}/${check.featureId} has no GrantResource for '${check.resourceId}'`,
+        ).toBeDefined();
+        const maxField = grantResource!.max;
+        let evaluatedMax: number;
+        if (typeof maxField === 'number') {
+          evaluatedMax = maxField;
+        } else if (maxField !== undefined) {
+          evaluatedMax = evaluateFormula(maxField as Formula, {
+            abilityScores: { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 },
+            proficiencyBonus: 2,
+            classLevels: new Map([[check.classId, 3]]),
+            totalLevel: 3,
+          });
+        } else {
+          throw new Error(`${check.classId}/${check.featureId} GrantResource has no max field`);
+        }
+        expect(
+          evaluatedMax,
+          `${check.classId}/${check.featureId} L3 max evaluates to ${evaluatedMax}, RAW expects ${check.l3Max}`,
+        ).toBe(check.l3Max);
+        expect(
+          grantResource!.recharge,
+          `${check.classId}/${check.featureId} recharge is '${grantResource!.recharge}', expected '${check.recharge}'`,
+        ).toBe(check.recharge);
       });
     }
   });
