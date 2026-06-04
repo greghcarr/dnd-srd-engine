@@ -153,17 +153,10 @@ const PLANNERS: ReadonlyArray<PlannerExpectation> = [
   { classOrSubclassId: 'circle-of-the-land', featureId: 'lands-aid', plannerExport: 'planLandsAid' },
   { classOrSubclassId: 'oath-of-devotion', featureId: 'sacred-weapon', plannerExport: 'planSacredWeapon' },
   { classOrSubclassId: 'rogue', featureId: 'steady-aim', plannerExport: 'planSteadyAim' }, // slice 646
+  { classOrSubclassId: 'thief', featureId: 'fast-hands', plannerExport: 'planFastHands' }, // slice 647
 
-  // Xfail today. Two L3 features still need standalone planners that
-  // don't yet exist. Content currently ships effects:[] for each.
-  {
-    classOrSubclassId: 'thief',
-    featureId: 'fast-hands',
-    plannerExport: 'planFastHands',
-    xfail: true,
-    xfailReason:
-      'L3 Thief subclass feature: bonus action to use a thieves\' tools check (sleight of hand / disarm trap / pick lock) or to use an object. Needs a BA-economy planner with a sub-action enum.',
-  },
+  // Xfail today. One L3 feature still needs a standalone planner.
+  // Content currently ships effects:[].
   {
     classOrSubclassId: 'monk',
     featureId: 'deflect-attacks',

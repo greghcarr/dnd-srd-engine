@@ -67,6 +67,7 @@ import {
   planMagicWeapon,
   planRecklessAttack,
   planSteadyAim,
+  planFastHands,
   planStunningStrike,
   planFlurryOfBlows,
   planPatientDefense,
@@ -227,6 +228,7 @@ import {
   type MagicWeaponIntent,
   type RecklessAttackIntent,
   type SteadyAimIntent,
+  type FastHandsIntent,
   type StunningStrikeIntent,
   type FlurryOfBlowsIntent,
   type PatientDefenseIntent,
@@ -412,6 +414,7 @@ export interface Engine {
     magicWeapon(state: CampaignState, intent: Omit<MagicWeaponIntent, 'type'>): PlanResult;
     recklessAttack(state: CampaignState, intent: Omit<RecklessAttackIntent, 'type'>): PlanResult;
     steadyAim(state: CampaignState, intent: Omit<SteadyAimIntent, 'type'>): PlanResult;
+    fastHands(state: CampaignState, intent: Omit<FastHandsIntent, 'type'>): PlanResult;
     stunningStrike(state: CampaignState, intent: Omit<StunningStrikeIntent, 'type'>): PlanResult;
     flurryOfBlows(state: CampaignState, intent: Omit<FlurryOfBlowsIntent, 'type'>): PlanResult;
     patientDefense(state: CampaignState, intent: Omit<PatientDefenseIntent, 'type'>): PlanResult;
@@ -771,6 +774,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     steadyAim(state, intent) {
       return { events: planSteadyAim(state, content, { type: 'SteadyAim', ...intent }) };
+    },
+    fastHands(state, intent) {
+      return { events: planFastHands(state, content, { type: 'FastHands', ...intent }) };
     },
     stunningStrike(state, intent) {
       return { events: planStunningStrike(state, content, rng, { type: 'StunningStrike', ...intent }) };

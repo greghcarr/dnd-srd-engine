@@ -78,6 +78,7 @@ import {
   applyRecklessAttackActivated,
   applySteadyAimActivated,
   applySteadyAimConsumed,
+  applyFastHandsActivated,
   applyStunningStrikeAttempted,
   applySavageAttackerUsed,
 } from './reducers/action-economy.js';
@@ -351,6 +352,9 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
         break;
       case 'SteadyAimConsumed':
         applySteadyAimConsumed(draft, event);
+        break;
+      case 'FastHandsActivated':
+        applyFastHandsActivated(draft, event);
         break;
       case 'StunningStrikeAttempted':
         applyStunningStrikeAttempted(draft, event);

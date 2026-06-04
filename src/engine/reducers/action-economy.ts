@@ -6,6 +6,7 @@ import type {
   RecklessAttackActivatedEvent,
   SteadyAimActivatedEvent,
   SteadyAimConsumedEvent,
+  FastHandsActivatedEvent,
   StunningStrikeAttemptedEvent,
   SavageAttackerUsedEvent,
 } from '../../schemas/events/action-economy.js';
@@ -126,6 +127,22 @@ export const applySteadyAimConsumed = (
   const combatant = encounter.combatants.find((c) => c.combatantId === event.combatantId);
   invariant(combatant !== undefined, `Combatant ${event.combatantId} not in encounter`);
   combatant.turnUsage.steadyAimActive = false;
+};
+
+// Slice 647: Fast Hands is a marker event (transcript readability,
+// no state mutation beyond the paired ActionEconomyConsumed which
+// has already set bonusActionUsed). Reducer validates the event
+// shape but does not mutate state.
+export const applyFastHandsActivated = (
+  state: Draft<CampaignState>,
+  event: FastHandsActivatedEvent,
+): void => {
+  const encounter = state.encounters[event.encounterId];
+  invariant(encounter !== undefined, `Encounter ${event.encounterId} not found`);
+  const combatant = encounter.combatants.find((c) => c.combatantId === event.combatantId);
+  invariant(combatant !== undefined, `Combatant ${event.combatantId} not in encounter`);
+  // No-op state mutation; the BA flag is set by the paired
+  // ActionEconomyConsumed event.
 };
 
 export const applyStunningStrikeAttempted = (

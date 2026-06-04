@@ -50,6 +50,22 @@ export const SteadyAimConsumedEventSchema = EventEnvelopeSchema.extend({
 });
 export type SteadyAimConsumedEvent = z.infer<typeof SteadyAimConsumedEventSchema>;
 
+// Slice 647: Rogue Thief subclass L3 Fast Hands. Bonus-action
+// dispatch marker — the consumer pairs this with a follow-up
+// sub-planner (planAbilityCheck for sleight-of-hand picks,
+// planUtilize for object interaction, planUseItem for magic-item
+// activation). The event records that the BA was specifically Fast
+// Hands and which mode was chosen, making transcripts readable.
+// No reducer state mutation — the BA-used flag (set by the paired
+// ActionEconomyConsumed event) is the only persistent effect.
+export const FastHandsActivatedEventSchema = EventEnvelopeSchema.extend({
+  type: z.literal('FastHandsActivated'),
+  encounterId: ULIDSchema,
+  combatantId: ULIDSchema,
+  mode: z.enum(['sleightOfHand', 'utilize', 'useMagicItem']),
+});
+export type FastHandsActivatedEvent = z.infer<typeof FastHandsActivatedEventSchema>;
+
 // Monk Stunning Strike attempt marker. Records the monk used their
 // once-per-turn Stunning Strike; the reducer sets the corresponding
 // turnUsage flag. The actual save + condition application are emitted
