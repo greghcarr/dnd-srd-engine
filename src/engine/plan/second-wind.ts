@@ -35,10 +35,9 @@ export interface SecondWindIntent {
 // encounter on the fighter's own turn; out-of-encounter calls skip
 // the gate (Second Wind can be used between encounters per RAW).
 //
-// RAW deviation: the L7 Tactical Mind extension (spend Second Wind
-// to add 1d10 to a failed ability check, no HP refunded) is a
-// separate path that will land with its own slice; this planner
-// only covers the L1 HP-regain path.
+// Tactical Mind (Fighter L2, separate path) trades the HP regain for
+// a failed-check boost; see planTacticalMind in tactical-mind.ts.
+// This planner covers only the L1 HP-regain path.
 export const planSecondWind = (
   state: CampaignState,
   _content: ResolvedContent,

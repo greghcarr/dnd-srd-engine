@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine + tests (slice 634): Fighter L2 Tactical Mind planner**
+Self-targeted mirror of slice 358's Peerless Skill: spend a Second Wind use to roll 1d10 and boost a failed ability check; use refunded if the boost still fails. Closes the first of slice 633's five L2 punch-list xfails (4 remaining).
+Detail: [slice-634.md](docs/changelog/slice-634.md).
+
 **Tests (slice 633): CI-guarded "L2 SRD complete" floor audit**
 Defines the L2-complete exit criteria via 32-test audit (27 pass + 5 xfail) modelled on slice 619's L1 floor; the five xfails (planTacticalMind, planDivineSpark, planUncannyMetabolism, planMagicalCunning, eldritch-invocation catalog) form the punch list for the 0.3.0-alpha.0 release.
 Detail: [slice-633.md](docs/changelog/slice-633.md).

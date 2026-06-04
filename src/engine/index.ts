@@ -100,6 +100,7 @@ import {
   planLandsAid,
   planWholenessOfBody,
   planPeerlessSkill,
+  planTacticalMind,
   planFrenzy,
   planCuttingWords,
   planMetamagic,
@@ -258,6 +259,8 @@ import {
   type WholenessOfBodyIntent,
   type PeerlessSkillIntent,
   type PeerlessSkillOutcome,
+  type TacticalMindIntent,
+  type TacticalMindOutcome,
   type FrenzyIntent,
   type CuttingWordsIntent,
   type CuttingWordsOutcome,
@@ -440,6 +443,7 @@ export interface Engine {
     landsAid(state: CampaignState, intent: Omit<LandsAidIntent, 'type'>): PlanResult;
     wholenessOfBody(state: CampaignState, intent: Omit<WholenessOfBodyIntent, 'type'>): PlanResult;
     peerlessSkill(state: CampaignState, intent: Omit<PeerlessSkillIntent, 'type'>): PeerlessSkillOutcome;
+    tacticalMind(state: CampaignState, intent: Omit<TacticalMindIntent, 'type'>): TacticalMindOutcome;
     frenzy(state: CampaignState, intent: Omit<FrenzyIntent, 'type'>): PlanResult;
     cuttingWords(state: CampaignState, intent: Omit<CuttingWordsIntent, 'type'>): CuttingWordsOutcome;
     metamagic(state: CampaignState, intent: Omit<MetamagicIntent, 'type'>): PlanResult;
@@ -854,6 +858,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     peerlessSkill(state, intent) {
       return planPeerlessSkill(state, content, rng, { type: 'PeerlessSkill', ...intent });
+    },
+    tacticalMind(state, intent) {
+      return planTacticalMind(state, content, rng, { type: 'TacticalMind', ...intent });
     },
     frenzy(state, intent) {
       return { events: planFrenzy(state, content, { type: 'Frenzy', ...intent }) };

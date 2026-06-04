@@ -107,20 +107,13 @@ const PLANNERS: ReadonlyArray<PlannerExpectation> = [
   { classId: 'druid', featureId: 'wild-shape', plannerExport: 'planWildShape' },
   { classId: 'druid', featureId: 'wild-companion', plannerExport: 'planWildCompanion' },
   { classId: 'fighter', featureId: 'action-surge', plannerExport: 'planActionSurge' },
+  { classId: 'fighter', featureId: 'tactical-mind', plannerExport: 'planTacticalMind' }, // slice 634
   { classId: 'monk', featureId: 'unarmored-movement-monk', plannerExport: 'planStepOfTheWind' },
   { classId: 'paladin', featureId: 'paladins-smite', plannerExport: 'planPaladinsSmite' },
   { classId: 'rogue', featureId: 'cunning-action', plannerExport: 'planCunningAction' },
   { classId: 'sorcerer', featureId: 'metamagic', plannerExport: 'planMetamagic' },
 
-  // Xfail today. These five planners must land before L2 is complete.
-  {
-    classId: 'fighter',
-    featureId: 'tactical-mind',
-    plannerExport: 'planTacticalMind',
-    xfail: true,
-    xfailReason:
-      'L2 Fighter feature: spend a Second Wind use to add 1d10 to a failed ability check. Needs a planner that consumes second-wind and emits the bonus.',
-  },
+  // Xfail today. Remaining planners that must land before L2 is complete.
   {
     classId: 'cleric',
     featureId: 'divine-spark',

@@ -140,6 +140,7 @@ export { planPreserveLife, type PreserveLifeIntent } from './preserve-life.js';
 export { planLandsAid, type LandsAidIntent } from './lands-aid.js';
 export { planWholenessOfBody, type WholenessOfBodyIntent } from './wholeness-of-body.js';
 export { planPeerlessSkill, type PeerlessSkillIntent, type PeerlessSkillOutcome } from './peerless-skill.js';
+export { planTacticalMind, type TacticalMindIntent, type TacticalMindOutcome } from './tactical-mind.js';
 export { planFrenzy, type FrenzyIntent } from './frenzy.js';
 export {
   planCuttingWords,

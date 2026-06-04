@@ -66,6 +66,7 @@ export const performIntent = (
     LandsAid: (i) => engine.plan.landsAid(campaign.state, i),
     WholenessOfBody: (i) => engine.plan.wholenessOfBody(campaign.state, i),
     PeerlessSkill: (i) => engine.plan.peerlessSkill(campaign.state, i),
+    TacticalMind: (i) => engine.plan.tacticalMind(campaign.state, i),
     Frenzy: (i) => engine.plan.frenzy(campaign.state, i),
     Metamagic: (i) => engine.plan.metamagic(campaign.state, i),
     WildCompanion: (i) => engine.plan.wildCompanion(campaign.state, i),
