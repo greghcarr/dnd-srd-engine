@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Doc (slice 692): clean-agent tune-up after the slice-689/690/691 cross-repo cycle**
+Surfaces the sibling-consumer arrangement + slice-690 pre-push hook in the two places a fresh agent will look first: a new "Sibling-consumer awareness" subsection in CLAUDE.md (auto-loaded) names greghcarr/dndbnb + greghcarr/dnd-web, explains the pre-push hook, restates the engine-only conversation-scope rule, and notes that engine `main` IS the consumers' deploy pin; README's "What lives in this repo" gets a `.githooks/` row + a new "Sibling consumers" subsection with live URLs. Architecture.md was checked and needed no changes (zero stale refs; consumer-integration concerns live in DEVELOPMENT.md already). Doc-only.
+Detail: [slice-692.md](docs/changelog/slice-692.md).
+
 **Infra (slice 691): revert the cross-repo `notify-dndbnb` auto-dispatch**
 Removes the engine-side `.github/workflows/notify-dndbnb.yml` workflow added in slice 689. The user prefers the symmetric "consumers rebuild only on their own main commits" model — engine slices no longer auto-fan-out to consumer deploys. The slice-690 pre-push hook (verifying both consumers' builds when pushing engine main) is preserved; local pre-push verification is independent of the cross-repo auto-rebuild trigger. Slice 689's doc gets a closure annotation. No engine-API change.
 Detail: [slice-691.md](docs/changelog/slice-691.md).
