@@ -1,14 +1,17 @@
-// Slice 644: fuzz matrix audit (L1 + L2 across combat shapes + rests).
+// Slice 644 / 651 / 674: fuzz matrix audit (L1 + L2 + L3 across
+// combat shapes + rests).
 //
-// Supersedes the slice-643 L2 fuzz floor (which covered only one cell
-// of this matrix: L2 / 1v1 / PC / rest=none). That earlier audit's
-// scope was minimal-viable-floor for the L2-complete claim; this
-// audit extends fuzz coverage across BOTH levels and across every
-// reasonable combat shape + rest cadence the combat-fuzz CLI
-// supports.
+// History:
+//   - Slice 643: L2 fuzz floor (1 cell: L2 / 1v1 / PC / rest=none).
+//   - Slice 644: extended to a 24-cell matrix (L1+L2 × 4 shapes × 3 rests).
+//   - Slice 651: extended LEVELS from [1,2] to [1,2,3] (36 cells).
+//   - Slice 674: SEEDS_PER_CELL bumped 20 → 30 (L3 surface needs
+//     wider coverage given the 8 spell-wiring slices 665-672 + the
+//     L3 planners shipped in 646-648 + the resource scaffolding in
+//     650). 36 cells × 30 seeds = 1,080 battles per CI run.
 //
-// Matrix (24 cells, 20 seeds each = 480 battles per CI run):
-//   - Levels:  1, 2
+// Matrix (36 cells, 30 seeds each = 1,080 battles per CI run):
+//   - Levels:  1, 2, 3
 //   - Shapes:  1v1 PC-vs-PC, 2v2 PC-vs-PC, 1v1 PC-vs-monster,
 //              2v2 PC-vs-monster
 //   - Rests:   none, short, long
@@ -64,9 +67,13 @@ const SHAPES: ReadonlyArray<{
   { teamSize: 2, vs: 'monster', label: '2v2 monster' },
 ];
 const RESTS: ReadonlyArray<FuzzRest> = ['none', 'short', 'long'];
-const SEEDS_PER_CELL = 20;
+// Slice 674: bumped 20 → 30 to widen the L3 net post the 8 spell-
+// wiring slices (665-672) that introduced new event chains, plus
+// the L3 RAW behavior closures (661-664). 30 seeds per cell × 36
+// cells = 1,080 battles per CI run; ~10ms/battle = ~10s wall-clock.
+const SEEDS_PER_CELL = 30;
 
-describe('slice 644: fuzz matrix audit (L1 + L2 across shapes + rests)', () => {
+describe('slice 644 / 651 / 674: fuzz matrix audit (L1 + L2 + L3 across shapes + rests)', () => {
   it(`enumerates ${LEVELS.length * SHAPES.length * RESTS.length} matrix cells (${LEVELS.length} levels x ${SHAPES.length} shapes x ${RESTS.length} rests)`, () => {
     expect(LEVELS.length * SHAPES.length * RESTS.length).toBe(36);
   });

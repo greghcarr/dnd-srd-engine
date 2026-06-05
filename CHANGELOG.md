@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Tests (slice 674): L3 fuzz floor (widen seed coverage post-L3-cycle)**
+Slice 651 added L3 to the fuzz matrix (LEVELS = [1,2,3]); slice 674 widens SEEDS_PER_CELL 20 → 30 post the 8 spell-wiring slices (665-672) + L3 RAW closures (661-664) that grew the L3 event surface. 36 cells × 30 seeds = 1,080 battles per CI run; ~13s wall-clock. Header history updated; describe title widened from "slice 644: (L1+L2)" to "slice 644 / 651 / 674: (L1+L2+L3)".
+Detail: [slice-674.md](docs/changelog/slice-674.md).
+
 **Tests (slice 673): L3 triple-class multiclass audit (L1+L1+L1, C(12,3) = 220)**
 Sibling of slices 642 (L1+L1 pairs, 66) and 656 (L1+L2 ordered pairs, 132). Audits all 220 distinct L1+L1+L1 triples: each builds via `CharacterSchema.parse`, commits CharacterCreated, and derives via `engine.derive.character` without throwing. All-14 ability scores clear every RAW multiclass prerequisite. 221 tests (220 triples + 1 enumeration). ~3s wall-clock. First of the 4 audit/polish slices in this cycle.
 Detail: [slice-673.md](docs/changelog/slice-673.md).
