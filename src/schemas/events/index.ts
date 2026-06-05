@@ -64,6 +64,7 @@ import {
 import {
   ConcentrationStartedEventSchema,
   ConcentrationBrokenEventSchema,
+  SpellEffectStartedEventSchema,
 } from './concentration.js';
 import { TriggerFiredEventSchema } from './triggers.js';
 import {
@@ -257,6 +258,7 @@ export const EventSchema = z.discriminatedUnion('type', [
   FreeCastUsedEventSchema,
   ConcentrationStartedEventSchema,
   ConcentrationBrokenEventSchema,
+  SpellEffectStartedEventSchema,
   TriggerFiredEventSchema,
   ActionEconomyConsumedEventSchema,
   ActionReadiedEventSchema,
@@ -411,6 +413,7 @@ export const EVENT_TYPES = [
   'FreeCastUsed',
   'ConcentrationStarted',
   'ConcentrationBroken',
+  'SpellEffectStarted',
   'TriggerFired',
   'ActionEconomyConsumed',
   'ActionReadied',
@@ -682,11 +685,13 @@ export {
   ConcentrationStartedEventSchema,
   ConcentrationBrokenEventSchema,
   ConcentrationBrokenReasonSchema,
+  SpellEffectStartedEventSchema,
 } from './concentration.js';
 export type {
   ConcentrationStartedEvent,
   ConcentrationBrokenEvent,
   ConcentrationBrokenReason,
+  SpellEffectStartedEvent,
 } from './concentration.js';
 export { TriggerFiredEventSchema } from './triggers.js';
 export type { TriggerFiredEvent } from './triggers.js';

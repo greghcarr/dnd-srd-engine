@@ -67,7 +67,7 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 **Narrative (12):** alarm, comprehend-languages, create-or-destroy-water, detect-evil-and-good, detect-magic, detect-poison-and-disease, disguise-self, floating-disk (slice 507: cast emits no mechanical events; the 500-lb-capacity follow-the-caster disk is a consumer-side world entity, engine-out-of-scope per the no-positions stance), illusory-script, jump, purify-food-and-drink, speak-with-animals.
 
-## Level 2 (57 in pack): 36 wired, 15 narrative, 6 deferred
+## Level 2 (57 in pack): 37 wired, 15 narrative, 5 deferred
 
 **Wired, cast-time (30):** acid-arrow, aid, barkskin, blindness-deafness, blur, calm-emotions, darkvision, enhance-ability, enlarge-reduce, enthrall (WIS save -> `enthralled-active`: -10 to Perception checks; slice 343), find-steed, flame-blade, gust-of-wind, heat-metal, hold-person, invisibility, lesser-restoration, mind-spike, mirror-image, moonbeam, pass-without-trace, prayer-of-healing, protection-from-poison, scorching-ray, shatter, spider-climb, spiritual-weapon, suggestion, warding-bond, web. (Mirror Image carries a `buff` condition on cast plus the slice-124 `planAttack` deflection pool.)
 
@@ -75,10 +75,9 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 **Wired, planner (2):** magic-weapon, misty-step.
 
-**Wired, zone-area (2):** darkness (slice 495: 15-ft magical-darkness sphere; the Darkvision-can't-see-through-it arm is consumer-managed), silence (slice 496: 20-ft silence sphere; in-zone Deafened + Thunder immunity + no-verbal-casting is consumer-managed).
+**Wired, zone-area (3):** darkness (slice 495: 15-ft magical-darkness sphere; the Darkvision-can't-see-through-it arm is consumer-managed), silence (slice 496: 20-ft silence sphere; in-zone Deafened + Thunder immunity + no-verbal-casting is consumer-managed), zone-of-truth (slice 665: 15-ft sphere via the new non-concentration zone path — `SpellEffectStarted` event creates a non-concentration EffectInstance with `zone` payload; in-zone "can't speak a deliberate lie" + creature awareness of zone is consumer-managed).
 
-**Deferred (6):**
-- **non-damage area zone (in-zone effect on top of the positioned record):** zone-of-truth.
+**Deferred (5):**
 - **on-hit rider via `castSpell`:** shining-smite, ray-of-enfeeblement.
 - **recurring-rider primitive:** phantasmal-force.
 - **flight / hover condition:** levitate.
@@ -86,7 +85,7 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 **Narrative (15):** alter-self, animal-messenger, arcane-lock, arcanists-magic-aura, augury, continual-flame, detect-thoughts, find-traps, gentle-repose, knock, locate-animals-or-plants, locate-object, magic-mouth, rope-trick, see-invisibility.
 
-## Level 3 (42 in pack): 27 wired, 10 narrative, 5 deferred
+## Level 3 (42 in pack): 29 wired, 10 narrative, 3 deferred
 
 **Wired, cast-time (19):** animate-dead, bestow-curse, call-lightning, conjure-animals, fear, fireball, fly, gaseous-form, glyph-of-warding, haste, hypnotic-pattern, lightning-bolt, magic-circle, mass-healing-word, phantom-steed, protection-from-energy, sleet-storm, vampiric-touch, water-breathing.
 
@@ -94,8 +93,9 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 **Wired, planner (6):** clairvoyance, counterspell, dispel-magic, major-image, remove-curse, revivify.
 
-**Deferred (5):**
-- **non-damage area zone:** tiny-hut, wind-wall.
+**Wired, zone-area (2):** tiny-hut (slice 665: 10-ft sphere via `SpellEffectStarted`, 8-hour duration; the magical hemisphere's pass-through gate for the caster's allies and weather-block arms are consumer-managed), wind-wall (slice 665: 50-ft line via the existing `ConcentrationStarted` zone path; the in-line dispersal of gas / nonmagical ranged-attack disadvantage are consumer-managed).
+
+**Deferred (3):**
 - **composite area condition (speed-half + no-reaction + delayed-action):** slow.
 - **composite-buff condition:** beacon-of-hope.
 - **cross-plane (per-turn ethereal toggle):** blink.

@@ -31,6 +31,30 @@ export const ConcentrationStartedEventSchema = EventEnvelopeSchema.extend({
 });
 export type ConcentrationStartedEvent = z.infer<typeof ConcentrationStartedEventSchema>;
 
+// Slice 665: non-concentration spell effect started. Mirrors
+// ConcentrationStartedEventSchema's payload but without the
+// concentration claim — used for spells that persist as positioned
+// AOEs but don't tie up the caster's concentration slot
+// (Zone of Truth, Tiny Hut, etc.). The reducer creates an
+// EffectInstance with `requiresConcentration: false` and DOES NOT
+// set `caster.concentrationEffectId`. Cleanup uses the same
+// ConcentrationBroken event (the cleanup helper is type-agnostic);
+// `planExpireSpellDurations` emits it for any EffectInstance whose
+// listed duration has elapsed.
+export const SpellEffectStartedEventSchema = EventEnvelopeSchema.extend({
+  type: z.literal('SpellEffectStarted'),
+  effectInstanceId: ULIDSchema,
+  casterId: ULIDSchema,
+  spellId: z.string(),
+  targetIds: z.array(ULIDSchema).default([]),
+  conditionsApplied: z.array(AppliedConditionRefSchema).default([]),
+  durationRounds: z.number().int().min(0).optional(),
+  durationMinutes: z.number().int().min(0).optional(),
+  slotLevel: z.number().int().min(0).optional(),
+  zone: ZoneSchema.optional(),
+});
+export type SpellEffectStartedEvent = z.infer<typeof SpellEffectStartedEventSchema>;
+
 export const ConcentrationBrokenReasonSchema = z.enum([
   'failedSave',
   'newConcentrationSpell',

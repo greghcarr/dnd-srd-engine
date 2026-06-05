@@ -353,6 +353,11 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       const spellLabel = spell !== undefined ? spellName(content, spell) : 'their spell';
       return `**${caster}**'s concentration on ${spellLabel} broke (${event.reason}).`;
     }
+    case 'SpellEffectStarted': {
+      const caster = characterName(stateBefore, event.casterId);
+      const spell = spellName(content, event.spellId);
+      return `**${caster}**'s ${spell} takes effect.`;
+    }
     case 'TriggerFired':
       return `_(${event.triggerId.split(':').slice(1).join(':')} triggers for ${characterName(stateBefore, event.characterId)})_`;
     case 'ActionEconomyConsumed':

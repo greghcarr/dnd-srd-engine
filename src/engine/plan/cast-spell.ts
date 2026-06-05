@@ -25,6 +25,7 @@ import type { SaveRolledEvent } from '../../schemas/events/checks.js';
 import type {
   ConcentrationBrokenEvent,
   ConcentrationStartedEvent,
+  SpellEffectStartedEvent,
 } from '../../schemas/events/concentration.js';
 import type { CompanionSummonedEvent } from '../../schemas/events/summons.js';
 import type { TrapArmedEvent } from '../../schemas/events/traps.js';
@@ -2246,6 +2247,29 @@ export const planCastSpell = (
     }
   }
 
+  // Slice 495 + 665: compute the optional `zone` payload for spells
+  // whose mechanicalEffects include a `zone` entry. Validates at plan
+  // time so misuse (zone declared without targeting / without
+  // targetPosition) surfaces before any event commits. The same
+  // payload feeds both the concentration path (ConcentrationStarted,
+  // slice 495) and the non-concentration path (SpellEffectStarted,
+  // slice 665).
+  const hasZoneMechanic = spell.mechanicalEffects.some((m) => m.kind === 'zone');
+  let zoneField: { shape: 'sphere' | 'cube' | 'cylinder' | 'line' | 'cone'; size: number; center: { x: number; y: number } } | undefined;
+  if (hasZoneMechanic) {
+    if (spell.targeting === undefined) {
+      throw new Error(`Spell ${spell.id} has a zone mechanic but no targeting (shape/size) declared`);
+    }
+    if (intent.targetPosition === undefined) {
+      throw new Error(`Spell ${spell.id} has a zone mechanic and requires intent.targetPosition`);
+    }
+    zoneField = {
+      shape: spell.targeting.shape,
+      size: spell.targeting.size,
+      center: { x: intent.targetPosition.x, y: intent.targetPosition.y },
+    };
+  }
+
   if (spell.concentration === true) {
     if (character.concentrationEffectId !== undefined) {
       const priorBroken: ConcentrationBrokenEvent = {
@@ -2260,26 +2284,6 @@ export const planCastSpell = (
       events.push(priorBroken);
     }
     const durationMinutes = parseSpellDurationMinutes(spell.duration);
-    // Slice 495: when the spell's mechanicalEffects include a `zone`
-    // entry, read the spell's targeting shape/size + intent.targetPosition
-    // and stamp them on the event so the reducer persists the zone on
-    // the EffectInstance. Validates at plan time so misuse surfaces
-    // before any event commits.
-    const hasZoneMechanic = spell.mechanicalEffects.some((m) => m.kind === 'zone');
-    let zoneField: { shape: 'sphere' | 'cube' | 'cylinder' | 'line' | 'cone'; size: number; center: { x: number; y: number } } | undefined;
-    if (hasZoneMechanic) {
-      if (spell.targeting === undefined) {
-        throw new Error(`Spell ${spell.id} has a zone mechanic but no targeting (shape/size) declared`);
-      }
-      if (intent.targetPosition === undefined) {
-        throw new Error(`Spell ${spell.id} has a zone mechanic and requires intent.targetPosition`);
-      }
-      zoneField = {
-        shape: spell.targeting.shape,
-        size: spell.targeting.size,
-        center: { x: intent.targetPosition.x, y: intent.targetPosition.y },
-      };
-    }
     const started: ConcentrationStartedEvent = {
       id: newEventId() as ULID,
       at,
@@ -2295,6 +2299,30 @@ export const planCastSpell = (
       ...(zoneField !== undefined ? { zone: zoneField } : {}),
     };
     events.push(started);
+  } else if (hasZoneMechanic) {
+    // Slice 665: non-concentration zone-bearing spell (Zone of
+    // Truth, Tiny Hut). Allocate an EffectInstance via
+    // SpellEffectStarted so the zone persists in state with its
+    // listed wall-clock duration (cleaned up by
+    // planExpireSpellDurations + the same ConcentrationBroken
+    // cleanup event). The caster's concentration slot is NOT
+    // claimed.
+    const durationMinutes = parseSpellDurationMinutes(spell.duration);
+    const spellEffectStarted: SpellEffectStartedEvent = {
+      id: newEventId() as ULID,
+      at,
+      type: 'SpellEffectStarted',
+      effectInstanceId: newEffectInstanceId() as ULID,
+      casterId: intent.characterId as ULID,
+      spellId: intent.spellId,
+      targetIds: [...intent.targetIds] as ULID[],
+      conditionsApplied,
+      ...(durationMinutes !== undefined ? { durationMinutes } : {}),
+      slotLevel: intent.slotLevel,
+      causedByEventId: declared.id,
+      ...(zoneField !== undefined ? { zone: zoneField } : {}),
+    };
+    events.push(spellEffectStarted);
   }
 
   return events;

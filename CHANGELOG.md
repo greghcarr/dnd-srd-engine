@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine + content (slice 665): non-damage area zone primitive (zone-of-truth, tiny-hut, wind-wall)**
+First spell-wiring primitive of the post-L3-RAW push; closes 3 deferred L2/L3 spells with one event. New `SpellEffectStarted` event + `applySpellEffectStarted` reducer (sibling of ConcentrationStarted for non-concentration spells; creates an `EffectInstance` with `requiresConcentration: false` and does NOT claim the caster's concentration slot). Cleanup re-uses `ConcentrationBroken` (cleanup helper is type-agnostic) so `planExpireSpellDurations` works for both. planCastSpell extracts zone-payload computation as a single source of truth + adds an `else if (hasZoneMechanic)` branch for non-concentration zones. zone-of-truth + tiny-hut get `[{kind:'zone'}]` mechanic; wind-wall gets `targeting: { shape: 'line', size: 50 }` + the zone mechanic. L2 spell wiring 36 → 37 wired (5 deferred); L3 27 → 29 wired (3 deferred). 5 new tests; aggregate 198/339 → 201/339 wired across README / status / getting-started / starter-pack-gaps; doc-counts audit green.
+Detail: [slice-665.md](docs/changelog/slice-665.md).
+
 **Engine (slice 664): Deflect Attacks damage-pipeline auto-integration**
 Closes the slice-660 deferral. `planDeflectAttacks` now emits a `Healed { amount: min(reduction, incomingDamage), source: 'deflect-attacks' }` after the marker event so the engine restores the deflected damage automatically — consumers no longer manually subtract reduction from the pending DamageApplied. New `appliedReduction` field on `DeflectAttacksOutcome`. `applyHealed`'s maxHP clamp + wasUnconscious branch handle over-heal cap + transient-0-HP edge cases for free. 6 new tests; slice-648 9 tests still green. **All three slice-660 RAW behavior gaps now closed.**
 Detail: [slice-664.md](docs/changelog/slice-664.md).

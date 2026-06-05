@@ -71,6 +71,7 @@ import {
 import {
   applyConcentrationBroken,
   applyConcentrationStarted,
+  applySpellEffectStarted,
 } from './reducers/concentration.js';
 import { applyTriggerFired } from './reducers/triggers.js';
 import {
@@ -339,6 +340,9 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
         break;
       case 'ConcentrationBroken':
         applyConcentrationBroken(draft, event);
+        break;
+      case 'SpellEffectStarted':
+        applySpellEffectStarted(draft, event);
         break;
       case 'TriggerFired':
         applyTriggerFired(draft, event);
