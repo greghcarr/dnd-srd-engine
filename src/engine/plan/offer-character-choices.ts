@@ -86,6 +86,11 @@ export const planOfferCharacterChoices = (
         effects: o.effects as Effect[],
       })),
       oneOf: effect.oneOf,
+      // Slice 661: thread lifecycle through for consistency with
+      // planOfferLongRestChoices. No onAcquire choice today uses
+      // 'supersede', but the field is passed through so it works
+      // if a future content slice introduces one.
+      ...(effect.lifecycle !== undefined ? { lifecycle: effect.lifecycle } : {}),
     };
     events.push(choice);
     // Mirror the addition in the local set so two OfferChoice entries

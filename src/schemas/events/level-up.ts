@@ -31,6 +31,15 @@ export const ChoiceRequiredEventSchema = EventEnvelopeSchema.extend({
   // SubclassChosen event alongside ChoiceResolved so the
   // reducer sets the enrollment's subclassId.
   subclassChoiceForClassId: z.string().optional(),
+  // Slice 661: when 'supersede', only the latest resolution for
+  // this promptKey contributes to the effective effect stack
+  // (older resolutions for the same promptKey are dropped from
+  // the derive layer). Default 'accumulate' preserves slice-618
+  // behavior. Set by planOfferLongRestChoices when the source
+  // OfferChoice has `lifecycle: 'supersede'`. Threaded onto
+  // PendingChoice by applyChoiceRequired so derive doesn't need
+  // to cross-look-up the source OfferChoice.
+  lifecycle: z.enum(['accumulate', 'supersede']).optional(),
 });
 export type ChoiceRequiredEvent = z.infer<typeof ChoiceRequiredEventSchema>;
 

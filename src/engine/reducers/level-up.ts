@@ -56,6 +56,11 @@ export const applyChoiceRequired = (
     ...(event.subclassChoiceForClassId !== undefined
       ? { subclassChoiceForClassId: event.subclassChoiceForClassId }
       : {}),
+    // Slice 661: persist the supersession lifecycle so the
+    // derive layer (collectResolvedChoiceEffects) can drop older
+    // resolutions for the same promptKey without cross-looking-up
+    // the source OfferChoice.
+    ...(event.lifecycle !== undefined ? { lifecycle: event.lifecycle } : {}),
   };
   character.pendingChoiceIds.push(event.choiceId);
 };

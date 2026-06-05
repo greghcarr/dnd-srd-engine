@@ -72,7 +72,7 @@ L3 RAW-completeness punch list (slice 660 of 8): **all eight slices landed.**
 **The L3 RAW completeness punch list is closed.** Ready to tag `v0.3.0-alpha.0` (L2 surface complete; slices 633-644) AND `v0.4.0-alpha.0` (L3 RAW complete; slices 645-660).
 
 **Documented deferred RAW arms (post-cycle stretch)**:
-- **Land-swap supersession**: picking a new land at the next long rest should REPLACE the prior land's grants. Today the engine accumulates; a druid that long-rests twice with different lands gets both lands' spells. Needs a `PendingChoiceSuperseded` event or a "latest resolution wins per promptKey" derive pass.
+- ~~**Land-swap supersession**~~: ~~picking a new land at the next long rest should REPLACE the prior land's grants. Today the engine accumulates; a druid that long-rests twice with different lands gets both lands' spells. Needs a `PendingChoiceSuperseded` event or a "latest resolution wins per promptKey" derive pass.~~ **Closed by slice 661** (chose the derive-layer path: new `OfferChoiceEffect.lifecycle?: 'accumulate' | 'supersede'` field, threaded through ChoiceRequired → PendingChoice; `collectResolvedChoiceEffects` drops all but the latest resolution per promptKey for `'supersede'` choices).
 - **Deflect Attacks damage-pipeline auto-integration** (deferred from slice 658). Today the consumer manually subtracts the reduction from a pending DamageApplied; auto-integration via the interceptFatalDamage path is a future engine slice.
 - **Generic `GrantAbilitySubstitution` Effect** (deferred from slice 659). When a second ability-substitution feature ships, lift the hardcoded Primal Knowledge gate to a generic primitive.
 - **L3 triple-class multiclass audit** (L1+L1+L1, C(12,3) = 220 combinations). Rare in practice.

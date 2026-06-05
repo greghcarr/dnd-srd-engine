@@ -30,6 +30,14 @@ export const PendingChoiceSchema = z.object({
   // SubclassChosen event alongside ChoiceResolved so the reducer
   // assigns the enrollment's subclassId.
   subclassChoiceForClassId: z.string().optional(),
+  // Slice 661: when 'supersede', only the latest resolved
+  // PendingChoice for this promptKey contributes effects in the
+  // effective effect stack. Older resolutions for the same
+  // promptKey stay in state (replay-honest) but their granted
+  // effects are dropped at derive time. Default 'accumulate'
+  // preserves slice-618 behavior. Set by applyChoiceRequired
+  // from the ChoiceRequired event's `lifecycle` field.
+  lifecycle: z.enum(['accumulate', 'supersede']).optional(),
   resolution: z
     .object({
       selectedOptionIds: z.array(z.string()).min(1),

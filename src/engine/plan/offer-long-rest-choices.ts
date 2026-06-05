@@ -16,16 +16,14 @@
 // dedupe (the consumer must resolve the prior choice before a new
 // one fires).
 //
-// Land-swap semantics (deferred): when the druid picks a different
-// land than they picked at the previous long rest, the prior land's
-// granted spells should be ungranted. The current engine
-// accumulates resolutions in pendingChoices, so multiple long-rest
-// resolutions for the same promptKey accumulate effects via the
-// effect-stack derive. RAW behavior requires the new resolution to
-// SUPERSEDE the old. That supersession is a future engine slice
-// (needs a PendingChoiceSuperseded event or a derive-layer
-// "latest resolution wins" pass). Documented in
-// docs/changelog/slice-660.md.
+// Land-swap semantics (slice 661): when the source OfferChoice
+// ships `lifecycle: 'supersede'`, the planner threads it through
+// the ChoiceRequired so the reducer persists it on the
+// PendingChoice. The derive layer
+// (collectResolvedChoiceEffects in src/derive/effect-stack.ts)
+// drops older resolutions for the same promptKey, so the new
+// land's spells REPLACE the old land's spells per RAW. Without
+// the field, the historical 'accumulate' behavior is preserved.
 
 import type { CampaignState } from '../../schemas/runtime/campaign.js';
 import type { ResolvedContent } from '../../content/pack.js';
@@ -90,6 +88,10 @@ export const planOfferLongRestChoices = (
         effects: o.effects as Effect[],
       })),
       oneOf: effect.oneOf,
+      // Slice 661: thread the OfferChoice's supersession lifecycle
+      // through to the ChoiceRequired so the derive layer drops
+      // older resolutions for the same promptKey.
+      ...(effect.lifecycle !== undefined ? { lifecycle: effect.lifecycle } : {}),
     };
     events.push(choice);
     unresolvedPromptKeys.add(effect.choiceId);

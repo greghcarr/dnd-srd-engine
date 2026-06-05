@@ -316,7 +316,7 @@ export type Effect =
   | { kind: 'GrantWeaponMastery'; masteries: WeaponMastery[]; slots: number }
   | { kind: 'ExpandSpellList'; classId: string; spellIds: string[] }
   | { kind: 'SetHPMaxFormula'; formula: Formula }
-  | { kind: 'OfferChoice'; choiceId: string; prompt: string; options: ChoiceOptionShape[]; oneOf: number; when: 'onAcquire' | 'onLevelUp' | 'onLongRest' }
+  | { kind: 'OfferChoice'; choiceId: string; prompt: string; options: ChoiceOptionShape[]; oneOf: number; when: 'onAcquire' | 'onLevelUp' | 'onLongRest'; lifecycle?: 'accumulate' | 'supersede' }
   | { kind: 'FlatDamageReduction'; damageTypes: DamageType[]; amount: number }
   // Lowers the natural-d20 threshold at which the attacker's weapon
   // attacks crit. Default threshold is 20; Improved Critical sets 19,
@@ -767,6 +767,15 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
         .min(1),
       oneOf: z.number().int().min(1),
       when: z.enum(['onAcquire', 'onLevelUp', 'onLongRest']),
+      // Slice 661: when 'supersede', only the LATEST resolution of
+      // this choiceId contributes effects in the effect-stack derive
+      // (older resolutions stay in the event log for replay but
+      // their granted effects are dropped). Canonical user:
+      // Druid Circle of the Land Spells (RAW: each long rest the
+      // druid picks a land and the prior land's spells go away).
+      // Default 'accumulate' preserves slice-618 OfferChoice
+      // behavior (every resolved choice contributes).
+      lifecycle: z.enum(['accumulate', 'supersede']).optional(),
     }),
     z.object({
       kind: z.literal('FlatDamageReduction'),

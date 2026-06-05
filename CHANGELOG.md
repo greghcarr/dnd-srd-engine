@@ -6,8 +6,12 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine + content (slice 661): OfferChoice `lifecycle: 'supersede'` (land-swap supersession)**
+Closes the slice-660 documented deferral. New optional `lifecycle?: 'accumulate' | 'supersede'` on `OfferChoiceEffect`, threaded through `ChoiceRequiredEvent` + `PendingChoice` + `collectResolvedChoiceEffects`. When `'supersede'`, the derive layer drops all but the latest resolved PendingChoice per promptKey (replay-honest: prior resolutions stay in state). Default `'accumulate'` preserves slice-618 behavior for every existing OfferChoice. Circle of the Land Spells ships `lifecycle: 'supersede'` so a druid who long-rests with Arid then Polar has only Polar's spells prepared, per RAW. First slice of the post-L3-RAW push (~16-slice plan to close L1+L2+L3 deferrals before release tag).
+Detail: [slice-661.md](docs/changelog/slice-661.md).
+
 **Engine + content (slice 660): `offerLongRestChoices` (Circle of the Land land swap)**
-**Eighth and final slice of the L3 RAW-completeness push.** New planner `engine.plan.offerLongRestChoices` — sibling of slice-618's `offerCharacterChoices` for onLongRest OfferChoices. Dedupes against unresolved PendingChoices; lets resolved ones re-fire on subsequent long rests (RAW: "each long rest = new pick"). Circle of the Land Spells content flipped from `when: 'onAcquire'` → `when: 'onLongRest'`. Land-swap supersession (clearing the prior land's grants when a new land is picked) documented as deferred. **The L3 RAW completeness punch list (slices 653-660) is closed; ready to tag `v0.3.0-alpha.0` + `v0.4.0-alpha.0`.**
+**Eighth and final slice of the L3 RAW-completeness push.** New planner `engine.plan.offerLongRestChoices` — sibling of slice-618's `offerCharacterChoices` for onLongRest OfferChoices. Dedupes against unresolved PendingChoices; lets resolved ones re-fire on subsequent long rests (RAW: "each long rest = new pick"). Circle of the Land Spells content flipped from `when: 'onAcquire'` → `when: 'onLongRest'`. Land-swap supersession (clearing the prior land's grants when a new land is picked) documented as deferred. **Land-swap supersession closed by slice 661.**
 Detail: [slice-660.md](docs/changelog/slice-660.md).
 
 **Engine (slice 659): Primal Knowledge ability-substitution gate**

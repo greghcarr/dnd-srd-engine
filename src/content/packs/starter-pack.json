@@ -939,6 +939,7 @@
                 "prompt": "Choose one type of land: arid, polar, temperate, or tropical. You always have the spells listed for your Druid level and lower prepared.",
                 "oneOf": 1,
                 "when": "onLongRest",
+                "lifecycle": "supersede",
                 "options": [
                   {
                     "id": "arid",
