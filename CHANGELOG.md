@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Infra (slice 689): extract dndbnb into its own sibling project + repo**
+Moves the in-repo dndbnb consumer app (~6093 LOC) + `supabase/migrations/` (13 migrations) to a sibling [greghcarr/dndbnb](https://github.com/greghcarr/dndbnb) repo, mirroring how `dnd-web` already works. The engine is consumed as a sibling source checkout via Vite alias. Deletes `dndbnb/`, `supabase/`, `vite.dndbnb.config.ts`, and `.github/workflows/deploy-dndbnb.yml`; prunes 10 dndbnb-only devDeps from `package.json` (68 packages removed); adds `.github/workflows/notify-dndbnb.yml` that fires `repository_dispatch: engine-updated` at the dndbnb repo on every push to main. No engine-API change; engine surface byte-identical.
+Detail: [slice-689.md](docs/changelog/slice-689.md).
+
 **Release (slice 688): bump to 0.4.0-alpha.0**
 Promotes the spatial combat support cycle (slices 683-685) + the in-repo web-demo retirement (slice 686) to a tagged release. Back-to-back with the slice-687 v0.3 cut; v0.3 marked strict-RAW completeness, v0.4 marks spatial combat support shipped + GUI moved out of the engine repo. `SCHEMA_VERSION` stays 1.
 Detail: [slice-688.md](docs/changelog/slice-688.md).
