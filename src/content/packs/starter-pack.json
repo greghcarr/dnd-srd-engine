@@ -8819,14 +8819,15 @@
     {
       "id": "slowed-by-spell-active",
       "name": "Slowed (Slow spell)",
-      "description": "Slice 670: composite condition from the Slow spell. Engine projects: walking speed halved (ModifySpeed walk *0.5), AC -2, DEX saves -2. Consumer-managed (engine has no enforcement for these arms): can't take reactions; on its turn, can take EITHER one action OR one bonus action, not both, and can make at most one melee or ranged attack with that action; spellcasting with V/S/M components has a 50% chance to fail. Auto-cleared on the caster's concentration drop. End-of-turn save against the caster's spell save DC ends the condition (consumer-driven).",
+      "description": "Slice 670: composite condition from the Slow spell. Engine projects: walking speed halved (ModifySpeed walk *0.5), AC -2, DEX saves -2. Slice 677: end-of-turn WIS save vs the caster's spell save DC ends the condition (recurringSave); consumer drives via `engine.plan.tickRecurringSave({ targetId, conditionId: 'slowed-by-spell-active' })`. Auto-cleared on the caster's concentration drop. Other RAW arms (no reactions / one-action-or-bonus / max-one-attack / spellcasting 50% V/S/M) are wired in slices 680-682.",
       "stackable": false,
       "endsOn": [],
       "effects": [
         { "kind": "ModifySpeed", "mode": "walk", "op": "multiply", "value": 0.5 },
         { "kind": "AddModifier", "target": "ac", "value": -2 },
         { "kind": "AddModifier", "target": { "kind": "save", "ability": "DEX" }, "value": -2 }
-      ]
+      ],
+      "recurringSave": { "ability": "WIS", "trigger": "turnEnd", "onSuccess": "removeCondition" }
     },
     {
       "id": "dragons-breath-acid-active",
@@ -8889,10 +8890,11 @@
     {
       "id": "enfeebled",
       "name": "Enfeebled (Ray of Enfeeblement)",
-      "description": "Slice 666: marker for Ray of Enfeeblement's on-hit rider. RAW (SRD): the target deals only half damage with weapon attacks that use Strength. Engine effect is a marker — the consumer reads the condition + applies the half-damage to STR-based attacks. Save-ends on the target's end-of-turn CON save (consumer-driven via planSave). Auto-cleared when the caster's concentration drops.",
+      "description": "Slice 666: marker for Ray of Enfeeblement's on-hit rider. RAW (SRD): the target deals only half damage with weapon attacks that use Strength. Engine effect is a marker — the consumer reads the condition + applies the half-damage to STR-based attacks. Slice 677: end-of-turn CON save vs the caster's spell save DC ends the condition (recurringSave); consumer drives via `engine.plan.tickRecurringSave({ targetId, conditionId: 'enfeebled' })`. Auto-cleared when the caster's concentration drops.",
       "stackable": false,
       "endsOn": [],
-      "effects": []
+      "effects": [],
+      "recurringSave": { "ability": "CON", "trigger": "turnEnd", "onSuccess": "removeCondition" }
     },
     {
       "id": "shining-smite-active",
@@ -8934,12 +8936,13 @@
     {
       "id": "shining-smite-target-illuminated",
       "name": "Shining Smite Illuminated",
-      "description": "Slice 666: target of Shining Smite is sheathed in radiant light. Attacks against the target have advantage. Lingering Dim Light in a 5-foot radius is consumer-managed (engine has no light model). End-of-turn CON save vs the caster's spell save DC ends the condition; auto-cleared when the caster's concentration drops.",
+      "description": "Slice 666: target of Shining Smite is sheathed in radiant light. Attacks against the target have advantage. Lingering Dim Light in a 5-foot radius is consumer-managed (engine has no light model). Slice 677: end-of-turn CON save vs the caster's spell save DC ends the condition (recurringSave); consumer drives via `engine.plan.tickRecurringSave({ targetId, conditionId: 'shining-smite-target-illuminated' })` at the end of the bearer's turn. Auto-cleared when the caster's concentration drops.",
       "stackable": false,
       "endsOn": [],
       "effects": [
         { "kind": "GrantAdvantageToAttackers" }
-      ]
+      ],
+      "recurringSave": { "ability": "CON", "trigger": "turnEnd", "onSuccess": "removeCondition" }
     },
     {
       "id": "aura-of-courage-active",

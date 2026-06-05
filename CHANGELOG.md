@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Content (slice 677): recurring-save spell-ends arms (Shining Smite, Ray of Enfeeblement, Slow)**
+**First slice of the strict-RAW completeness cycle (677-682).** Zero engine code. Three conditions gain `recurringSave` metadata so `planTickRecurringSave` handles their end-of-turn save-to-end arms uniformly with Hold Person's pre-existing wiring: `shining-smite-target-illuminated` + `enfeebled` use `{CON, turnEnd, removeCondition}`; `slowed-by-spell-active` uses `{WIS, turnEnd, removeCondition}`. DC resolved from caster's spell DC via the AppliedCondition's `sourceCharacterId`. Phantasmal Force NOT included (RAW arm is an Investigation check, not a save). 6 new tests.
+Detail: [slice-677.md](docs/changelog/slice-677.md).
+
 **Tests (slice 676): multiclass fuzz audit + pack-integrity allowlist sync**
 **Sixteenth and final slice of the post-L3-RAW completeness push.** Closes the slice-644 deferred "multiclass fuzz support" follow-up. New `tests/audit/multiclass-fuzz.test.ts`: 50 seeds of random L1+L1 distinct-class characters; each builds + derives with `ac.total > 0` without throwing. Pack-integrity `EFFECT_LESS_OK` allowlist extended with 8 marker conditions added in slices 667/669/672 (phantasmal-force-active, 5 dragons-breath variants, blink-active, blink-ethereal-active) with documented rationale. **The 16-slice cycle is closed: L1+L2+L3 spell wiring 100% wired-or-narrative, all slice-660 RAW gaps closed, multiclass + fuzz + recharge ergonomics covered. Ready to tag.**
 Detail: [slice-676.md](docs/changelog/slice-676.md).
