@@ -2392,7 +2392,7 @@
     { "id": "sleet-storm", "name": "Sleet Storm", "level": 3, "school": "conjuration", "castingTime": "Action", "range": "150 feet", "components": { "verbal": true, "somatic": true, "material": "a miniature umbrella" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["druid", "sorcerer", "wizard"], "targeting": { "shape": "cylinder", "size": 20 }, "mechanicalEffects": [{ "kind": "save", "ability": "DEX", "conditionOnFail": "prone" }] },
     { "id": "vampiric-touch", "name": "Vampiric Touch", "level": 3, "school": "necromancy", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["sorcerer", "warlock", "wizard"], "mechanicalEffects": [{ "kind": "attack", "attackKind": "melee", "damageDice": "3d6", "damageType": "necrotic", "extraDicePerSlotLevel": 1 }] },
     { "id": "animate-dead", "name": "Animate Dead", "level": 3, "school": "necromancy", "castingTime": "1 minute", "range": "10 feet", "components": { "verbal": true, "somatic": true, "material": "a drop of blood, a piece of flesh, and a pinch of bone dust" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["cleric", "wizard"], "mechanicalEffects": [{ "kind": "summon", "name": "Animated Skeleton", "ac": 12, "hpBase": 13, "hpPerSlotAbove": 4, "baseSlotLevel": 3, "speedFeet": 30 }] },
-    { "id": "beacon-of-hope", "name": "Beacon of Hope", "level": 3, "school": "abjuration", "castingTime": "Action", "range": "30 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["cleric"], "mechanicalEffects": [] },
+    { "id": "beacon-of-hope", "name": "Beacon of Hope", "level": 3, "school": "abjuration", "castingTime": "Action", "range": "30 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["cleric"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "beacon-of-hope-active" }] },
     { "id": "bestow-curse", "name": "Bestow Curse", "level": 3, "school": "necromancy", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "cleric", "wizard"], "mechanicalEffects": [{ "kind": "save", "ability": "WIS", "casterChoosesVariant": { "variants": [{ "key": "ability-disadvantage-str", "conditionId": "cursed-ability-str-active" }, { "key": "ability-disadvantage-dex", "conditionId": "cursed-ability-dex-active" }, { "key": "ability-disadvantage-con", "conditionId": "cursed-ability-con-active" }, { "key": "ability-disadvantage-int", "conditionId": "cursed-ability-int-active" }, { "key": "ability-disadvantage-wis", "conditionId": "cursed-ability-wis-active" }, { "key": "ability-disadvantage-cha", "conditionId": "cursed-ability-cha-active" }, { "key": "attack-disadvantage", "conditionId": "cursed-attacks-active" }, { "key": "inactive-turn", "conditionId": "cursed-inert-active" }, { "key": "extra-damage", "conditionId": "cursed-vulnerable-active" }] } }] },
     { "id": "clairvoyance", "name": "Clairvoyance", "level": 3, "school": "divination", "castingTime": "10 minutes", "range": "1 mile", "components": { "verbal": true, "somatic": true, "material": "a focus worth 100+ GP, either a jeweled horn for hearing or a glass eye for seeing" }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["bard", "cleric", "sorcerer", "wizard"], "mechanicalEffects": [] },
     { "id": "conjure-animals", "name": "Conjure Animals", "level": 3, "school": "conjuration", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["druid", "ranger"], "mechanicalEffects": [{ "kind": "summon", "name": "Conjured Animal Spirit", "ac": 14, "hpBase": 30, "hpPerSlotAbove": 5, "baseSlotLevel": 3, "speedFeet": 30 }] },
@@ -8787,6 +8787,17 @@
           "actions": [{ "kind": "AddDamage", "dice": "1d8", "damageType": "radiant" }],
           "consumeOnTrigger": true
         }
+      ]
+    },
+    {
+      "id": "beacon-of-hope-active",
+      "name": "Beacon of Hope",
+      "description": "Slice 671: composite-buff condition from Beacon of Hope. Projects advantage on WIS saves and the GrantMaxHealingDice marker (each healing spell that affects the bearer regains the maximum possible amount). Death-save advantage arm is consumer-managed (auto-rolled death saves in planDeathSaveAtTurnStart don't consult the effect stack today; future engine slice can thread SetAdvantage on death saves through that path). Auto-cleared on the caster's concentration drop.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "WIS" }, "mode": "advantage" },
+        { "kind": "GrantMaxHealingDice" }
       ]
     },
     {

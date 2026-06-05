@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Content (slice 671): Beacon of Hope (composite-buff condition)**
+Closes 1 deferred L3 spell, zero engine change. Buff applies `beacon-of-hope-active` to each target. Condition projects `SetAdvantage on save:WIS` + `GrantMaxHealingDice` (existing primitive — each healing spell hits max). Death-save advantage arm deferred (needs threading effect stack through `planDeathSaveAtTurnStart`). 3 new tests. L3 wired 30 → 31 (1 deferred); aggregate 207/339 → 208/339; conditions 154 → 155.
+Detail: [slice-671.md](docs/changelog/slice-671.md).
+
 **Content (slice 670): Slow (composite area condition)**
 Closes 1 deferred L3 spell. Zero engine change. Slow: `save WIS -> slowed-by-spell-active`. New composite condition projects walk *0.5 / AC -2 / DEX-saves -2 — the load-bearing combat arms. Remaining RAW arms (no reactions / one-action-or-bonus / max-one-attack / spellcasting 50% gate) stay consumer-managed reads of the condition. Auto-cleared on concentration drop. 3 new tests. L3 wired 29 → 30 (2 deferred); aggregate 206/339 → 207/339; conditions 153 → 154.
 Detail: [slice-670.md](docs/changelog/slice-670.md).
