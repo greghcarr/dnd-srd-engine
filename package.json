@@ -41,9 +41,6 @@
     "release:doc-counts": "node scripts/sync-doc-counts.mjs",
     "release:doc-counts:check": "node scripts/sync-doc-counts.mjs --check",
     "release:doc-review": "node scripts/review-doc-figures.mjs",
-    "dev:web": "vite --config vite.web.config.ts",
-    "build:web": "vite build --config vite.web.config.ts",
-    "preview:web": "vite preview --config vite.web.config.ts",
     "dev:dndbnb": "vite --config vite.dndbnb.config.ts",
     "build:dndbnb": "vite build --config vite.dndbnb.config.ts",
     "preview:dndbnb": "vite preview --config vite.dndbnb.config.ts"

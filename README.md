@@ -21,10 +21,6 @@ Three docs cover the common entry points:
 
 The rest of this README covers the quickstart, status, and roadmap.
 
-## Try it in your browser
-
-A live demo of the engine — combat sandbox + event inspector + import/export with replay verification — runs on GitHub Pages: **https://greghcarr.github.io/dnd-srd-engine/** (deployed via `.github/workflows/deploy-demo.yml`; one-time setup is Settings → Pages → Source = "GitHub Actions"). Source lives under [web/](web/). See [web/README.md](web/README.md) for local development.
-
 ## Quick start
 
 The engine is not currently published to a package registry. Clone the repo and work against source:
@@ -107,7 +103,6 @@ That snippet shows the shortest "engine is alive" path: load the starter pack, b
 | [docs/](docs/) | Working docs: [status](docs/status.md), [roadmap](docs/roadmap.md), [slice template](docs/slice-template.md), [per-category gap catalogs](docs/starter-pack-gaps.md). |
 | [examples/](examples/) | Small runnable scripts showing API usage. |
 | [references/srd-markdown/](references/srd-markdown/) | The SRD 5.2.1 markdown clone (git submodule). Canonical source for rules text; never substitute web lookups. |
-| [web/](web/) | Browser demo for the engine (combat sandbox + event inspector). Deployed to GitHub Pages. |
 | [dndbnb/](dndbnb/) | A D&D Beyond-style consumer app built on the engine. Co-located so engine changes flow into it without a publish cycle. Has its own [README](dndbnb/README.md) and deploy workflow. |
 | [supabase/](supabase/) | dndbnb's database migrations (Postgres + Auth + RLS). Not used by the engine itself. |
 | [CONTRIBUTING.md](CONTRIBUTING.md) / [docs/architecture.md](docs/architecture.md) | Contributor manual + engine internals. Anyone doing non-trivial work reads these end-to-end first. |
@@ -128,9 +123,6 @@ Pick the doc that matches what you want:
 | See common patterns (save, undo, houserules, multiplayer sync) | [docs/recipes.md](docs/recipes.md) |
 | Author content packs (spells, classes, feats, items, monsters) | [docs/authoring-content-packs.md](docs/authoring-content-packs.md) |
 | Understand the engine internals (event sourcing, plan/commit, effect primitives, planner shape) | [docs/architecture.md](docs/architecture.md) |
-| Try the web demo in your browser | [https://greghcarr.github.io/dnd-srd-engine/](https://greghcarr.github.io/dnd-srd-engine/) |
-| Hack on the web demo locally | [web/README.md](web/README.md) |
-| Read the demo's architecture decisions | [docs/web-demo-plan.md](docs/web-demo-plan.md) |
 | Understand what's missing before the engine is trustworthy for unsupervised play | [docs/trustworthiness-roadmap.md](docs/trustworthiness-roadmap.md) |
 | Watch a full multi-act campaign run | [the showcase transcript](tests/golden/transcripts/showcase.transcript.md) |
 | Know what each version means (alpha / beta / rc / 1.0) | [VERSIONING.md](VERSIONING.md) |

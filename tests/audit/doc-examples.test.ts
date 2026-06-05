@@ -35,7 +35,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'dist-web', 'coverage']);
+const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'coverage']);
 const SKIP_PREFIXES = ['references/srd-markdown'];
 
 const START_MARKER = '<!-- typecheck -->';

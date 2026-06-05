@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Infra (slice 686): retire the in-repo combat-fuzzer web demo (GUI moved to a sibling project)**
+Deletes `web/`, `vite.web.config.ts`, `dist-web/`, `tests/integration/web-scenarios.test.ts`, `tests/unit/web-scrub-cache.test.ts`, `docs/web-demo-plan.md`, and `.github/workflows/deploy-demo.yml`. Prunes `dev:web` / `build:web` / `preview:web` from `package.json` and trims tsconfig + README + roadmap accordingly. **The fuzz code stays** — `scripts/combat-fuzz.ts` (CLI) and `scripts/combat-fuzz-core.ts` (pure simulator) remain in-repo as engine-debug surfaces and continue to back the fuzz audit tests. Extends `tests/audit/doc-links.test.ts` SKIP_PREFIXES to exclude `docs/changelog/archive-` + `docs/changelog/released-versions` (frozen historical narrative; their references to since-removed paths are accurate snapshots). No engine-API change; suite drops to 540/540 files / 4118 tests (exactly the two retired web test files).
+Detail: [slice-686.md](docs/changelog/slice-686.md).
+
 **Engine (slice 685): range + line-of-sight enforcement on attacks and spells (Work item 3 of the spatial combat plan)**
 **Final slice of the spatial combat support cycle (683-685) — cycle complete.** New `src/engine/plan/_spatial-gates.ts` with `resolveSpatialContext`, `assertLineOfSightForAttack`, `assertWithinSpellRange`, `parseSpellRange`. `planAttack` now throws on LoS-blocked attacks (range was already enforced); `planCastSpell` throws on out-of-range or LoE-blocked spell targets. Both gates are no-ops when the spatial context can't be resolved (positionless / map-less encounters), preserving pre-685 behavior. Per-target enforcement; first violation rejects the cast. `parseSpellRange` handles the RAW vocabulary (Self / Touch / N feet / Sight / Special / 1 mile). 14 new tests; full suite 542/542 files green. **The dnd-web viewer can now surface engine-thrown range / LoS errors directly to the player.**
 Detail: [slice-685.md](docs/changelog/slice-685.md).
