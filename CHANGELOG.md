@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Tests (slice 676): multiclass fuzz audit + pack-integrity allowlist sync**
+**Sixteenth and final slice of the post-L3-RAW completeness push.** Closes the slice-644 deferred "multiclass fuzz support" follow-up. New `tests/audit/multiclass-fuzz.test.ts`: 50 seeds of random L1+L1 distinct-class characters; each builds + derives with `ac.total > 0` without throwing. Pack-integrity `EFFECT_LESS_OK` allowlist extended with 8 marker conditions added in slices 667/669/672 (phantasmal-force-active, 5 dragons-breath variants, blink-active, blink-ethereal-active) with documented rationale. **The 16-slice cycle is closed: L1+L2+L3 spell wiring 100% wired-or-narrative, all slice-660 RAW gaps closed, multiclass + fuzz + recharge ergonomics covered. Ready to tag.**
+Detail: [slice-676.md](docs/changelog/slice-676.md).
+
 **Engine (slice 675): `seedResourcesFromContent` helper**
 Closes the slice-660 documented deferral. New helper `seedResourcesFromContent(character, content): Character` walks the character's effect stack for `GrantResource` effects and auto-populates `character.resources` with proper `max` (formula-evaluated) and `recharge` (incl. slice-657's `partialShortFullLong` primitive). Highest-`max` wins per resourceId; idempotent for pre-existing entries; pure transform. Opt-in helper alongside createPC (signature stable). 5 new tests. Resolves the manual "consumer must hand-author Channel Divinity's `partialShortFullLong` recharge" drift trap.
 Detail: [slice-675.md](docs/changelog/slice-675.md).

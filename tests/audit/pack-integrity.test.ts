@@ -416,6 +416,14 @@ describe('pack integrity: wired spells do not apply effect-less conditions', () 
     'resisted', // slice 369: consumer-invoked planConsumeResistance rolls the 1d4 reduction (mirrors Absorb Elements); the marker just says Resistance is active
     'addled', // slice 380: Open Hand Technique (Addle); the opportunity-attack planner reads the id to bar OAs (the "can't make Opportunity Attacks" restriction isn't an effect primitive)
     'expeditious-retreat-active', // slice 521: marker condition read by planExpeditiousRetreatDash to gate the per-turn Bonus-Action-Dash arm (the BA-Dash isn't an effect primitive)
+    'phantasmal-force-active', // slice 667: marker for planTickRecurring (per-turn 1d6 psychic damage). The disbelieve-on-INT-investigation arm is consumer-driven.
+    'dragons-breath-acid-active', // slice 669: marker for planExhaleDragonsBreath (caster picks damage type at cast). The buffed creature uses its action to exhale; the planner reads the variant marker.
+    'dragons-breath-cold-active', // slice 669: see dragons-breath-acid-active.
+    'dragons-breath-fire-active', // slice 669: see dragons-breath-acid-active.
+    'dragons-breath-lightning-active', // slice 669: see dragons-breath-acid-active.
+    'dragons-breath-poison-active', // slice 669: see dragons-breath-acid-active.
+    'blink-active', // slice 672: marker that Blink is active; consumer calls planBlinkTurnEnd at end-of-turn (rolls d20 vs 11+).
+    'blink-ethereal-active', // slice 672: marker that the bearer is currently on the Ethereal Plane. Plane semantics (attacks auto-miss, can pass through objects, 10-ft re-emergence) are consumer-managed (engine has no positions or plane model).
     // (The slice-361 "known-open bugs" group is now empty — all four were fixed in slices 366-369.)
     // Consumer-managed / narrative (no clean engine model):
     'commanded-approach-active',
