@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Infra (slice 691): revert the cross-repo `notify-dndbnb` auto-dispatch**
+Removes the engine-side `.github/workflows/notify-dndbnb.yml` workflow added in slice 689. The user prefers the symmetric "consumers rebuild only on their own main commits" model — engine slices no longer auto-fan-out to consumer deploys. The slice-690 pre-push hook (verifying both consumers' builds when pushing engine main) is preserved; local pre-push verification is independent of the cross-repo auto-rebuild trigger. Slice 689's doc gets a closure annotation. No engine-API change.
+Detail: [slice-691.md](docs/changelog/slice-691.md).
+
 **Infra (slice 690): pre-push hook verifying sibling consumers + `+dirty` engine-SHA marker in consumers**
 New `.githooks/pre-push` runs `npm run typecheck` + `npm run build` in any sibling consumer it finds (`../dndbnb`, `../dnd-web`) and aborts the push if either fails. Triggers only when pushing the local `main` ref. Activates via `npm install` (`prepare` script sets `core.hooksPath .githooks`). Escape hatch: `SKIP_CONSUMER_CHECKS=1 git push`. Plus: both consumer apps' Vite configs now append `+dirty` to the engine SHA in the version-badge when the engine working tree has uncommitted changes — catches the "I demoed a local build with unpushed engine code" failure mode. Closes both new failure modes the slice-689 sibling-checkout structure introduced. No engine-API change.
 Detail: [slice-690.md](docs/changelog/slice-690.md).
