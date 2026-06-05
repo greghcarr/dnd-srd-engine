@@ -138,6 +138,30 @@ export const planSave = (
   return events;
 };
 
+// Slice 659: Primal Knowledge's substitution arm. RAW (SRD 5.2.1
+// Barbarian L3): "while your Rage is active, you can channel primal
+// power when you attempt certain tasks; whenever you make an ability
+// check using one of the following skills, you can make it as a
+// Strength check even if it normally uses a different ability:
+// Acrobatics, Intimidation, Perception, Stealth, or Survival."
+//
+// The five eligible skills are listed below. When the consumer sets
+// `useAbilitySubstitution: true` on an AbilityCheckIntent, the
+// planner enforces: the character is Barbarian L3+, the `raging`
+// condition is active, the skill is in this set, and the requested
+// `ability` is STR. If any gate fails, the planner throws.
+const PRIMAL_KNOWLEDGE_SKILLS: ReadonlySet<Skill> = new Set([
+  'acrobatics',
+  'intimidation',
+  'perception',
+  'stealth',
+  'survival',
+]);
+const PRIMAL_KNOWLEDGE_CLASS_ID = 'barbarian';
+const PRIMAL_KNOWLEDGE_MIN_LEVEL = 3;
+const PRIMAL_KNOWLEDGE_ABILITY: AbilityScore = 'STR';
+const RAGING_CONDITION_ID = 'raging';
+
 export interface AbilityCheckIntent {
   readonly type: 'AbilityCheck';
   readonly characterId: string;
@@ -158,6 +182,13 @@ export interface AbilityCheckIntent {
   // Undefined = consumer didn't specify; sense-gated entries don't
   // fire.
   readonly sense?: 'sight' | 'hearing' | 'smell' | 'touch' | 'taste';
+  // Slice 659: opt-in flag for a Primal Knowledge-style ability
+  // substitution. When true, the planner enforces the
+  // Primal-Knowledge gate (Barbarian L3+ raging, ability === 'STR',
+  // skill in {acrobatics, intimidation, perception, stealth,
+  // survival}). Default false preserves the engine's permissive
+  // ability-acceptance for pre-existing tests.
+  readonly useAbilitySubstitution?: boolean;
   readonly at?: string;
 }
 
@@ -169,6 +200,34 @@ export const planAbilityCheck = (
 ): ReadonlyArray<Event> => {
   const character = state.characters[intent.characterId];
   if (!character) throw new Error(`Unknown character ${intent.characterId}`);
+  // Slice 659: Primal Knowledge gate. When `useAbilitySubstitution`
+  // is set, enforce: Barbarian L3+ enrollment, `raging` condition
+  // active, ability === 'STR', skill is one of the 5 substitutable
+  // skills.
+  if (intent.useAbilitySubstitution === true) {
+    const enrollment = character.classes.find((c) => c.classId === PRIMAL_KNOWLEDGE_CLASS_ID);
+    if (enrollment === undefined || enrollment.level < PRIMAL_KNOWLEDGE_MIN_LEVEL) {
+      throw new Error(
+        `${character.name} does not have Primal Knowledge ability substitution (requires Barbarian level ${PRIMAL_KNOWLEDGE_MIN_LEVEL})`,
+      );
+    }
+    const raging = character.appliedConditions.some((c) => c.conditionId === RAGING_CONDITION_ID);
+    if (!raging) {
+      throw new Error(
+        `${character.name} cannot use Primal Knowledge ability substitution: Rage is not active`,
+      );
+    }
+    if (intent.ability !== PRIMAL_KNOWLEDGE_ABILITY) {
+      throw new Error(
+        `Primal Knowledge substitution requires ability='STR' (got '${intent.ability}')`,
+      );
+    }
+    if (intent.skill === undefined || !PRIMAL_KNOWLEDGE_SKILLS.has(intent.skill)) {
+      throw new Error(
+        `Primal Knowledge substitution requires a skill in {acrobatics, intimidation, perception, stealth, survival} (got '${intent.skill ?? 'none'}')`,
+      );
+    }
+  }
   const derivation = computeAbilityCheck({
     character,
     itemInstances: state.itemInstances,

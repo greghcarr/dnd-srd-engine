@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine (slice 659): Primal Knowledge ability-substitution gate**
+RAW Barbarian L3 second arm: "while raging, may use STR for Acrobatics / Intimidation / Perception / Stealth / Survival." Slice 649 wired the first arm (OfferChoice for the extra skill prof); this slice wires the second via a new opt-in `useAbilitySubstitution: boolean` on `AbilityCheckIntent`. When set, planner enforces 4 gates (Barbarian L3+, raging, ability=STR, skill in 5-skill set); throws on failure. Default unset preserves permissive back-compat.
+Detail: [slice-659.md](docs/changelog/slice-659.md).
+
 **Engine (slice 658): Deflect Attacks counter arm**
 Closes the slice-648 deferred counter arm. New optional `counterTargetId` on `DeflectAttacksIntent`; when supplied + reduction zeros incoming damage + monk has ≥1 ki, the planner spends 1 ki, rolls a DEX save against the counter target (DC = 8 + WIS + PB), and on failure deals 2 × Martial Arts die + DEX damage of the same type as the incoming attack. Range constraints (5 ft / 60 ft Total Cover) consumer-supplied. 5 new tests; back-compat with slice-648 reduction-only behavior preserved.
 Detail: [slice-658.md](docs/changelog/slice-658.md).
