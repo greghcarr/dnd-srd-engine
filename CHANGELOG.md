@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Content (slice 668): Levitate (flight/hover via buff + levitating-active)**
+Closes 1 deferred L2 spell, zero engine change. The `ModifySpeed fly` primitive (used by Fly + Dragon Wings) + the existing `buff` mechanic deliver the full RAW shape. Levitate gets the buff mechanic; new `levitating-active` condition projects `ModifySpeed fly 20` so the effective speed stack reflects RAW. Horizontal-block + 20-ft-up/down move-action are consumer-managed (engine has no positions). 4 new tests. L2 wired 40 → 41 (1 deferred); aggregate 204/339 → 205/339; conditions 147 → 148.
+Detail: [slice-668.md](docs/changelog/slice-668.md).
+
 **Content (slice 667): Phantasmal Force via existing recurring-rider primitive**
 Closes 1 deferred L2 spell with zero engine change. The existing `recurring` mechanic schema comment explicitly cited Phantasmal Force as a canonical user; the engine had the primitive, the spell just needed authoring. Composition: `save INT -> phantasmal-force-active on fail` + `recurring damage 1d6 psychic` (consumer drives `planTickRecurring` on the target's turn). New `phantasmal-force-active` marker condition (auto-cleared on concentration drop via slice-110 sweep). Disbelieve-on-INT-investigation arm + "damage applies if phantasm could damage" arm stay consumer-driven (the engine doesn't model phantasm semantics). 4 new tests. L2 wired 39 → 40 (2 deferred). Aggregate 203/339 → 204/339; conditions 146 → 147.
 Detail: [slice-667.md](docs/changelog/slice-667.md).

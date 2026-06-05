@@ -2367,7 +2367,7 @@
     { "id": "gentle-repose", "name": "Gentle Repose", "level": 2, "school": "necromancy", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "2 Copper Pieces, which the spell consumes" }, "duration": "10 days", "concentration": false, "ritual": true, "classes": ["cleric", "paladin", "wizard"], "mechanicalEffects": [] },
     { "id": "gust-of-wind", "name": "Gust of Wind", "level": 2, "school": "evocation", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "a legume seed" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["druid", "ranger", "sorcerer", "wizard"], "targeting": { "shape": "line", "size": 60 }, "mechanicalEffects": [{ "kind": "save", "ability": "STR", "pushedFeetOnFail": 15 }] },
     { "id": "knock", "name": "Knock", "level": 2, "school": "transmutation", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["bard", "sorcerer", "wizard"], "mechanicalEffects": [] },
-    { "id": "levitate", "name": "Levitate", "level": 2, "school": "transmutation", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true, "material": "a metal spring" }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["sorcerer", "wizard"], "mechanicalEffects": [] },
+    { "id": "levitate", "name": "Levitate", "level": 2, "school": "transmutation", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true, "material": "a metal spring" }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["sorcerer", "wizard"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "levitating-active" }] },
     { "id": "locate-animals-or-plants", "name": "Locate Animals or Plants", "level": 2, "school": "divination", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "fur from a bloodhound" }, "duration": "Instantaneous", "concentration": false, "ritual": true, "classes": ["bard", "druid", "ranger"], "mechanicalEffects": [] },
     { "id": "locate-object", "name": "Locate Object", "level": 2, "school": "divination", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "a forked twig" }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["bard", "cleric", "druid", "paladin", "ranger", "wizard"], "mechanicalEffects": [] },
     { "id": "magic-mouth", "name": "Magic Mouth", "level": 2, "school": "illusion", "castingTime": "1 minute", "range": "30 feet", "components": { "verbal": true, "somatic": true, "material": "jade dust worth 10+ GP, which the spell consumes" }, "duration": "Until dispelled", "concentration": false, "ritual": true, "classes": ["bard", "wizard"], "mechanicalEffects": [] },
@@ -8787,6 +8787,16 @@
           "actions": [{ "kind": "AddDamage", "dice": "1d8", "damageType": "radiant" }],
           "consumeOnTrigger": true
         }
+      ]
+    },
+    {
+      "id": "levitating-active",
+      "name": "Levitating",
+      "description": "Slice 668: marker for the Levitate spell. RAW per SRD 5.2.1: the target floats up to 20 ft up vertically; can move 20 ft up or down on its turn as a move action by pulling/pushing against fixed objects (effective fly speed for vertical-only movement). Horizontal movement requires a fixed surface — engine has no positions so consumers manage the horizontal-block. The 20-ft vertical fly is projected as `ModifySpeed { mode: 'fly', op: 'set', value: 20 }` so derived speeds reflect 'fly 20 ft' for consumers reading the effective speed stack. Auto-cleared on the caster's concentration drop.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "ModifySpeed", "mode": "fly", "op": "set", "value": 20 }
       ]
     },
     {
