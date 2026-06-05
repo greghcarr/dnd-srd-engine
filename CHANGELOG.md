@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Infra (slice 690): pre-push hook verifying sibling consumers + `+dirty` engine-SHA marker in consumers**
+New `.githooks/pre-push` runs `npm run typecheck` + `npm run build` in any sibling consumer it finds (`../dndbnb`, `../dnd-web`) and aborts the push if either fails. Triggers only when pushing the local `main` ref. Activates via `npm install` (`prepare` script sets `core.hooksPath .githooks`). Escape hatch: `SKIP_CONSUMER_CHECKS=1 git push`. Plus: both consumer apps' Vite configs now append `+dirty` to the engine SHA in the version-badge when the engine working tree has uncommitted changes — catches the "I demoed a local build with unpushed engine code" failure mode. Closes both new failure modes the slice-689 sibling-checkout structure introduced. No engine-API change.
+Detail: [slice-690.md](docs/changelog/slice-690.md).
+
 **Infra (slice 689): extract dndbnb into its own sibling project + repo**
 Moves the in-repo dndbnb consumer app (~6093 LOC) + `supabase/migrations/` (13 migrations) to a sibling [greghcarr/dndbnb](https://github.com/greghcarr/dndbnb) repo, mirroring how `dnd-web` already works. The engine is consumed as a sibling source checkout via Vite alias. Deletes `dndbnb/`, `supabase/`, `vite.dndbnb.config.ts`, and `.github/workflows/deploy-dndbnb.yml`; prunes 10 dndbnb-only devDeps from `package.json` (68 packages removed); adds `.github/workflows/notify-dndbnb.yml` that fires `repository_dispatch: engine-updated` at the dndbnb repo on every push to main. No engine-API change; engine surface byte-identical.
 Detail: [slice-689.md](docs/changelog/slice-689.md).

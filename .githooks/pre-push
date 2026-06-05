@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+# Pre-push hook: typecheck + build each sibling consumer that exists.
+#
+# The engine is consumed from source by greghcarr/dndbnb and
+# greghcarr/dnd-web (both check out the engine as a sibling and bundle
+# its TypeScript directly). The engine's own CI doesn't know either
+# consumer exists, so an engine signature change that compiles fine
+# here can still break a consumer's build — and the next consumer
+# deploy is the first place you'd find out.
+#
+# This hook runs only when the local 'main' ref is being pushed to a
+# remote. Pushing dev branches doesn't trigger it (typecheck/build per
+# consumer takes 10-30s; running it on every dev push is friction
+# without payoff since dev doesn't reach the consumer-deploy path).
+#
+# Activate this hook by running once after clone:
+#   git config core.hooksPath .githooks
+# (The `prepare` script in package.json runs that for you on npm install.)
+#
+# Escape hatch for emergencies: set SKIP_CONSUMER_CHECKS=1.
+#   SKIP_CONSUMER_CHECKS=1 git push origin main
+
+set -euo pipefail
+
+if [[ "${SKIP_CONSUMER_CHECKS:-0}" == "1" ]]; then
+  echo "pre-push: SKIP_CONSUMER_CHECKS=1 set; skipping sibling-consumer verification."
+  exit 0
+fi
+
+# Pre-push hook stdin: one line per ref being pushed, format:
+#   <local_ref> <local_sha> <remote_ref> <remote_sha>
+# Bail early if 'main' isn't among the refs being pushed.
+pushing_main=0
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+  if [[ "$remote_ref" == "refs/heads/main" ]]; then
+    pushing_main=1
+  fi
+done
+
+if [[ "$pushing_main" -eq 0 ]]; then
+  exit 0
+fi
+
+ENGINE_ROOT="$(git rev-parse --show-toplevel)"
+SIBLINGS=("$ENGINE_ROOT/../dndbnb" "$ENGINE_ROOT/../dnd-web")
+ANY_VERIFIED=0
+ANY_FAILED=0
+
+for sibling in "${SIBLINGS[@]}"; do
+  if [[ ! -d "$sibling" ]]; then
+    echo "pre-push: $sibling not found, skipping."
+    continue
+  fi
+  if [[ ! -f "$sibling/package.json" ]]; then
+    echo "pre-push: $sibling exists but has no package.json, skipping."
+    continue
+  fi
+  if [[ ! -d "$sibling/node_modules" ]]; then
+    echo "pre-push: $sibling has no node_modules; run 'npm install' there first."
+    echo "         (skipping this consumer; not failing the push.)"
+    continue
+  fi
+  ANY_VERIFIED=1
+  echo
+  echo "pre-push: verifying $(basename "$sibling") against this engine state..."
+  if ! ( cd "$sibling" && npm run typecheck && npm run build ); then
+    echo
+    echo "pre-push: $(basename "$sibling") FAILED to typecheck or build against this engine state."
+    echo "         Fix the consumer (or revert the engine change), or use:"
+    echo "           SKIP_CONSUMER_CHECKS=1 git push origin main"
+    ANY_FAILED=1
+  else
+    echo "pre-push: $(basename "$sibling") ok."
+  fi
+done
+
+if [[ "$ANY_FAILED" -eq 1 ]]; then
+  exit 1
+fi
+
+if [[ "$ANY_VERIFIED" -eq 0 ]]; then
+  echo "pre-push: no sibling consumers found to verify; allowing push."
+fi

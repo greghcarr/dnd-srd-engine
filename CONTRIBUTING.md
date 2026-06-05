@@ -233,6 +233,14 @@ Run all of these before committing. Each is mandatory:
 
 If a check fails, fix the cause. Never `--no-verify` or skip.
 
+## Pre-push consumer verification
+
+`npm install` activates a git hook at [.githooks/pre-push](.githooks/pre-push) via the `prepare` script in [package.json](package.json), which runs `git config core.hooksPath .githooks`. When you push the local `main` ref, the hook runs `npm run typecheck` + `npm run build` in any sibling-checkout consumer it finds (`../dndbnb`, `../dnd-web`) and aborts the push if either fails.
+
+The engine's own CI doesn't know either consumer exists, so an engine signature change that compiles fine here can still break a consumer's build — and the next consumer deploy is the first place you'd find out. The hook catches that locally before the engine commit reaches `main`.
+
+Pushes to `dev` or other branches do not trigger the hook (only `main` does, since `main` is what consumers' deploy workflows check out via `ref: main`). Sibling dirs without `node_modules` are skipped with a warning rather than failing the push. Emergency override: `SKIP_CONSUMER_CHECKS=1 git push origin main`.
+
 ## Code style
 
 - TypeScript strict mode (enforced in [tsconfig.json](tsconfig.json) with `noUncheckedIndexedAccess`).
