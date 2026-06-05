@@ -404,6 +404,15 @@ export type Effect =
   // is a natural 1. Save / check / other d20 sites stay deferred to
   // follow-up slices that wire the same helper at each site.
   | { kind: 'GrantHalflingLuck' }
+  // Slice 678: marker — the bearer's weapon attacks that use STR
+  // for the damage ability deal half damage (rounded down). RAW
+  // user: the Ray of Enfeeblement spell's `enfeebled` condition.
+  // Read by planAttack post-damageTotal computation; the base
+  // weapon damage is halved while extra rider damages
+  // (sneak attack, smite, on-hit riders, fires-burn, etc.) pass
+  // through unhalved. RAW reading scoped to the weapon's damage
+  // line, not every damage source the attack triggers.
+  | { kind: 'HalvesStrengthWeaponDamage' }
   // Slice 542: Heroic Inspiration on Long Rest. RAW: "You gain
   // Heroic Inspiration whenever you finish a Long Rest." Wired
   // on Human Resourceful; future features that grant per-long-
@@ -838,6 +847,9 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       kind: z.literal('GrantHalflingLuck'),
     }),
     z.object({
+      kind: z.literal('HalvesStrengthWeaponDamage'),
+    }),
+    z.object({
       kind: z.literal('GrantHeroicInspirationOnLongRest'),
     }),
     z.object({
@@ -971,6 +983,7 @@ export const EFFECT_KINDS = [
   'GrantPactChain',
   'GrantAbilitySubstitution',
   'GrantHalflingLuck',
+  'HalvesStrengthWeaponDamage',
   'GrantHeroicInspirationOnLongRest',
   'GrantAdvantageToAttackers',
   'ImposeDisadvantageOnAttackers',

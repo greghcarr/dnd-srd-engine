@@ -217,6 +217,7 @@ export class EffectAccumulator {
   // (currently attack rolls; save/check sites to follow) to trigger
   // the reroll-on-natural-1 mechanic.
   private halflingLuckFlag: boolean = false;
+  private halvesStrengthWeaponDamageFlag: boolean = false;
   // Slice 542: Heroic Inspiration on Long Rest presence marker.
   // Read by planLongRest to auto-grant Heroic Inspiration to
   // participants with the marker on their effect stack (Human
@@ -893,6 +894,17 @@ export class EffectAccumulator {
   hasHalflingLuck(): boolean {
     return this.halflingLuckFlag;
   }
+  // Slice 678: marker — bearer's STR-based weapon attacks deal
+  // half damage. Read by planAttack post-damageTotal; the base
+  // weapon damage is halved (rounded down) when this flag is set
+  // AND damageAbility === 'STR'. RAW user: Ray of Enfeeblement's
+  // `enfeebled` condition.
+  markHalvesStrengthWeaponDamage(): void {
+    this.halvesStrengthWeaponDamageFlag = true;
+  }
+  hasHalvesStrengthWeaponDamage(): boolean {
+    return this.halvesStrengthWeaponDamageFlag;
+  }
   markHeroicInspirationOnLongRest(): void {
     this.heroicInspirationOnLongRestFlag = true;
   }
@@ -1168,6 +1180,9 @@ export const applyEffectToBuilder = (
       return;
     case 'GrantHalflingLuck':
       acc.markHalflingLuck();
+      return;
+    case 'HalvesStrengthWeaponDamage':
+      acc.markHalvesStrengthWeaponDamage();
       return;
     case 'GrantHeroicInspirationOnLongRest':
       acc.markHeroicInspirationOnLongRest();

@@ -1403,7 +1403,18 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
       }]
     : [];
 
-  const damageTotal = damageRolls.reduce((s, v) => s + v, 0) + damageRollPayload.modifier;
+  const rawDamageTotal = damageRolls.reduce((s, v) => s + v, 0) + damageRollPayload.modifier;
+  // Slice 678: enfeebled (Ray of Enfeeblement) halves the base
+  // weapon damage of attacks using STR. The flag projects via
+  // `HalvesStrengthWeaponDamage` on the bearer's condition. Riders
+  // (sneak attack, smite, on-hit damage, fires-burn, frosts-chill)
+  // pass through unhalved per the RAW reading "the weapon's damage
+  // line is halved" (the bonus-damage riders are not the weapon's
+  // damage line).
+  const damageTotal =
+    attackerEffects.hasHalvesStrengthWeaponDamage() && damageAbility === 'STR'
+      ? Math.floor(Math.max(0, rawDamageTotal) / 2)
+      : rawDamageTotal;
   const rawComponents: { amount: number; type: typeof weaponDef.damageType }[] = [
     { amount: Math.max(0, damageTotal), type: effectiveDamageType },
   ];

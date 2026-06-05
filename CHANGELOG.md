@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine + content (slice 678): `HalvesStrengthWeaponDamage` primitive (enfeebled enforcement)**
+New marker effect (62 primitives total). `EffectAccumulator` gains `mark`/`has` methods; `planAttack` halves the base weapon damage when the attacker carries the flag AND `damageAbility === 'STR'`. Riders (smite/sneak/on-hit dice) pass through unhalved per the RAW "weapon's damage line" reading. `enfeebled` condition projects the marker. 3 new tests including same-seed greatsword (halved) and rapier (unaffected, finesse → DEX) comparisons.
+Detail: [slice-678.md](docs/changelog/slice-678.md).
+
 **Content (slice 677): recurring-save spell-ends arms (Shining Smite, Ray of Enfeeblement, Slow)**
 **First slice of the strict-RAW completeness cycle (677-682).** Zero engine code. Three conditions gain `recurringSave` metadata so `planTickRecurringSave` handles their end-of-turn save-to-end arms uniformly with Hold Person's pre-existing wiring: `shining-smite-target-illuminated` + `enfeebled` use `{CON, turnEnd, removeCondition}`; `slowed-by-spell-active` uses `{WIS, turnEnd, removeCondition}`. DC resolved from caster's spell DC via the AppliedCondition's `sourceCharacterId`. Phantasmal Force NOT included (RAW arm is an Investigation check, not a save). 6 new tests.
 Detail: [slice-677.md](docs/changelog/slice-677.md).

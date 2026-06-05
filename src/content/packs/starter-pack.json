@@ -8890,10 +8890,12 @@
     {
       "id": "enfeebled",
       "name": "Enfeebled (Ray of Enfeeblement)",
-      "description": "Slice 666: marker for Ray of Enfeeblement's on-hit rider. RAW (SRD): the target deals only half damage with weapon attacks that use Strength. Engine effect is a marker — the consumer reads the condition + applies the half-damage to STR-based attacks. Slice 677: end-of-turn CON save vs the caster's spell save DC ends the condition (recurringSave); consumer drives via `engine.plan.tickRecurringSave({ targetId, conditionId: 'enfeebled' })`. Auto-cleared when the caster's concentration drops.",
+      "description": "Slice 666: applied by Ray of Enfeeblement's on-hit rider. Slice 678: now projects `HalvesStrengthWeaponDamage` so planAttack halves the bearer's base weapon damage when damageAbility === 'STR' (rider damages — sneak attack, smite, on-hit dice — pass through unhalved per the RAW reading 'the weapon's damage line'). Slice 677: end-of-turn CON save vs the caster's spell save DC ends the condition (recurringSave); consumer drives via `engine.plan.tickRecurringSave({ targetId, conditionId: 'enfeebled' })`. Auto-cleared when the caster's concentration drops.",
       "stackable": false,
       "endsOn": [],
-      "effects": [],
+      "effects": [
+        { "kind": "HalvesStrengthWeaponDamage" }
+      ],
       "recurringSave": { "ability": "CON", "trigger": "turnEnd", "onSuccess": "removeCondition" }
     },
     {
