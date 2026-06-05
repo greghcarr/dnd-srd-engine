@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Tests (slice 673): L3 triple-class multiclass audit (L1+L1+L1, C(12,3) = 220)**
+Sibling of slices 642 (L1+L1 pairs, 66) and 656 (L1+L2 ordered pairs, 132). Audits all 220 distinct L1+L1+L1 triples: each builds via `CharacterSchema.parse`, commits CharacterCreated, and derives via `engine.derive.character` without throwing. All-14 ability scores clear every RAW multiclass prerequisite. 221 tests (220 triples + 1 enumeration). ~3s wall-clock. First of the 4 audit/polish slices in this cycle.
+Detail: [slice-673.md](docs/changelog/slice-673.md).
+
 **Engine + content (slice 672): Blink (cross-plane per-turn ethereal toggle)**
 Closes the final L3 deferred spell — **L3 spells are now 100% wired-or-narrative.** Buff applies `blink-active` marker; new planner `planBlinkTurnEnd` rolls d20 at the end of each of the bearer's turns and applies `blink-ethereal-active` on 11+. Plane semantics + 10-ft re-emergence + duration cleanup are consumer-managed (engine has no positions or plane model). 4 new tests. L3 wired 31 → 32 (0 deferred); aggregate 208/339 → 209/339; conditions 155 → 157. **L1+L2+L3 spell wiring is now 100% wired-or-narrative.**
 Detail: [slice-672.md](docs/changelog/slice-672.md).
