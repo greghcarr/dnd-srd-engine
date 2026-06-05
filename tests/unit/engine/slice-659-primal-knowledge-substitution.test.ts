@@ -1,5 +1,9 @@
 // Slice 659: Barbarian L3 Primal Knowledge ability-substitution
-// arm.
+// arm. **Slice 662**: the hardcoded class / level / condition / ability /
+// skills gate was replaced with content-driven matching against
+// `GrantAbilitySubstitution` effects on the bearer's effect stack.
+// The behavioral envelope (which combos accept / reject) is
+// unchanged; only the error messages shifted to a generic shape.
 //
 // RAW (SRD 5.2.1 Barbarian L3): "while your Rage is active, you can
 // channel primal power when you attempt certain tasks; whenever you
@@ -8,11 +12,14 @@
 // ability: Acrobatics, Intimidation, Perception, Stealth, or
 // Survival."
 //
-// planAbilityCheck's new `useAbilitySubstitution` flag opt-in
-// enforces: Barbarian L3+ AND raging condition active AND
-// ability === 'STR' AND skill is in the five-skill set. Any gate
-// failure throws. Default (flag unset) preserves the engine's
-// permissive ability-acceptance for back-compat.
+// `planAbilityCheck` reads `GrantAbilitySubstitution` effects when
+// `useAbilitySubstitution: true`. Primal Knowledge ships one
+// (ability='STR', skills=[acrobatics, intimidation, perception,
+// stealth, survival], activeWhileConditionId='raging'). The planner
+// accepts iff a granted substitution matches the requested (ability,
+// skill) and (if the activeWhileConditionId is set) the bearer has
+// that condition active. Default unset preserves permissive back-
+// compat.
 
 import { describe, expect, it } from 'vitest';
 import { createEngine } from '../../../src/engine/index.js';
@@ -92,7 +99,7 @@ describe('slice 659: Primal Knowledge ability-substitution gate', () => {
         dc: 10,
         useAbilitySubstitution: true,
       }),
-    ).toThrow(/skill in/);
+    ).toThrow(/no ability substitution matching.*skill='athletics'/);
   });
 
   it('rejects: ability is not STR', () => {
@@ -106,10 +113,10 @@ describe('slice 659: Primal Knowledge ability-substitution gate', () => {
         dc: 10,
         useAbilitySubstitution: true,
       }),
-    ).toThrow(/ability='STR'/);
+    ).toThrow(/no ability substitution matching ability='DEX'/);
   });
 
-  it('rejects: barbarian under L3', () => {
+  it('rejects: barbarian under L3 (no Primal Knowledge feature in effect stack yet)', () => {
     const lowBarb = buildBarbarian(2, { raging: true });
     const s = seed(lowBarb);
     expect(() =>
@@ -120,10 +127,10 @@ describe('slice 659: Primal Knowledge ability-substitution gate', () => {
         dc: 10,
         useAbilitySubstitution: true,
       }),
-    ).toThrow(/Primal Knowledge/);
+    ).toThrow(/no ability substitution matching/);
   });
 
-  it('rejects: non-barbarian', () => {
+  it('rejects: non-barbarian (no GrantAbilitySubstitution on effect stack)', () => {
     const wizard = CharacterSchema.parse({
       id: newCharacterId(),
       name: 'Pell',
@@ -143,10 +150,10 @@ describe('slice 659: Primal Knowledge ability-substitution gate', () => {
         dc: 10,
         useAbilitySubstitution: true,
       }),
-    ).toThrow(/Primal Knowledge/);
+    ).toThrow(/no ability substitution matching.*no ability substitutions granted/);
   });
 
-  it('rejects: Barbarian L3+ but not raging (no raging condition active)', () => {
+  it('rejects: Barbarian L3+ but not raging (activeWhileConditionId not satisfied)', () => {
     const barb = buildBarbarian(3, { raging: false });
     const s = seed(barb);
     expect(() =>
@@ -157,7 +164,7 @@ describe('slice 659: Primal Knowledge ability-substitution gate', () => {
         dc: 10,
         useAbilitySubstitution: true,
       }),
-    ).toThrow(/Rage is not active/);
+    ).toThrow(/no ability substitution matching.*while raging/);
   });
 
   it('back-compat: useAbilitySubstitution=false (default) preserves permissive behavior (no gate)', () => {

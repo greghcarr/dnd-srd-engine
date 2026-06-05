@@ -385,6 +385,17 @@ export type Effect =
   // consumer-managed; the marker exists so a later slice can wire them
   // without changing the feat-side authoring.
   | { kind: 'GrantPactChain' }
+  // Slice 662: ability-substitution primitive. RAW shape: "for
+  // ability checks using <skill> ∈ skills, you can use <ability>
+  // instead of the skill's normal ability — optionally only while
+  // a named condition is active." Canonical user: Barbarian L3
+  // Primal Knowledge (ability='STR', skills=[acrobatics,
+  // intimidation, perception, stealth, survival],
+  // activeWhileConditionId='raging'). Read by `planAbilityCheck`
+  // from the bearer's effect stack when
+  // `intent.useAbilitySubstitution === true`. Replaces the
+  // slice-659 hardcoded Primal Knowledge gate.
+  | { kind: 'GrantAbilitySubstitution'; ability: AbilityScore; skills: Skill[]; activeWhileConditionId?: string }
   // Slice 538: Halfling Luck. Presence marker for the reroll-on-natural-1
   // mechanic. RAW: "When you roll a 1 on the d20 of a D20 Test, you can
   // reroll the die, and you must use the new roll." Projected via
@@ -814,6 +825,16 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       kind: z.literal('GrantPactChain'),
     }),
     z.object({
+      kind: z.literal('GrantAbilitySubstitution'),
+      ability: AbilityScoreSchema,
+      skills: z.array(SkillSchema).min(1),
+      // When set, the substitution only applies while the bearer
+      // has the named condition active. RAW user: Primal
+      // Knowledge requires 'raging'. Future generic users may
+      // omit this for unconditional substitutions.
+      activeWhileConditionId: z.string().optional(),
+    }),
+    z.object({
       kind: z.literal('GrantHalflingLuck'),
     }),
     z.object({
@@ -948,6 +969,7 @@ export const EFFECT_KINDS = [
   'GrantFeat',
   'GrantPactBlade',
   'GrantPactChain',
+  'GrantAbilitySubstitution',
   'GrantHalflingLuck',
   'GrantHeroicInspirationOnLongRest',
   'GrantAdvantageToAttackers',

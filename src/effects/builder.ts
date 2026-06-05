@@ -1161,6 +1161,11 @@ export const applyEffectToBuilder = (
     case 'GrantPactChain':
       acc.markPactChain();
       return;
+    case 'GrantAbilitySubstitution':
+      // Slice 662: read directly from collectEffectsFromCharacter()
+      // by planAbilityCheck; no accumulator state needed. The
+      // case exists for exhaustiveness.
+      return;
     case 'GrantHalflingLuck':
       acc.markHalflingLuck();
       return;

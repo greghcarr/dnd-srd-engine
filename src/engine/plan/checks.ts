@@ -17,6 +17,8 @@ import { coverDexSaveBonus, type CoverKind } from './attack.js';
 import { D20_SIDES } from '../../internal/constants.js';
 import { nowIso } from '../../internal/clock.js';
 import type { ULID } from '../ids-utils.js';
+import { collectEffectsFromCharacter } from '../../derive/effect-stack.js';
+import type { Effect } from '../../schemas/effects.js';
 
 const rollWithAdvantage = (
   rng: RNG,
@@ -138,29 +140,16 @@ export const planSave = (
   return events;
 };
 
-// Slice 659: Primal Knowledge's substitution arm. RAW (SRD 5.2.1
-// Barbarian L3): "while your Rage is active, you can channel primal
-// power when you attempt certain tasks; whenever you make an ability
-// check using one of the following skills, you can make it as a
-// Strength check even if it normally uses a different ability:
-// Acrobatics, Intimidation, Perception, Stealth, or Survival."
-//
-// The five eligible skills are listed below. When the consumer sets
-// `useAbilitySubstitution: true` on an AbilityCheckIntent, the
-// planner enforces: the character is Barbarian L3+, the `raging`
-// condition is active, the skill is in this set, and the requested
-// `ability` is STR. If any gate fails, the planner throws.
-const PRIMAL_KNOWLEDGE_SKILLS: ReadonlySet<Skill> = new Set([
-  'acrobatics',
-  'intimidation',
-  'perception',
-  'stealth',
-  'survival',
-]);
-const PRIMAL_KNOWLEDGE_CLASS_ID = 'barbarian';
-const PRIMAL_KNOWLEDGE_MIN_LEVEL = 3;
-const PRIMAL_KNOWLEDGE_ABILITY: AbilityScore = 'STR';
-const RAGING_CONDITION_ID = 'raging';
+// Slice 662: ability-substitution gate now reads `GrantAbilitySubstitution`
+// effects from the bearer's effective effect stack instead of
+// hardcoding Primal Knowledge's class / level / condition / ability /
+// skills. RAW shape: "for ability checks using <skill> ∈ skills,
+// you can use <ability> instead — optionally only while a named
+// condition is active." Canonical user today: Barbarian L3 Primal
+// Knowledge (ability='STR', skills=[acrobatics, intimidation,
+// perception, stealth, survival], activeWhileConditionId='raging').
+// Future users (Stoneskin's "STR vs grappling escape" etc.) author a
+// GrantAbilitySubstitution and the planner picks it up automatically.
 
 export interface AbilityCheckIntent {
   readonly type: 'AbilityCheck';
@@ -200,31 +189,43 @@ export const planAbilityCheck = (
 ): ReadonlyArray<Event> => {
   const character = state.characters[intent.characterId];
   if (!character) throw new Error(`Unknown character ${intent.characterId}`);
-  // Slice 659: Primal Knowledge gate. When `useAbilitySubstitution`
-  // is set, enforce: Barbarian L3+ enrollment, `raging` condition
-  // active, ability === 'STR', skill is one of the 5 substitutable
-  // skills.
+  // Slice 662: generic ability-substitution gate. When the consumer
+  // sets `useAbilitySubstitution: true`, walk the bearer's effect
+  // stack for `GrantAbilitySubstitution` effects and accept iff
+  // SOME granted substitution matches (ability, skill,
+  // activeWhileConditionId-if-set). The hardcoded Primal Knowledge
+  // gate from slice 659 is now content-driven.
   if (intent.useAbilitySubstitution === true) {
-    const enrollment = character.classes.find((c) => c.classId === PRIMAL_KNOWLEDGE_CLASS_ID);
-    if (enrollment === undefined || enrollment.level < PRIMAL_KNOWLEDGE_MIN_LEVEL) {
+    if (intent.skill === undefined) {
       throw new Error(
-        `${character.name} does not have Primal Knowledge ability substitution (requires Barbarian level ${PRIMAL_KNOWLEDGE_MIN_LEVEL})`,
+        `Ability substitution requires a skill (none provided on AbilityCheckIntent)`,
       );
     }
-    const raging = character.appliedConditions.some((c) => c.conditionId === RAGING_CONDITION_ID);
-    if (!raging) {
+    const grants = collectEffectsFromCharacter({
+      character,
+      content,
+      itemInstances: state.itemInstances,
+      pendingChoices: state.pendingChoices,
+    }).filter(
+      (e): e is Extract<Effect, { kind: 'GrantAbilitySubstitution' }> =>
+        e.kind === 'GrantAbilitySubstitution',
+    );
+    const conditionActive = (id: string): boolean =>
+      character.appliedConditions.some((c) => c.conditionId === id);
+    const matched = grants.find(
+      (g) =>
+        g.ability === intent.ability &&
+        g.skills.includes(intent.skill!) &&
+        (g.activeWhileConditionId === undefined || conditionActive(g.activeWhileConditionId)),
+    );
+    if (matched === undefined) {
+      const have = grants.length === 0
+        ? '(no ability substitutions granted)'
+        : grants
+            .map((g) => `${g.ability}+[${g.skills.join(',')}]${g.activeWhileConditionId ? ` while ${g.activeWhileConditionId}` : ''}`)
+            .join('; ');
       throw new Error(
-        `${character.name} cannot use Primal Knowledge ability substitution: Rage is not active`,
-      );
-    }
-    if (intent.ability !== PRIMAL_KNOWLEDGE_ABILITY) {
-      throw new Error(
-        `Primal Knowledge substitution requires ability='STR' (got '${intent.ability}')`,
-      );
-    }
-    if (intent.skill === undefined || !PRIMAL_KNOWLEDGE_SKILLS.has(intent.skill)) {
-      throw new Error(
-        `Primal Knowledge substitution requires a skill in {acrobatics, intimidation, perception, stealth, survival} (got '${intent.skill ?? 'none'}')`,
+        `${character.name} has no ability substitution matching ability='${intent.ability}' skill='${intent.skill}' [granted: ${have}]`,
       );
     }
   }
