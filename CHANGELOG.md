@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Release (slice 687): bump to 0.3.0-alpha.0**
+Promotes the strict-RAW completeness cohort (slices 633-682, 50 slices) to a tagged release. Engine is now strict-RAW-complete for L1, L2, L3. `SCHEMA_VERSION` stays 1.
+Detail: [slice-687.md](docs/changelog/slice-687.md).
+
 **Infra (slice 686): retire the in-repo combat-fuzzer web demo (GUI moved to a sibling project)**
 Deletes `web/`, `vite.web.config.ts`, `dist-web/`, `tests/integration/web-scenarios.test.ts`, `tests/unit/web-scrub-cache.test.ts`, `docs/web-demo-plan.md`, and `.github/workflows/deploy-demo.yml`. Prunes `dev:web` / `build:web` / `preview:web` from `package.json` and trims tsconfig + README + roadmap accordingly. **The fuzz code stays** — `scripts/combat-fuzz.ts` (CLI) and `scripts/combat-fuzz-core.ts` (pure simulator) remain in-repo as engine-debug surfaces and continue to back the fuzz audit tests. Extends `tests/audit/doc-links.test.ts` SKIP_PREFIXES to exclude `docs/changelog/archive-` + `docs/changelog/released-versions` (frozen historical narrative; their references to since-removed paths are accurate snapshots). No engine-API change; suite drops to 540/540 files / 4118 tests (exactly the two retired web test files).
 Detail: [slice-686.md](docs/changelog/slice-686.md).
@@ -21,6 +25,36 @@ Detail: [slice-684.md](docs/changelog/slice-684.md).
 **Engine (slice 683): combatant placement (Work item 1 of the spatial combat plan)**
 **First slice of the spatial combat support cycle (683-685).** Unblocks the dnd-web viewer: combatants can now start an encounter at real positions, and `planPlaceCombatant` handles mid-encounter placement (summons, teleports). `EncounterCreated` gains an optional `combatants: ReadonlyArray<{ characterId, position? }>` alongside legacy `combatantIds`; new `CombatantPlaced` event for mid-encounter. Placement validation: in-bounds + not impassable + no same-cell collision (when a location map is present). Map context resolves via existing `state.characterLocations[id] → state.locations[id].map` (same path `plan.move` uses). 9 new tests including replay-equivalence; full suite 539/539 files green.
 Detail: [slice-683.md](docs/changelog/slice-683.md).
+
+## 0.3.0-alpha.0 - 2026-06-05
+
+**Release (slice 687): bump to 0.3.0-alpha.0**
+
+Promotes the strict-RAW completeness cohort (slices 633-682, 50 slices) to a tagged release. The minor pre-1.0 bump (per [VERSIONING.md](VERSIONING.md)'s escape hatch) marks this cycle's chapter status — **the engine is strict-RAW-complete for L1, L2, and L3**: every documented "engine *could* enforce" arm is closed; engine-scope-excluded arms (positions, plane, scene) stay consumer-managed by design. `package.json` bumps `0.2.0-alpha.0` → `0.3.0-alpha.0`; `package-lock.json` updated to match. `SCHEMA_VERSION` stays 1: no breaking persisted-shape changes in this cycle.
+
+This release intentionally excludes the spatial combat support cycle (slices 683-685) and the in-repo web demo retirement (slice 686). Those land in 0.4.0-alpha.0 immediately above.
+
+### Highlights
+
+- **Strict-RAW completeness for L1+L2+L3 (slices 677-682).** The slice-660 deferral catalog ("engine *could* enforce but doesn't") is now closed. New marker-effect primitives `HalvesStrengthWeaponDamage` (slice 678; enfeebled now actually halves STR-based weapon damage), `GrantDeathSaveAdvantage` (slice 679; closes Beacon of Hope's death-save arm), and Slow's full enforcement triplet — no-reactions + action-OR-bonus (slice 680), max-one-attack cap (slice 681), and the V/S spellcasting d20 fizzle gate (slice 682). `recurring-save` metadata (slice 677) handles end-of-turn save-to-end arms for Shining Smite, Ray of Enfeeblement, and Slow uniformly. `EFFECT_KINDS` grew from 61 entries to 64 (63 primitives + Custom).
+- **L2 + L3 RAW-completeness closures (slices 633-664).** The L2 punch-list audit (slice 633) gated five planners: Tactical Mind (Fighter L2, slice 634), Divine Spark (Cleric L2, slice 635), Uncanny Metabolism (Monk L2, slice 636), Magical Cunning (Warlock L2, slice 637), and the eldritch-invocation catalog fix (slice 638). L3 floor audit (slice 645) closed L3 planners Steady Aim (Rogue L3, slice 646), Fast Hands (Thief L3, slice 647), and Deflect Attacks (Monk L3 reduction arm slice 648, counter arm slice 658, damage-pipeline auto-integration slice 664). Long-rest OfferChoice replay (slice 660; closes Circle of the Land land swap) plus its supersession primitive (slice 661). New `GrantAbilitySubstitution` effect (slice 662) and always-enforce mode (slice 663) generalize Primal Knowledge (slice 659) into a reusable shape.
+- **Spell-mechanics fills (slices 665-672).** Non-damage zone primitive lands Zone of Truth, Tiny Hut, Wind Wall (slice 665). On-hit rider via castSpell wires Shining Smite + Ray of Enfeeblement (slice 666). Phantasmal Force via existing recurring rider (slice 667). Levitate (slice 668). Dragon's Breath as on-action rider (slice 669). Slow as composite area condition (slice 670). Beacon of Hope composite buff (slice 671). Blink's per-turn ethereal toggle (slice 672) — L3 spell wiring 100% wired-or-narrative.
+- **Schema + ergonomics (slices 654, 657, 675).** Subclass-selection cascade (slice 654; OfferChoice fires on subclass-grant level, slot pre-allocated by slice 31 spellcasting). New `partialShortFullLong` recharge primitive (slice 657; Channel Divinity, Lay on Hands, etc.). `seedResourcesFromContent` helper (slice 675; closes the slice-660 documented deferral around per-rest recharge ergonomics).
+- **Audit + fuzz expansion (slices 633, 639-645, 649-651, 653, 655-656, 673-676).** L2 + L3 RAW floor audits, fuzz matrix extended to L3 (slice 651, widened to 30 seeds/cell post-cycle in slice 674), L1+L2 multiclass build audit (slice 656), L1+L1+L1 triple multiclass audit (slice 673; all 220 distinct triples), and the multiclass-fuzz floor (slice 676; 50 random L1+L1 builds). Pack-integrity allowlist sync (slice 676) for 8 marker conditions added in the cycle.
+
+### Breaking changes
+
+None. The cycle is fully additive: new effect primitives, new optional fields on existing events, new planners, new conditions, new content. No removed or renamed public exports; no shipped event shape contracted; no schema migration required.
+
+### RNG-stream changes (per-seed reproducibility shifts)
+
+Per [docs/determinism.md](docs/determinism.md), per-seed RNG reproducibility is version-sensitive. The following slice in this cycle changed RNG consumption patterns:
+
+- Slice 682: Slow's V/S spellcasting fizzle gate rolls an extra d20 before the spell resolves whenever a slowed caster casts a V or S spell. A transcript from `combat-fuzz --seed N` generated on `0.2.0-alpha.0` will NOT byte-match the same command on `0.3.0-alpha.0` if any cast in the transcript went through this code path. Consumers depending on cross-version per-seed reproducibility should snapshot the resulting `CampaignState` alongside the seed.
+
+### Cycle inventory
+
+Per-slice detail for slices 633-687 lives in `docs/changelog/slice-NNN.md` files (the slice-628 convention). The pointer list below indexes the cycle.
 
 **Engine (slice 682): Slow's spellcasting V/S d20 fizzle gate**
 **Sixth and final slice of the strict-RAW completeness cycle (677-682).** New `SpellCastFizzledEvent` (no-op reducer, transcript-only marker). `planCastSpell` rolls a d20 before SpellCastDeclared when the caster has `slowed-by-spell-active` AND the spell has V or S components; on ≤ 10 emits SpellCastDeclared + SpellCastFizzled + ActionEconomyConsumed and returns early (slot preserved per RAW). 3 new tests. Snapshot regen for `enfeebled` (now wired via slice 678's HalvesStrengthWeaponDamage). **Engine is now strict-RAW-complete for L1, L2, L3** — every documented "engine *could* enforce" arm is closed; engine-scope-excluded arms (positions, plane, scene) stay consumer-managed by design.
