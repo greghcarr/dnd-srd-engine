@@ -32,6 +32,7 @@ import { invariant } from '../../internal/invariants.js';
 import type { ULID } from '../ids-utils.js';
 import { assertActorCanAct, getEffectiveSpeed, findActorBlockingCondition } from './_actor-state.js';
 import { bresenhamCells, movementCostAt } from '../../derive/terrain.js';
+import { findPath } from '../../derive/pathing.js';
 import { DEFAULT_CELL_SIZE_FEET } from '../../schemas/runtime/location.js';
 
 // Slice 489: per-move movement-modality marker. Default 'walk' preserves
@@ -162,37 +163,48 @@ export const planMove = (
   }
   // RAW PHB ch.1 "Difficult Terrain": each foot of movement through
   // difficult terrain costs 1 extra foot. If the moving character is
-  // associated with a Location that has a map, walk Bresenham cells
-  // from the start to the destination and sum per-cell costs (skipping
-  // the starting cell, since RAW counts ENTRY into a difficult cell).
-  // Without a location-map context, falls back to plain Chebyshev.
+  // associated with a Location that has a map, slice 684's
+  // `findPath` (Dijkstra over `movementCostAt`) returns the shortest
+  // LEGAL path: it routes around impassable cells, treats closed /
+  // locked doors as blockers, and avoids occupied cells. Pre-slice-684
+  // the cost was a straight Bresenham line which was wrong when
+  // obstacles forced a detour. Without a location-map context, the
+  // planner still falls back to plain Chebyshev (positionless mode).
   const locationId = state.characterLocations[intent.combatantId];
-  const map =
-    locationId !== undefined ? state.locations[locationId]?.map : undefined;
+  const location =
+    locationId !== undefined ? state.locations[locationId] : undefined;
+  const map = location?.map;
   let distance: number;
   if (map !== undefined) {
-    const cellSize = map.cellSizeFeet ?? DEFAULT_CELL_SIZE_FEET;
-    const fromCell = {
-      x: Math.floor(combatant.position.x / cellSize),
-      y: Math.floor(combatant.position.y / cellSize),
-    };
-    const toCell = {
-      x: Math.floor(intent.to.x / cellSize),
-      y: Math.floor(intent.to.y / cellSize),
-    };
-    const cells = bresenhamCells(fromCell, toCell);
-    // Sum cost for each cell ENTERED (everything past the starting cell).
-    let costInCells = 0;
-    for (let i = 1; i < cells.length; i++) {
-      const cell = cells[i]!;
-      costInCells += movementCostAt(map, cell.x, cell.y);
+    // Collect other-combatant positions in the active encounter as
+    // occupied cells (the path planner refuses to route through
+    // them and refuses destinations that land on one).
+    const encounter = state.encounters[encounterId];
+    const occupiedFeet: { x: number; y: number }[] = [];
+    if (encounter !== undefined) {
+      for (const c of encounter.combatants) {
+        if (c.combatantId === intent.combatantId) continue;
+        if (c.position === undefined) continue;
+        occupiedFeet.push({ x: c.position.x, y: c.position.y });
+      }
     }
-    if (!Number.isFinite(costInCells)) {
+    // Collect doors at the location for blocker enforcement.
+    const doorsHere = (location?.doorIds ?? [])
+      .map((id) => state.doors[id])
+      .filter((d): d is NonNullable<typeof d> => d !== undefined);
+    const pathResult = findPath(
+      map,
+      doorsHere,
+      combatant.position,
+      intent.to,
+      { occupiedFeet },
+    );
+    if (pathResult === null) {
       throw new Error(
-        `Path crosses impassable terrain between (${combatant.position.x},${combatant.position.y}) and (${intent.to.x},${intent.to.y})`,
+        `No legal path from (${combatant.position.x},${combatant.position.y}) to (${intent.to.x},${intent.to.y}) on the location map (impassable / blocked / occupied)`,
       );
     }
-    distance = costInCells * cellSize;
+    distance = pathResult.costFeet;
   } else {
     distance = chebyshevDistance(combatant.position, intent.to);
   }

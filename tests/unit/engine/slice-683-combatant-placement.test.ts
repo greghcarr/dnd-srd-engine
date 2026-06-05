@@ -31,7 +31,7 @@ import type {
   EncounterCreatedEvent,
   CombatantPlacedEvent,
 } from '../../../src/schemas/events/encounter.js';
-import type { LocationCreatedEvent, CharacterLocationChangedEvent } from '../../../src/schemas/events/location.js';
+import type { LocationCreatedEvent, CharacterLocationChangedEvent } from '../../../src/schemas/events/locations.js';
 import type { ULID } from '../../../src/engine/ids-utils.js';
 import { replay } from '../../../src/engine/replay.js';
 
@@ -48,7 +48,10 @@ const buildFighter = (name: string): Character =>
     hp: { current: 12, max: 12, temp: 0 },
   });
 
-// 6x6 grid: row 2 is a wall of impassable; everything else normal.
+// 6x6-cell grid with 5-ft cells (30x30 ft total). Cell-row 2 (rows
+// at feet-y 10-14) is a wall of impassable; everything else normal.
+// Positions in the engine convention are FEET-coords; cell-coords
+// are derived via floor(pos / cellSizeFeet).
 const buildLocationWithMap = (locationId: string): LocationCreatedEvent => ({
   id: eventId(),
   at: isoTimestamp(),
@@ -146,38 +149,40 @@ describe('slice 683: combatant placement (Work item 1)', () => {
     ).toThrow(/pass `combatants`.*OR.*not both/);
   });
 
-  it('placement validation: out-of-bounds throws', () => {
+  it('placement validation: out-of-bounds throws (feet beyond 30x30)', () => {
     const a = buildFighter('Aria');
     const locationId = newLocationId();
     const s = setupCampaignWithMap([a], locationId);
     expect(() =>
       s.engine.plan.createEncounter(s.campaign.state, {
-        combatants: [{ characterId: a.id, position: { x: 99, y: 99 } }],
+        combatants: [{ characterId: a.id, position: { x: 999, y: 999 } }],
       }),
     ).toThrow(/out of bounds/);
   });
 
-  it('placement validation: impassable terrain throws', () => {
+  it('placement validation: impassable terrain throws (feet 0-4 row, cell-y 2)', () => {
     const a = buildFighter('Aria');
     const locationId = newLocationId();
     const s = setupCampaignWithMap([a], locationId);
+    // cellSize=5, so feet (0, 10) → cell (0, 2) which is impassable.
     expect(() =>
       s.engine.plan.createEncounter(s.campaign.state, {
-        combatants: [{ characterId: a.id, position: { x: 0, y: 2 } }], // row 2 is impassable
+        combatants: [{ characterId: a.id, position: { x: 0, y: 10 } }],
       }),
     ).toThrow(/impassable terrain/);
   });
 
-  it('placement validation: same-cell collision throws', () => {
+  it('placement validation: same-cell collision throws (two combatants in same 5-ft cell)', () => {
     const a = buildFighter('Aria');
     const b = buildFighter('Bran');
     const locationId = newLocationId();
     const s = setupCampaignWithMap([a, b], locationId);
+    // feet (0, 0) and feet (3, 4) both round-down to cell (0, 0).
     expect(() =>
       s.engine.plan.createEncounter(s.campaign.state, {
         combatants: [
           { characterId: a.id, position: { x: 0, y: 0 } },
-          { characterId: b.id, position: { x: 0, y: 0 } },
+          { characterId: b.id, position: { x: 3, y: 4 } },
         ],
       }),
     ).toThrow(/collides with combatant/);
@@ -192,14 +197,15 @@ describe('slice 683: combatant placement (Work item 1)', () => {
     });
     let campaign = commit(s.campaign, created.events);
     expect(campaign.state.encounters[created.encounterId]!.combatants[0]!.position).toBeUndefined();
+    // Place at feet (15, 0) — cell (3, 0), normal terrain.
     const placed = s.engine.plan.placeCombatant(campaign.state, {
       encounterId: created.encounterId,
       combatantId: a.id,
-      position: { x: 3, y: 0 },
+      position: { x: 15, y: 0 },
     });
     expect(placed.events[0]!.type).toBe('CombatantPlaced');
     campaign = commit(campaign, placed.events);
-    expect(campaign.state.encounters[created.encounterId]!.combatants[0]!.position).toEqual({ x: 3, y: 0 });
+    expect(campaign.state.encounters[created.encounterId]!.combatants[0]!.position).toEqual({ x: 15, y: 0 });
   });
 
   it('planPlaceCombatant rejects collision with another placed combatant', () => {
@@ -214,11 +220,13 @@ describe('slice 683: combatant placement (Work item 1)', () => {
       ],
     });
     const campaign = commit(s.campaign, created.events);
+    // Aria is at feet (0,0) = cell (0,0); placing Bran at feet (4,4)
+    // → cell (0,0) collides.
     expect(() =>
       s.engine.plan.placeCombatant(campaign.state, {
         encounterId: created.encounterId,
         combatantId: b.id,
-        position: { x: 0, y: 0 }, // Aria is here
+        position: { x: 4, y: 4 },
       }),
     ).toThrow(/collides with combatant/);
   });
@@ -231,13 +239,13 @@ describe('slice 683: combatant placement (Work item 1)', () => {
     const created = s.engine.plan.createEncounter(s.campaign.state, {
       combatants: [
         { characterId: a.id, position: { x: 0, y: 0 } },
-        { characterId: b.id, position: { x: 5, y: 0 } },
+        { characterId: b.id, position: { x: 25, y: 0 } },
       ],
     });
     const after = commit(s.campaign, created.events);
     const replayedState = replay(after.events);
     const encounter = replayedState.encounters[created.encounterId]!;
     expect(encounter.combatants[0]!.position).toEqual({ x: 0, y: 0 });
-    expect(encounter.combatants[1]!.position).toEqual({ x: 5, y: 0 });
+    expect(encounter.combatants[1]!.position).toEqual({ x: 25, y: 0 });
   });
 });

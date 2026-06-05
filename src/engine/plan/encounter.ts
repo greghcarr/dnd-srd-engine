@@ -21,6 +21,8 @@ import { rollDie } from '../../rng/dice.js';
 import { newEventId, newEncounterId } from '../../ids.js';
 import { abilityModifier } from '../../derive/ability.js';
 import { buildEffectStack, getEffectiveFeatIds } from '../../derive/effect-stack.js';
+import { feetToCell } from '../../derive/pathing.js';
+import { DEFAULT_CELL_SIZE_FEET } from '../../schemas/runtime/location.js';
 import { D20_SIDES, NAT_20 } from '../../internal/constants.js';
 import { nowIso } from '../../internal/clock.js';
 import type { ULID } from '../ids-utils.js';
@@ -199,12 +201,14 @@ export interface CreateEncounterIntent {
   readonly at?: string;
 }
 
-// Slice 683: per-combatant placement validation. When the
-// associated location has a map, the position must be (a) in bounds,
+// Slice 683 / 684: per-combatant placement validation. When the
+// associated location has a map, the position (in FEET-coords, per
+// the engine-wide convention plan.move uses) is converted to cell-
+// coords via `feetToCell` and validated: (a) in cell bounds,
 // (b) not on impassable terrain, and (c) not overlapping any other
-// combatant in the SAME placement batch. Cross-batch collision
-// checks (e.g., against existing combatants placed earlier) live
-// in planPlaceCombatant below.
+// combatant in the same CELL. Cross-batch collision checks
+// (e.g., against existing combatants placed earlier) live in
+// planPlaceCombatant below.
 const validatePlacementAgainstMap = (
   state: CampaignState,
   characterId: string,
@@ -214,28 +218,29 @@ const validatePlacementAgainstMap = (
   const locationId = state.characterLocations[characterId];
   const map = locationId !== undefined ? state.locations[locationId]?.map : undefined;
   if (map !== undefined) {
-    if (
-      position.x < 0 ||
-      position.x >= map.widthCells ||
-      position.y < 0 ||
-      position.y >= map.heightCells
-    ) {
+    const cell = feetToCell(position, map.cellSizeFeet ?? DEFAULT_CELL_SIZE_FEET);
+    if (cell.x < 0 || cell.x >= map.widthCells || cell.y < 0 || cell.y >= map.heightCells) {
       throw new Error(
         `Combatant ${characterId} placement (${position.x},${position.y}) is out of bounds for the location map`,
       );
     }
-    const terrain = map.terrain[position.y]?.[position.x];
+    const terrain = map.terrain[cell.y]?.[cell.x];
     if (terrain === 'impassable') {
       throw new Error(
         `Combatant ${characterId} placement (${position.x},${position.y}) is on impassable terrain`,
       );
     }
   }
-  // Per-batch collision (and cross-batch when invoked from
-  // planPlaceCombatant with existing combatants supplied).
+  // Per-batch / cross-batch collision: compare in cell-space (two
+  // positions in the same cell collide even if their feet-coords
+  // differ within the cell). Falls back to exact-feet comparison
+  // when no map is present.
+  const cellSize = map?.cellSizeFeet ?? DEFAULT_CELL_SIZE_FEET;
+  const myCell = map !== undefined ? feetToCell(position, cellSize) : position;
   for (const other of otherPositions) {
     if (other.characterId === characterId) continue;
-    if (other.position.x === position.x && other.position.y === position.y) {
+    const theirCell = map !== undefined ? feetToCell(other.position, cellSize) : other.position;
+    if (myCell.x === theirCell.x && myCell.y === theirCell.y) {
       throw new Error(
         `Combatant ${characterId} placement (${position.x},${position.y}) collides with combatant ${other.characterId}`,
       );

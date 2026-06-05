@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine (slice 684): pathfinding helpers + shortest-path move cost (Work item 2 of the spatial combat plan)**
+New `src/derive/pathing.ts` with `findPath`, `reachableCells`, `feetToCell` / `cellToFeet` — Dijkstra over `movementCostAt`, respecting impassable, closed/locked doors, and occupied cells. `plan.move` refactored: cost is now the shortest LEGAL path (not straight Bresenham). Sealed destinations throw "No legal path"; detours that exceed remaining movement throw. Bundled slice-683 inline fix: placement validation now uses `feetToCell` to convert feet-coord positions (engine-wide convention) before bounds/terrain checks. 18 new tests (10 pathing + 4 plan.move + 4 fixture adjustments to slice 683); full suite 541/541 files green.
+Detail: [slice-684.md](docs/changelog/slice-684.md).
+
 **Engine (slice 683): combatant placement (Work item 1 of the spatial combat plan)**
 **First slice of the spatial combat support cycle (683-685).** Unblocks the dnd-web viewer: combatants can now start an encounter at real positions, and `planPlaceCombatant` handles mid-encounter placement (summons, teleports). `EncounterCreated` gains an optional `combatants: ReadonlyArray<{ characterId, position? }>` alongside legacy `combatantIds`; new `CombatantPlaced` event for mid-encounter. Placement validation: in-bounds + not impassable + no same-cell collision (when a location map is present). Map context resolves via existing `state.characterLocations[id] → state.locations[id].map` (same path `plan.move` uses). 9 new tests including replay-equivalence; full suite 539/539 files green.
 Detail: [slice-683.md](docs/changelog/slice-683.md).
