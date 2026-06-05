@@ -64,7 +64,7 @@ const seedInEncounter = (character: Character): { campaign: Campaign; encounterI
       at: isoTimestamp(),
       type: 'InitiativeRolled',
       encounterId: encounterId as ULID,
-      rolls: [{ combatantId: character.id as ULID, d20: 15, total: 17 }],
+      rolls: [{ combatantId: character.id as ULID, d20: 15, modifier: 2, total: 17 }],
     } satisfies InitiativeRolledEvent,
     {
       id: eventId(),

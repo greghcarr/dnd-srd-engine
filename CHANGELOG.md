@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine (slice 681): Slow's max-one-attack cap**
+Reducer-side gate in `applyActionEconomyConsumed` `case 'attack'`: slowed combatant whose `attacksMadeThisTurn >= 1` throws. Reuses slice 680's `isSlowedBySpell` helper. Extra Attack and other multi-attack features are capped at 1 for the duration. 2 new tests; non-slowed baseline preserved.
+Detail: [slice-681.md](docs/changelog/slice-681.md).
+
 **Engine (slice 680): Slow's no-reactions + action-OR-bonus restrictions**
 Reducer-side gate in `applyActionEconomyConsumed`: checks the combatant for `slowed-by-spell-active` and enforces (a) reactions blocked, (b) action-OR-bonus mutual exclusion. Hardcoded condition id (single RAW user). Single-file change; 5 new tests; non-slowed baseline unchanged.
 Detail: [slice-680.md](docs/changelog/slice-680.md).

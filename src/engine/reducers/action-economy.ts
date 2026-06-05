@@ -91,6 +91,15 @@ export const applyActionEconomyConsumed = (
       combatant.turnUsage.reactionUsedThisRound = true;
       break;
     case 'attack':
+      // Slice 681: RAW Slow ("the target can make only one melee or
+      // ranged attack on its turn"). A slowed combatant whose
+      // attacksMadeThisTurn is already >=1 cannot make another;
+      // Extra Attack and other multi-attack features are capped at 1
+      // for the duration.
+      invariant(
+        !slowed || combatant.turnUsage.attacksMadeThisTurn === 0,
+        'Slowed (Slow spell): can make only one melee or ranged attack on its turn',
+      );
       combatant.turnUsage.attacksMadeThisTurn += 1;
       break;
   }
