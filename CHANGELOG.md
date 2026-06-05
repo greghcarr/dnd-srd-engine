@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Content (slice 670): Slow (composite area condition)**
+Closes 1 deferred L3 spell. Zero engine change. Slow: `save WIS -> slowed-by-spell-active`. New composite condition projects walk *0.5 / AC -2 / DEX-saves -2 — the load-bearing combat arms. Remaining RAW arms (no reactions / one-action-or-bonus / max-one-attack / spellcasting 50% gate) stay consumer-managed reads of the condition. Auto-cleared on concentration drop. 3 new tests. L3 wired 29 → 30 (2 deferred); aggregate 206/339 → 207/339; conditions 153 → 154.
+Detail: [slice-670.md](docs/changelog/slice-670.md).
+
 **Engine + content (slice 669): Dragon's Breath (on-action rider via dedicated planner)**
 Closes the final L2 deferred spell — **L2 is now 100% wired-or-narrative.** Buff mechanic with `casterChoosesVariant` over 5 damage types applies a marker (`dragons-breath-<type>-active`) on the touched ally. New planner `planExhaleDragonsBreath({ characterId, damageType, targetIds })`: enforces the marker, derives slot level from the caster's concentration EffectInstance (3d6 + 1d6/slot above 2), computes the caster's spell save DC, rolls DEX save for each target (full damage on fail, half on success) with full mitigation + concentration-on-damage. Wired into performIntent dispatch + planner-wiring audit. 5 new conditions, 4 new tests. L2 wired 41 → 42 (0 deferred); aggregate 205/339 → 206/339; conditions 148 → 153.
 Detail: [slice-669.md](docs/changelog/slice-669.md).

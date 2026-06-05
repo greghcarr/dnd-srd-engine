@@ -2413,7 +2413,7 @@
     { "id": "remove-curse", "name": "Remove Curse", "level": 3, "school": "abjuration", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["cleric", "paladin", "warlock", "wizard"], "mechanicalEffects": [] },
     { "id": "revivify", "name": "Revivify", "level": 3, "school": "necromancy", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a diamond worth 300+ GP, which the spell consumes" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["cleric", "druid", "paladin", "ranger"], "mechanicalEffects": [] },
     { "id": "sending", "name": "Sending", "level": 3, "school": "divination", "castingTime": "Action", "range": "Unlimited", "components": { "verbal": true, "somatic": true, "material": "a copper wire" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["bard", "cleric", "wizard"], "mechanicalEffects": [] },
-    { "id": "slow", "name": "Slow", "level": 3, "school": "transmutation", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true, "material": "a drop of molasses" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "sorcerer", "wizard"], "targeting": { "shape": "cube", "size": 40 }, "mechanicalEffects": [] },
+    { "id": "slow", "name": "Slow", "level": 3, "school": "transmutation", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true, "material": "a drop of molasses" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "sorcerer", "wizard"], "targeting": { "shape": "cube", "size": 40 }, "mechanicalEffects": [{ "kind": "save", "ability": "WIS", "conditionOnFail": "slowed-by-spell-active" }] },
     { "id": "speak-with-dead", "name": "Speak with Dead", "level": 3, "school": "necromancy", "castingTime": "Action", "range": "10 feet", "components": { "verbal": true, "somatic": true, "material": "burning incense" }, "duration": "10 minutes", "concentration": false, "ritual": false, "classes": ["bard", "cleric", "wizard"], "mechanicalEffects": [] },
     { "id": "speak-with-plants", "name": "Speak with Plants", "level": 3, "school": "transmutation", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true }, "duration": "10 minutes", "concentration": false, "ritual": false, "classes": ["bard", "druid", "ranger"], "targeting": { "shape": "sphere", "size": 30 }, "mechanicalEffects": [] },
     { "id": "stinking-cloud", "name": "Stinking Cloud", "level": 3, "school": "conjuration", "castingTime": "Action", "range": "90 feet", "components": { "verbal": true, "somatic": true, "material": "a rotten egg" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "sorcerer", "wizard"], "targeting": { "shape": "sphere", "size": 20 }, "mechanicalEffects": [{ "kind": "aura-damage", "rangeFeet": 20, "saveAbility": "CON", "halfOnSuccess": false, "conditionOnFail": "poisoned" }] },
@@ -8787,6 +8787,18 @@
           "actions": [{ "kind": "AddDamage", "dice": "1d8", "damageType": "radiant" }],
           "consumeOnTrigger": true
         }
+      ]
+    },
+    {
+      "id": "slowed-by-spell-active",
+      "name": "Slowed (Slow spell)",
+      "description": "Slice 670: composite condition from the Slow spell. Engine projects: walking speed halved (ModifySpeed walk *0.5), AC -2, DEX saves -2. Consumer-managed (engine has no enforcement for these arms): can't take reactions; on its turn, can take EITHER one action OR one bonus action, not both, and can make at most one melee or ranged attack with that action; spellcasting with V/S/M components has a 50% chance to fail. Auto-cleared on the caster's concentration drop. End-of-turn save against the caster's spell save DC ends the condition (consumer-driven).",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "ModifySpeed", "mode": "walk", "op": "multiply", "value": 0.5 },
+        { "kind": "AddModifier", "target": "ac", "value": -2 },
+        { "kind": "AddModifier", "target": { "kind": "save", "ability": "DEX" }, "value": -2 }
       ]
     },
     {

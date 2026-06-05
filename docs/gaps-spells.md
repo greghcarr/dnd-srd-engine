@@ -83,9 +83,9 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 **Narrative (15):** alter-self, animal-messenger, arcane-lock, arcanists-magic-aura, augury, continual-flame, detect-thoughts, find-traps, gentle-repose, knock, locate-animals-or-plants, locate-object, magic-mouth, rope-trick, see-invisibility.
 
-## Level 3 (42 in pack): 29 wired, 10 narrative, 3 deferred
+## Level 3 (42 in pack): 30 wired, 10 narrative, 2 deferred
 
-**Wired, cast-time (19):** animate-dead, bestow-curse, call-lightning, conjure-animals, fear, fireball, fly, gaseous-form, glyph-of-warding, haste, hypnotic-pattern, lightning-bolt, magic-circle, mass-healing-word, phantom-steed, protection-from-energy, sleet-storm, vampiric-touch, water-breathing.
+**Wired, cast-time (20):** animate-dead, bestow-curse, call-lightning, conjure-animals, fear, fireball, fly, gaseous-form, glyph-of-warding, haste, hypnotic-pattern, lightning-bolt, magic-circle, mass-healing-word, phantom-steed, protection-from-energy, sleet-storm, slow (slice 670: WIS save -> `slowed-by-spell-active` on fail; condition projects walk *0.5 / AC -2 / DEX-save -2; remaining RAW arms — no reactions / one-action-or-bonus / max-one-attack / spellcasting 50% gate — are consumer-managed reads of the condition presence), vampiric-touch, water-breathing.
 
 **Wired, zone-tick (2):** spirit-guardians, stinking-cloud (condition-only `aura-damage`).
 
@@ -93,8 +93,7 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 **Wired, zone-area (2):** tiny-hut (slice 665: 10-ft sphere via `SpellEffectStarted`, 8-hour duration; the magical hemisphere's pass-through gate for the caster's allies and weather-block arms are consumer-managed), wind-wall (slice 665: 50-ft line via the existing `ConcentrationStarted` zone path; the in-line dispersal of gas / nonmagical ranged-attack disadvantage are consumer-managed).
 
-**Deferred (3):**
-- **composite area condition (speed-half + no-reaction + delayed-action):** slow.
+**Deferred (2):**
 - **composite-buff condition:** beacon-of-hope.
 - **cross-plane (per-turn ethereal toggle):** blink.
 
