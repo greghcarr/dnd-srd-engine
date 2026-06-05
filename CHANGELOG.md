@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine (slice 680): Slow's no-reactions + action-OR-bonus restrictions**
+Reducer-side gate in `applyActionEconomyConsumed`: checks the combatant for `slowed-by-spell-active` and enforces (a) reactions blocked, (b) action-OR-bonus mutual exclusion. Hardcoded condition id (single RAW user). Single-file change; 5 new tests; non-slowed baseline unchanged.
+Detail: [slice-680.md](docs/changelog/slice-680.md).
+
 **Engine + content (slice 679): `GrantDeathSaveAdvantage` (Beacon of Hope arm)**
 Closes the Beacon of Hope death-save advantage arm (pre-679 consumer-managed). New marker effect (63 primitives total); EffectAccumulator gains mark/has methods; `planDeathSaveAtTurnStart` consults the bearer's effect stack and rolls 2d20 (max) when set. Halfling Luck reroll-on-nat-1 composes on top. `beacon-of-hope-active` projects the marker. 3 new tests.
 Detail: [slice-679.md](docs/changelog/slice-679.md).

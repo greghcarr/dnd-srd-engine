@@ -16,6 +16,21 @@ import { invariant } from '../../internal/invariants.js';
 
 const ACTION_SURGE_RESOURCE_ID = 'action-surge';
 
+// Slice 680: RAW Slow ("the target can take only one Action or one
+// Bonus Action on a turn, not both, and it can't take Reactions").
+// The bare condition id is checked here so the engine enforces the
+// restriction at action-economy consumption time without requiring
+// each planner to call a separate gate helper. Hardcoded because
+// Slow is the only RAW user; generalize to a marker effect if a
+// second user arrives.
+const SLOWED_BY_SPELL_CONDITION_ID = 'slowed-by-spell-active';
+
+const isSlowedBySpell = (state: Draft<CampaignState>, characterId: string): boolean => {
+  const character = state.characters[characterId];
+  if (!character) return false;
+  return character.appliedConditions.some((c) => c.conditionId === SLOWED_BY_SPELL_CONDITION_ID);
+};
+
 export const resetActionForActionSurgeIfApplicable = (
   state: Draft<CampaignState>,
   event: ResourceSpentEvent,
@@ -40,9 +55,17 @@ export const applyActionEconomyConsumed = (
   const combatant = encounter.combatants.find((c) => c.combatantId === event.combatantId);
   invariant(combatant !== undefined, `Combatant ${event.combatantId} not in encounter`);
 
+  // Slice 680: RAW Slow gates (one Action OR one Bonus Action per
+  // turn, not both; no Reactions). Check the slowed-by-spell marker
+  // on the combatant before applying the consume.
+  const slowed = isSlowedBySpell(state, event.combatantId);
   switch (event.kind) {
     case 'action':
       invariant(!combatant.turnUsage.actionUsed, 'Action already used this turn');
+      invariant(
+        !slowed || !combatant.turnUsage.bonusActionUsed,
+        'Slowed (Slow spell): cannot use Action when a Bonus Action has already been used this turn',
+      );
       combatant.turnUsage.actionUsed = true;
       break;
     case 'bonusAction':
@@ -50,12 +73,20 @@ export const applyActionEconomyConsumed = (
         !combatant.turnUsage.bonusActionUsed,
         'Bonus action already used this turn',
       );
+      invariant(
+        !slowed || !combatant.turnUsage.actionUsed,
+        'Slowed (Slow spell): cannot use Bonus Action when an Action has already been used this turn',
+      );
       combatant.turnUsage.bonusActionUsed = true;
       break;
     case 'reaction':
       invariant(
         !combatant.turnUsage.reactionUsedThisRound,
         'Reaction already used this round',
+      );
+      invariant(
+        !slowed,
+        'Slowed (Slow spell): cannot use Reactions',
       );
       combatant.turnUsage.reactionUsedThisRound = true;
       break;
