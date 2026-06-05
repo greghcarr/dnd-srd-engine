@@ -334,6 +334,12 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       const slotLabel = event.slotLevel === 0 ? 'cantrip' : `${ordinal(event.slotLevel)}-level slot${event.slotSource === 'pact' ? ' (pact)' : ''}`;
       return `**${characterName(stateBefore, event.characterId)}** casts ${spellName(content, event.spellId)} (${slotLabel}) at ${targets}.`;
     }
+    case 'SpellCastFizzled': {
+      const caster = characterName(stateBefore, event.characterId);
+      const spell = spellName(content, event.spellId);
+      const d20 = event.d20 !== undefined ? ` (rolled ${event.d20})` : '';
+      return `**${caster}**'s ${spell} fizzled — Slow's d20 ≤ 10${d20}; action wasted, slot preserved.`;
+    }
     case 'SpellSlotConsumed':
       return `Slot consumed: ${ordinal(event.slotLevel)}-level.`;
     case 'PactSlotConsumed':

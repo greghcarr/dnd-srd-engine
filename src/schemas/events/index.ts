@@ -56,6 +56,7 @@ import {
 } from './checks.js';
 import {
   SpellCastDeclaredEventSchema,
+  SpellCastFizzledEventSchema,
   SpellSlotConsumedEventSchema,
   PactSlotConsumedEventSchema,
   PactSlotsRegainedEventSchema,
@@ -252,6 +253,7 @@ export const EventSchema = z.discriminatedUnion('type', [
   SaveRolledEventSchema,
   AbilityCheckRolledEventSchema,
   SpellCastDeclaredEventSchema,
+  SpellCastFizzledEventSchema,
   SpellSlotConsumedEventSchema,
   PactSlotConsumedEventSchema,
   PactSlotsRegainedEventSchema,
@@ -407,6 +409,7 @@ export const EVENT_TYPES = [
   'SaveRolled',
   'AbilityCheckRolled',
   'SpellCastDeclared',
+  'SpellCastFizzled',
   'SpellSlotConsumed',
   'PactSlotConsumed',
   'PactSlotsRegained',
@@ -667,6 +670,7 @@ export type {
 } from './checks.js';
 export {
   SpellCastDeclaredEventSchema,
+  SpellCastFizzledEventSchema,
   SpellSlotConsumedEventSchema,
   PactSlotConsumedEventSchema,
   PactSlotsRegainedEventSchema,
@@ -675,6 +679,7 @@ export {
 } from './spellcasting.js';
 export type {
   SpellCastDeclaredEvent,
+  SpellCastFizzledEvent,
   SpellSlotConsumedEvent,
   PactSlotConsumedEvent,
   PactSlotsRegainedEvent,

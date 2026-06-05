@@ -16,6 +16,22 @@ export const SpellCastDeclaredEventSchema = EventEnvelopeSchema.extend({
 });
 export type SpellCastDeclaredEvent = z.infer<typeof SpellCastDeclaredEventSchema>;
 
+// Slice 682: marker event — the cast attempt fizzled per a
+// pre-cast gate (today the only user is Slow's d20-vs-11 V/S
+// component check). The cast's action IS consumed per RAW but the
+// slot is NOT, and no mechanical effects fire. The reducer is a
+// no-op (transcript-only); the planner returns early after
+// emitting this event + the ActionEconomyConsumed for the cast's
+// action.
+export const SpellCastFizzledEventSchema = EventEnvelopeSchema.extend({
+  type: z.literal('SpellCastFizzled'),
+  characterId: ULIDSchema,
+  spellId: z.string(),
+  reason: z.enum(['slow-spell-v-or-s-d20-failed']),
+  d20: z.number().int().min(1).max(20).optional(),
+});
+export type SpellCastFizzledEvent = z.infer<typeof SpellCastFizzledEventSchema>;
+
 export const SpellSlotConsumedEventSchema = EventEnvelopeSchema.extend({
   type: z.literal('SpellSlotConsumed'),
   characterId: ULIDSchema,

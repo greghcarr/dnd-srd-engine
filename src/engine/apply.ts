@@ -323,6 +323,11 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
       case 'SpellCastDeclared':
         applySpellCastDeclared(draft, event);
         break;
+      case 'SpellCastFizzled':
+        // Slice 682: transcript-only marker (no state mutation).
+        // The action consume (separate ActionEconomyConsumed event)
+        // is what records the cost; no slot consumption per RAW.
+        break;
       case 'SpellSlotConsumed':
         applySpellSlotConsumed(draft, event);
         break;

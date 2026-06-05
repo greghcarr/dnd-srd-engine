@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine (slice 682): Slow's spellcasting V/S d20 fizzle gate**
+**Sixth and final slice of the strict-RAW completeness cycle (677-682).** New `SpellCastFizzledEvent` (no-op reducer, transcript-only marker). `planCastSpell` rolls a d20 before SpellCastDeclared when the caster has `slowed-by-spell-active` AND the spell has V or S components; on ≤ 10 emits SpellCastDeclared + SpellCastFizzled + ActionEconomyConsumed and returns early (slot preserved per RAW). 3 new tests. Snapshot regen for `enfeebled` (now wired via slice 678's HalvesStrengthWeaponDamage). **Engine is now strict-RAW-complete for L1, L2, L3** — every documented "engine *could* enforce" arm is closed; engine-scope-excluded arms (positions, plane, scene) stay consumer-managed by design.
+Detail: [slice-682.md](docs/changelog/slice-682.md).
+
 **Engine (slice 681): Slow's max-one-attack cap**
 Reducer-side gate in `applyActionEconomyConsumed` `case 'attack'`: slowed combatant whose `attacksMadeThisTurn >= 1` throws. Reuses slice 680's `isSlowedBySpell` helper. Extra Attack and other multi-attack features are capped at 1 for the duration. 2 new tests; non-slowed baseline preserved.
 Detail: [slice-681.md](docs/changelog/slice-681.md).

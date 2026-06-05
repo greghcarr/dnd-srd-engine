@@ -5,6 +5,7 @@ import type {
   FreeCastUsedEvent,
   PactSlotConsumedEvent,
   SpellCastDeclaredEvent,
+  SpellCastFizzledEvent,
   SpellSlotConsumedEvent,
   SpellSlotSource,
 } from '../../schemas/events/spellcasting.js';
@@ -2110,6 +2111,27 @@ export const planCastSpell = (
   }
 
   const at = intent.at ?? nowIso();
+  // Slice 682: Slow's V/S spellcasting gate. RAW (PHB 2024): "Whenever
+  // the target attempts to cast a spell with a Somatic or Verbal
+  // Component, it must roll a d20. On an 11 or lower, the spell
+  // doesn't take effect, and the spell's action is wasted (but its
+  // components and Spell Slot, if used, aren't expended)."
+  //
+  // The d20 is rolled BEFORE slot consumption and mechanical effects;
+  // on failure we emit SpellCastDeclared + SpellCastFizzled + the
+  // action-economy consume, then return early. Slot is preserved.
+  const slowedCasterFizzleGateD20: number | undefined = (() => {
+    if (!character.appliedConditions.some((c) => c.conditionId === 'slowed-by-spell-active')) {
+      return undefined;
+    }
+    if (spell.components.verbal !== true && spell.components.somatic !== true) {
+      return undefined;
+    }
+    return rollDie(D20_SIDES, rng);
+  })();
+  const slowedCasterFizzled =
+    slowedCasterFizzleGateD20 !== undefined && slowedCasterFizzleGateD20 <= 10;
+
   const declared: SpellCastDeclaredEvent = {
     id: newEventId() as ULID,
     at,
@@ -2122,6 +2144,41 @@ export const planCastSpell = (
     castAsRitual,
   };
   const events: Event[] = [declared];
+
+  if (slowedCasterFizzled) {
+    const fizzled: SpellCastFizzledEvent = {
+      id: newEventId() as ULID,
+      at,
+      type: 'SpellCastFizzled',
+      characterId: intent.characterId as ULID,
+      spellId: intent.spellId,
+      reason: 'slow-spell-v-or-s-d20-failed',
+      d20: slowedCasterFizzleGateD20!,
+    };
+    events.push(fizzled);
+    // Action IS consumed per RAW ("the spell's action is wasted").
+    if (encounter !== undefined && casterCombatant !== undefined && !castAsRitual) {
+      const economyKind =
+        castingTimeKind === 'action'
+          ? 'action'
+          : castingTimeKind === 'bonusAction'
+            ? 'bonusAction'
+            : castingTimeKind === 'reaction'
+              ? 'reaction'
+              : undefined;
+      if (economyKind !== undefined) {
+        events.push({
+          id: newEventId() as ULID,
+          at,
+          type: 'ActionEconomyConsumed',
+          encounterId: encounter.id,
+          combatantId: intent.characterId,
+          kind: economyKind,
+        });
+      }
+    }
+    return events;
+  }
 
   // Emit the action-economy consumption right after the declaration
   // so the apply() reducer marks turnUsage before any subsequent
