@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine (slice 685): range + line-of-sight enforcement on attacks and spells (Work item 3 of the spatial combat plan)**
+**Final slice of the spatial combat support cycle (683-685) — cycle complete.** New `src/engine/plan/_spatial-gates.ts` with `resolveSpatialContext`, `assertLineOfSightForAttack`, `assertWithinSpellRange`, `parseSpellRange`. `planAttack` now throws on LoS-blocked attacks (range was already enforced); `planCastSpell` throws on out-of-range or LoE-blocked spell targets. Both gates are no-ops when the spatial context can't be resolved (positionless / map-less encounters), preserving pre-685 behavior. Per-target enforcement; first violation rejects the cast. `parseSpellRange` handles the RAW vocabulary (Self / Touch / N feet / Sight / Special / 1 mile). 14 new tests; full suite 542/542 files green. **The dnd-web viewer can now surface engine-thrown range / LoS errors directly to the player.**
+Detail: [slice-685.md](docs/changelog/slice-685.md).
+
 **Engine (slice 684): pathfinding helpers + shortest-path move cost (Work item 2 of the spatial combat plan)**
 New `src/derive/pathing.ts` with `findPath`, `reachableCells`, `feetToCell` / `cellToFeet` — Dijkstra over `movementCostAt`, respecting impassable, closed/locked doors, and occupied cells. `plan.move` refactored: cost is now the shortest LEGAL path (not straight Bresenham). Sealed destinations throw "No legal path"; detours that exceed remaining movement throw. Bundled slice-683 inline fix: placement validation now uses `feetToCell` to convert feet-coord positions (engine-wide convention) before bounds/terrain checks. 18 new tests (10 pathing + 4 plan.move + 4 fixture adjustments to slice 683); full suite 541/541 files green.
 Detail: [slice-684.md](docs/changelog/slice-684.md).

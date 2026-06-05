@@ -68,6 +68,11 @@ import { isHealingBlocked } from '../../derive/healing-block.js';
 import { planConcentrationOnDamage } from './concentration.js';
 import { resolveAttackRoll } from './_attack-roll.js';
 import { assertActorCanAct, findActorBlockingCondition } from './_actor-state.js';
+import {
+  assertWithinSpellRange,
+  enforceableSpellRangeFeet,
+  parseSpellRange,
+} from './_spatial-gates.js';
 import { parseSpellDurationMinutes } from '../../internal/spell-duration.js';
 import {
   CANTRIP_LEVEL,
@@ -2111,6 +2116,28 @@ export const planCastSpell = (
   }
 
   const at = intent.at ?? nowIso();
+  // Slice 685: spell range + line-of-effect gate. No-op when the
+  // spatial context can't be resolved for a given target (positionless
+  // / map-less encounters); throws when a target is past the spell's
+  // RAW range OR when a wall / closed door blocks the LoE ray. Self-
+  // ranged spells (kind: 'self') and non-finite RAW shapes (kind:
+  // 'unenforced' — 'Special', 'Sight', '1 mile') skip enforcement.
+  const spellRangeKind = parseSpellRange(spell.range);
+  const enforcedRangeFeet = enforceableSpellRangeFeet(spellRangeKind);
+  if (enforcedRangeFeet !== undefined) {
+    for (const targetId of intent.targetIds) {
+      if (targetId === intent.characterId) continue;
+      const targetName = state.characters[targetId]?.name ?? targetId;
+      assertWithinSpellRange(
+        state,
+        intent.characterId,
+        targetId,
+        enforcedRangeFeet,
+        character.name,
+        `${spell.name} at ${targetName}`,
+      );
+    }
+  }
   // Slice 682: Slow's V/S spellcasting gate. RAW (PHB 2024): "Whenever
   // the target attempts to cast a spell with a Somatic or Verbal
   // Component, it must roll a d20. On an 11 or lower, the spell

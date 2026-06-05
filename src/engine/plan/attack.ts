@@ -55,6 +55,7 @@ import type { ULID } from '../ids-utils.js';
 import type { ActionEconomyConsumedEvent } from '../../schemas/events/action-economy.js';
 import { assertActorCanAct, findActorBlockingCondition, getEffectiveSpeed } from './_actor-state.js';
 import { chebyshevDistance } from './movement.js';
+import { assertLineOfSightForAttack } from './_spatial-gates.js';
 
 const DEFAULT_MELEE_REACH_FEET = 5;
 const REACH_PROPERTY_FEET = 10;
@@ -1777,6 +1778,18 @@ export const planAttack = (
   }
   const economyPrelude = planActionEconomyForAttack(state, content, intent);
   assertWeaponInRange(state, content, intent);
+  // Slice 685: line-of-sight gate. No-op when the spatial context
+  // can't be resolved (positionless / map-less encounters); throws
+  // when a wall / closed door blocks the Bresenham ray between
+  // attacker and target. Range is already gated above; this only
+  // adds the LoS check.
+  assertLineOfSightForAttack(
+    state,
+    intent.attackerId,
+    intent.targetId,
+    attacker?.name ?? intent.attackerId,
+    weaponDef?.name ?? 'this weapon',
+  );
   const at = intent.at ?? nowIso();
   const resolution = resolveAttack({
     state,
