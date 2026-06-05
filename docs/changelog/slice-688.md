@@ -21,6 +21,10 @@ The bump comes back-to-back with [slice 687](slice-687.md) (the v0.3.0-alpha.0 c
 
 - **[../../CHANGELOG.md](../../CHANGELOG.md)**: the remaining `## Unreleased` content (slice-687 pointer carried over from the v0.3 bump + slices 683-686 pointers) is promoted to a new `## 0.4.0-alpha.0 - 2026-06-05` release header. Fresh `## Unreleased` (with only the slice-688 pointer at the top) sits above the new release.
 
+### Post-bump CHANGELOG archive (size discipline)
+
+The back-to-back v0.3 + v0.4 promotions pushed the live CHANGELOG past the 60 KB single-Read ceiling (68 KB at the v0.4 bump). Per the slice-437 active-cycle invariant + the slice-628 archive pattern, the oldest release section (`## 0.2.0-alpha.0 - 2026-06-03`, ~18 KB) is evicted into a new `docs/changelog/released-versions-0.2.0-alpha.0.md` archive file, with the live CHANGELOG's "Older releases" pointer updated to list it alongside the existing alpha-N archives. Live file size after archive: ~50 KB. Sibling to [released-versions-alpha-15.md](released-versions-alpha-15.md) and the other historical-release archive files.
+
 ### Breaking-changes queue
 
 - **[../breaking-changes-queued.md](../breaking-changes-queued.md)**: latest-tag pointer updates from `0.3.0-alpha.0` to `0.4.0-alpha.0`. The queue itself was empty when this bump was cut — the breaking changes shipped in slices 683-686 (the new spatial gates, the slice-684 `plan.move` shortest-path semantics, the slice-686 GUI retirement script removals) were not lodged in the queue file during the cycle because each slice rolled its breaking implications into its own per-slice file. The v0.4 release header's Breaking section pulls them together explicitly.
@@ -37,5 +41,5 @@ The bump comes back-to-back with [slice 687](slice-687.md) (the v0.3.0-alpha.0 c
 - `npx tsc --noEmit`: clean.
 - `npx vitest run`: green.
 - `npm run build`: ESM + CJS + `.d.ts` produced clean (no `web/`-aware shim left over after slice 686).
-- `wc -c CHANGELOG.md`: still well under the 60 KB single-Read ceiling after the v0.3 + v0.4 back-to-back promotions.
+- `wc -c CHANGELOG.md`: ~50 KB after the v0.2 archive eviction (the back-to-back v0.3 + v0.4 promotions briefly pushed it to 68 KB; the archive brings it back under the 60 KB single-Read ceiling).
 - `git tag -l v0.4.0-alpha.0`: the local tag points at this commit (the tag will be moved to main's merge commit per prior convention after the release PR merges).
