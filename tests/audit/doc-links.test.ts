@@ -22,7 +22,9 @@ import { dirname, resolve, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'coverage']);
+// `.claude` is local-only agent notes (gitignored); treated the same as
+// `node_modules` — present on disk but not repo content the audit owns.
+const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'coverage', '.claude']);
 // references/srd-markdown is a vendored submodule (its own link conventions).
 // docs/changelog/archive-* and docs/changelog/released-versions* are frozen
 // historical narrative — by intent they reference paths that may have been

@@ -40,10 +40,7 @@
     "ci": "npm run typecheck && npm run test:coverage && npm run build",
     "release:doc-counts": "node scripts/sync-doc-counts.mjs",
     "release:doc-counts:check": "node scripts/sync-doc-counts.mjs --check",
-    "release:doc-review": "node scripts/review-doc-figures.mjs",
-    "dev:dndbnb": "vite --config vite.dndbnb.config.ts",
-    "build:dndbnb": "vite build --config vite.dndbnb.config.ts",
-    "preview:dndbnb": "vite preview --config vite.dndbnb.config.ts"
+    "release:doc-review": "node scripts/review-doc-figures.mjs"
   },
   "dependencies": {
     "immer": "^10.1.1",
@@ -51,23 +48,13 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@supabase/supabase-js": "^2.45.0",
     "@types/node": "^25.7.0",
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.1",
     "@vitest/coverage-v8": "^1.6.0",
     "fast-check": "^3.23.2",
-    "obscenity": "^0.4.3",
-    "pdf-lib": "^1.17.1",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.26.0",
     "typescript": "^5.5.4",
     "vite": "^5.4.0",
     "vite-plugin-dts": "^4.0.0",
-    "vitest": "^1.6.0",
-    "zustand": "^4.5.5"
+    "vitest": "^1.6.0"
   },
   "license": "MIT",
   "author": "Greg Carr",

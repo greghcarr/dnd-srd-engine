@@ -104,16 +104,24 @@ Bump `SCHEMA_VERSION` in [src/version.ts](src/version.ts) and add a migration fu
 
 ## Consumer integration
 
-For local development from a consumer app (e.g. `dndbnb`):
+For local development from a consumer app (sibling repos like [greghcarr/dndbnb](https://github.com/greghcarr/dndbnb) and [greghcarr/dnd-web](https://github.com/greghcarr/dnd-web)), the recommended pattern is to check the engine out as a sibling directory and use a Vite `resolve.alias` to consume the TypeScript source directly:
 
-```jsonc
-// in the consumer's package.json
-"dependencies": {
-  "dnd-srd-engine": "file:../dnd-srd-engine"
-}
+```ts
+// in the consumer's vite.config.ts
+import { resolve } from 'node:path';
+const ENGINE_ROOT = resolve(__dirname, process.env.DND_ENGINE_PATH ?? '../dnd-srd-engine');
+// then:
+resolve: {
+  alias: [
+    { find: /^dnd-srd-engine\/starter-pack$/, replacement: resolve(ENGINE_ROOT, 'src/starter-pack.ts') },
+    { find: /^dnd-srd-engine$/, replacement: resolve(ENGINE_ROOT, 'src/index.ts') },
+  ],
+},
 ```
 
-Or use `npm link` for tighter iteration loops.
+The engine has to be `npm install`-ed once (`cd ../dnd-srd-engine && npm install`) so its runtime deps (zod, immer, ulid) resolve when the consumer's bundler walks the source. Engine edits then hot-reload in the consumer with no rebuild step. Consumer CI checks out both repos in the runner and sets `DND_ENGINE_PATH` accordingly.
+
+For a published-package workflow (when the engine is back on a registry), `npm link` or `"dnd-srd-engine": "file:../dnd-srd-engine"` are the alternatives.
 
 ## House rules
 

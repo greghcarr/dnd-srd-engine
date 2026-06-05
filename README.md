@@ -103,8 +103,6 @@ That snippet shows the shortest "engine is alive" path: load the starter pack, b
 | [docs/](docs/) | Working docs: [status](docs/status.md), [roadmap](docs/roadmap.md), [slice template](docs/slice-template.md), [per-category gap catalogs](docs/starter-pack-gaps.md). |
 | [examples/](examples/) | Small runnable scripts showing API usage. |
 | [references/srd-markdown/](references/srd-markdown/) | The SRD 5.2.1 markdown clone (git submodule). Canonical source for rules text; never substitute web lookups. |
-| [dndbnb/](dndbnb/) | A D&D Beyond-style consumer app built on the engine. Co-located so engine changes flow into it without a publish cycle. Has its own [README](dndbnb/README.md) and deploy workflow. |
-| [supabase/](supabase/) | dndbnb's database migrations (Postgres + Auth + RLS). Not used by the engine itself. |
 | [CONTRIBUTING.md](CONTRIBUTING.md) / [docs/architecture.md](docs/architecture.md) | Contributor manual + engine internals. Anyone doing non-trivial work reads these end-to-end first. |
 | [CLAUDE.md](CLAUDE.md) / [AGENTS.md](AGENTS.md) / [.cursorrules](.cursorrules) | Per-agent safety-rail summaries + pointers to the contributor manual. Auto-loaded by their respective tools. |
 

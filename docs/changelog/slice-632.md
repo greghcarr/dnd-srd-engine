@@ -55,4 +55,4 @@ All breaking changes in this release are inherited from the cycle (already docum
 ## Open follow-ups
 
 - **Tag + push**: the documented release-process step 7 (`git tag v0.2.0-alpha.0` + push the tag + open the PR for `dev` → `main`) is gated on explicit user instruction per [CLAUDE.md](../../CLAUDE.md#commit-dont-push). This slice ships the local prep only.
-- **dndbnb upgrade**: the co-located consumer in [../../dndbnb/](../../dndbnb/) will need a version bump + Produce Flame migration check (verifies whether any logged cast paths trigger the new Action-availability gate); not blocking for the release tag itself.
+- **dndbnb upgrade**: the consumer ([greghcarr/dndbnb](https://github.com/greghcarr/dndbnb), extracted to its own sibling repo in slice 689 — was co-located in this repo at the time of slice 632) will need a version bump + Produce Flame migration check (verifies whether any logged cast paths trigger the new Action-availability gate); not blocking for the release tag itself.
