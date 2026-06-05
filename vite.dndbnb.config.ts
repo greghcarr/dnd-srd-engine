@@ -4,11 +4,10 @@ import { resolve } from 'node:path';
 
 // Vite config for dndbnb (`dndbnb/`).
 //
-// Separate from the library config (`vite.config.ts`) and the engine
-// web demo (`vite.web.config.ts`) so dndbnb can be its own React app
-// build while sharing the engine source tree.
+// Separate from the library config (`vite.config.ts`) so dndbnb can
+// be its own React app build while sharing the engine source tree.
 //
-// Engine import boundary (same pattern as the web demo):
+// Engine import boundary:
 //   - In dev, `dnd-srd-engine` resolves to local `src/` so engine
 //     changes hot-reload into dndbnb.
 //   - In production, the alias points at the built `dist/` so the

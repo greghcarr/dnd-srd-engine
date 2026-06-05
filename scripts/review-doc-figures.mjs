@@ -116,8 +116,8 @@ const figures = [
       const s = spellSplit();
       console.log(`  signal: ${s.w} wired / ${s.n} narrative / ${s.x} deferred / ${s.p} total = ${s.pct}% wired (summed from docs/gaps-spells.md headers, which gaps-spells-counts guards for internal consistency)`);
       console.log('  cited in:');
-      printCitations(/\d+\/351 wired|wired count \d+|spells \(shipped\)|~?\d+% of spells/i);
-      const wiredCited = citations(/\b194\b|\b\d+\/351 wired/).some((c) => c.text.includes(String(s.w)));
+      printCitations(new RegExp(`\\d+\\/${s.p} wired|wired count \\d+|spells \\(shipped\\)|~?\\d+% of spells`, 'i'));
+      const wiredCited = citations(new RegExp(`\\b${s.w}\\b|\\b\\d+\\/${s.p} wired`)).some((c) => c.text.includes(String(s.w)));
       console.log(`  verdict: wired count ${s.w} ${wiredCited ? 'MATCHES' : 'NOT FOUND in'} the cited lines. Re-read the lines above for stale narrative/schema-only splits and the %.`);
     },
   },

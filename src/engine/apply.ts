@@ -39,6 +39,7 @@ import {
   applyRoundEnded,
   applyTurnEnded,
   applyTurnStarted,
+  applyCombatantPlaced,
 } from './reducers/encounter.js';
 import { applyAttackRolled, applyDamageRolled, applyWeaponLoaded } from './reducers/attack.js';
 import {
@@ -58,23 +59,30 @@ import {
   applyChoiceRequired,
   applyChoiceResolved,
   applyLevelUpResolved,
+  applySubclassChosen,
 } from './reducers/level-up.js';
 import { applyAbilityCheckRolled, applySaveRolled } from './reducers/checks.js';
 import {
   applyFreeCastUsed,
   applyPactSlotConsumed,
+  applyPactSlotsRegained,
   applySpellCastDeclared,
   applySpellSlotConsumed,
 } from './reducers/spellcasting.js';
 import {
   applyConcentrationBroken,
   applyConcentrationStarted,
+  applySpellEffectStarted,
 } from './reducers/concentration.js';
 import { applyTriggerFired } from './reducers/triggers.js';
 import {
   applyActionEconomyConsumed,
   applyActionReadied,
   applyRecklessAttackActivated,
+  applySteadyAimActivated,
+  applySteadyAimConsumed,
+  applyFastHandsActivated,
+  applyDeflectAttacksUsed,
   applyStunningStrikeAttempted,
   applySavageAttackerUsed,
 } from './reducers/action-economy.js';
@@ -262,6 +270,9 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
       case 'EncounterCreated':
         applyEncounterCreated(draft, event);
         break;
+      case 'CombatantPlaced':
+        applyCombatantPlaced(draft, event);
+        break;
       case 'EncounterStarted':
         applyEncounterStarted(draft, event);
         break;
@@ -304,6 +315,9 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
       case 'ChoiceResolved':
         applyChoiceResolved(draft, event);
         break;
+      case 'SubclassChosen':
+        applySubclassChosen(draft, event);
+        break;
       case 'SaveRolled':
         applySaveRolled(draft, event);
         break;
@@ -313,11 +327,19 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
       case 'SpellCastDeclared':
         applySpellCastDeclared(draft, event);
         break;
+      case 'SpellCastFizzled':
+        // Slice 682: transcript-only marker (no state mutation).
+        // The action consume (separate ActionEconomyConsumed event)
+        // is what records the cost; no slot consumption per RAW.
+        break;
       case 'SpellSlotConsumed':
         applySpellSlotConsumed(draft, event);
         break;
       case 'PactSlotConsumed':
         applyPactSlotConsumed(draft, event);
+        break;
+      case 'PactSlotsRegained':
+        applyPactSlotsRegained(draft, event);
         break;
       case 'FreeCastUsed':
         applyFreeCastUsed(draft, event);
@@ -327,6 +349,9 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
         break;
       case 'ConcentrationBroken':
         applyConcentrationBroken(draft, event);
+        break;
+      case 'SpellEffectStarted':
+        applySpellEffectStarted(draft, event);
         break;
       case 'TriggerFired':
         applyTriggerFired(draft, event);
@@ -339,6 +364,18 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
         break;
       case 'RecklessAttackActivated':
         applyRecklessAttackActivated(draft, event);
+        break;
+      case 'SteadyAimActivated':
+        applySteadyAimActivated(draft, event);
+        break;
+      case 'SteadyAimConsumed':
+        applySteadyAimConsumed(draft, event);
+        break;
+      case 'FastHandsActivated':
+        applyFastHandsActivated(draft, event);
+        break;
+      case 'DeflectAttacksUsed':
+        applyDeflectAttacksUsed(draft, event);
         break;
       case 'StunningStrikeAttempted':
         applyStunningStrikeAttempted(draft, event);

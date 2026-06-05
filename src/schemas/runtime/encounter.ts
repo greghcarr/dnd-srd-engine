@@ -52,6 +52,18 @@ export const TurnUsageSchema = z.object({
   // combatant's Reaction. Cleared at TurnStarted (RAW: "before the
   // start of your next turn"). Undefined when no Ready is pending.
   readiedAction: z.object({ trigger: z.string() }).optional(),
+  // Slice 646: Rogue L3 Steady Aim "next attack gets advantage" flag.
+  // Set when the combatant uses Steady Aim. The next attack roll the
+  // combatant makes this turn consumes it (advantage granted, flag
+  // cleared). RAW: "Advantage on your next attack roll on the current
+  // turn" — only ONE attack benefits. Cleared at TurnStarted too in
+  // case the rogue used Steady Aim and then didn't attack.
+  steadyAimActive: z.boolean().default(false),
+  // Slice 646: Rogue L3 Steady Aim "speed becomes 0" arm. Set
+  // alongside steadyAimActive; the move planner rejects movement
+  // intents while this is true. RAW: "after you use it, your Speed
+  // is 0 until the end of the current turn." Cleared at TurnStarted.
+  speedZeroUntilEndOfTurn: z.boolean().default(false),
 });
 export type TurnUsage = z.infer<typeof TurnUsageSchema>;
 
@@ -68,6 +80,8 @@ export const EMPTY_TURN_USAGE: TurnUsage = {
   stunningStrikeUsedThisTurn: false,
   savageAttackerUsedThisTurn: false,
   noProvokeMovementUpToFeet: 0,
+  steadyAimActive: false,
+  speedZeroUntilEndOfTurn: false,
 };
 
 export const CombatantSchema = z.object({

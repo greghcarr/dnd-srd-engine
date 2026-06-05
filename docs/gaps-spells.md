@@ -67,38 +67,33 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 **Narrative (12):** alarm, comprehend-languages, create-or-destroy-water, detect-evil-and-good, detect-magic, detect-poison-and-disease, disguise-self, floating-disk (slice 507: cast emits no mechanical events; the 500-lb-capacity follow-the-caster disk is a consumer-side world entity, engine-out-of-scope per the no-positions stance), illusory-script, jump, purify-food-and-drink, speak-with-animals.
 
-## Level 2 (57 in pack): 36 wired, 15 narrative, 6 deferred
+## Level 2 (57 in pack): 42 wired, 15 narrative, 0 deferred
 
-**Wired, cast-time (30):** acid-arrow, aid, barkskin, blindness-deafness, blur, calm-emotions, darkvision, enhance-ability, enlarge-reduce, enthrall (WIS save -> `enthralled-active`: -10 to Perception checks; slice 343), find-steed, flame-blade, gust-of-wind, heat-metal, hold-person, invisibility, lesser-restoration, mind-spike, mirror-image, moonbeam, pass-without-trace, prayer-of-healing, protection-from-poison, scorching-ray, shatter, spider-climb, spiritual-weapon, suggestion, warding-bond, web. (Mirror Image carries a `buff` condition on cast plus the slice-124 `planAttack` deflection pool.)
+**Wired, cast-time (34):** acid-arrow, aid, barkskin, blindness-deafness, blur, calm-emotions, darkvision, dragons-breath (slice 669: `buff` with `casterChoosesVariant` over 5 damage types — applies `dragons-breath-<type>-active` marker on the touched ally; new `planExhaleDragonsBreath` planner is the buffed creature's action, rolling 3d6 (+1d6/slot above 2) DEX-save vs the caster's spell save DC against each target in a 15-ft cone for the chosen damage type; auto-cleared on concentration drop), enhance-ability, enlarge-reduce, enthrall (WIS save -> `enthralled-active`: -10 to Perception checks; slice 343), find-steed, flame-blade, gust-of-wind, heat-metal, hold-person, invisibility, lesser-restoration, levitate (slice 668: `buff` mechanic applies `levitating-active` projecting `ModifySpeed fly 20`; horizontal-block + 20-ft-up/down move-action are consumer-managed; auto-cleared on concentration drop), mind-spike, mirror-image, moonbeam, pass-without-trace, phantasmal-force (slice 667: INT save -> `phantasmal-force-active` on fail + per-turn 1d6 psychic recurring damage via the existing `recurring` mechanic; consumer drives `planTickRecurring` on the target's turn while concentration holds; auto-cleared on concentration drop), prayer-of-healing, protection-from-poison, ray-of-enfeeblement (slice 666: ranged spell attack — on hit applies `enfeebled` to the target, the new `conditionOnHit` field on the attack mechanic; the condition is consumer-managed for the half-damage-with-STR-weapon-attacks arm, save-ends via the consumer-driven end-of-turn CON save; auto-cleared on concentration drop), scorching-ray, shatter, spider-climb, spiritual-weapon, suggestion, warding-bond, web. (Mirror Image carries a `buff` condition on cast plus the slice-124 `planAttack` deflection pool.)
 
 **Wired, zone-tick (2):** flaming-sphere (DEX save 2d6 `aura-damage`), spike-growth (2d4-per-5ft `movement-damage`).
 
 **Wired, planner (2):** magic-weapon, misty-step.
 
-**Wired, zone-area (2):** darkness (slice 495: 15-ft magical-darkness sphere; the Darkvision-can't-see-through-it arm is consumer-managed), silence (slice 496: 20-ft silence sphere; in-zone Deafened + Thunder immunity + no-verbal-casting is consumer-managed).
+**Wired, zone-area (3):** darkness (slice 495: 15-ft magical-darkness sphere; the Darkvision-can't-see-through-it arm is consumer-managed), silence (slice 496: 20-ft silence sphere; in-zone Deafened + Thunder immunity + no-verbal-casting is consumer-managed), zone-of-truth (slice 665: 15-ft sphere via the new non-concentration zone path — `SpellEffectStarted` event creates a non-concentration EffectInstance with `zone` payload; in-zone "can't speak a deliberate lie" + creature awareness of zone is consumer-managed).
 
-**Deferred (6):**
-- **non-damage area zone (in-zone effect on top of the positioned record):** zone-of-truth.
-- **on-hit rider via `castSpell`:** shining-smite, ray-of-enfeeblement.
-- **recurring-rider primitive:** phantasmal-force.
-- **flight / hover condition:** levitate.
-- **on-action rider:** dragons-breath.
+**Wired, buff (1):** shining-smite (slice 666: paladin bonus-action self-buff via the existing `buff` mechanic — applies `shining-smite-active` with two OnEvent riders that consume on the first melee-weapon hit: AddDamage 2d6 radiant + ApplyCondition `shining-smite-target-illuminated` (advantage to attackers). The lingering Dim Light 5-ft and end-of-turn CON save are consumer-managed.)
+
+**L2 is now fully wired or narrative — no deferred entries.**
 
 **Narrative (15):** alter-self, animal-messenger, arcane-lock, arcanists-magic-aura, augury, continual-flame, detect-thoughts, find-traps, gentle-repose, knock, locate-animals-or-plants, locate-object, magic-mouth, rope-trick, see-invisibility.
 
-## Level 3 (42 in pack): 27 wired, 10 narrative, 5 deferred
+## Level 3 (42 in pack): 32 wired, 10 narrative, 0 deferred
 
-**Wired, cast-time (19):** animate-dead, bestow-curse, call-lightning, conjure-animals, fear, fireball, fly, gaseous-form, glyph-of-warding, haste, hypnotic-pattern, lightning-bolt, magic-circle, mass-healing-word, phantom-steed, protection-from-energy, sleet-storm, vampiric-touch, water-breathing.
+**Wired, cast-time (22):** animate-dead, beacon-of-hope (slice 671: `buff` mechanic applies `beacon-of-hope-active`; condition projects advantage on WIS saves + `GrantMaxHealingDice` (each heal hits maximum); the death-save-advantage arm is consumer-managed since planDeathSaveAtTurnStart doesn't currently consult the effect stack; auto-cleared on concentration drop), bestow-curse, blink (slice 672: `buff` applies `blink-active` marker; new `planBlinkTurnEnd` planner rolls d20 at the end of each of the bearer's turns and applies `blink-ethereal-active` on 11+. Position changes + the "appear within 10 ft" re-emergence + plane-aware attack/visibility gating stay consumer-managed (engine has no positions / no plane model). Duration cleanup consumer-managed (1 min = 10 rounds; commit ConditionRemoved when expired).), call-lightning, conjure-animals, fear, fireball, fly, gaseous-form, glyph-of-warding, haste, hypnotic-pattern, lightning-bolt, magic-circle, mass-healing-word, phantom-steed, protection-from-energy, sleet-storm, slow (slice 670: WIS save -> `slowed-by-spell-active` on fail; condition projects walk *0.5 / AC -2 / DEX-save -2; remaining RAW arms — no reactions / one-action-or-bonus / max-one-attack / spellcasting 50% gate — are consumer-managed reads of the condition presence), vampiric-touch, water-breathing.
 
 **Wired, zone-tick (2):** spirit-guardians, stinking-cloud (condition-only `aura-damage`).
 
 **Wired, planner (6):** clairvoyance, counterspell, dispel-magic, major-image, remove-curse, revivify.
 
-**Deferred (5):**
-- **non-damage area zone:** tiny-hut, wind-wall.
-- **composite area condition (speed-half + no-reaction + delayed-action):** slow.
-- **composite-buff condition:** beacon-of-hope.
-- **cross-plane (per-turn ethereal toggle):** blink.
+**Wired, zone-area (2):** tiny-hut (slice 665: 10-ft sphere via `SpellEffectStarted`, 8-hour duration; the magical hemisphere's pass-through gate for the caster's allies and weather-block arms are consumer-managed), wind-wall (slice 665: 50-ft line via the existing `ConcentrationStarted` zone path; the in-line dispersal of gas / nonmagical ranged-attack disadvantage are consumer-managed).
+
+**L3 is now fully wired or narrative — no deferred entries.**
 
 **Narrative (10):** create-food-and-water, daylight, meld-into-stone, nondetection, plant-growth, sending, speak-with-dead, speak-with-plants, tongues, water-walk.
 

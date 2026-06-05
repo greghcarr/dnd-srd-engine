@@ -5,6 +5,7 @@ import type {
   FreeCastUsedEvent,
   PactSlotConsumedEvent,
   SpellCastDeclaredEvent,
+  SpellCastFizzledEvent,
   SpellSlotConsumedEvent,
   SpellSlotSource,
 } from '../../schemas/events/spellcasting.js';
@@ -25,6 +26,7 @@ import type { SaveRolledEvent } from '../../schemas/events/checks.js';
 import type {
   ConcentrationBrokenEvent,
   ConcentrationStartedEvent,
+  SpellEffectStartedEvent,
 } from '../../schemas/events/concentration.js';
 import type { CompanionSummonedEvent } from '../../schemas/events/summons.js';
 import type { TrapArmedEvent } from '../../schemas/events/traps.js';
@@ -66,6 +68,11 @@ import { isHealingBlocked } from '../../derive/healing-block.js';
 import { planConcentrationOnDamage } from './concentration.js';
 import { resolveAttackRoll } from './_attack-roll.js';
 import { assertActorCanAct, findActorBlockingCondition } from './_actor-state.js';
+import {
+  assertWithinSpellRange,
+  enforceableSpellRangeFeet,
+  parseSpellRange,
+} from './_spatial-gates.js';
 import { parseSpellDurationMinutes } from '../../internal/spell-duration.js';
 import {
   CANTRIP_LEVEL,
@@ -414,6 +421,12 @@ const planAttackMechanic = (
   at: string,
   castingClassId: string | undefined,
   castingAbility: 'INT' | 'WIS' | 'CHA',
+  // Slice 666: when the spell is a concentration spell, the parent
+  // allocates a `concentrationEffectId` and passes it here so any
+  // condition the attack applies on hit (Ray of Enfeeblement's
+  // Enfeebled) is bound to the EffectInstance for cleanup on
+  // concentration drop.
+  concentrationEffectId: string | undefined,
 ): Event[] => {
   const character = state.characters[intent.characterId];
   if (!character) throw new Error(`Unknown character ${intent.characterId}`);
@@ -432,7 +445,16 @@ const planAttackMechanic = (
   const cantripSteps = spell.level === CANTRIP_LEVEL && mechanic.cantripBeamScaling !== true
     ? cantripExtraDice(computeTotalLevel(character))
     : 0;
-  const damageType = resolveAttackDamageType(mechanic, intent, spell.id);
+  // Slice 666: skip damage-type resolution entirely when the
+  // mechanic has no damageDice (Ray of Enfeeblement and any future
+  // attack-spell that only applies an on-hit condition). The
+  // downstream damage-roll path is also short-circuited below;
+  // hoisting this check keeps both ends of the no-damage path
+  // consistent.
+  const damageType =
+    mechanic.damageDice === undefined
+      ? undefined
+      : resolveAttackDamageType(mechanic, intent, spell.id);
   // Slice 204: spell damage now consults the caster's effect stack
   // for `AddModifier { target: 'damage' }` contributions, gated on the
   // `event.damageType` fact. Canonical user: Draconic Sorcery L6
@@ -691,7 +713,42 @@ const planAttackMechanic = (
       !hit && spell.level === CANTRIP_LEVEL && casterEffects.hasPotentCantrip();
     if (!hit && !potentHalfOnMiss) continue;
 
-    const { rolls: baseRolls, modifier } = rollDamage(mechanic.damageDice, bonusDice, rng, isCrit);
+    // Slice 666: optional on-hit condition (Ray of Enfeeblement and
+    // any future attack-spell that primes an Enfeebled-shape rider on
+    // a hit). Fires on hit (not on potent-cantrip half-damage miss);
+    // the condition is stamped on the attack's target with the caster
+    // as `sourceCharacterId` so concentration-drop cleanup removes it.
+    if (hit && mechanic.conditionOnHit !== undefined) {
+      const onHitApplied: ConditionAppliedEvent = {
+        id: newEventId() as ULID,
+        at,
+        type: 'ConditionApplied',
+        targetId: targetId as ULID,
+        conditionId: mechanic.conditionOnHit,
+        appliedConditionId: newAppliedConditionId() as ULID,
+        sourceCharacterId: intent.characterId as ULID,
+        causedByEventId: attackEvent.id,
+        // When the spell is a concentration spell, bind the
+        // condition to the EffectInstance so dropping concentration
+        // removes the condition via `clearConcentrationEffect`'s
+        // sourceEffectInstanceId sweep.
+        ...(concentrationEffectId !== undefined
+          ? { sourceEffectInstanceId: concentrationEffectId as ULID }
+          : {}),
+      };
+      events.push(onHitApplied);
+    }
+
+    // Slice 666: skip the damage path entirely when damageDice is
+    // omitted (attack-only spells like Ray of Enfeeblement). The
+    // attack roll + on-hit condition (above) + trigger dispatch (the
+    // attackEvent's OnEvent rider dispatch already fired) is the
+    // complete planner outcome for this target.
+    if (mechanic.damageDice === undefined || damageType === undefined) continue;
+    const damageDice = mechanic.damageDice;
+    const damageTypeResolved = damageType;
+
+    const { rolls: baseRolls, modifier } = rollDamage(damageDice, bonusDice, rng, isCrit);
     const scalingRolls = rollCantripScaling(mechanic.cantripScalingDice, cantripSteps, rng, isCrit);
     // Slice 498: exploding damage (Sorcerous Burst). Each base/scaling die
     // that maxed spawns an extra die (chained), capped at the caster's
@@ -2059,6 +2116,49 @@ export const planCastSpell = (
   }
 
   const at = intent.at ?? nowIso();
+  // Slice 685: spell range + line-of-effect gate. No-op when the
+  // spatial context can't be resolved for a given target (positionless
+  // / map-less encounters); throws when a target is past the spell's
+  // RAW range OR when a wall / closed door blocks the LoE ray. Self-
+  // ranged spells (kind: 'self') and non-finite RAW shapes (kind:
+  // 'unenforced' — 'Special', 'Sight', '1 mile') skip enforcement.
+  const spellRangeKind = parseSpellRange(spell.range);
+  const enforcedRangeFeet = enforceableSpellRangeFeet(spellRangeKind);
+  if (enforcedRangeFeet !== undefined) {
+    for (const targetId of intent.targetIds) {
+      if (targetId === intent.characterId) continue;
+      const targetName = state.characters[targetId]?.name ?? targetId;
+      assertWithinSpellRange(
+        state,
+        intent.characterId,
+        targetId,
+        enforcedRangeFeet,
+        character.name,
+        `${spell.name} at ${targetName}`,
+      );
+    }
+  }
+  // Slice 682: Slow's V/S spellcasting gate. RAW (PHB 2024): "Whenever
+  // the target attempts to cast a spell with a Somatic or Verbal
+  // Component, it must roll a d20. On an 11 or lower, the spell
+  // doesn't take effect, and the spell's action is wasted (but its
+  // components and Spell Slot, if used, aren't expended)."
+  //
+  // The d20 is rolled BEFORE slot consumption and mechanical effects;
+  // on failure we emit SpellCastDeclared + SpellCastFizzled + the
+  // action-economy consume, then return early. Slot is preserved.
+  const slowedCasterFizzleGateD20: number | undefined = (() => {
+    if (!character.appliedConditions.some((c) => c.conditionId === 'slowed-by-spell-active')) {
+      return undefined;
+    }
+    if (spell.components.verbal !== true && spell.components.somatic !== true) {
+      return undefined;
+    }
+    return rollDie(D20_SIDES, rng);
+  })();
+  const slowedCasterFizzled =
+    slowedCasterFizzleGateD20 !== undefined && slowedCasterFizzleGateD20 <= 10;
+
   const declared: SpellCastDeclaredEvent = {
     id: newEventId() as ULID,
     at,
@@ -2071,6 +2171,41 @@ export const planCastSpell = (
     castAsRitual,
   };
   const events: Event[] = [declared];
+
+  if (slowedCasterFizzled) {
+    const fizzled: SpellCastFizzledEvent = {
+      id: newEventId() as ULID,
+      at,
+      type: 'SpellCastFizzled',
+      characterId: intent.characterId as ULID,
+      spellId: intent.spellId,
+      reason: 'slow-spell-v-or-s-d20-failed',
+      d20: slowedCasterFizzleGateD20!,
+    };
+    events.push(fizzled);
+    // Action IS consumed per RAW ("the spell's action is wasted").
+    if (encounter !== undefined && casterCombatant !== undefined && !castAsRitual) {
+      const economyKind =
+        castingTimeKind === 'action'
+          ? 'action'
+          : castingTimeKind === 'bonusAction'
+            ? 'bonusAction'
+            : castingTimeKind === 'reaction'
+              ? 'reaction'
+              : undefined;
+      if (economyKind !== undefined) {
+        events.push({
+          id: newEventId() as ULID,
+          at,
+          type: 'ActionEconomyConsumed',
+          encounterId: encounter.id,
+          combatantId: intent.characterId,
+          kind: economyKind,
+        });
+      }
+    }
+    return events;
+  }
 
   // Emit the action-economy consumption right after the declaration
   // so the apply() reducer marks turnUsage before any subsequent
@@ -2172,7 +2307,7 @@ export const planCastSpell = (
   for (const mechanic of spell.mechanicalEffects) {
     if (mechanic.kind === 'attack') {
       events.push(
-        ...planAttackMechanic(state, content, rng, intent, spell, mechanic, declared.id, at, castingClassId, castingAbility),
+        ...planAttackMechanic(state, content, rng, intent, spell, mechanic, declared.id, at, castingClassId, castingAbility, concentrationEffectId),
       );
     } else if (mechanic.kind === 'save') {
       const outcome = planSaveMechanic(
@@ -2246,6 +2381,29 @@ export const planCastSpell = (
     }
   }
 
+  // Slice 495 + 665: compute the optional `zone` payload for spells
+  // whose mechanicalEffects include a `zone` entry. Validates at plan
+  // time so misuse (zone declared without targeting / without
+  // targetPosition) surfaces before any event commits. The same
+  // payload feeds both the concentration path (ConcentrationStarted,
+  // slice 495) and the non-concentration path (SpellEffectStarted,
+  // slice 665).
+  const hasZoneMechanic = spell.mechanicalEffects.some((m) => m.kind === 'zone');
+  let zoneField: { shape: 'sphere' | 'cube' | 'cylinder' | 'line' | 'cone'; size: number; center: { x: number; y: number } } | undefined;
+  if (hasZoneMechanic) {
+    if (spell.targeting === undefined) {
+      throw new Error(`Spell ${spell.id} has a zone mechanic but no targeting (shape/size) declared`);
+    }
+    if (intent.targetPosition === undefined) {
+      throw new Error(`Spell ${spell.id} has a zone mechanic and requires intent.targetPosition`);
+    }
+    zoneField = {
+      shape: spell.targeting.shape,
+      size: spell.targeting.size,
+      center: { x: intent.targetPosition.x, y: intent.targetPosition.y },
+    };
+  }
+
   if (spell.concentration === true) {
     if (character.concentrationEffectId !== undefined) {
       const priorBroken: ConcentrationBrokenEvent = {
@@ -2260,26 +2418,6 @@ export const planCastSpell = (
       events.push(priorBroken);
     }
     const durationMinutes = parseSpellDurationMinutes(spell.duration);
-    // Slice 495: when the spell's mechanicalEffects include a `zone`
-    // entry, read the spell's targeting shape/size + intent.targetPosition
-    // and stamp them on the event so the reducer persists the zone on
-    // the EffectInstance. Validates at plan time so misuse surfaces
-    // before any event commits.
-    const hasZoneMechanic = spell.mechanicalEffects.some((m) => m.kind === 'zone');
-    let zoneField: { shape: 'sphere' | 'cube' | 'cylinder' | 'line' | 'cone'; size: number; center: { x: number; y: number } } | undefined;
-    if (hasZoneMechanic) {
-      if (spell.targeting === undefined) {
-        throw new Error(`Spell ${spell.id} has a zone mechanic but no targeting (shape/size) declared`);
-      }
-      if (intent.targetPosition === undefined) {
-        throw new Error(`Spell ${spell.id} has a zone mechanic and requires intent.targetPosition`);
-      }
-      zoneField = {
-        shape: spell.targeting.shape,
-        size: spell.targeting.size,
-        center: { x: intent.targetPosition.x, y: intent.targetPosition.y },
-      };
-    }
     const started: ConcentrationStartedEvent = {
       id: newEventId() as ULID,
       at,
@@ -2295,6 +2433,30 @@ export const planCastSpell = (
       ...(zoneField !== undefined ? { zone: zoneField } : {}),
     };
     events.push(started);
+  } else if (hasZoneMechanic) {
+    // Slice 665: non-concentration zone-bearing spell (Zone of
+    // Truth, Tiny Hut). Allocate an EffectInstance via
+    // SpellEffectStarted so the zone persists in state with its
+    // listed wall-clock duration (cleaned up by
+    // planExpireSpellDurations + the same ConcentrationBroken
+    // cleanup event). The caster's concentration slot is NOT
+    // claimed.
+    const durationMinutes = parseSpellDurationMinutes(spell.duration);
+    const spellEffectStarted: SpellEffectStartedEvent = {
+      id: newEventId() as ULID,
+      at,
+      type: 'SpellEffectStarted',
+      effectInstanceId: newEffectInstanceId() as ULID,
+      casterId: intent.characterId as ULID,
+      spellId: intent.spellId,
+      targetIds: [...intent.targetIds] as ULID[],
+      conditionsApplied,
+      ...(durationMinutes !== undefined ? { durationMinutes } : {}),
+      slotLevel: intent.slotLevel,
+      causedByEventId: declared.id,
+      ...(zoneField !== undefined ? { zone: zoneField } : {}),
+    };
+    events.push(spellEffectStarted);
   }
 
   return events;

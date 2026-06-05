@@ -262,8 +262,12 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       return `\n## Long rest begins (${event.participantIds.map((id) => characterName(stateBefore, id)).join(', ')})\n`;
     case 'LongRestEnded':
       return `Long rest ends.\n`;
-    case 'EncounterCreated':
-      return `\n## Encounter created: ${event.name ?? 'unnamed'} (${event.combatantIds.length} combatants)\n`;
+    case 'EncounterCreated': {
+      const count = event.combatants?.length ?? event.combatantIds?.length ?? 0;
+      return `\n## Encounter created: ${event.name ?? 'unnamed'} (${count} combatants)\n`;
+    }
+    case 'CombatantPlaced':
+      return `_(${characterName(stateBefore, event.combatantId)} placed at (${event.position.x}, ${event.position.y}))_`;
     case 'InitiativeRolled': {
       const sorted = [...event.rolls].sort((a, b) => b.total - a.total);
       const order = sorted.map(
@@ -334,10 +338,18 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       const slotLabel = event.slotLevel === 0 ? 'cantrip' : `${ordinal(event.slotLevel)}-level slot${event.slotSource === 'pact' ? ' (pact)' : ''}`;
       return `**${characterName(stateBefore, event.characterId)}** casts ${spellName(content, event.spellId)} (${slotLabel}) at ${targets}.`;
     }
+    case 'SpellCastFizzled': {
+      const caster = characterName(stateBefore, event.characterId);
+      const spell = spellName(content, event.spellId);
+      const d20 = event.d20 !== undefined ? ` (rolled ${event.d20})` : '';
+      return `**${caster}**'s ${spell} fizzled — Slow's d20 ≤ 10${d20}; action wasted, slot preserved.`;
+    }
     case 'SpellSlotConsumed':
       return `Slot consumed: ${ordinal(event.slotLevel)}-level.`;
     case 'PactSlotConsumed':
       return `Pact slot consumed.`;
+    case 'PactSlotsRegained':
+      return `Pact slots regained: ${event.count} (${event.source}).`;
     case 'FreeCastUsed':
       return `Free cast used: ${spellName(content, event.spellId)}.`;
     case 'ConcentrationStarted': {
@@ -351,6 +363,11 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       const spellLabel = spell !== undefined ? spellName(content, spell) : 'their spell';
       return `**${caster}**'s concentration on ${spellLabel} broke (${event.reason}).`;
     }
+    case 'SpellEffectStarted': {
+      const caster = characterName(stateBefore, event.casterId);
+      const spell = spellName(content, event.spellId);
+      return `**${caster}**'s ${spell} takes effect.`;
+    }
     case 'TriggerFired':
       return `_(${event.triggerId.split(':').slice(1).join(':')} triggers for ${characterName(stateBefore, event.characterId)})_`;
     case 'ActionEconomyConsumed':
@@ -359,6 +376,16 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       return `**${characterName(stateBefore, event.combatantId)}** readies an action (trigger: ${event.trigger}).`;
     case 'RecklessAttackActivated':
       return `**${characterName(stateBefore, event.combatantId)}** attacks recklessly.`;
+    case 'SteadyAimActivated':
+      return `**${characterName(stateBefore, event.combatantId)}** takes Steady Aim (advantage on next attack; speed 0 until end of turn).`;
+    case 'SteadyAimConsumed':
+      return `Steady Aim consumed.`;
+    case 'FastHandsActivated':
+      return `**${characterName(stateBefore, event.combatantId)}** uses Fast Hands (${event.mode}).`;
+    case 'DeflectAttacksUsed':
+      return `**${characterName(stateBefore, event.combatantId)}** deflects ${event.incomingDamage} -> ${event.remainingDamage} damage (reduction ${event.reduction}).`;
+    case 'SubclassChosen':
+      return `**${characterName(stateBefore, event.characterId)}** chose subclass: ${event.subclassId} (${event.classId}).`;
     case 'StunningStrikeAttempted':
       return `**${characterName(stateBefore, event.combatantId)}** attempts a Stunning Strike against **${characterName(stateBefore, event.targetId)}**.`;
     case 'SavageAttackerUsed':

@@ -7,6 +7,7 @@ import type {
   SaveRolledEvent,
 } from '../../schemas/events/checks.js';
 import type { AbilityScore, Skill } from '../../schemas/primitives.js';
+import { SKILL_ABILITY } from '../../schemas/primitives.js';
 import type { RNG } from '../../rng/index.js';
 import { rollDie } from '../../rng/dice.js';
 import { newEventId } from '../../ids.js';
@@ -17,6 +18,8 @@ import { coverDexSaveBonus, type CoverKind } from './attack.js';
 import { D20_SIDES } from '../../internal/constants.js';
 import { nowIso } from '../../internal/clock.js';
 import type { ULID } from '../ids-utils.js';
+import { collectEffectsFromCharacter } from '../../derive/effect-stack.js';
+import type { Effect } from '../../schemas/effects.js';
 
 const rollWithAdvantage = (
   rng: RNG,
@@ -138,6 +141,17 @@ export const planSave = (
   return events;
 };
 
+// Slice 662: ability-substitution gate now reads `GrantAbilitySubstitution`
+// effects from the bearer's effective effect stack instead of
+// hardcoding Primal Knowledge's class / level / condition / ability /
+// skills. RAW shape: "for ability checks using <skill> ∈ skills,
+// you can use <ability> instead — optionally only while a named
+// condition is active." Canonical user today: Barbarian L3 Primal
+// Knowledge (ability='STR', skills=[acrobatics, intimidation,
+// perception, stealth, survival], activeWhileConditionId='raging').
+// Future users (Stoneskin's "STR vs grappling escape" etc.) author a
+// GrantAbilitySubstitution and the planner picks it up automatically.
+
 export interface AbilityCheckIntent {
   readonly type: 'AbilityCheck';
   readonly characterId: string;
@@ -158,6 +172,16 @@ export interface AbilityCheckIntent {
   // Undefined = consumer didn't specify; sense-gated entries don't
   // fire.
   readonly sense?: 'sight' | 'hearing' | 'smell' | 'touch' | 'taste';
+  // Slice 659 / 662 / 663: opt-in flag was for "validate this
+  // substitution." As of slice 663 the substitution check is
+  // ALWAYS enforced: the planner accepts (ability, skill) iff the
+  // ability matches the skill's RAW-default (per SKILL_ABILITY)
+  // OR a GrantAbilitySubstitution on the bearer's effect stack
+  // covers the requested combo (and its activeWhileConditionId,
+  // if set, is satisfied). The flag is retained as a no-op for
+  // back-compat with existing call sites; it has no effect on
+  // gating today and may be removed in a future major version.
+  readonly useAbilitySubstitution?: boolean;
   readonly at?: string;
 }
 
@@ -169,6 +193,47 @@ export const planAbilityCheck = (
 ): ReadonlyArray<Event> => {
   const character = state.characters[intent.characterId];
   if (!character) throw new Error(`Unknown character ${intent.characterId}`);
+  // Slice 663: always-enforce ability substitutions. When a skill
+  // is supplied, the planner accepts iff:
+  //   1. The requested ability is the skill's RAW default
+  //      (SKILL_ABILITY[skill]), OR
+  //   2. The bearer has a GrantAbilitySubstitution covering the
+  //      requested (ability, skill) AND (if the grant carries an
+  //      activeWhileConditionId) that condition is active.
+  // Otherwise the planner throws — the consumer can't pick an
+  // arbitrary ability for a skill check. Raw ability checks (no
+  // skill on the intent) are unaffected (any ability is permitted
+  // for a generic check; the caller is asserting they want that
+  // specific ability check).
+  if (intent.skill !== undefined && intent.ability !== SKILL_ABILITY[intent.skill]) {
+    const grants = collectEffectsFromCharacter({
+      character,
+      content,
+      itemInstances: state.itemInstances,
+      pendingChoices: state.pendingChoices,
+    }).filter(
+      (e): e is Extract<Effect, { kind: 'GrantAbilitySubstitution' }> =>
+        e.kind === 'GrantAbilitySubstitution',
+    );
+    const conditionActive = (id: string): boolean =>
+      character.appliedConditions.some((c) => c.conditionId === id);
+    const matched = grants.find(
+      (g) =>
+        g.ability === intent.ability &&
+        g.skills.includes(intent.skill!) &&
+        (g.activeWhileConditionId === undefined || conditionActive(g.activeWhileConditionId)),
+    );
+    if (matched === undefined) {
+      const have = grants.length === 0
+        ? '(no ability substitutions granted)'
+        : grants
+            .map((g) => `${g.ability}+[${g.skills.join(',')}]${g.activeWhileConditionId ? ` while ${g.activeWhileConditionId}` : ''}`)
+            .join('; ');
+      throw new Error(
+        `${character.name} cannot use ability='${intent.ability}' for skill='${intent.skill}' (RAW default is '${SKILL_ABILITY[intent.skill]}'): no ability substitution matching this combination [granted: ${have}]`,
+      );
+    }
+  }
   const derivation = computeAbilityCheck({
     character,
     itemInstances: state.itemInstances,

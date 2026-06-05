@@ -3,6 +3,7 @@ import type { CampaignState } from '../../schemas/runtime/campaign.js';
 import type {
   ConcentrationBrokenEvent,
   ConcentrationStartedEvent,
+  SpellEffectStartedEvent,
 } from '../../schemas/events/concentration.js';
 import { invariant } from '../../internal/invariants.js';
 
@@ -37,6 +38,47 @@ export const applyConcentrationStarted = (
     ...(event.zone !== undefined ? { zone: event.zone } : {}),
   };
   caster.concentrationEffectId = event.effectInstanceId;
+};
+
+// Slice 665: non-concentration spell-effect creation. Mirror of
+// applyConcentrationStarted but:
+//   - sets `requiresConcentration: false` on the EffectInstance, AND
+//   - does NOT set `caster.concentrationEffectId` (the caster is not
+//     concentrating; they can cast another concentration spell).
+// Cleanup (when the listed duration ends) is the same
+// ConcentrationBroken event handled by applyConcentrationBroken;
+// `clearConcentrationEffect` tolerates non-concentration
+// EffectInstances (it just deletes the record + cascades any
+// applied conditions / rider state without caring about the
+// concentration flag).
+export const applySpellEffectStarted = (
+  state: Draft<CampaignState>,
+  event: SpellEffectStartedEvent,
+): void => {
+  const caster = state.characters[event.casterId];
+  invariant(caster !== undefined, `Caster ${event.casterId} not found`);
+  invariant(
+    state.effectInstances[event.effectInstanceId] === undefined,
+    `EffectInstance ${event.effectInstanceId} already exists`,
+  );
+  state.effectInstances[event.effectInstanceId] = {
+    id: event.effectInstanceId,
+    spellId: event.spellId,
+    casterId: event.casterId,
+    targetIds: [...event.targetIds],
+    conditionsApplied: [...event.conditionsApplied],
+    requiresConcentration: false,
+    ...(event.durationRounds !== undefined ? { durationRounds: event.durationRounds } : {}),
+    ...(event.durationMinutes !== undefined
+      ? {
+          durationMinutes: event.durationMinutes,
+          startedAtMinutes: state.inGameTime.totalMinutes,
+        }
+      : {}),
+    ...(event.slotLevel !== undefined ? { slotLevel: event.slotLevel } : {}),
+    startedAtEventId: event.id,
+    ...(event.zone !== undefined ? { zone: event.zone } : {}),
+  };
 };
 
 /**

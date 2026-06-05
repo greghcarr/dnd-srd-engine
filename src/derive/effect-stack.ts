@@ -10,14 +10,53 @@ import type { FormulaContext } from '../effects/formula.js';
 import { computeTotalLevel } from '../schemas/runtime/character.js';
 import { proficiencyBonus } from './ability.js';
 
+// Slice 661: supersession lifecycle for OfferChoice resolutions.
+//
+// Default ('accumulate'): every resolved PendingChoice contributes its
+// selected options' effects to the effect stack. This is the slice-618
+// behavior and applies to onAcquire / onLevelUp choices that are
+// authored once per character.
+//
+// Per-choice ('supersede'): for choices with this lifecycle, only the
+// LATEST resolved PendingChoice with each promptKey contributes its
+// effects. Earlier resolutions for the same promptKey are dropped
+// (they stay in state.pendingChoices for replay honesty, but their
+// granted effects don't reach the effect stack).
+//
+// Canonical user: Druid Circle of the Land Spells (RAW: each long
+// rest, pick a new land; the prior land's spells are no longer
+// prepared). The lifecycle is persisted on the PendingChoice by
+// applyChoiceRequired (threaded from the OfferChoice via the
+// ChoiceRequired event) so this function doesn't cross-look-up the
+// source OfferChoice.
+//
+// "Latest" is defined by position in `character.pendingChoiceIds` —
+// applyChoiceRequired pushes to that array in commit order, so the
+// last occurrence of a (lifecycle='supersede', promptKey) pair is
+// the most-recent resolution.
 const collectResolvedChoiceEffects = (
   character: Character,
   pendingChoices: Readonly<Record<string, PendingChoice>>,
 ): Effect[] => {
+  const latestSupersedeByPromptKey = new Map<string, string>();
+  for (const choiceId of character.pendingChoiceIds) {
+    const choice = pendingChoices[choiceId];
+    if (!choice?.resolution) continue;
+    if (choice.lifecycle !== 'supersede') continue;
+    if (choice.promptKey === undefined) continue;
+    latestSupersedeByPromptKey.set(choice.promptKey, choiceId);
+  }
   const effects: Effect[] = [];
   for (const choiceId of character.pendingChoiceIds) {
     const choice = pendingChoices[choiceId];
     if (!choice?.resolution) continue;
+    if (
+      choice.lifecycle === 'supersede' &&
+      choice.promptKey !== undefined &&
+      latestSupersedeByPromptKey.get(choice.promptKey) !== choiceId
+    ) {
+      continue;
+    }
     for (const optionId of choice.resolution.selectedOptionIds) {
       const option = choice.options.find((o) => o.id === optionId);
       if (option) effects.push(...option.effects);

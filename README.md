@@ -21,10 +21,6 @@ Three docs cover the common entry points:
 
 The rest of this README covers the quickstart, status, and roadmap.
 
-## Try it in your browser
-
-A live demo of the engine — combat sandbox + event inspector + import/export with replay verification — runs on GitHub Pages: **https://greghcarr.github.io/dnd-srd-engine/** (deployed via `.github/workflows/deploy-demo.yml`; one-time setup is Settings → Pages → Source = "GitHub Actions"). Source lives under [web/](web/). See [web/README.md](web/README.md) for local development.
-
 ## Quick start
 
 The engine is not currently published to a package registry. Clone the repo and work against source:
@@ -107,7 +103,6 @@ That snippet shows the shortest "engine is alive" path: load the starter pack, b
 | [docs/](docs/) | Working docs: [status](docs/status.md), [roadmap](docs/roadmap.md), [slice template](docs/slice-template.md), [per-category gap catalogs](docs/starter-pack-gaps.md). |
 | [examples/](examples/) | Small runnable scripts showing API usage. |
 | [references/srd-markdown/](references/srd-markdown/) | The SRD 5.2.1 markdown clone (git submodule). Canonical source for rules text; never substitute web lookups. |
-| [web/](web/) | Browser demo for the engine (combat sandbox + event inspector). Deployed to GitHub Pages. |
 | [dndbnb/](dndbnb/) | A D&D Beyond-style consumer app built on the engine. Co-located so engine changes flow into it without a publish cycle. Has its own [README](dndbnb/README.md) and deploy workflow. |
 | [supabase/](supabase/) | dndbnb's database migrations (Postgres + Auth + RLS). Not used by the engine itself. |
 | [CONTRIBUTING.md](CONTRIBUTING.md) / [docs/architecture.md](docs/architecture.md) | Contributor manual + engine internals. Anyone doing non-trivial work reads these end-to-end first. |
@@ -128,9 +123,6 @@ Pick the doc that matches what you want:
 | See common patterns (save, undo, houserules, multiplayer sync) | [docs/recipes.md](docs/recipes.md) |
 | Author content packs (spells, classes, feats, items, monsters) | [docs/authoring-content-packs.md](docs/authoring-content-packs.md) |
 | Understand the engine internals (event sourcing, plan/commit, effect primitives, planner shape) | [docs/architecture.md](docs/architecture.md) |
-| Try the web demo in your browser | [https://greghcarr.github.io/dnd-srd-engine/](https://greghcarr.github.io/dnd-srd-engine/) |
-| Hack on the web demo locally | [web/README.md](web/README.md) |
-| Read the demo's architecture decisions | [docs/web-demo-plan.md](docs/web-demo-plan.md) |
 | Understand what's missing before the engine is trustworthy for unsupervised play | [docs/trustworthiness-roadmap.md](docs/trustworthiness-roadmap.md) |
 | Watch a full multi-act campaign run | [the showcase transcript](tests/golden/transcripts/showcase.transcript.md) |
 | Know what each version means (alpha / beta / rc / 1.0) | [VERSIONING.md](VERSIONING.md) |
@@ -143,7 +135,7 @@ Pick the doc that matches what you want:
 - **No content, no IP problems.** The library ships schemas and an engine. It does not ship any rulebook text or statblocks. You bring your own content packs (built from the SRD 5.2 or your own homebrew), and the engine validates and runs them.
 - **Event-sourced, fully deterministic replay.** Every state change is an event. A captured event log replays to byte-identical state across machines. Undo and redo are free.
 - **Plan/commit split.** All randomness is consumed inside `engine.plan(intent)` and baked into resolution events. `apply()` is pure and replay never re-rolls dice. This is the architectural foundation that makes multiplayer sync, save files, and audit logs work correctly.
-- **Effect-primitive vocabulary plus escape hatch.** 60 declarative primitives express the bulk of 5.5e features as pure data; a `CustomEffect` code-handler hook covers genuinely-procedural exotica (Wild Shape, Wish, Simulacrum) and table-specific houserules. The exact count drifts; the authoritative list is `EFFECT_KINDS` in [src/schemas/effects.ts](src/schemas/effects.ts).
+- **Effect-primitive vocabulary plus escape hatch.** 63 declarative primitives express the bulk of 5.5e features as pure data; a `CustomEffect` code-handler hook covers genuinely-procedural exotica (Wild Shape, Wish, Simulacrum) and table-specific houserules. The exact count drifts; the authoritative list is `EFFECT_KINDS` in [src/schemas/effects.ts](src/schemas/effects.ts).
 - **Solid foundations.** TypeScript strict mode. Zod validation at boundaries. Immer-backed reducers, immutable externally. ESM and CJS builds. Zero peer-dependency conflicts.
 - **Consumer read layer.** Beyond running the rules, a pure read/view-model surface renders the three screens a player-facing app needs: content browse (`querySpells` / `queryMonsters` / `queryItems`), a full character sheet (`buildCharacterSheet`: AC, saves, skills, attacks, spellcasting, speeds, inventory), and a combat tracker (`buildEncounterView`). See [docs/api-overview.md](docs/api-overview.md).
 - **Living transcripts.** Every golden test emits a human-readable markdown transcript of its event log (one action per paragraph; open in VS Code and run "Open Preview" to read it as rich text), checked into [tests/golden/transcripts/](tests/golden/transcripts/). Every PR that changes engine behavior shows the transcript diff alongside the code. See [the showcase transcript](tests/golden/transcripts/showcase.transcript.md) for "The Stoneheart Saga": a multi-act campaign that exercises sessions and journals, party currency and bastion management, locations + doors + terrain, NPC reaction rolls, mounts and a supply wagon, travel and forage, two combat encounters (goblin scouts then a young red dragon) covering attack chains with advantage and counterspell and weapon mastery and concentration breakage, action surge, off-hand strikes, sneak attack, opportunity attacks, falling, polymorph (Alyx into a giant ape), multiattack creatures, fire-mitigation, death save plus revivify, quest objectives plus milestone plus XP plus reward claim, magic-item charges plus dawn recharge, downtime training plus crafting, and replay-equivalence plus RNG-capture invariants over the whole multi-act transcript.
@@ -152,7 +144,7 @@ Pick the doc that matches what you want:
 
 - **Event-sourced.** State changes are events. `apply(state, event) -> state` is pure. Replay any campaign from its event log.
 - **Plan/commit split.** RNG is consumed only inside `engine.plan(intent)`. Resolution events carry baked rolls, so `apply()` is deterministic. Replay never re-rolls.
-- **Effect-primitive vocabulary.** Features (class features, feats, magic item powers, conditions) are described via a fixed vocabulary of effect primitives (the authoritative list is `EFFECT_KINDS` in [src/schemas/effects.ts](src/schemas/effects.ts); currently 60 primitives plus the `Custom` escape hatch). Wild Shape, Polymorph, Wish, Simulacrum and a handful of others drop to code handlers.
+- **Effect-primitive vocabulary.** Features (class features, feats, magic item powers, conditions) are described via a fixed vocabulary of effect primitives (the authoritative list is `EFFECT_KINDS` in [src/schemas/effects.ts](src/schemas/effects.ts); currently 63 primitives plus the `Custom` escape hatch). Wild Shape, Polymorph, Wish, Simulacrum and a handful of others drop to code handlers.
 - **Schema-only.** The library ships shapes (`Character`, `Spell`, `MagicItem`, `MonsterStatblock`, etc.) and the engine that operates on them. Consumers load rules content from their own JSON content packs. This keeps the IP story clean.
 - **Branded IDs + ULIDs.** `CharacterId`, `SpellId`, `ItemDefinitionId` versus `ItemInstanceId`, etc. Backed by ULIDs (lexicographically sortable by time).
 - **PendingChoice protocol.** Deferred player decisions (ASI vs feat, fighting style selection, spell target selection) are first-class events in the log.
@@ -165,8 +157,8 @@ Pick the doc that matches what you want:
 At a glance:
 
 - **Engine architecture**: 100%. Locked.
-- **Effect-primitive vocabulary**: the majority of the planned primitives are shipped (60 primitives + `Custom` escape hatch in `EFFECT_KINDS`); the queue of remaining primitives is enumerated in [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md).
-- **Classes / species / backgrounds / feats / conditions / spells / monsters / magic items**: SRD 5.2.1 catalog complete in every category. Spell mechanical wiring ~58% (198/339 wired, 68 narrative, 73 schema-only; the 12 non-SRD wired spells moved to the phb-2024-extras pack in slice 402); magic-item mechanical wiring roughly a third (~91/258, after single-base magic weapons/armor were re-modeled into the weapon/armor categories in slices 315-317); consumables roughly two thirds (~45/69).
+- **Effect-primitive vocabulary**: the majority of the planned primitives are shipped (63 primitives + `Custom` escape hatch in `EFFECT_KINDS`); the queue of remaining primitives is enumerated in [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md).
+- **Classes / species / backgrounds / feats / conditions / spells / monsters / magic items**: SRD 5.2.1 catalog complete in every category. Spell mechanical wiring ~62% (209/339 wired, 68 narrative, 62 schema-only; the 12 non-SRD wired spells moved to the phb-2024-extras pack in slice 402); magic-item mechanical wiring roughly a third (~91/258, after single-base magic weapons/armor were re-modeled into the weapon/armor categories in slices 315-317); consumables roughly two thirds (~45/69).
 - **Variant rules**: `grittyRest` + `heroPoints` enforce; `sanity` + `massCombat` toggle but don't enforce.
 
 For the full coverage table, per-category breakdown, known gaps (engine, content, test infrastructure), and severity ranking, see **[docs/status.md](docs/status.md)**.

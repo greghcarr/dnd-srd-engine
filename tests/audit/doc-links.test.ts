@@ -24,7 +24,15 @@ import { fileURLToPath } from 'node:url';
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'coverage']);
 // references/srd-markdown is a vendored submodule (its own link conventions).
-const SKIP_PREFIXES = ['references/srd-markdown'];
+// docs/changelog/archive-* and docs/changelog/released-versions* are frozen
+// historical narrative — by intent they reference paths that may have been
+// since removed or renamed (slice 686 retired web/, for instance). Re-checking
+// them every CI run turns historically-accurate prose into churn.
+const SKIP_PREFIXES = [
+  'references/srd-markdown',
+  'docs/changelog/archive-',
+  'docs/changelog/released-versions',
+];
 
 const markdownFiles = (dir: string, acc: string[] = []): string[] => {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {

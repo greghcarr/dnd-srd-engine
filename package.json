@@ -1,6 +1,6 @@
 {
   "name": "dnd-srd-engine",
-  "version": "0.2.0-alpha.0",
+  "version": "0.4.0-alpha.0",
   "private": true,
   "description": "Standalone, event-sourced TypeScript domain engine for D&D 5.5e (2024 rules). Schema-only content model with effect-primitive vocabulary and code-handler escape hatch.",
   "type": "module",
@@ -41,9 +41,6 @@
     "release:doc-counts": "node scripts/sync-doc-counts.mjs",
     "release:doc-counts:check": "node scripts/sync-doc-counts.mjs --check",
     "release:doc-review": "node scripts/review-doc-figures.mjs",
-    "dev:web": "vite --config vite.web.config.ts",
-    "build:web": "vite build --config vite.web.config.ts",
-    "preview:web": "vite preview --config vite.web.config.ts",
     "dev:dndbnb": "vite --config vite.dndbnb.config.ts",
     "build:dndbnb": "vite build --config vite.dndbnb.config.ts",
     "preview:dndbnb": "vite preview --config vite.dndbnb.config.ts"

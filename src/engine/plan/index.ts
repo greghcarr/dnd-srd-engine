@@ -19,6 +19,7 @@ export {
 } from './opportunity-attack.js';
 export {
   planCreateEncounter,
+  planPlaceCombatant,
   planRollInitiative,
   planSwapInitiative,
   planStartEncounter,
@@ -26,6 +27,8 @@ export {
   planBeginFirstTurn,
   planEndEncounter,
   type CreateEncounterIntent,
+  type CreateEncounterCombatant,
+  type PlaceCombatantIntent,
   type RollInitiativeIntent,
   type SwapInitiativeIntent,
   type StartEncounterIntent,
@@ -43,6 +46,10 @@ export {
   planOfferCharacterChoices,
   type OfferCharacterChoicesIntent,
 } from './offer-character-choices.js';
+export {
+  planOfferLongRestChoices,
+  type OfferLongRestChoicesIntent,
+} from './offer-long-rest-choices.js';
 export {
   planSave,
   planAbilityCheck,
@@ -100,6 +107,13 @@ export { planConsumeItem, type ConsumeItemIntent } from './consume-item.js';
 export { planUseItem, type UseItemIntent } from './use-item.js';
 export { planMagicWeapon, type MagicWeaponIntent } from './magic-weapon.js';
 export { planRecklessAttack, type RecklessAttackIntent } from './reckless-attack.js';
+export { planSteadyAim, type SteadyAimIntent } from './steady-aim.js';
+export { planFastHands, type FastHandsIntent, type FastHandsMode } from './fast-hands.js';
+export {
+  planDeflectAttacks,
+  type DeflectAttacksIntent,
+  type DeflectAttacksOutcome,
+} from './deflect-attacks.js';
 export { planStunningStrike, type StunningStrikeIntent } from './stunning-strike.js';
 export { planFlurryOfBlows, type FlurryOfBlowsIntent } from './flurry-of-blows.js';
 export { planPatientDefense, type PatientDefenseIntent } from './patient-defense.js';
@@ -134,13 +148,22 @@ export {
   type DetachStirgeIntent,
 } from './stirge-drain.js';
 export { planTurnUndead, type TurnUndeadIntent } from './turn-undead.js';
+export { planDivineSpark, divineSparkDiceCount, type DivineSparkIntent } from './divine-spark.js';
+export { planUncannyMetabolism, type UncannyMetabolismIntent } from './uncanny-metabolism.js';
+export { planMagicalCunning, type MagicalCunningIntent } from './magical-cunning.js';
 export { planIntimidatingPresence, type IntimidatingPresenceIntent } from './intimidating-presence.js';
 export { planDragonWings, type DragonWingsIntent } from './dragon-wings.js';
 export { planPreserveLife, type PreserveLifeIntent } from './preserve-life.js';
 export { planLandsAid, type LandsAidIntent } from './lands-aid.js';
 export { planWholenessOfBody, type WholenessOfBodyIntent } from './wholeness-of-body.js';
 export { planPeerlessSkill, type PeerlessSkillIntent, type PeerlessSkillOutcome } from './peerless-skill.js';
+export { planTacticalMind, type TacticalMindIntent, type TacticalMindOutcome } from './tactical-mind.js';
 export { planFrenzy, type FrenzyIntent } from './frenzy.js';
+export {
+  planExhaleDragonsBreath,
+  type ExhaleDragonsBreathIntent,
+} from './exhale-dragons-breath.js';
+export { planBlinkTurnEnd, type BlinkTurnEndIntent } from './blink-turn-end.js';
 export {
   planCuttingWords,
   type CuttingWordsIntent,

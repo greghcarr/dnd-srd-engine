@@ -316,7 +316,7 @@ export type Effect =
   | { kind: 'GrantWeaponMastery'; masteries: WeaponMastery[]; slots: number }
   | { kind: 'ExpandSpellList'; classId: string; spellIds: string[] }
   | { kind: 'SetHPMaxFormula'; formula: Formula }
-  | { kind: 'OfferChoice'; choiceId: string; prompt: string; options: ChoiceOptionShape[]; oneOf: number; when: 'onAcquire' | 'onLevelUp' | 'onLongRest' }
+  | { kind: 'OfferChoice'; choiceId: string; prompt: string; options: ChoiceOptionShape[]; oneOf: number; when: 'onAcquire' | 'onLevelUp' | 'onLongRest'; lifecycle?: 'accumulate' | 'supersede' }
   | { kind: 'FlatDamageReduction'; damageTypes: DamageType[]; amount: number }
   // Lowers the natural-d20 threshold at which the attacker's weapon
   // attacks crit. Default threshold is 20; Improved Critical sets 19,
@@ -385,6 +385,17 @@ export type Effect =
   // consumer-managed; the marker exists so a later slice can wire them
   // without changing the feat-side authoring.
   | { kind: 'GrantPactChain' }
+  // Slice 662: ability-substitution primitive. RAW shape: "for
+  // ability checks using <skill> ∈ skills, you can use <ability>
+  // instead of the skill's normal ability — optionally only while
+  // a named condition is active." Canonical user: Barbarian L3
+  // Primal Knowledge (ability='STR', skills=[acrobatics,
+  // intimidation, perception, stealth, survival],
+  // activeWhileConditionId='raging'). Read by `planAbilityCheck`
+  // from the bearer's effect stack when
+  // `intent.useAbilitySubstitution === true`. Replaces the
+  // slice-659 hardcoded Primal Knowledge gate.
+  | { kind: 'GrantAbilitySubstitution'; ability: AbilityScore; skills: Skill[]; activeWhileConditionId?: string }
   // Slice 538: Halfling Luck. Presence marker for the reroll-on-natural-1
   // mechanic. RAW: "When you roll a 1 on the d20 of a D20 Test, you can
   // reroll the die, and you must use the new roll." Projected via
@@ -393,6 +404,21 @@ export type Effect =
   // is a natural 1. Save / check / other d20 sites stay deferred to
   // follow-up slices that wire the same helper at each site.
   | { kind: 'GrantHalflingLuck' }
+  // Slice 678: marker — the bearer's weapon attacks that use STR
+  // for the damage ability deal half damage (rounded down). RAW
+  // user: the Ray of Enfeeblement spell's `enfeebled` condition.
+  // Read by planAttack post-damageTotal computation; the base
+  // weapon damage is halved while extra rider damages
+  // (sneak attack, smite, on-hit riders, fires-burn, etc.) pass
+  // through unhalved. RAW reading scoped to the weapon's damage
+  // line, not every damage source the attack triggers.
+  | { kind: 'HalvesStrengthWeaponDamage' }
+  // Slice 679: marker — bearer's death saving throws are rolled
+  // with advantage. RAW user: Beacon of Hope ("It has Advantage
+  // on Wisdom saving throws and Death Saving Throws"). Read by
+  // `planDeathSaveAtTurnStart` via the character's effect stack;
+  // when set, rolls 2d20 and takes the max (RAW advantage).
+  | { kind: 'GrantDeathSaveAdvantage' }
   // Slice 542: Heroic Inspiration on Long Rest. RAW: "You gain
   // Heroic Inspiration whenever you finish a Long Rest." Wired
   // on Human Resourceful; future features that grant per-long-
@@ -767,6 +793,15 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
         .min(1),
       oneOf: z.number().int().min(1),
       when: z.enum(['onAcquire', 'onLevelUp', 'onLongRest']),
+      // Slice 661: when 'supersede', only the LATEST resolution of
+      // this choiceId contributes effects in the effect-stack derive
+      // (older resolutions stay in the event log for replay but
+      // their granted effects are dropped). Canonical user:
+      // Druid Circle of the Land Spells (RAW: each long rest the
+      // druid picks a land and the prior land's spells go away).
+      // Default 'accumulate' preserves slice-618 OfferChoice
+      // behavior (every resolved choice contributes).
+      lifecycle: z.enum(['accumulate', 'supersede']).optional(),
     }),
     z.object({
       kind: z.literal('FlatDamageReduction'),
@@ -805,7 +840,23 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       kind: z.literal('GrantPactChain'),
     }),
     z.object({
+      kind: z.literal('GrantAbilitySubstitution'),
+      ability: AbilityScoreSchema,
+      skills: z.array(SkillSchema).min(1),
+      // When set, the substitution only applies while the bearer
+      // has the named condition active. RAW user: Primal
+      // Knowledge requires 'raging'. Future generic users may
+      // omit this for unconditional substitutions.
+      activeWhileConditionId: z.string().optional(),
+    }),
+    z.object({
       kind: z.literal('GrantHalflingLuck'),
+    }),
+    z.object({
+      kind: z.literal('HalvesStrengthWeaponDamage'),
+    }),
+    z.object({
+      kind: z.literal('GrantDeathSaveAdvantage'),
     }),
     z.object({
       kind: z.literal('GrantHeroicInspirationOnLongRest'),
@@ -939,7 +990,10 @@ export const EFFECT_KINDS = [
   'GrantFeat',
   'GrantPactBlade',
   'GrantPactChain',
+  'GrantAbilitySubstitution',
   'GrantHalflingLuck',
+  'HalvesStrengthWeaponDamage',
+  'GrantDeathSaveAdvantage',
   'GrantHeroicInspirationOnLongRest',
   'GrantAdvantageToAttackers',
   'ImposeDisadvantageOnAttackers',

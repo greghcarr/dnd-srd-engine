@@ -4,6 +4,7 @@ import type {
   ChoiceRequiredEvent,
   ChoiceResolvedEvent,
   LevelUpResolvedEvent,
+  SubclassChosenEvent,
 } from '../../schemas/events/level-up.js';
 import { invariant } from '../../internal/invariants.js';
 
@@ -49,6 +50,17 @@ export const applyChoiceRequired = (
     // planOfferCharacterChoices planner can dedupe across repeated
     // calls without relying on prompt-text matching.
     promptKey: event.promptKey,
+    // Slice 654: persist the subclass-selection marker so
+    // planResolveChoice can detect it without re-querying the
+    // originating event.
+    ...(event.subclassChoiceForClassId !== undefined
+      ? { subclassChoiceForClassId: event.subclassChoiceForClassId }
+      : {}),
+    // Slice 661: persist the supersession lifecycle so the
+    // derive layer (collectResolvedChoiceEffects) can drop older
+    // resolutions for the same promptKey without cross-looking-up
+    // the source OfferChoice.
+    ...(event.lifecycle !== undefined ? { lifecycle: event.lifecycle } : {}),
   };
   character.pendingChoiceIds.push(event.choiceId);
 };
@@ -78,4 +90,22 @@ export const applyChoiceResolved = (
     selectedOptionIds: [...event.selectedOptionIds],
     atEventId: event.id,
   };
+};
+
+// Slice 654: assigns `subclassId` on the matching class enrollment.
+// Emitted by planResolveChoice when the resolved choice carried the
+// `subclassChoiceForClassId` marker (planLevelUp sets this when the
+// new class level equals the class's `subclassLevel`).
+export const applySubclassChosen = (
+  state: Draft<CampaignState>,
+  event: SubclassChosenEvent,
+): void => {
+  const character = state.characters[event.characterId];
+  invariant(character !== undefined, `Character ${event.characterId} not found`);
+  const enrollment = character.classes.find((c) => c.classId === event.classId);
+  invariant(
+    enrollment !== undefined,
+    `Character ${event.characterId} has no ${event.classId} enrollment`,
+  );
+  enrollment.subclassId = event.subclassId;
 };

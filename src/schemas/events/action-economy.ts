@@ -23,6 +23,67 @@ export const RecklessAttackActivatedEventSchema = EventEnvelopeSchema.extend({
 });
 export type RecklessAttackActivatedEvent = z.infer<typeof RecklessAttackActivatedEventSchema>;
 
+// Slice 646: Rogue L3 Steady Aim. Sets two turnUsage flags on the
+// combatant: `steadyAimActive` (next attack roll this turn gets
+// advantage; cleared by attack resolution) and
+// `speedZeroUntilEndOfTurn` (move planner rejects until TurnStarted
+// clears it). RAW: "As a Bonus Action, you give yourself Advantage
+// on your next attack roll on the current turn ... after you use it,
+// your Speed is 0 until the end of the current turn."
+export const SteadyAimActivatedEventSchema = EventEnvelopeSchema.extend({
+  type: z.literal('SteadyAimActivated'),
+  encounterId: ULIDSchema,
+  combatantId: ULIDSchema,
+});
+export type SteadyAimActivatedEvent = z.infer<typeof SteadyAimActivatedEventSchema>;
+
+// Slice 646: emitted by `planAttack` (or any future planner that
+// consumes a Steady Aim advantage) after the attack roll resolves
+// against a target. The reducer clears the combatant's
+// `steadyAimActive` flag so subsequent attacks this turn don't also
+// gain advantage. RAW: only the NEXT attack benefits — this event
+// enforces that.
+export const SteadyAimConsumedEventSchema = EventEnvelopeSchema.extend({
+  type: z.literal('SteadyAimConsumed'),
+  encounterId: ULIDSchema,
+  combatantId: ULIDSchema,
+});
+export type SteadyAimConsumedEvent = z.infer<typeof SteadyAimConsumedEventSchema>;
+
+// Slice 647: Rogue Thief subclass L3 Fast Hands. Bonus-action
+// dispatch marker — the consumer pairs this with a follow-up
+// sub-planner (planAbilityCheck for sleight-of-hand picks,
+// planUtilize for object interaction, planUseItem for magic-item
+// activation). The event records that the BA was specifically Fast
+// Hands and which mode was chosen, making transcripts readable.
+// No reducer state mutation — the BA-used flag (set by the paired
+// ActionEconomyConsumed event) is the only persistent effect.
+export const FastHandsActivatedEventSchema = EventEnvelopeSchema.extend({
+  type: z.literal('FastHandsActivated'),
+  encounterId: ULIDSchema,
+  combatantId: ULIDSchema,
+  mode: z.enum(['sleightOfHand', 'utilize', 'useMagicItem']),
+});
+export type FastHandsActivatedEvent = z.infer<typeof FastHandsActivatedEventSchema>;
+
+// Slice 648: Monk L3 Deflect Attacks. Reaction marker emitted when
+// the monk reduces an incoming attack's B/P/S damage. Records the
+// rolled reduction amount, the incoming damage before reduction,
+// and the remaining damage after reduction. The consumer subtracts
+// the reduction from the pending DamageApplied (the engine's
+// damage pipeline doesn't yet auto-integrate reaction reductions;
+// damage-pipeline integration is a deferred follow-up).
+export const DeflectAttacksUsedEventSchema = EventEnvelopeSchema.extend({
+  type: z.literal('DeflectAttacksUsed'),
+  encounterId: ULIDSchema,
+  combatantId: ULIDSchema,
+  triggeringAttackEventId: ULIDSchema,
+  reduction: z.number().int().min(0),
+  incomingDamage: z.number().int().min(0),
+  remainingDamage: z.number().int().min(0),
+});
+export type DeflectAttacksUsedEvent = z.infer<typeof DeflectAttacksUsedEventSchema>;
+
 // Monk Stunning Strike attempt marker. Records the monk used their
 // once-per-turn Stunning Strike; the reducer sets the corresponding
 // turnUsage flag. The actual save + condition application are emitted

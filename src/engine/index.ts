@@ -18,6 +18,7 @@ export { replay } from './replay.js';
 export { commit } from './commit.js';
 export { undo, redo } from './undo-redo.js';
 export { performIntent, serializeCampaign, loadCampaign, createPC } from './conveniences.js';
+export { seedResourcesFromContent } from './seed-resources.js';
 export type { CreatePCOptions, SerializedCampaign } from './conveniences.js';
 import { performIntent } from './conveniences.js';
 import {
@@ -26,6 +27,7 @@ import {
   planAttack,
   planCleave,
   planCreateEncounter,
+  planPlaceCombatant,
   planRollInitiative,
   planSwapInitiative,
   planStartEncounter,
@@ -35,7 +37,9 @@ import {
   planLevelUp,
   planResolveChoice,
   planOfferCharacterChoices,
+  planOfferLongRestChoices,
   type OfferCharacterChoicesIntent,
+  type OfferLongRestChoicesIntent,
   planSave,
   planAbilityCheck,
   planCastSpell,
@@ -66,6 +70,9 @@ import {
   planUseItem,
   planMagicWeapon,
   planRecklessAttack,
+  planSteadyAim,
+  planFastHands,
+  planDeflectAttacks,
   planStunningStrike,
   planFlurryOfBlows,
   planPatientDefense,
@@ -94,13 +101,19 @@ import {
   planStirgeDrain,
   planDetachStirge,
   planTurnUndead,
+  planDivineSpark,
+  planUncannyMetabolism,
+  planMagicalCunning,
   planIntimidatingPresence,
   planDragonWings,
   planPreserveLife,
   planLandsAid,
   planWholenessOfBody,
   planPeerlessSkill,
+  planTacticalMind,
   planFrenzy,
+  planExhaleDragonsBreath,
+  planBlinkTurnEnd,
   planCuttingWords,
   planMetamagic,
   planWildCompanion,
@@ -221,6 +234,10 @@ import {
   type UseItemIntent,
   type MagicWeaponIntent,
   type RecklessAttackIntent,
+  type SteadyAimIntent,
+  type FastHandsIntent,
+  type DeflectAttacksIntent,
+  type DeflectAttacksOutcome,
   type StunningStrikeIntent,
   type FlurryOfBlowsIntent,
   type PatientDefenseIntent,
@@ -251,6 +268,9 @@ import {
   type StirgeDrainIntent,
   type DetachStirgeIntent,
   type TurnUndeadIntent,
+  type DivineSparkIntent,
+  type UncannyMetabolismIntent,
+  type MagicalCunningIntent,
   type IntimidatingPresenceIntent,
   type DragonWingsIntent,
   type PreserveLifeIntent,
@@ -258,7 +278,11 @@ import {
   type WholenessOfBodyIntent,
   type PeerlessSkillIntent,
   type PeerlessSkillOutcome,
+  type TacticalMindIntent,
+  type TacticalMindOutcome,
   type FrenzyIntent,
+  type ExhaleDragonsBreathIntent,
+  type BlinkTurnEndIntent,
   type CuttingWordsIntent,
   type CuttingWordsOutcome,
   type MetamagicIntent,
@@ -268,6 +292,7 @@ import {
   type MultiattackIntent,
   type FallingIntent,
   type CreateEncounterIntent,
+  type PlaceCombatantIntent,
   type RollInitiativeIntent,
   type SwapInitiativeIntent,
   type StartEncounterIntent,
@@ -356,6 +381,7 @@ export interface Engine {
       state: CampaignState,
       intent: Omit<CreateEncounterIntent, 'type'>,
     ): { events: ReadonlyArray<Event>; encounterId: string };
+    placeCombatant(state: CampaignState, intent: Omit<PlaceCombatantIntent, 'type'>): PlanResult;
     rollInitiative(state: CampaignState, intent: Omit<RollInitiativeIntent, 'type'>): PlanResult;
     swapInitiative(state: CampaignState, intent: Omit<SwapInitiativeIntent, 'type'>): PlanResult;
     startEncounter(state: CampaignState, intent: Omit<StartEncounterIntent, 'type'>): PlanResult;
@@ -365,6 +391,7 @@ export interface Engine {
     levelUp(state: CampaignState, intent: Omit<LevelUpIntent, 'type'>): PlanResult;
     resolveChoice(state: CampaignState, intent: Omit<ResolveChoiceIntent, 'type'>): PlanResult;
     offerCharacterChoices(state: CampaignState, intent: Omit<OfferCharacterChoicesIntent, 'type'>): PlanResult;
+    offerLongRestChoices(state: CampaignState, intent: Omit<OfferLongRestChoicesIntent, 'type'>): PlanResult;
     save(state: CampaignState, intent: Omit<SaveIntent, 'type'>): PlanResult;
     abilityCheck(state: CampaignState, intent: Omit<AbilityCheckIntent, 'type'>): PlanResult;
     castSpell(state: CampaignState, intent: Omit<CastSpellIntent, 'type'>): PlanResult;
@@ -400,6 +427,9 @@ export interface Engine {
     useItem(state: CampaignState, intent: Omit<UseItemIntent, 'type'>): PlanResult;
     magicWeapon(state: CampaignState, intent: Omit<MagicWeaponIntent, 'type'>): PlanResult;
     recklessAttack(state: CampaignState, intent: Omit<RecklessAttackIntent, 'type'>): PlanResult;
+    steadyAim(state: CampaignState, intent: Omit<SteadyAimIntent, 'type'>): PlanResult;
+    fastHands(state: CampaignState, intent: Omit<FastHandsIntent, 'type'>): PlanResult;
+    deflectAttacks(state: CampaignState, intent: Omit<DeflectAttacksIntent, 'type'>): DeflectAttacksOutcome;
     stunningStrike(state: CampaignState, intent: Omit<StunningStrikeIntent, 'type'>): PlanResult;
     flurryOfBlows(state: CampaignState, intent: Omit<FlurryOfBlowsIntent, 'type'>): PlanResult;
     patientDefense(state: CampaignState, intent: Omit<PatientDefenseIntent, 'type'>): PlanResult;
@@ -434,13 +464,19 @@ export interface Engine {
     stirgeDrain(state: CampaignState, intent: Omit<StirgeDrainIntent, 'type'>): PlanResult;
     detachStirge(state: CampaignState, intent: Omit<DetachStirgeIntent, 'type'>): PlanResult;
     turnUndead(state: CampaignState, intent: Omit<TurnUndeadIntent, 'type'>): PlanResult;
+    divineSpark(state: CampaignState, intent: Omit<DivineSparkIntent, 'type'>): PlanResult;
+    uncannyMetabolism(state: CampaignState, intent: Omit<UncannyMetabolismIntent, 'type'>): PlanResult;
+    magicalCunning(state: CampaignState, intent: Omit<MagicalCunningIntent, 'type'>): PlanResult;
     intimidatingPresence(state: CampaignState, intent: Omit<IntimidatingPresenceIntent, 'type'>): PlanResult;
     dragonWings(state: CampaignState, intent: Omit<DragonWingsIntent, 'type'>): PlanResult;
     preserveLife(state: CampaignState, intent: Omit<PreserveLifeIntent, 'type'>): PlanResult;
     landsAid(state: CampaignState, intent: Omit<LandsAidIntent, 'type'>): PlanResult;
     wholenessOfBody(state: CampaignState, intent: Omit<WholenessOfBodyIntent, 'type'>): PlanResult;
     peerlessSkill(state: CampaignState, intent: Omit<PeerlessSkillIntent, 'type'>): PeerlessSkillOutcome;
+    tacticalMind(state: CampaignState, intent: Omit<TacticalMindIntent, 'type'>): TacticalMindOutcome;
     frenzy(state: CampaignState, intent: Omit<FrenzyIntent, 'type'>): PlanResult;
+    exhaleDragonsBreath(state: CampaignState, intent: Omit<ExhaleDragonsBreathIntent, 'type'>): PlanResult;
+    blinkTurnEnd(state: CampaignState, intent: Omit<BlinkTurnEndIntent, 'type'>): PlanResult;
     cuttingWords(state: CampaignState, intent: Omit<CuttingWordsIntent, 'type'>): CuttingWordsOutcome;
     metamagic(state: CampaignState, intent: Omit<MetamagicIntent, 'type'>): PlanResult;
     wildCompanion(state: CampaignState, intent: Omit<WildCompanionIntent, 'type'>): PlanResult;
@@ -603,6 +639,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     createEncounter(state, intent) {
       return planCreateEncounter(state, content, { type: 'CreateEncounter', ...intent });
     },
+    placeCombatant(state, intent) {
+      return { events: planPlaceCombatant(state, content, { type: 'PlaceCombatant', ...intent }) };
+    },
     rollInitiative(state, intent) {
       return {
         events: planRollInitiative(state, content, rng, { type: 'RollInitiative', ...intent }),
@@ -633,6 +672,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     offerCharacterChoices(state, intent) {
       return { events: planOfferCharacterChoices(state, content, { type: 'OfferCharacterChoices', ...intent }) };
+    },
+    offerLongRestChoices(state, intent) {
+      return { events: planOfferLongRestChoices(state, content, { type: 'OfferLongRestChoices', ...intent }) };
     },
     save(state, intent) {
       return { events: planSave(state, content, rng, { type: 'Save', ...intent }) };
@@ -753,6 +795,15 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     recklessAttack(state, intent) {
       return { events: planRecklessAttack(state, content, { type: 'RecklessAttack', ...intent }) };
     },
+    steadyAim(state, intent) {
+      return { events: planSteadyAim(state, content, { type: 'SteadyAim', ...intent }) };
+    },
+    fastHands(state, intent) {
+      return { events: planFastHands(state, content, { type: 'FastHands', ...intent }) };
+    },
+    deflectAttacks(state, intent) {
+      return planDeflectAttacks(state, content, rng, { type: 'DeflectAttacks', ...intent });
+    },
     stunningStrike(state, intent) {
       return { events: planStunningStrike(state, content, rng, { type: 'StunningStrike', ...intent }) };
     },
@@ -837,6 +888,15 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     turnUndead(state, intent) {
       return { events: planTurnUndead(state, content, rng, { type: 'TurnUndead', ...intent }) };
     },
+    divineSpark(state, intent) {
+      return { events: planDivineSpark(state, content, rng, { type: 'DivineSpark', ...intent }) };
+    },
+    uncannyMetabolism(state, intent) {
+      return { events: planUncannyMetabolism(state, content, rng, { type: 'UncannyMetabolism', ...intent }) };
+    },
+    magicalCunning(state, intent) {
+      return { events: planMagicalCunning(state, content, rng, { type: 'MagicalCunning', ...intent }) };
+    },
     intimidatingPresence(state, intent) {
       return { events: planIntimidatingPresence(state, content, rng, { type: 'IntimidatingPresence', ...intent }) };
     },
@@ -855,8 +915,17 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     peerlessSkill(state, intent) {
       return planPeerlessSkill(state, content, rng, { type: 'PeerlessSkill', ...intent });
     },
+    tacticalMind(state, intent) {
+      return planTacticalMind(state, content, rng, { type: 'TacticalMind', ...intent });
+    },
     frenzy(state, intent) {
       return { events: planFrenzy(state, content, { type: 'Frenzy', ...intent }) };
+    },
+    exhaleDragonsBreath(state, intent) {
+      return { events: planExhaleDragonsBreath(state, content, rng, { type: 'ExhaleDragonsBreath', ...intent }) };
+    },
+    blinkTurnEnd(state, intent) {
+      return { events: planBlinkTurnEnd(state, content, rng, { type: 'BlinkTurnEnd', ...intent }) };
     },
     cuttingWords(state, intent) {
       return planCuttingWords(state, content, rng, { type: 'CuttingWords', ...intent });

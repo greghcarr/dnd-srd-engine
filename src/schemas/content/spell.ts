@@ -21,7 +21,13 @@ const CANTRIP_SCALING_THRESHOLDS = [5, 11, 17] as const;
 const SpellAttackMechanicSchema = z
   .object({
     kind: z.literal('attack'),
-    damageDice: DiceExpressionSchema,
+    // Slice 666: damageDice is now optional. Some attack-based spells
+    // do not deal direct damage and ONLY apply a condition on a hit
+    // (canonical user: Ray of Enfeeblement — ranged spell attack with
+    // an Enfeebled rider on hit, no damage). When omitted, the
+    // damage-roll path is skipped (no DamageRolled / DamageApplied
+    // emitted on hit).
+    damageDice: DiceExpressionSchema.optional(),
     damageType: DamageTypeSchema.optional(),
     casterChoosesDamageType: z
       .object({
@@ -69,6 +75,15 @@ const SpellAttackMechanicSchema = z
     // was silently stripped (the field didn't exist), so they were
     // mistagged ranged.
     attackKind: z.enum(['melee', 'ranged']).default('ranged'),
+    // Slice 666: condition to apply to the attack's target on a
+    // successful hit. Mirrors the `conditionOnFail` field on the save
+    // mechanic but fires on attack-hit instead of save-failure.
+    // Canonical users: Ray of Enfeeblement (enfeebled on hit), other
+    // future "ranged attack + on-hit condition" spells. The condition
+    // sticks on the target with `sourceCharacterId` = caster and a
+    // `sourceEffectInstanceId` when the cast is a concentration spell,
+    // so concentration-drop / save-ends mechanics clean it up.
+    conditionOnHit: z.string().optional(),
   })
   // Slice 371: `.strict()` so a future authored-but-unsupported field
   // fails to parse loudly instead of being silently dropped by Zod (the

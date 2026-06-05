@@ -434,7 +434,7 @@
       "subclassLevel": 3,
       "levelTable": {
         "1": { "proficiencyBonus": 2, "features": [{ "id": "eldritch-invocations-2", "name": "Eldritch Invocations (2 known)", "effects": [{ "kind": "OfferChoice", "choiceId": "eldritch-invocations-l1", "prompt": "Choose an Eldritch Invocation.", "oneOf": 1, "when": "onAcquire", "options": [{ "id": "agonizing-blast-eldritch-blast", "label": "Agonizing Blast (Eldritch Blast)", "effects": [{ "kind": "GrantFeat", "featId": "agonizing-blast-eldritch-blast" }] }, { "id": "agonizing-blast-chill-touch", "label": "Agonizing Blast (Chill Touch)", "effects": [{ "kind": "GrantFeat", "featId": "agonizing-blast-chill-touch" }] }, { "id": "agonizing-blast-poison-spray", "label": "Agonizing Blast (Poison Spray)", "effects": [{ "kind": "GrantFeat", "featId": "agonizing-blast-poison-spray" }] }, { "id": "armor-of-shadows", "label": "Armor of Shadows", "effects": [{ "kind": "GrantFeat", "featId": "armor-of-shadows" }] }, { "id": "devils-sight", "label": "Devil's Sight", "effects": [{ "kind": "GrantFeat", "featId": "devils-sight" }] }, { "id": "fiendish-vigor", "label": "Fiendish Vigor", "effects": [{ "kind": "GrantFeat", "featId": "fiendish-vigor" }] }, { "id": "mask-of-many-faces", "label": "Mask of Many Faces", "effects": [{ "kind": "GrantFeat", "featId": "mask-of-many-faces" }] }, { "id": "misty-visions", "label": "Misty Visions", "effects": [{ "kind": "GrantFeat", "featId": "misty-visions" }] }, { "id": "otherworldly-leap", "label": "Otherworldly Leap", "effects": [{ "kind": "GrantFeat", "featId": "otherworldly-leap" }] }, { "id": "ascendant-step", "label": "Ascendant Step", "effects": [{ "kind": "GrantFeat", "featId": "ascendant-step" }] }, { "id": "gift-of-the-depths", "label": "Gift of the Depths", "effects": [{ "kind": "GrantFeat", "featId": "gift-of-the-depths" }] }, { "id": "eldritch-mind", "label": "Eldritch Mind", "effects": [{ "kind": "GrantFeat", "featId": "eldritch-mind" }] }, { "id": "repelling-blast", "label": "Repelling Blast", "effects": [{ "kind": "GrantFeat", "featId": "repelling-blast" }] }, { "id": "pact-of-the-tome", "label": "Pact of the Tome", "effects": [{ "kind": "GrantFeat", "featId": "pact-of-the-tome" }] }, { "id": "pact-of-the-blade", "label": "Pact of the Blade", "effects": [{ "kind": "GrantFeat", "featId": "pact-of-the-blade" }] }, { "id": "pact-of-the-chain", "label": "Pact of the Chain", "effects": [{ "kind": "GrantFeat", "featId": "pact-of-the-chain" }] }] }] }], "columns": {} },
-        "2": { "proficiencyBonus": 2, "features": [{ "id": "magical-cunning", "name": "Magical Cunning", "effects": [] }, { "id": "eldritch-invocations-3", "name": "Eldritch Invocations (3 known)", "effects": [] }], "columns": {} },
+        "2": { "proficiencyBonus": 2, "features": [{ "id": "magical-cunning", "name": "Magical Cunning", "effects": [{ "kind": "GrantResource", "resourceId": "magical-cunning", "max": 1, "recharge": "longRest" }] }, { "id": "eldritch-invocations-3", "name": "Eldritch Invocations (3 known)", "effects": [] }], "columns": {} },
         "3": { "proficiencyBonus": 2, "features": [], "columns": {} },
         "4": { "proficiencyBonus": 2, "features": [], "columns": {} },
         "5": { "proficiencyBonus": 3, "features": [{ "id": "eldritch-invocations-4", "name": "Eldritch Invocations (4 known)", "effects": [] }], "columns": {} },
@@ -470,7 +470,7 @@
       "levelTable": {
         "1": { "proficiencyBonus": 2, "features": [{ "id": "lay-on-hands", "name": "Lay on Hands", "effects": [{ "kind": "GrantResource", "resourceId": "lay-on-hands", "max": { "kind": "multiply", "terms": [{ "kind": "level", "classId": "paladin" }, { "kind": "const", "value": 5 }] }, "recharge": "longRest" }] }, { "id": "weapon-mastery-paladin", "name": "Weapon Mastery", "effects": [{ "kind": "GrantWeaponMastery", "masteries": ["Sap", "Vex", "Topple", "Push", "Slow", "Cleave", "Nick", "Graze"], "slots": 2 }] }], "columns": {} },
         "2": { "proficiencyBonus": 2, "features": [{ "id": "fighting-style-paladin", "name": "Fighting Style", "effects": [{ "kind": "OfferChoice", "choiceId": "fighting-style-paladin", "prompt": "Choose a Fighting Style.", "oneOf": 1, "when": "onAcquire", "options": [ { "id": "defense", "label": "Defense", "effects": [{ "kind": "AddModifier", "target": "ac", "value": 1, "condition": { "kind": "eq", "path": "bearer.wearingArmor", "value": true } }] }, { "id": "dueling", "label": "Dueling", "effects": [{ "kind": "AddModifier", "target": "damage", "value": 2, "condition": { "kind": "all", "terms": [{ "kind": "eq", "path": "event.attackKind", "value": "melee" }, { "kind": "eq", "path": "bearer.offHandHasWeapon", "value": false }] } }] }, { "id": "great-weapon", "label": "Great Weapon Fighting", "effects": [{ "kind": "GrantGreatWeaponFighting" }] }, { "id": "protection", "label": "Protection", "effects": [{ "kind": "GrantProtectionFightingStyle" }] } ] }] }, { "id": "paladins-smite", "name": "Paladin's Smite", "effects": [{ "kind": "Custom", "handlerId": "paladins-smite" }] }], "columns": {} },
-        "3": { "proficiencyBonus": 2, "features": [{ "id": "channel-divinity-paladin", "name": "Channel Divinity", "effects": [{ "kind": "GrantResource", "resourceId": "channel-divinity", "max": 2, "recharge": "shortRest" }] }], "columns": {} },
+        "3": { "proficiencyBonus": 2, "features": [{ "id": "channel-divinity-paladin", "name": "Channel Divinity", "effects": [{ "kind": "GrantResource", "resourceId": "channel-divinity", "max": 2, "recharge": "partialShortFullLong" }] }], "columns": {} },
         "4": { "proficiencyBonus": 2, "features": [], "columns": {} },
         "5": { "proficiencyBonus": 3, "features": [{ "id": "extra-attack-paladin", "name": "Extra Attack", "effects": [{ "kind": "ModifyActionEconomy", "op": "extraAttack", "count": 1 }] }, { "id": "faithful-steed", "name": "Faithful Steed", "effects": [] }], "columns": {} },
         "6": { "proficiencyBonus": 3, "features": [{ "id": "aura-of-protection", "name": "Aura of Protection", "effects": [{ "kind": "GrantAura", "auraId": "aura-of-protection", "rangeFeet": 10, "allyConditionId": "aura-of-protection-active", "description": "You and allies within 10 ft add your CHA modifier (min +1) to saving throws." }, { "kind": "AddModifier", "target": { "kind": "save" }, "value": { "kind": "max", "terms": [{ "kind": "const", "value": 1 }, { "kind": "abilityMod", "ability": "CHA" }] } }] }], "columns": {} },
@@ -478,7 +478,7 @@
         "8": { "proficiencyBonus": 3, "features": [], "columns": {} },
         "9": { "proficiencyBonus": 4, "features": [{ "id": "abjure-foes", "name": "Abjure Foes", "effects": [] }], "columns": {} },
         "10": { "proficiencyBonus": 4, "features": [{ "id": "aura-of-courage", "name": "Aura of Courage", "effects": [{ "kind": "GrantAura", "auraId": "aura-of-courage", "rangeFeet": 10, "allyConditionId": "aura-of-courage-active", "description": "You and allies within 10 ft can't be Frightened." }, { "kind": "GrantConditionImmunity", "conditionId": "frightened" }] }], "columns": {} },
-        "11": { "proficiencyBonus": 4, "features": [{ "id": "radiant-strikes", "name": "Radiant Strikes", "effects": [] }, { "id": "channel-divinity-paladin-3", "name": "Channel Divinity (3/rest)", "effects": [{ "kind": "GrantResource", "resourceId": "channel-divinity", "max": 3, "recharge": "shortRest" }] }], "columns": {} },
+        "11": { "proficiencyBonus": 4, "features": [{ "id": "radiant-strikes", "name": "Radiant Strikes", "effects": [] }, { "id": "channel-divinity-paladin-3", "name": "Channel Divinity (3/rest)", "effects": [{ "kind": "GrantResource", "resourceId": "channel-divinity", "max": 3, "recharge": "partialShortFullLong" }] }], "columns": {} },
         "12": { "proficiencyBonus": 4, "features": [], "columns": {} },
         "13": { "proficiencyBonus": 5, "features": [], "columns": {} },
         "14": { "proficiencyBonus": 5, "features": [{ "id": "restoring-touch", "name": "Restoring Touch", "effects": [] }], "columns": {} },
@@ -516,7 +516,7 @@
           "columns": {}
         },
         "2": { "proficiencyBonus": 2, "features": [{ "id": "reckless-attack", "name": "Reckless Attack", "effects": [{ "kind": "Custom", "handlerId": "reckless-attack" }] }, { "id": "danger-sense", "name": "Danger Sense", "effects": [{ "kind": "SetAdvantage", "on": { "kind": "save", "ability": "DEX" }, "mode": "advantage" }] }], "columns": {} },
-        "3": { "proficiencyBonus": 2, "features": [{ "id": "primal-knowledge", "name": "Primal Knowledge", "effects": [] }, { "id": "rage-uses-3", "name": "Rage (3/long rest)", "effects": [{ "kind": "GrantResource", "resourceId": "rage", "max": 3, "recharge": "longRest" }] }], "columns": {} },
+        "3": { "proficiencyBonus": 2, "features": [{ "id": "primal-knowledge", "name": "Primal Knowledge", "effects": [{ "kind": "OfferChoice", "choiceId": "barbarian-primal-knowledge", "prompt": "Choose one additional skill from the Barbarian L1 skill list.", "oneOf": 1, "when": "onAcquire", "options": [{ "id": "animal-handling", "label": "Animal Handling", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "animal-handling", "level": "proficient" }] }, { "id": "athletics", "label": "Athletics", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "athletics", "level": "proficient" }] }, { "id": "intimidation", "label": "Intimidation", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "intimidation", "level": "proficient" }] }, { "id": "nature", "label": "Nature", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "nature", "level": "proficient" }] }, { "id": "perception", "label": "Perception", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "perception", "level": "proficient" }] }, { "id": "survival", "label": "Survival", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "survival", "level": "proficient" }] }] }, { "kind": "GrantAbilitySubstitution", "ability": "STR", "skills": ["acrobatics", "intimidation", "perception", "stealth", "survival"], "activeWhileConditionId": "raging" }] }, { "id": "rage-uses-3", "name": "Rage (3/long rest)", "effects": [{ "kind": "GrantResource", "resourceId": "rage", "max": 3, "recharge": "longRest" }] }], "columns": {} },
         "4": { "proficiencyBonus": 2, "features": [], "columns": {} },
         "5": { "proficiencyBonus": 3, "features": [{ "id": "extra-attack-barb", "name": "Extra Attack", "effects": [{ "kind": "ModifyActionEconomy", "op": "extraAttack", "count": 1 }] }, { "id": "fast-movement", "name": "Fast Movement", "effects": [{ "kind": "ModifySpeed", "mode": "walk", "op": "add", "value": 10 }] }], "columns": {} },
         "6": { "proficiencyBonus": 3, "features": [{ "id": "rage-uses-4", "name": "Rage (4/long rest)", "effects": [{ "kind": "GrantResource", "resourceId": "rage", "max": 4, "recharge": "longRest" }] }], "columns": {} },
@@ -584,11 +584,11 @@
       "subclassLevel": 3,
       "levelTable": {
         "1": { "proficiencyBonus": 2, "features": [{ "id": "divine-order", "name": "Divine Order", "effects": [{ "kind": "OfferChoice", "choiceId": "divine-order", "prompt": "Choose your divine order: Protector (martial weapon proficiency + heavy armor training) or Thaumaturge (extra cantrip + WIS-mod bonus on Arcana / Religion checks).", "oneOf": 1, "when": "onAcquire", "options": [{ "id": "protector", "label": "Protector", "effects": [{ "kind": "GrantProficiency", "target": "weapon", "id": "martial", "level": "proficient" }, { "kind": "GrantProficiency", "target": "armor", "id": "heavy", "level": "proficient" }] }, { "id": "thaumaturge", "label": "Thaumaturge", "effects": [{ "kind": "GrantSpell", "spellId": "guidance", "preparation": "always-prepared" }, { "kind": "AddModifier", "target": { "kind": "skill", "skill": "arcana" }, "value": { "kind": "max", "terms": [{ "kind": "const", "value": 1 }, { "kind": "abilityMod", "ability": "WIS" }] } }, { "kind": "AddModifier", "target": { "kind": "skill", "skill": "religion" }, "value": { "kind": "max", "terms": [{ "kind": "const", "value": 1 }, { "kind": "abilityMod", "ability": "WIS" }] } }] }] }] }], "columns": {} },
-        "2": { "proficiencyBonus": 2, "features": [{ "id": "channel-divinity", "name": "Channel Divinity", "effects": [{ "kind": "GrantResource", "resourceId": "channel-divinity", "max": 2, "recharge": "shortRest" }] }, { "id": "divine-spark", "name": "Channel Divinity: Divine Spark", "effects": [] }, { "id": "turn-undead", "name": "Channel Divinity: Turn Undead", "effects": [{ "kind": "Custom", "handlerId": "turn-undead" }] }], "columns": {} },
+        "2": { "proficiencyBonus": 2, "features": [{ "id": "channel-divinity", "name": "Channel Divinity", "effects": [{ "kind": "GrantResource", "resourceId": "channel-divinity", "max": 2, "recharge": "partialShortFullLong" }] }, { "id": "divine-spark", "name": "Channel Divinity: Divine Spark", "effects": [] }, { "id": "turn-undead", "name": "Channel Divinity: Turn Undead", "effects": [{ "kind": "Custom", "handlerId": "turn-undead" }] }], "columns": {} },
         "3": { "proficiencyBonus": 2, "features": [], "columns": {} },
         "4": { "proficiencyBonus": 2, "features": [], "columns": {} },
         "5": { "proficiencyBonus": 3, "features": [{ "id": "sear-undead", "name": "Sear Undead", "effects": [] }], "columns": {} },
-        "6": { "proficiencyBonus": 3, "features": [{ "id": "channel-divinity-cleric-2", "name": "Channel Divinity (3/rest)", "effects": [{ "kind": "GrantResource", "resourceId": "channel-divinity", "max": 3, "recharge": "shortRest" }] }], "columns": {} },
+        "6": { "proficiencyBonus": 3, "features": [{ "id": "channel-divinity-cleric-2", "name": "Channel Divinity (3/rest)", "effects": [{ "kind": "GrantResource", "resourceId": "channel-divinity", "max": 3, "recharge": "partialShortFullLong" }] }], "columns": {} },
         "7": { "proficiencyBonus": 3, "features": [{ "id": "blessed-strikes", "name": "Blessed Strikes", "effects": [{ "kind": "OfferChoice", "choiceId": "cleric-blessed-strikes", "prompt": "Choose Divine Strike (weapon hits gain +1d8 radiant once per turn) or Potent Spellcasting (cantrip damage gains your WIS modifier).", "oneOf": 1, "when": "onAcquire", "options": [{ "id": "divine-strike", "label": "Divine Strike", "effects": [{ "kind": "OnEvent", "id": "blessed-strikes-divine-strike", "trigger": { "eventType": "AttackRolled", "filter": { "kind": "all", "terms": [{ "kind": "eq", "path": "event.attackerIsSelf", "value": true }, { "kind": "eq", "path": "event.hit", "value": true }] } }, "actions": [{ "kind": "AddDamage", "dice": "1d8", "damageType": "radiant" }], "oncePer": "turn" }] }, { "id": "potent-spellcasting", "label": "Potent Spellcasting", "effects": [] }] }] }], "columns": {} },
         "8": { "proficiencyBonus": 3, "features": [], "columns": {} },
         "9": { "proficiencyBonus": 4, "features": [], "columns": {} },
@@ -600,7 +600,7 @@
         "15": { "proficiencyBonus": 5, "features": [], "columns": {} },
         "16": { "proficiencyBonus": 5, "features": [], "columns": {} },
         "17": { "proficiencyBonus": 6, "features": [], "columns": {} },
-        "18": { "proficiencyBonus": 6, "features": [{ "id": "channel-divinity-cleric-3", "name": "Channel Divinity (4/rest)", "effects": [{ "kind": "GrantResource", "resourceId": "channel-divinity", "max": 4, "recharge": "shortRest" }] }], "columns": {} },
+        "18": { "proficiencyBonus": 6, "features": [{ "id": "channel-divinity-cleric-3", "name": "Channel Divinity (4/rest)", "effects": [{ "kind": "GrantResource", "resourceId": "channel-divinity", "max": 4, "recharge": "partialShortFullLong" }] }], "columns": {} },
         "19": { "proficiencyBonus": 6, "features": [], "columns": {} },
         "20": { "proficiencyBonus": 6, "features": [{ "id": "greater-divine-intervention", "name": "Greater Divine Intervention", "effects": [{ "kind": "GrantDivineInterventionWish" }] }], "columns": {} }
       },
@@ -619,11 +619,11 @@
       "subclassLevel": 3,
       "levelTable": {
         "1": { "proficiencyBonus": 2, "features": [{ "id": "druidic", "name": "Druidic", "effects": [{ "kind": "GrantProficiency", "target": "language", "id": "druidic", "level": "proficient" }] }, { "id": "primal-order", "name": "Primal Order", "effects": [{ "kind": "OfferChoice", "choiceId": "primal-order", "prompt": "Choose your primal order: Magician (extra cantrip + WIS-mod bonus on Arcana / Nature checks) or Warden (martial weapon proficiency + medium armor training).", "oneOf": 1, "when": "onAcquire", "options": [{ "id": "magician", "label": "Magician", "effects": [{ "kind": "OfferChoice", "choiceId": "druid-magician-cantrip", "prompt": "Magician: choose one extra cantrip from the Druid spell list.", "oneOf": 1, "when": "onAcquire", "options": [{ "id": "druidcraft", "label": "Druidcraft", "effects": [{ "kind": "GrantSpell", "spellId": "druidcraft", "preparation": "always-prepared", "spellcastingAbility": "WIS" }] }, { "id": "guidance", "label": "Guidance", "effects": [{ "kind": "GrantSpell", "spellId": "guidance", "preparation": "always-prepared", "spellcastingAbility": "WIS" }] }, { "id": "mending", "label": "Mending", "effects": [{ "kind": "GrantSpell", "spellId": "mending", "preparation": "always-prepared", "spellcastingAbility": "WIS" }] }, { "id": "message", "label": "Message", "effects": [{ "kind": "GrantSpell", "spellId": "message", "preparation": "always-prepared", "spellcastingAbility": "WIS" }] }, { "id": "poison-spray", "label": "Poison Spray", "effects": [{ "kind": "GrantSpell", "spellId": "poison-spray", "preparation": "always-prepared", "spellcastingAbility": "WIS" }] }, { "id": "produce-flame", "label": "Produce Flame", "effects": [{ "kind": "GrantSpell", "spellId": "produce-flame", "preparation": "always-prepared", "spellcastingAbility": "WIS" }] }, { "id": "resistance", "label": "Resistance", "effects": [{ "kind": "GrantSpell", "spellId": "resistance", "preparation": "always-prepared", "spellcastingAbility": "WIS" }] }, { "id": "shillelagh", "label": "Shillelagh", "effects": [{ "kind": "GrantSpell", "spellId": "shillelagh", "preparation": "always-prepared", "spellcastingAbility": "WIS" }] }, { "id": "spare-the-dying", "label": "Spare the Dying", "effects": [{ "kind": "GrantSpell", "spellId": "spare-the-dying", "preparation": "always-prepared", "spellcastingAbility": "WIS" }] }, { "id": "starry-wisp", "label": "Starry Wisp", "effects": [{ "kind": "GrantSpell", "spellId": "starry-wisp", "preparation": "always-prepared", "spellcastingAbility": "WIS" }] }, { "id": "elementalism", "label": "Elementalism", "effects": [{ "kind": "GrantSpell", "spellId": "elementalism", "preparation": "always-prepared", "spellcastingAbility": "WIS" }] }] }, { "kind": "AddModifier", "target": { "kind": "skill", "skill": "arcana" }, "value": { "kind": "max", "terms": [{ "kind": "const", "value": 1 }, { "kind": "abilityMod", "ability": "WIS" }] } }, { "kind": "AddModifier", "target": { "kind": "skill", "skill": "nature" }, "value": { "kind": "max", "terms": [{ "kind": "const", "value": 1 }, { "kind": "abilityMod", "ability": "WIS" }] } }] }, { "id": "warden", "label": "Warden", "effects": [{ "kind": "GrantProficiency", "target": "weapon", "id": "martial", "level": "proficient" }, { "kind": "GrantProficiency", "target": "armor", "id": "medium", "level": "proficient" }] }] }] }], "columns": {} },
-        "2": { "proficiencyBonus": 2, "features": [{ "id": "wild-shape", "name": "Wild Shape", "effects": [{ "kind": "GrantResource", "resourceId": "wild-shape", "max": 2, "recharge": "shortRest" }] }, { "id": "wild-companion", "name": "Wild Companion", "effects": [{ "kind": "Custom", "handlerId": "wild-companion" }] }], "columns": {} },
+        "2": { "proficiencyBonus": 2, "features": [{ "id": "wild-shape", "name": "Wild Shape", "effects": [{ "kind": "GrantResource", "resourceId": "wild-shape", "max": 2, "recharge": "partialShortFullLong" }] }, { "id": "wild-companion", "name": "Wild Companion", "effects": [{ "kind": "Custom", "handlerId": "wild-companion" }] }], "columns": {} },
         "3": { "proficiencyBonus": 2, "features": [], "columns": {} },
         "4": { "proficiencyBonus": 2, "features": [], "columns": {} },
         "5": { "proficiencyBonus": 3, "features": [{ "id": "wild-resurgence", "name": "Wild Resurgence", "effects": [] }], "columns": {} },
-        "6": { "proficiencyBonus": 3, "features": [{ "id": "wild-shape-uses-3", "name": "Wild Shape (3/rest)", "effects": [{ "kind": "GrantResource", "resourceId": "wild-shape", "max": 3, "recharge": "shortRest" }] }], "columns": {} },
+        "6": { "proficiencyBonus": 3, "features": [{ "id": "wild-shape-uses-3", "name": "Wild Shape (3/rest)", "effects": [{ "kind": "GrantResource", "resourceId": "wild-shape", "max": 3, "recharge": "partialShortFullLong" }] }], "columns": {} },
         "7": { "proficiencyBonus": 3, "features": [{ "id": "elemental-fury", "name": "Elemental Fury", "effects": [] }], "columns": {} },
         "8": { "proficiencyBonus": 3, "features": [], "columns": {} },
         "9": { "proficiencyBonus": 4, "features": [], "columns": {} },
@@ -634,7 +634,7 @@
         "14": { "proficiencyBonus": 5, "features": [], "columns": {} },
         "15": { "proficiencyBonus": 5, "features": [{ "id": "improved-elemental-fury", "name": "Improved Elemental Fury", "effects": [] }], "columns": {} },
         "16": { "proficiencyBonus": 5, "features": [], "columns": {} },
-        "17": { "proficiencyBonus": 6, "features": [{ "id": "wild-shape-uses-4", "name": "Wild Shape (4/rest)", "effects": [{ "kind": "GrantResource", "resourceId": "wild-shape", "max": 4, "recharge": "shortRest" }] }], "columns": {} },
+        "17": { "proficiencyBonus": 6, "features": [{ "id": "wild-shape-uses-4", "name": "Wild Shape (4/rest)", "effects": [{ "kind": "GrantResource", "resourceId": "wild-shape", "max": 4, "recharge": "partialShortFullLong" }] }], "columns": {} },
         "18": { "proficiencyBonus": 6, "features": [{ "id": "beast-spells", "name": "Beast Spells", "effects": [] }], "columns": {} },
         "19": { "proficiencyBonus": 6, "features": [], "columns": {} },
         "20": { "proficiencyBonus": 6, "features": [{ "id": "archdruid", "name": "Archdruid", "effects": [] }], "columns": {} }
@@ -654,7 +654,7 @@
       "subclassLevel": 3,
       "levelTable": {
         "1": { "proficiencyBonus": 2, "features": [{ "id": "martial-arts", "name": "Martial Arts", "effects": [{ "kind": "Custom", "handlerId": "martial-arts" }] }, { "id": "unarmored-defense-monk", "name": "Unarmored Defense (Monk)", "effects": [{ "kind": "OverrideACFormula", "base": 10, "abilityModifiers": ["DEX", "WIS"] }] }], "columns": {} },
-        "2": { "proficiencyBonus": 2, "features": [{ "id": "monks-focus", "name": "Monk's Focus (Ki)", "effects": [{ "kind": "GrantResource", "resourceId": "ki", "max": { "kind": "level", "classId": "monk" }, "recharge": "shortRest" }] }, { "id": "unarmored-movement-monk", "name": "Unarmored Movement", "effects": [{ "kind": "ModifySpeed", "mode": "walk", "op": "add", "value": 10 }] }, { "id": "uncanny-metabolism", "name": "Uncanny Metabolism", "effects": [] }], "columns": {} },
+        "2": { "proficiencyBonus": 2, "features": [{ "id": "monks-focus", "name": "Monk's Focus (Ki)", "effects": [{ "kind": "GrantResource", "resourceId": "ki", "max": { "kind": "level", "classId": "monk" }, "recharge": "shortRest" }] }, { "id": "unarmored-movement-monk", "name": "Unarmored Movement", "effects": [{ "kind": "ModifySpeed", "mode": "walk", "op": "add", "value": 10 }] }, { "id": "uncanny-metabolism", "name": "Uncanny Metabolism", "effects": [{ "kind": "GrantResource", "resourceId": "uncanny-metabolism", "max": 1, "recharge": "longRest" }] }], "columns": {} },
         "3": { "proficiencyBonus": 2, "features": [{ "id": "deflect-attacks", "name": "Deflect Attacks", "effects": [] }], "columns": {} },
         "4": { "proficiencyBonus": 2, "features": [{ "id": "slow-fall", "name": "Slow Fall", "effects": [{ "kind": "Custom", "handlerId": "slow-fall" }] }], "columns": {} },
         "5": { "proficiencyBonus": 3, "features": [{ "id": "extra-attack-monk", "name": "Extra Attack", "effects": [{ "kind": "ModifyActionEconomy", "op": "extraAttack", "count": 1 }] }, { "id": "stunning-strike", "name": "Stunning Strike", "effects": [{ "kind": "Custom", "handlerId": "stunning-strike" }] }, { "id": "martial-arts-die-d8", "name": "Martial Arts (d8)", "effects": [] }], "columns": {} },
@@ -901,7 +901,28 @@
           {
             "id": "circle-of-the-land-cantrip",
             "name": "Circle of the Land: Bonus Cantrip",
-            "effects": []
+            "effects": [
+              {
+                "kind": "OfferChoice",
+                "choiceId": "circle-of-the-land-cantrip",
+                "prompt": "Choose one additional Druid cantrip.",
+                "oneOf": 1,
+                "when": "onAcquire",
+                "options": [
+                  { "id": "guidance", "label": "Guidance", "effects": [{ "kind": "GrantSpell", "spellId": "guidance", "preparation": "at-will" }] },
+                  { "id": "druidcraft", "label": "Druidcraft", "effects": [{ "kind": "GrantSpell", "spellId": "druidcraft", "preparation": "at-will" }] },
+                  { "id": "mending", "label": "Mending", "effects": [{ "kind": "GrantSpell", "spellId": "mending", "preparation": "at-will" }] },
+                  { "id": "message", "label": "Message", "effects": [{ "kind": "GrantSpell", "spellId": "message", "preparation": "at-will" }] },
+                  { "id": "poison-spray", "label": "Poison Spray", "effects": [{ "kind": "GrantSpell", "spellId": "poison-spray", "preparation": "at-will" }] },
+                  { "id": "produce-flame", "label": "Produce Flame", "effects": [{ "kind": "GrantSpell", "spellId": "produce-flame", "preparation": "at-will" }] },
+                  { "id": "resistance", "label": "Resistance", "effects": [{ "kind": "GrantSpell", "spellId": "resistance", "preparation": "at-will" }] },
+                  { "id": "shillelagh", "label": "Shillelagh", "effects": [{ "kind": "GrantSpell", "spellId": "shillelagh", "preparation": "at-will" }] },
+                  { "id": "spare-the-dying", "label": "Spare the Dying", "effects": [{ "kind": "GrantSpell", "spellId": "spare-the-dying", "preparation": "at-will" }] },
+                  { "id": "starry-wisp", "label": "Starry Wisp", "effects": [{ "kind": "GrantSpell", "spellId": "starry-wisp", "preparation": "at-will" }] },
+                  { "id": "elementalism", "label": "Elementalism", "effects": [{ "kind": "GrantSpell", "spellId": "elementalism", "preparation": "at-will" }] }
+                ]
+              }
+            ]
           },
           {
             "id": "lands-aid",
@@ -911,7 +932,54 @@
           {
             "id": "circle-of-the-land-spells",
             "name": "Circle of the Land Spells",
-            "effects": []
+            "effects": [
+              {
+                "kind": "OfferChoice",
+                "choiceId": "circle-of-the-land-type",
+                "prompt": "Choose one type of land: arid, polar, temperate, or tropical. You always have the spells listed for your Druid level and lower prepared.",
+                "oneOf": 1,
+                "when": "onLongRest",
+                "lifecycle": "supersede",
+                "options": [
+                  {
+                    "id": "arid",
+                    "label": "Arid",
+                    "effects": [
+                      { "kind": "GrantSpell", "spellId": "blur", "preparation": "always-prepared" },
+                      { "kind": "GrantSpell", "spellId": "burning-hands", "preparation": "always-prepared" },
+                      { "kind": "GrantSpell", "spellId": "fire-bolt", "preparation": "always-prepared" }
+                    ]
+                  },
+                  {
+                    "id": "polar",
+                    "label": "Polar",
+                    "effects": [
+                      { "kind": "GrantSpell", "spellId": "fog-cloud", "preparation": "always-prepared" },
+                      { "kind": "GrantSpell", "spellId": "hold-person", "preparation": "always-prepared" },
+                      { "kind": "GrantSpell", "spellId": "ray-of-frost", "preparation": "always-prepared" }
+                    ]
+                  },
+                  {
+                    "id": "temperate",
+                    "label": "Temperate",
+                    "effects": [
+                      { "kind": "GrantSpell", "spellId": "misty-step", "preparation": "always-prepared" },
+                      { "kind": "GrantSpell", "spellId": "shocking-grasp", "preparation": "always-prepared" },
+                      { "kind": "GrantSpell", "spellId": "sleep", "preparation": "always-prepared" }
+                    ]
+                  },
+                  {
+                    "id": "tropical",
+                    "label": "Tropical",
+                    "effects": [
+                      { "kind": "GrantSpell", "spellId": "acid-splash", "preparation": "always-prepared" },
+                      { "kind": "GrantSpell", "spellId": "ray-of-sickness", "preparation": "always-prepared" },
+                      { "kind": "GrantSpell", "spellId": "web", "preparation": "always-prepared" }
+                    ]
+                  }
+                ]
+              }
+            ]
           }
         ],
         "6": [
@@ -2289,7 +2357,7 @@
     { "id": "darkness", "name": "Darkness", "level": 2, "school": "evocation", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "material": "bat fur and a piece of coal" }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["sorcerer", "warlock", "wizard"], "targeting": { "shape": "sphere", "size": 15 }, "mechanicalEffects": [{ "kind": "zone" }] },
     { "id": "darkvision", "name": "Darkvision", "level": 2, "school": "transmutation", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a dried carrot" }, "duration": "8 hours", "concentration": false, "ritual": false, "classes": ["druid", "ranger", "sorcerer", "wizard"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "darkvision-active" }] },
     { "id": "detect-thoughts", "name": "Detect Thoughts", "level": 2, "school": "divination", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "1 Copper Piece" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "sorcerer", "wizard"], "mechanicalEffects": [] },
-    { "id": "dragons-breath", "name": "Dragon's Breath", "level": 2, "school": "transmutation", "castingTime": "Bonus Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a hot pepper" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["sorcerer", "wizard"], "targeting": { "shape": "cone", "size": 15 }, "mechanicalEffects": [] },
+    { "id": "dragons-breath", "name": "Dragon's Breath", "level": 2, "school": "transmutation", "castingTime": "Bonus Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a hot pepper" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["sorcerer", "wizard"], "targeting": { "shape": "cone", "size": 15 }, "mechanicalEffects": [{ "kind": "buff", "casterChoosesVariant": { "variants": [{ "key": "acid", "conditionId": "dragons-breath-acid-active" }, { "key": "cold", "conditionId": "dragons-breath-cold-active" }, { "key": "fire", "conditionId": "dragons-breath-fire-active" }, { "key": "lightning", "conditionId": "dragons-breath-lightning-active" }, { "key": "poison", "conditionId": "dragons-breath-poison-active" }] } }] },
     { "id": "enhance-ability", "name": "Enhance Ability", "level": 2, "school": "transmutation", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "fur or a feather" }, "duration": "Concentration, up to 1 hour", "concentration": true, "ritual": false, "classes": ["bard", "cleric", "druid", "ranger", "sorcerer", "wizard"], "mechanicalEffects": [{ "kind": "buff", "casterChoosesVariant": { "variants": [{ "key": "bulls-strength", "conditionId": "bulls-strength-active" }, { "key": "cats-grace", "conditionId": "cats-grace-active" }, { "key": "eagles-splendor", "conditionId": "eagles-splendor-active" }, { "key": "foxs-cunning", "conditionId": "foxs-cunning-active" }, { "key": "owls-wisdom", "conditionId": "owls-wisdom-active" }] } }] },
     { "id": "enlarge-reduce", "name": "Enlarge/Reduce", "level": 2, "school": "transmutation", "castingTime": "Action", "range": "30 feet", "components": { "verbal": true, "somatic": true, "material": "a pinch of powdered iron" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "druid", "sorcerer", "wizard"], "mechanicalEffects": [{ "kind": "buff", "casterChoosesVariant": { "variants": [{ "key": "enlarge", "conditionId": "enlarged-active" }, { "key": "reduce", "conditionId": "reduced-active" }] } }] },
     { "id": "enthrall", "name": "Enthrall", "level": 2, "school": "enchantment", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "warlock"], "mechanicalEffects": [{ "kind": "save", "ability": "WIS", "conditionOnFail": "enthralled-active" }] },
@@ -2299,7 +2367,7 @@
     { "id": "gentle-repose", "name": "Gentle Repose", "level": 2, "school": "necromancy", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "2 Copper Pieces, which the spell consumes" }, "duration": "10 days", "concentration": false, "ritual": true, "classes": ["cleric", "paladin", "wizard"], "mechanicalEffects": [] },
     { "id": "gust-of-wind", "name": "Gust of Wind", "level": 2, "school": "evocation", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "a legume seed" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["druid", "ranger", "sorcerer", "wizard"], "targeting": { "shape": "line", "size": 60 }, "mechanicalEffects": [{ "kind": "save", "ability": "STR", "pushedFeetOnFail": 15 }] },
     { "id": "knock", "name": "Knock", "level": 2, "school": "transmutation", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["bard", "sorcerer", "wizard"], "mechanicalEffects": [] },
-    { "id": "levitate", "name": "Levitate", "level": 2, "school": "transmutation", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true, "material": "a metal spring" }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["sorcerer", "wizard"], "mechanicalEffects": [] },
+    { "id": "levitate", "name": "Levitate", "level": 2, "school": "transmutation", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true, "material": "a metal spring" }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["sorcerer", "wizard"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "levitating-active" }] },
     { "id": "locate-animals-or-plants", "name": "Locate Animals or Plants", "level": 2, "school": "divination", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "fur from a bloodhound" }, "duration": "Instantaneous", "concentration": false, "ritual": true, "classes": ["bard", "druid", "ranger"], "mechanicalEffects": [] },
     { "id": "locate-object", "name": "Locate Object", "level": 2, "school": "divination", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "a forked twig" }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["bard", "cleric", "druid", "paladin", "ranger", "wizard"], "mechanicalEffects": [] },
     { "id": "magic-mouth", "name": "Magic Mouth", "level": 2, "school": "illusion", "castingTime": "1 minute", "range": "30 feet", "components": { "verbal": true, "somatic": true, "material": "jade dust worth 10+ GP, which the spell consumes" }, "duration": "Until dispelled", "concentration": false, "ritual": true, "classes": ["bard", "wizard"], "mechanicalEffects": [] },
@@ -2307,15 +2375,15 @@
     { "id": "mirror-image", "name": "Mirror Image", "level": 2, "school": "illusion", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true }, "duration": "1 minute", "concentration": false, "ritual": false, "classes": ["bard", "sorcerer", "warlock", "wizard"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "mirror-image-active", "appliedConditionLevel": 3 }] },
     { "id": "arcanists-magic-aura", "name": "Arcanist's Magic Aura", "level": 2, "school": "illusion", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a small square of silk" }, "duration": "24 hours", "concentration": false, "ritual": false, "classes": ["wizard"], "mechanicalEffects": [] },
     { "id": "pass-without-trace", "name": "Pass without Trace", "level": 2, "school": "abjuration", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "ashes from burned mistletoe" }, "duration": "Concentration, up to 1 hour", "concentration": true, "ritual": false, "classes": ["druid", "ranger"], "targeting": { "shape": "sphere", "size": 30 }, "mechanicalEffects": [{ "kind": "buff", "conditionId": "pass-without-trace-active" }] },
-    { "id": "phantasmal-force", "name": "Phantasmal Force", "level": 2, "school": "illusion", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true, "material": "a bit of fleece" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "sorcerer", "wizard"], "targeting": { "shape": "cube", "size": 10 }, "mechanicalEffects": [] },
-    { "id": "ray-of-enfeeblement", "name": "Ray of Enfeeblement", "level": 2, "school": "necromancy", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["warlock", "wizard"], "mechanicalEffects": [] },
+    { "id": "phantasmal-force", "name": "Phantasmal Force", "level": 2, "school": "illusion", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true, "material": "a bit of fleece" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "sorcerer", "wizard"], "targeting": { "shape": "cube", "size": 10 }, "mechanicalEffects": [{ "kind": "save", "ability": "INT", "conditionOnFail": "phantasmal-force-active" }, { "kind": "recurring", "effect": "damage", "amountDice": "1d6", "damageType": "psychic" }] },
+    { "id": "ray-of-enfeeblement", "name": "Ray of Enfeeblement", "level": 2, "school": "necromancy", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["warlock", "wizard"], "mechanicalEffects": [{ "kind": "attack", "attackKind": "ranged", "conditionOnHit": "enfeebled" }] },
     { "id": "rope-trick", "name": "Rope Trick", "level": 2, "school": "transmutation", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a segment of rope" }, "duration": "1 hour", "concentration": false, "ritual": false, "classes": ["wizard"], "mechanicalEffects": [] },
     { "id": "see-invisibility", "name": "See Invisibility", "level": 2, "school": "divination", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "a pinch of talc" }, "duration": "1 hour", "concentration": false, "ritual": false, "classes": ["bard", "sorcerer", "wizard"], "mechanicalEffects": [] },
     { "id": "silence", "name": "Silence", "level": 2, "school": "illusion", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": true, "classes": ["bard", "cleric", "ranger"], "targeting": { "shape": "sphere", "size": 20 }, "mechanicalEffects": [{ "kind": "zone" }] },
     { "id": "spider-climb", "name": "Spider Climb", "level": 2, "school": "transmutation", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a drop of bitumen and a spider" }, "duration": "Concentration, up to 1 hour", "concentration": true, "ritual": false, "classes": ["sorcerer", "warlock", "wizard"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "spider-climbing-active" }] },
     { "id": "spike-growth", "name": "Spike Growth", "level": 2, "school": "transmutation", "castingTime": "Action", "range": "150 feet", "components": { "verbal": true, "somatic": true, "material": "seven thorns" }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["druid", "ranger"], "targeting": { "shape": "sphere", "size": 20 }, "mechanicalEffects": [{ "kind": "movement-damage", "rangeFeet": 20, "damageDicePerFiveFeet": "2d4", "damageType": "piercing" }] },
     { "id": "warding-bond", "name": "Warding Bond", "level": 2, "school": "abjuration", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a pair of platinum rings worth 50+ GP each, which you and the target must wear for the duration" }, "duration": "1 hour", "concentration": false, "ritual": false, "classes": ["cleric", "paladin"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "warding-bond-active" }] },
-    { "id": "zone-of-truth", "name": "Zone of Truth", "level": 2, "school": "enchantment", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "10 minutes", "concentration": false, "ritual": false, "classes": ["bard", "cleric", "paladin"], "targeting": { "shape": "sphere", "size": 15 }, "mechanicalEffects": [] },
+    { "id": "zone-of-truth", "name": "Zone of Truth", "level": 2, "school": "enchantment", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "10 minutes", "concentration": false, "ritual": false, "classes": ["bard", "cleric", "paladin"], "targeting": { "shape": "sphere", "size": 15 }, "mechanicalEffects": [{ "kind": "zone" }] },
     { "id": "call-lightning", "name": "Call Lightning", "level": 3, "school": "conjuration", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["druid"], "targeting": { "shape": "cylinder", "size": 5 }, "mechanicalEffects": [{ "kind": "save", "ability": "DEX", "damageDice": "3d10", "damageType": "lightning", "halfOnSuccess": true, "extraDicePerSlotLevel": 1 }] },
     { "id": "fear", "name": "Fear", "level": 3, "school": "illusion", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "a white feather" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "sorcerer", "warlock", "wizard"], "targeting": { "shape": "cone", "size": 30 }, "mechanicalEffects": [{ "kind": "save", "ability": "WIS", "conditionOnFail": "frightened" }] },
     { "id": "hypnotic-pattern", "name": "Hypnotic Pattern", "level": 3, "school": "illusion", "castingTime": "Action", "range": "120 feet", "components": { "somatic": true, "material": "a pinch of confetti" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "sorcerer", "warlock", "wizard"], "targeting": { "shape": "cube", "size": 30 }, "mechanicalEffects": [{ "kind": "save", "ability": "WIS", "conditionOnFail": "charmed" }] },
@@ -2324,7 +2392,7 @@
     { "id": "sleet-storm", "name": "Sleet Storm", "level": 3, "school": "conjuration", "castingTime": "Action", "range": "150 feet", "components": { "verbal": true, "somatic": true, "material": "a miniature umbrella" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["druid", "sorcerer", "wizard"], "targeting": { "shape": "cylinder", "size": 20 }, "mechanicalEffects": [{ "kind": "save", "ability": "DEX", "conditionOnFail": "prone" }] },
     { "id": "vampiric-touch", "name": "Vampiric Touch", "level": 3, "school": "necromancy", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["sorcerer", "warlock", "wizard"], "mechanicalEffects": [{ "kind": "attack", "attackKind": "melee", "damageDice": "3d6", "damageType": "necrotic", "extraDicePerSlotLevel": 1 }] },
     { "id": "animate-dead", "name": "Animate Dead", "level": 3, "school": "necromancy", "castingTime": "1 minute", "range": "10 feet", "components": { "verbal": true, "somatic": true, "material": "a drop of blood, a piece of flesh, and a pinch of bone dust" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["cleric", "wizard"], "mechanicalEffects": [{ "kind": "summon", "name": "Animated Skeleton", "ac": 12, "hpBase": 13, "hpPerSlotAbove": 4, "baseSlotLevel": 3, "speedFeet": 30 }] },
-    { "id": "beacon-of-hope", "name": "Beacon of Hope", "level": 3, "school": "abjuration", "castingTime": "Action", "range": "30 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["cleric"], "mechanicalEffects": [] },
+    { "id": "beacon-of-hope", "name": "Beacon of Hope", "level": 3, "school": "abjuration", "castingTime": "Action", "range": "30 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["cleric"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "beacon-of-hope-active" }] },
     { "id": "bestow-curse", "name": "Bestow Curse", "level": 3, "school": "necromancy", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "cleric", "wizard"], "mechanicalEffects": [{ "kind": "save", "ability": "WIS", "casterChoosesVariant": { "variants": [{ "key": "ability-disadvantage-str", "conditionId": "cursed-ability-str-active" }, { "key": "ability-disadvantage-dex", "conditionId": "cursed-ability-dex-active" }, { "key": "ability-disadvantage-con", "conditionId": "cursed-ability-con-active" }, { "key": "ability-disadvantage-int", "conditionId": "cursed-ability-int-active" }, { "key": "ability-disadvantage-wis", "conditionId": "cursed-ability-wis-active" }, { "key": "ability-disadvantage-cha", "conditionId": "cursed-ability-cha-active" }, { "key": "attack-disadvantage", "conditionId": "cursed-attacks-active" }, { "key": "inactive-turn", "conditionId": "cursed-inert-active" }, { "key": "extra-damage", "conditionId": "cursed-vulnerable-active" }] } }] },
     { "id": "clairvoyance", "name": "Clairvoyance", "level": 3, "school": "divination", "castingTime": "10 minutes", "range": "1 mile", "components": { "verbal": true, "somatic": true, "material": "a focus worth 100+ GP, either a jeweled horn for hearing or a glass eye for seeing" }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["bard", "cleric", "sorcerer", "wizard"], "mechanicalEffects": [] },
     { "id": "conjure-animals", "name": "Conjure Animals", "level": 3, "school": "conjuration", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["druid", "ranger"], "mechanicalEffects": [{ "kind": "summon", "name": "Conjured Animal Spirit", "ac": 14, "hpBase": 30, "hpPerSlotAbove": 5, "baseSlotLevel": 3, "speedFeet": 30 }] },
@@ -2334,7 +2402,7 @@
     { "id": "gaseous-form", "name": "Gaseous Form", "level": 3, "school": "transmutation", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a bit of gauze" }, "duration": "Concentration, up to 1 hour", "concentration": true, "ritual": false, "classes": ["sorcerer", "warlock", "wizard"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "gaseous-form-active" }] },
     { "id": "glyph-of-warding", "name": "Glyph of Warding", "level": 3, "school": "abjuration", "castingTime": "1 hour", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "powdered diamond worth 200+ GP, which the spell consumes" }, "duration": "Until dispelled or triggered", "concentration": false, "ritual": false, "classes": ["bard", "cleric", "wizard"], "mechanicalEffects": [{ "kind": "trap", "saveAbility": "DEX", "damageDice": "5d8", "casterChoosesDamageType": { "allowed": ["acid", "cold", "fire", "lightning", "thunder"] }, "halfOnSuccess": true, "charges": 1, "label": "Explosive Runes" }] },
     { "id": "haste", "name": "Haste", "level": 3, "school": "transmutation", "castingTime": "Action", "range": "30 feet", "components": { "verbal": true, "somatic": true, "material": "a shaving of licorice root" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["sorcerer", "wizard"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "hasted-active" }] },
-    { "id": "tiny-hut", "name": "Tiny Hut", "level": 3, "school": "evocation", "castingTime": "1 minute", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "a crystal bead" }, "duration": "8 hours", "concentration": false, "ritual": true, "classes": ["bard", "wizard"], "targeting": { "shape": "sphere", "size": 10 }, "mechanicalEffects": [] },
+    { "id": "tiny-hut", "name": "Tiny Hut", "level": 3, "school": "evocation", "castingTime": "1 minute", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "a crystal bead" }, "duration": "8 hours", "concentration": false, "ritual": true, "classes": ["bard", "wizard"], "targeting": { "shape": "sphere", "size": 10 }, "mechanicalEffects": [{ "kind": "zone" }] },
     { "id": "magic-circle", "name": "Magic Circle", "level": 3, "school": "abjuration", "castingTime": "1 minute", "range": "10 feet", "components": { "verbal": true, "somatic": true, "material": "salt and powdered silver worth 100+ GP, which the spell consumes" }, "duration": "1 hour", "concentration": false, "ritual": false, "classes": ["cleric", "paladin", "warlock", "wizard"], "targeting": { "shape": "cylinder", "size": 10 }, "mechanicalEffects": [{ "kind": "buff", "conditionId": "magic-circle-active" }] },
     { "id": "major-image", "name": "Major Image", "level": 3, "school": "illusion", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true, "material": "a bit of fleece" }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["bard", "sorcerer", "warlock", "wizard"], "mechanicalEffects": [] },
     { "id": "meld-into-stone", "name": "Meld into Stone", "level": 3, "school": "transmutation", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true }, "duration": "8 hours", "concentration": false, "ritual": true, "classes": ["cleric", "druid", "ranger"], "mechanicalEffects": [] },
@@ -2345,17 +2413,17 @@
     { "id": "remove-curse", "name": "Remove Curse", "level": 3, "school": "abjuration", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["cleric", "paladin", "warlock", "wizard"], "mechanicalEffects": [] },
     { "id": "revivify", "name": "Revivify", "level": 3, "school": "necromancy", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a diamond worth 300+ GP, which the spell consumes" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["cleric", "druid", "paladin", "ranger"], "mechanicalEffects": [] },
     { "id": "sending", "name": "Sending", "level": 3, "school": "divination", "castingTime": "Action", "range": "Unlimited", "components": { "verbal": true, "somatic": true, "material": "a copper wire" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["bard", "cleric", "wizard"], "mechanicalEffects": [] },
-    { "id": "slow", "name": "Slow", "level": 3, "school": "transmutation", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true, "material": "a drop of molasses" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "sorcerer", "wizard"], "targeting": { "shape": "cube", "size": 40 }, "mechanicalEffects": [] },
+    { "id": "slow", "name": "Slow", "level": 3, "school": "transmutation", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true, "material": "a drop of molasses" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "sorcerer", "wizard"], "targeting": { "shape": "cube", "size": 40 }, "mechanicalEffects": [{ "kind": "save", "ability": "WIS", "conditionOnFail": "slowed-by-spell-active" }] },
     { "id": "speak-with-dead", "name": "Speak with Dead", "level": 3, "school": "necromancy", "castingTime": "Action", "range": "10 feet", "components": { "verbal": true, "somatic": true, "material": "burning incense" }, "duration": "10 minutes", "concentration": false, "ritual": false, "classes": ["bard", "cleric", "wizard"], "mechanicalEffects": [] },
     { "id": "speak-with-plants", "name": "Speak with Plants", "level": 3, "school": "transmutation", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true }, "duration": "10 minutes", "concentration": false, "ritual": false, "classes": ["bard", "druid", "ranger"], "targeting": { "shape": "sphere", "size": 30 }, "mechanicalEffects": [] },
     { "id": "stinking-cloud", "name": "Stinking Cloud", "level": 3, "school": "conjuration", "castingTime": "Action", "range": "90 feet", "components": { "verbal": true, "somatic": true, "material": "a rotten egg" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "sorcerer", "wizard"], "targeting": { "shape": "sphere", "size": 20 }, "mechanicalEffects": [{ "kind": "aura-damage", "rangeFeet": 20, "saveAbility": "CON", "halfOnSuccess": false, "conditionOnFail": "poisoned" }] },
     { "id": "tongues", "name": "Tongues", "level": 3, "school": "divination", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "material": "a miniature ziggurat" }, "duration": "1 hour", "concentration": false, "ritual": false, "classes": ["bard", "cleric", "sorcerer", "warlock", "wizard"], "mechanicalEffects": [] },
     { "id": "water-breathing", "name": "Water Breathing", "level": 3, "school": "transmutation", "castingTime": "Action", "range": "30 feet", "components": { "verbal": true, "somatic": true, "material": "a short reed" }, "duration": "24 hours", "concentration": false, "ritual": true, "classes": ["druid", "ranger", "sorcerer", "wizard"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "water-breathing-active" }] },
     { "id": "water-walk", "name": "Water Walk", "level": 3, "school": "transmutation", "castingTime": "Action", "range": "30 feet", "components": { "verbal": true, "somatic": true, "material": "a piece of cork" }, "duration": "1 hour", "concentration": false, "ritual": true, "classes": ["cleric", "druid", "ranger", "sorcerer"], "mechanicalEffects": [] },
-    { "id": "wind-wall", "name": "Wind Wall", "level": 3, "school": "evocation", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true, "material": "a fan and a feather" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["druid", "ranger"], "mechanicalEffects": [] },
+    { "id": "wind-wall", "name": "Wind Wall", "level": 3, "school": "evocation", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true, "material": "a fan and a feather" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["druid", "ranger"], "targeting": { "shape": "line", "size": 50 }, "mechanicalEffects": [{ "kind": "zone" }] },
     { "id": "antilife-shell", "name": "Antilife Shell", "level": 5, "school": "abjuration", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 hour", "concentration": true, "ritual": false, "classes": ["druid"], "mechanicalEffects": [] },
     { "id": "befuddlement", "name": "Befuddlement", "level": 8, "school": "enchantment", "castingTime": "Action", "range": "150 feet", "components": { "verbal": true, "somatic": true, "material": "a key ring with no keys" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["bard", "druid", "warlock", "wizard"], "mechanicalEffects": [{ "kind": "save", "ability": "INT", "damageDice": "10d12", "damageType": "psychic", "halfOnSuccess": true }] },
-    { "id": "blink", "name": "Blink", "level": 3, "school": "transmutation", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true }, "duration": "1 minute", "concentration": false, "ritual": false, "classes": ["sorcerer", "wizard"], "mechanicalEffects": [] },
+    { "id": "blink", "name": "Blink", "level": 3, "school": "transmutation", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true }, "duration": "1 minute", "concentration": false, "ritual": false, "classes": ["sorcerer", "wizard"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "blink-active" }] },
     { "id": "divine-smite", "name": "Divine Smite", "level": 1, "school": "evocation", "castingTime": "Bonus Action", "range": "Self", "components": { "verbal": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["paladin"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "divine-smite-active" }] },
     { "id": "elementalism", "name": "Elementalism", "level": 0, "school": "transmutation", "castingTime": "Action", "range": "30 feet", "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["druid", "sorcerer", "wizard"], "mechanicalEffects": [] },
     { "id": "floating-disk", "name": "Floating Disk", "level": 1, "school": "conjuration", "castingTime": "Action", "range": "30 feet", "components": { "verbal": true, "somatic": true, "material": "a drop of mercury" }, "duration": "1 hour", "concentration": false, "ritual": true, "classes": ["wizard"], "mechanicalEffects": [] },
@@ -2363,7 +2431,7 @@
     { "id": "ice-knife", "name": "Ice Knife", "level": 1, "school": "conjuration", "castingTime": "Action", "range": "60 feet", "components": { "somatic": true, "material": "a drop of water or a piece of ice" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["druid", "sorcerer", "wizard"], "mechanicalEffects": [{ "kind": "attack", "damageDice": "1d10", "damageType": "piercing", "attackKind": "ranged", "targetScope": "first" }, { "kind": "save", "ability": "DEX", "damageDice": "2d6", "damageType": "cold", "halfOnSuccess": false, "extraDicePerSlotLevel": 1 }] },
     { "id": "illusory-script", "name": "Illusory Script", "level": 1, "school": "illusion", "castingTime": "1 minute", "range": "Touch", "components": { "somatic": true, "material": "ink worth 10+ GP, which the spell consumes" }, "duration": "10 days", "concentration": false, "ritual": true, "classes": ["bard", "warlock", "wizard"], "mechanicalEffects": [] },
     { "id": "mind-spike", "name": "Mind Spike", "level": 2, "school": "divination", "castingTime": "Action", "range": "120 feet", "components": { "somatic": true }, "duration": "Concentration, up to 1 hour", "concentration": true, "ritual": false, "classes": ["sorcerer", "warlock", "wizard"], "mechanicalEffects": [{ "kind": "save", "ability": "WIS", "damageDice": "3d8", "damageType": "psychic", "halfOnSuccess": true, "extraDicePerSlotLevel": 1 }] },
-    { "id": "shining-smite", "name": "Shining Smite", "level": 2, "school": "transmutation", "castingTime": "Bonus Action", "range": "Self", "components": { "verbal": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["paladin"], "mechanicalEffects": [] },
+    { "id": "shining-smite", "name": "Shining Smite", "level": 2, "school": "transmutation", "castingTime": "Bonus Action", "range": "Self", "components": { "verbal": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["paladin"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "shining-smite-active" }] },
     { "id": "sorcerous-burst", "name": "Sorcerous Burst", "level": 0, "school": "evocation", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["sorcerer"], "mechanicalEffects": [{ "kind": "attack", "damageDice": "1d8", "attackKind": "ranged", "cantripScalingDice": "1d8", "explodeOnMaxDie": true, "casterChoosesDamageType": { "allowed": ["acid", "cold", "fire", "lightning", "poison", "psychic", "thunder"] } }] },
     { "id": "summon-dragon", "name": "Summon Dragon", "level": 5, "school": "conjuration", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true, "material": "an object with the image of a dragon engraved on it worth 500+ GP" }, "duration": "Concentration, up to 1 hour", "concentration": true, "ritual": false, "classes": ["wizard"], "mechanicalEffects": [] },
     { "id": "transport-via-plants", "name": "Transport via Plants", "level": 6, "school": "conjuration", "castingTime": "Action", "range": "10 feet", "components": { "verbal": true, "somatic": true }, "duration": "1 minute", "concentration": false, "ritual": false, "classes": ["druid"], "mechanicalEffects": [] },
@@ -8720,6 +8788,164 @@
           "consumeOnTrigger": true
         }
       ]
+    },
+    {
+      "id": "blink-active",
+      "name": "Blink",
+      "description": "Slice 672: marker that the Blink spell is active on the bearer. The consumer invokes `engine.plan.blinkTurnEnd({ characterId })` at the end of each of the bearer's turns; on 11+ the bearer gains `blink-ethereal-active`. Duration is consumer-managed (1 minute = 10 rounds; consumer commits ConditionRemoved when expired).",
+      "stackable": false,
+      "endsOn": [],
+      "effects": []
+    },
+    {
+      "id": "blink-ethereal-active",
+      "name": "Blink (Ethereal Plane)",
+      "description": "Slice 672: marker that the bearer is on the Ethereal Plane via Blink. Per RAW: while ethereal, the bearer can see + hear original plane (~60-ft), can pass through objects, attacks against/from the bearer auto-miss, and abilities/conditions don't carry across planes. Position changes (10-ft re-emergence) are consumer-managed (engine has no positions). Consumer commits ConditionRemoved at the START of the bearer's next turn.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": []
+    },
+    {
+      "id": "beacon-of-hope-active",
+      "name": "Beacon of Hope",
+      "description": "Slice 671: composite-buff condition from Beacon of Hope. Projects advantage on WIS saves + `GrantMaxHealingDice` (each healing spell affecting the bearer regains max possible). Slice 679: now also projects `GrantDeathSaveAdvantage` so `planDeathSaveAtTurnStart` rolls 2d20 and takes the higher per RAW. Auto-cleared on the caster's concentration drop.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "WIS" }, "mode": "advantage" },
+        { "kind": "GrantMaxHealingDice" },
+        { "kind": "GrantDeathSaveAdvantage" }
+      ]
+    },
+    {
+      "id": "slowed-by-spell-active",
+      "name": "Slowed (Slow spell)",
+      "description": "Slice 670: composite condition from the Slow spell. Engine projects: walking speed halved (ModifySpeed walk *0.5), AC -2, DEX saves -2. Slice 677: end-of-turn WIS save vs the caster's spell save DC ends the condition (recurringSave); consumer drives via `engine.plan.tickRecurringSave({ targetId, conditionId: 'slowed-by-spell-active' })`. Auto-cleared on the caster's concentration drop. Other RAW arms (no reactions / one-action-or-bonus / max-one-attack / spellcasting 50% V/S/M) are wired in slices 680-682.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "ModifySpeed", "mode": "walk", "op": "multiply", "value": 0.5 },
+        { "kind": "AddModifier", "target": "ac", "value": -2 },
+        { "kind": "AddModifier", "target": { "kind": "save", "ability": "DEX" }, "value": -2 }
+      ],
+      "recurringSave": { "ability": "WIS", "trigger": "turnEnd", "onSuccess": "removeCondition" }
+    },
+    {
+      "id": "dragons-breath-acid-active",
+      "name": "Dragon's Breath (Acid)",
+      "description": "Slice 669: marker — the buffed creature can take its action to exhale a 15-ft cone of acid; targets DEX-save vs the caster's spell save DC for 3d6 acid (+1d6/slot above L2), half on success. Consumer invokes `engine.plan.exhaleDragonsBreath({ damageType: 'acid', ... })` on the buffed creature's action. Auto-cleared on the caster's concentration drop.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": []
+    },
+    {
+      "id": "dragons-breath-cold-active",
+      "name": "Dragon's Breath (Cold)",
+      "description": "Slice 669: cold variant of Dragon's Breath. See dragons-breath-acid-active.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": []
+    },
+    {
+      "id": "dragons-breath-fire-active",
+      "name": "Dragon's Breath (Fire)",
+      "description": "Slice 669: fire variant of Dragon's Breath. See dragons-breath-acid-active.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": []
+    },
+    {
+      "id": "dragons-breath-lightning-active",
+      "name": "Dragon's Breath (Lightning)",
+      "description": "Slice 669: lightning variant of Dragon's Breath. See dragons-breath-acid-active.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": []
+    },
+    {
+      "id": "dragons-breath-poison-active",
+      "name": "Dragon's Breath (Poison)",
+      "description": "Slice 669: poison variant of Dragon's Breath. See dragons-breath-acid-active.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": []
+    },
+    {
+      "id": "levitating-active",
+      "name": "Levitating",
+      "description": "Slice 668: marker for the Levitate spell. RAW per SRD 5.2.1: the target floats up to 20 ft up vertically; can move 20 ft up or down on its turn as a move action by pulling/pushing against fixed objects (effective fly speed for vertical-only movement). Horizontal movement requires a fixed surface — engine has no positions so consumers manage the horizontal-block. The 20-ft vertical fly is projected as `ModifySpeed { mode: 'fly', op: 'set', value: 20 }` so derived speeds reflect 'fly 20 ft' for consumers reading the effective speed stack. Auto-cleared on the caster's concentration drop.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "ModifySpeed", "mode": "fly", "op": "set", "value": 20 }
+      ]
+    },
+    {
+      "id": "phantasmal-force-active",
+      "name": "Phantasmal Force",
+      "description": "Slice 667: marker for Phantasmal Force's per-turn psychic damage tick. Per RAW, while the creature is convinced of the phantasm, on each of its turns it takes 1d6 psychic damage if the phantasm could damage it (the consumer drives this via planTickRecurring at the start of the target's turn). The disbelieve-on-INT-investigation arm is consumer-driven. Auto-cleared on the caster's concentration drop.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": []
+    },
+    {
+      "id": "enfeebled",
+      "name": "Enfeebled (Ray of Enfeeblement)",
+      "description": "Slice 666: applied by Ray of Enfeeblement's on-hit rider. Slice 678: now projects `HalvesStrengthWeaponDamage` so planAttack halves the bearer's base weapon damage when damageAbility === 'STR' (rider damages — sneak attack, smite, on-hit dice — pass through unhalved per the RAW reading 'the weapon's damage line'). Slice 677: end-of-turn CON save vs the caster's spell save DC ends the condition (recurringSave); consumer drives via `engine.plan.tickRecurringSave({ targetId, conditionId: 'enfeebled' })`. Auto-cleared when the caster's concentration drops.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "HalvesStrengthWeaponDamage" }
+      ],
+      "recurringSave": { "ability": "CON", "trigger": "turnEnd", "onSuccess": "removeCondition" }
+    },
+    {
+      "id": "shining-smite-active",
+      "name": "Shining Smite Active",
+      "description": "Slice 666: caster's next melee weapon hit during the spell's duration deals +2d6 radiant and applies shining-smite-target-illuminated to the target. The rider consumes on the first hit. The lingering target-side advantage-to-attackers + Dim Light + end-of-turn CON save are tracked via the target condition.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        {
+          "kind": "OnEvent",
+          "id": "shining-smite-damage-rider",
+          "trigger": {
+            "eventType": "AttackRolled",
+            "filter": { "kind": "all", "terms": [
+              { "kind": "eq", "path": "event.attackerIsSelf", "value": true },
+              { "kind": "eq", "path": "event.hit", "value": true },
+              { "kind": "eq", "path": "event.attackKind", "value": "melee" }
+            ] }
+          },
+          "actions": [{ "kind": "AddDamage", "dice": "2d6", "damageType": "radiant" }],
+          "consumeOnTrigger": true
+        },
+        {
+          "kind": "OnEvent",
+          "id": "shining-smite-target-condition-rider",
+          "trigger": {
+            "eventType": "AttackRolled",
+            "filter": { "kind": "all", "terms": [
+              { "kind": "eq", "path": "event.attackerIsSelf", "value": true },
+              { "kind": "eq", "path": "event.hit", "value": true },
+              { "kind": "eq", "path": "event.attackKind", "value": "melee" }
+            ] }
+          },
+          "actions": [{ "kind": "ApplyCondition", "conditionId": "shining-smite-target-illuminated" }],
+          "consumeOnTrigger": true
+        }
+      ]
+    },
+    {
+      "id": "shining-smite-target-illuminated",
+      "name": "Shining Smite Illuminated",
+      "description": "Slice 666: target of Shining Smite is sheathed in radiant light. Attacks against the target have advantage. Lingering Dim Light in a 5-foot radius is consumer-managed (engine has no light model). Slice 677: end-of-turn CON save vs the caster's spell save DC ends the condition (recurringSave); consumer drives via `engine.plan.tickRecurringSave({ targetId, conditionId: 'shining-smite-target-illuminated' })` at the end of the bearer's turn. Auto-cleared when the caster's concentration drops.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "GrantAdvantageToAttackers" }
+      ],
+      "recurringSave": { "ability": "CON", "trigger": "turnEnd", "onSuccess": "removeCondition" }
     },
     {
       "id": "aura-of-courage-active",

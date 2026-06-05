@@ -26,6 +26,6 @@
       "dnd-srd-engine/starter-pack": ["src/starter-pack.ts"]
     }
   },
-  "include": ["src/**/*", "tests/**/*", "web/scenarios/**/*.ts"],
-  "exclude": ["node_modules", "dist", "dist-web"]
+  "include": ["src/**/*", "tests/**/*"],
+  "exclude": ["node_modules", "dist"]
 }

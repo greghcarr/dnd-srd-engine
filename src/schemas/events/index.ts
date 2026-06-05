@@ -37,6 +37,7 @@ import {
   RoundEndedEventSchema,
   TurnEndedEventSchema,
   TurnStartedEventSchema,
+  CombatantPlacedEventSchema,
 } from './encounter.js';
 import {
   AttackRolledEventSchema,
@@ -48,6 +49,7 @@ import {
   LevelUpResolvedEventSchema,
   ChoiceRequiredEventSchema,
   ChoiceResolvedEventSchema,
+  SubclassChosenEventSchema,
 } from './level-up.js';
 import {
   SaveRolledEventSchema,
@@ -55,19 +57,26 @@ import {
 } from './checks.js';
 import {
   SpellCastDeclaredEventSchema,
+  SpellCastFizzledEventSchema,
   SpellSlotConsumedEventSchema,
   PactSlotConsumedEventSchema,
+  PactSlotsRegainedEventSchema,
   FreeCastUsedEventSchema,
 } from './spellcasting.js';
 import {
   ConcentrationStartedEventSchema,
   ConcentrationBrokenEventSchema,
+  SpellEffectStartedEventSchema,
 } from './concentration.js';
 import { TriggerFiredEventSchema } from './triggers.js';
 import {
   ActionEconomyConsumedEventSchema,
   ActionReadiedEventSchema,
   RecklessAttackActivatedEventSchema,
+  SteadyAimActivatedEventSchema,
+  SteadyAimConsumedEventSchema,
+  FastHandsActivatedEventSchema,
+  DeflectAttacksUsedEventSchema,
   StunningStrikeAttemptedEventSchema,
   SavageAttackerUsedEventSchema,
 } from './action-economy.js';
@@ -227,6 +236,7 @@ export const EventSchema = z.discriminatedUnion('type', [
   LongRestStartedEventSchema,
   LongRestEndedEventSchema,
   EncounterCreatedEventSchema,
+  CombatantPlacedEventSchema,
   EncounterStartedEventSchema,
   InitiativeRolledEventSchema,
   InitiativeSwappedEventSchema,
@@ -241,18 +251,26 @@ export const EventSchema = z.discriminatedUnion('type', [
   LevelUpResolvedEventSchema,
   ChoiceRequiredEventSchema,
   ChoiceResolvedEventSchema,
+  SubclassChosenEventSchema,
   SaveRolledEventSchema,
   AbilityCheckRolledEventSchema,
   SpellCastDeclaredEventSchema,
+  SpellCastFizzledEventSchema,
   SpellSlotConsumedEventSchema,
   PactSlotConsumedEventSchema,
+  PactSlotsRegainedEventSchema,
   FreeCastUsedEventSchema,
   ConcentrationStartedEventSchema,
   ConcentrationBrokenEventSchema,
+  SpellEffectStartedEventSchema,
   TriggerFiredEventSchema,
   ActionEconomyConsumedEventSchema,
   ActionReadiedEventSchema,
   RecklessAttackActivatedEventSchema,
+  SteadyAimActivatedEventSchema,
+  SteadyAimConsumedEventSchema,
+  FastHandsActivatedEventSchema,
+  DeflectAttacksUsedEventSchema,
   StunningStrikeAttemptedEventSchema,
   SavageAttackerUsedEventSchema,
   CombatantMovedEventSchema,
@@ -375,6 +393,7 @@ export const EVENT_TYPES = [
   'LongRestStarted',
   'LongRestEnded',
   'EncounterCreated',
+  'CombatantPlaced',
   'EncounterStarted',
   'InitiativeRolled',
   'InitiativeSwapped',
@@ -389,18 +408,26 @@ export const EVENT_TYPES = [
   'LevelUpResolved',
   'ChoiceRequired',
   'ChoiceResolved',
+  'SubclassChosen',
   'SaveRolled',
   'AbilityCheckRolled',
   'SpellCastDeclared',
+  'SpellCastFizzled',
   'SpellSlotConsumed',
   'PactSlotConsumed',
+  'PactSlotsRegained',
   'FreeCastUsed',
   'ConcentrationStarted',
   'ConcentrationBroken',
+  'SpellEffectStarted',
   'TriggerFired',
   'ActionEconomyConsumed',
   'ActionReadied',
   'RecklessAttackActivated',
+  'SteadyAimActivated',
+  'SteadyAimConsumed',
+  'FastHandsActivated',
+  'DeflectAttacksUsed',
   'StunningStrikeAttempted',
   'SavageAttackerUsed',
   'CombatantMoved',
@@ -575,6 +602,8 @@ export { CharacterCreatedEventSchema } from './progression.js';
 export { EventEnvelopeSchema } from './envelope.js';
 export {
   EncounterCreatedEventSchema,
+  CombatantPlacedEventSchema,
+  EncounterCombatantPlacementSchema,
   EncounterStartedEventSchema,
   InitiativeRolledEventSchema,
   InitiativeRollSchema,
@@ -583,6 +612,10 @@ export {
   TurnEndedEventSchema,
   RoundEndedEventSchema,
   EncounterEndedEventSchema,
+} from './encounter.js';
+export type {
+  CombatantPlacedEvent,
+  EncounterCombatantPlacement,
 } from './encounter.js';
 export {
   AttackRolledEventSchema,
@@ -624,12 +657,14 @@ export {
   LevelUpResolvedEventSchema,
   ChoiceRequiredEventSchema,
   ChoiceResolvedEventSchema,
+  SubclassChosenEventSchema,
   HPStrategySchema,
 } from './level-up.js';
 export type {
   LevelUpResolvedEvent,
   ChoiceRequiredEvent,
   ChoiceResolvedEvent,
+  SubclassChosenEvent,
   HPStrategy,
 } from './level-up.js';
 export {
@@ -644,15 +679,19 @@ export type {
 } from './checks.js';
 export {
   SpellCastDeclaredEventSchema,
+  SpellCastFizzledEventSchema,
   SpellSlotConsumedEventSchema,
   PactSlotConsumedEventSchema,
+  PactSlotsRegainedEventSchema,
   FreeCastUsedEventSchema,
   SpellSlotSourceSchema,
 } from './spellcasting.js';
 export type {
   SpellCastDeclaredEvent,
+  SpellCastFizzledEvent,
   SpellSlotConsumedEvent,
   PactSlotConsumedEvent,
+  PactSlotsRegainedEvent,
   FreeCastUsedEvent,
   SpellSlotSource,
 } from './spellcasting.js';
@@ -660,11 +699,13 @@ export {
   ConcentrationStartedEventSchema,
   ConcentrationBrokenEventSchema,
   ConcentrationBrokenReasonSchema,
+  SpellEffectStartedEventSchema,
 } from './concentration.js';
 export type {
   ConcentrationStartedEvent,
   ConcentrationBrokenEvent,
   ConcentrationBrokenReason,
+  SpellEffectStartedEvent,
 } from './concentration.js';
 export { TriggerFiredEventSchema } from './triggers.js';
 export type { TriggerFiredEvent } from './triggers.js';
@@ -672,6 +713,10 @@ export {
   ActionEconomyConsumedEventSchema,
   ActionReadiedEventSchema,
   RecklessAttackActivatedEventSchema,
+  SteadyAimActivatedEventSchema,
+  SteadyAimConsumedEventSchema,
+  FastHandsActivatedEventSchema,
+  DeflectAttacksUsedEventSchema,
   StunningStrikeAttemptedEventSchema,
   SavageAttackerUsedEventSchema,
   ActionEconomyKindSchema,
@@ -681,6 +726,10 @@ export type {
   ActionEconomyConsumedEvent,
   ActionReadiedEvent,
   RecklessAttackActivatedEvent,
+  SteadyAimActivatedEvent,
+  SteadyAimConsumedEvent,
+  FastHandsActivatedEvent,
+  DeflectAttacksUsedEvent,
   StunningStrikeAttemptedEvent,
   SavageAttackerUsedEvent,
   ActionEconomyKind,

@@ -55,6 +55,7 @@ import type { ULID } from '../ids-utils.js';
 import type { ActionEconomyConsumedEvent } from '../../schemas/events/action-economy.js';
 import { assertActorCanAct, findActorBlockingCondition, getEffectiveSpeed } from './_actor-state.js';
 import { chebyshevDistance } from './movement.js';
+import { assertLineOfSightForAttack } from './_spatial-gates.js';
 
 const DEFAULT_MELEE_REACH_FEET = 5;
 const REACH_PROPERTY_FEET = 10;
@@ -739,6 +740,19 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     if (weaponDef.attackKind !== 'melee') return false;
     return chooseDamageAbility(attacker, weaponDef) === 'STR';
   })();
+  // Slice 646: Rogue L3 Steady Aim. If the attacker has
+  // `steadyAimActive` set on their turnUsage, this attack roll gains
+  // advantage. RAW: "Advantage on your next attack roll on the
+  // current turn" — only ONE attack benefits; the flag is cleared
+  // post-roll via SteadyAimConsumed (emitted at the bottom of this
+  // planner when the flag fired). Applies to melee and ranged.
+  const attackerSteadyAimAdvantage = ((): boolean => {
+    if (!state.activeEncounterId) return false;
+    const enc = state.encounters[state.activeEncounterId];
+    if (!enc) return false;
+    const cb = enc.combatants.find((c) => c.combatantId === input.attackerId);
+    return cb?.turnUsage.steadyAimActive === true;
+  })();
   // RAW PHB Equipment: "Small creatures have Disadvantage with Heavy
   // weapons." Look up the attacker's effective size (via creatureSize
   // derive — picks up slice-560's `sizeOverride` for Human/Tiefling
@@ -958,6 +972,7 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     !targetCancelsAdvantage && (
       targetGrantsAdvantage
       || attackerRecklessAdvantage
+      || attackerSteadyAimAdvantage
       || attackerVsTargetAdvantage.advantage
       || attackerVsMarkedTargetAdvantage.advantage
       || attackerSelfAdvantage.advantage
@@ -1106,7 +1121,22 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   // against the target").
   const consumed = buildConsumeOnAttackRemovals(attacker, input.targetId, content, at);
   const targetConsumed = buildConsumeOnIncomingAttackRemovals(target, content, at);
-  const stateAfterAttack = applyAll(state, [attackRolled, ...consumed, ...targetConsumed]);
+  // Slice 646: Rogue L3 Steady Aim. If the advantage path above fired,
+  // clear the per-turn flag so subsequent attacks this turn don't also
+  // gain advantage. RAW: only the next attack benefits.
+  const steadyAimConsumedEvents: Event[] =
+    attackerSteadyAimAdvantage && state.activeEncounterId !== undefined
+      ? [
+          {
+            id: newEventId() as ULID,
+            at,
+            type: 'SteadyAimConsumed',
+            encounterId: state.activeEncounterId,
+            combatantId: input.attackerId,
+          },
+        ]
+      : [];
+  const stateAfterAttack = applyAll(state, [attackRolled, ...consumed, ...targetConsumed, ...steadyAimConsumedEvents]);
   const attackTriggers = dispatchTriggers({
     state: stateAfterAttack,
     content,
@@ -1117,7 +1147,7 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   });
 
   if (!hit) {
-    return [attackRolled, ...consumed, ...targetConsumed, ...attackTriggers];
+    return [attackRolled, ...consumed, ...targetConsumed, ...steadyAimConsumedEvents, ...attackTriggers];
   }
 
   // Slice 494: when input.abilityOverride is set (True Strike), the damage
@@ -1374,7 +1404,18 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
       }]
     : [];
 
-  const damageTotal = damageRolls.reduce((s, v) => s + v, 0) + damageRollPayload.modifier;
+  const rawDamageTotal = damageRolls.reduce((s, v) => s + v, 0) + damageRollPayload.modifier;
+  // Slice 678: enfeebled (Ray of Enfeeblement) halves the base
+  // weapon damage of attacks using STR. The flag projects via
+  // `HalvesStrengthWeaponDamage` on the bearer's condition. Riders
+  // (sneak attack, smite, on-hit damage, fires-burn, frosts-chill)
+  // pass through unhalved per the RAW reading "the weapon's damage
+  // line is halved" (the bonus-damage riders are not the weapon's
+  // damage line).
+  const damageTotal =
+    attackerEffects.hasHalvesStrengthWeaponDamage() && damageAbility === 'STR'
+      ? Math.floor(Math.max(0, rawDamageTotal) / 2)
+      : rawDamageTotal;
   const rawComponents: { amount: number; type: typeof weaponDef.damageType }[] = [
     { amount: Math.max(0, damageTotal), type: effectiveDamageType },
   ];
@@ -1614,6 +1655,7 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     attackRolled,
     ...consumed,
     ...targetConsumed,
+    ...steadyAimConsumedEvents,
     ...attackTriggers,
     damageRolled,
     ...savageAttackerEvent,
@@ -1736,6 +1778,18 @@ export const planAttack = (
   }
   const economyPrelude = planActionEconomyForAttack(state, content, intent);
   assertWeaponInRange(state, content, intent);
+  // Slice 685: line-of-sight gate. No-op when the spatial context
+  // can't be resolved (positionless / map-less encounters); throws
+  // when a wall / closed door blocks the Bresenham ray between
+  // attacker and target. Range is already gated above; this only
+  // adds the LoS check.
+  assertLineOfSightForAttack(
+    state,
+    intent.attackerId,
+    intent.targetId,
+    attacker?.name ?? intent.attackerId,
+    weaponDef?.name ?? 'this weapon',
+  );
   const at = intent.at ?? nowIso();
   const resolution = resolveAttack({
     state,

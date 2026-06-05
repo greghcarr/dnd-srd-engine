@@ -68,10 +68,19 @@ const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
   'custom',
   // Encounter lifecycle (sequenced by the consumer, not a single intent):
   'createEncounter', 'rollInitiative', 'swapInitiative', 'startEncounter', 'beginFirstTurn', 'advanceTurn', 'endEncounter',
+  // Slice 683: mid-encounter placement (summons, teleports). Consumer
+  // invokes when placing a previously-positionless combatant or
+  // teleporting one to a new cell.
+  'placeCombatant',
   // Reactions / triggered planners (called after observing a trigger event;
   // several return a derived outcome the consumer branches on):
   'dodge', 'shield', 'sanctuaryWardSave', 'protection', 'consumeGuidance',
   'consumeResistance', 'cuttingWords', 'uncannyDodge', 'superiorDefense', 'paladinsSmite', 'breathWeapon',
+  // Slice 648: Monk L3 Deflect Attacks. Reaction-style planner that
+  // returns DeflectAttacksOutcome (reduction + remainingDamage) the
+  // consumer subtracts from a pending DamageApplied. Consumer
+  // invokes after observing an AttackRolled hit + DamageRolled.
+  'deflectAttacks',
   // Slice 558: Stone's Endurance is a reaction-style planner; returns
   // StonesEnduranceOutcome the consumer branches on (mirror of
   // uncannyDodge). Consumer invokes it after observing a DamageApplied
@@ -108,6 +117,11 @@ const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
   // (Fighter Fighting Style, future L1 origin-feat picks). Not a player
   // action and not part of the action-economy dispatch.
   'offerCharacterChoices',
+  // Slice 660: post-LongRestEnded choice cascade — consumer invokes
+  // after committing LongRestEnded to surface onLongRest OfferChoice
+  // entries (Druid Circle of the Land's per-rest land pick). Sibling
+  // of offerCharacterChoices.
+  'offerLongRestChoices',
 ]);
 
 describe('planner-wiring audit: every engine.plan method is dispatch-routed or allowlisted', () => {
