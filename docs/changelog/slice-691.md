@@ -20,7 +20,7 @@ The asymmetry that slice 689 introduced (dndbnb auto-redeploys, dnd-web doesn't)
 
 ## What's edited
 
-- **[docs/changelog/slice-689.md]**: the `notify-dndbnb.yml` bullet in slice 689's "What's edited" section now carries a strikethrough + "Reverted by slice 691" annotation, per the [CHANGELOG closure-annotation convention](../../../.claude/projects/-Users-greghcarr-Documents-Visual-Studio-Code-dnd-srd-engine/memory/changelog-closure-annotation-convention.md).
+- **[docs/changelog/slice-689.md]**: the `notify-dndbnb.yml` bullet in slice 689's "What's edited" section now carries a strikethrough + "Reverted by slice 691" annotation, per the standing CHANGELOG closure-annotation convention (later slices that close or reverse a prior decision get strikethrough + a "Closed/Reverted by slice N" tag in-place; preserves the historical accuracy of the prior slice's narrative while making the current state discoverable).
 
 ## Consumer-side cleanup (out-of-scope-for-this-commit, user task)
 
