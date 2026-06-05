@@ -18,6 +18,7 @@ export { replay } from './replay.js';
 export { commit } from './commit.js';
 export { undo, redo } from './undo-redo.js';
 export { performIntent, serializeCampaign, loadCampaign, createPC } from './conveniences.js';
+export { seedResourcesFromContent } from './seed-resources.js';
 export type { CreatePCOptions, SerializedCampaign } from './conveniences.js';
 import { performIntent } from './conveniences.js';
 import {

@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine (slice 675): `seedResourcesFromContent` helper**
+Closes the slice-660 documented deferral. New helper `seedResourcesFromContent(character, content): Character` walks the character's effect stack for `GrantResource` effects and auto-populates `character.resources` with proper `max` (formula-evaluated) and `recharge` (incl. slice-657's `partialShortFullLong` primitive). Highest-`max` wins per resourceId; idempotent for pre-existing entries; pure transform. Opt-in helper alongside createPC (signature stable). 5 new tests. Resolves the manual "consumer must hand-author Channel Divinity's `partialShortFullLong` recharge" drift trap.
+Detail: [slice-675.md](docs/changelog/slice-675.md).
+
 **Tests (slice 674): L3 fuzz floor (widen seed coverage post-L3-cycle)**
 Slice 651 added L3 to the fuzz matrix (LEVELS = [1,2,3]); slice 674 widens SEEDS_PER_CELL 20 → 30 post the 8 spell-wiring slices (665-672) + L3 RAW closures (661-664) that grew the L3 event surface. 36 cells × 30 seeds = 1,080 battles per CI run; ~13s wall-clock. Header history updated; describe title widened from "slice 644: (L1+L2)" to "slice 644 / 651 / 674: (L1+L2+L3)".
 Detail: [slice-674.md](docs/changelog/slice-674.md).
