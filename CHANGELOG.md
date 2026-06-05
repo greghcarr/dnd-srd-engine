@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Feat (slice 693): movement option + no-op move-policy seam on the combat fuzz**
+Adds `movement: 'none' | 'tactical'` to `runBattle` (default `'none'`) plus the strategy seam the tactical policy plugs into: a `MovePolicy` injected once per turn, with `NO_MOVE` (identity) for `'none'`. No behavior change yet — `'none'` is proven byte-identical (fuzz-matrix + replay-equivalence + flags suites pass unchanged, plus a new default-guard test). Also adds the `normalizeEvents` test helper (interns ulids + blanks wall-clock `at`) as the correct cross-run determinism oracle, since two same-seed runs differ only in volatile ids/timestamps. First of three; slices 694-695 fill in the tactical arm.
+Detail: [slice-693.md](docs/changelog/slice-693.md).
+
 **Doc (slice 692): clean-agent tune-up after the slice-689/690/691 cross-repo cycle**
 Surfaces the sibling-consumer arrangement + slice-690 pre-push hook in the two places a fresh agent will look first: a new "Sibling-consumer awareness" subsection in CLAUDE.md (auto-loaded) names greghcarr/dndbnb + greghcarr/dnd-web, explains the pre-push hook, restates the engine-only conversation-scope rule, and notes that engine `main` IS the consumers' deploy pin; README's "What lives in this repo" gets a `.githooks/` row + a new "Sibling consumers" subsection with live URLs. Architecture.md was checked and needed no changes (zero stale refs; consumer-integration concerns live in DEVELOPMENT.md already). Doc-only.
 Detail: [slice-692.md](docs/changelog/slice-692.md).
