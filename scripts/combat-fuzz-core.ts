@@ -20,6 +20,7 @@ import { commit, type Campaign } from '../src/engine/commit.js';
 import { performIntent } from '../src/engine/conveniences.js';
 import type { ItemInstance } from '../src/schemas/runtime/item-instance.js';
 import type { Event } from '../src/schemas/events/index.js';
+import { emitTacticalSetup } from './tactical/setup.js';
 
 export const MAX_ROUNDS = 20;
 const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8] as const;
@@ -932,10 +933,34 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
   }
 
   const allCharacterIds = [...teamA.map((pc) => pc.character.id), ...teamB.map((pc) => pc.character.id)];
-  const enc = engine.plan.createEncounter(campaign.state, {
-    combatantIds: allCharacterIds,
-    name: 'Fuzz arena',
-  });
+
+  // Slice 694: tactical mode spreads the combatants across a generated
+  // arena. Emit the location + per-combatant placement events, then create
+  // the encounter via the positioned path. 'none' keeps the legacy
+  // positionless `combatantIds` call (byte-identical).
+  let locationId: string | undefined;
+  let enc: { events: ReadonlyArray<Event>; encounterId: string };
+  if (movement === 'tactical') {
+    const setup = emitTacticalSetup({
+      campaign,
+      seed,
+      teamSize,
+      teamACharacterIds: teamA.map((pc) => pc.character.id),
+      teamBCharacterIds: teamB.map((pc) => pc.character.id),
+      nextAt,
+    });
+    campaign = setup.campaign;
+    locationId = setup.locationId;
+    enc = engine.plan.createEncounter(campaign.state, {
+      combatants: setup.placements,
+      name: 'Fuzz arena',
+    });
+  } else {
+    enc = engine.plan.createEncounter(campaign.state, {
+      combatantIds: allCharacterIds,
+      name: 'Fuzz arena',
+    });
+  }
   campaign = commit(campaign, enc.events);
   campaign = commit(campaign, engine.plan.rollInitiative(campaign.state, { encounterId: enc.encounterId }).events);
   campaign = commit(campaign, engine.plan.startEncounter(campaign.state, { encounterId: enc.encounterId }).events);
@@ -1148,5 +1173,6 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
     teamACharacterIds: teamA.map((pc) => pc.character.id),
     teamBCharacterIds: teamB.map((pc) => pc.character.id),
     movement,
+    ...(locationId !== undefined ? { locationId } : {}),
   };
 };

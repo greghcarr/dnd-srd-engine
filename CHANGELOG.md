@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Feat (slice 694): arena map generation + spread placement for the tactical fuzz**
+Tactical mode now spawns combatants spread out on a deterministically-generated arena with scattered impassable cover. New pure `generateArenaMap(seed, teamSize)` (`scripts/tactical/arena.ts`) forks its RNG from `seededRNG(seed).fork(MAP_SALT)` (independent of the engine roll stream), scales dims with team size, and places cover as isolated pillars so an A↔B path is structural (no regenerate loop). New `emitTacticalSetup` emits `LocationCreated` → per-combatant `CharacterLocationChanged` → positioned `EncounterCreated`; `runBattle` branches once on `movement` and sets `result.locationId`. No movement yet (slice 695). `'none'` byte-identical. Tactical logs replay-equivalent + seed-deterministic.
+Detail: [slice-694.md](docs/changelog/slice-694.md).
+
 **Feat (slice 693): movement option + no-op move-policy seam on the combat fuzz**
 Adds `movement: 'none' | 'tactical'` to `runBattle` (default `'none'`) plus the strategy seam the tactical policy plugs into: a `MovePolicy` injected once per turn, with `NO_MOVE` (identity) for `'none'`. No behavior change yet — `'none'` is proven byte-identical (fuzz-matrix + replay-equivalence + flags suites pass unchanged, plus a new default-guard test). Also adds the `normalizeEvents` test helper (interns ulids + blanks wall-clock `at`) as the correct cross-run determinism oracle, since two same-seed runs differ only in volatile ids/timestamps. First of three; slices 694-695 fill in the tactical arm.
 Detail: [slice-693.md](docs/changelog/slice-693.md).
