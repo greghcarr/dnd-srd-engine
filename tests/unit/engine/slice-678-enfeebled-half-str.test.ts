@@ -66,6 +66,8 @@ const seedAndAttack = (
         id: weaponInstanceId as ULID,
         definitionId: weapon,
         quantity: 1,
+        attuned: false,
+        identifiedByCharacterIds: [],
       },
     } satisfies ItemAcquiredEvent,
     {

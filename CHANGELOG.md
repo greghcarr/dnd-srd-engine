@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine + content (slice 679): `GrantDeathSaveAdvantage` (Beacon of Hope arm)**
+Closes the Beacon of Hope death-save advantage arm (pre-679 consumer-managed). New marker effect (63 primitives total); EffectAccumulator gains mark/has methods; `planDeathSaveAtTurnStart` consults the bearer's effect stack and rolls 2d20 (max) when set. Halfling Luck reroll-on-nat-1 composes on top. `beacon-of-hope-active` projects the marker. 3 new tests.
+Detail: [slice-679.md](docs/changelog/slice-679.md).
+
 **Engine + content (slice 678): `HalvesStrengthWeaponDamage` primitive (enfeebled enforcement)**
 New marker effect (62 primitives total). `EffectAccumulator` gains `mark`/`has` methods; `planAttack` halves the base weapon damage when the attacker carries the flag AND `damageAbility === 'STR'`. Riders (smite/sneak/on-hit dice) pass through unhalved per the RAW "weapon's damage line" reading. `enfeebled` condition projects the marker. 3 new tests including same-seed greatsword (halved) and rapier (unaffected, finesse → DEX) comparisons.
 Detail: [slice-678.md](docs/changelog/slice-678.md).

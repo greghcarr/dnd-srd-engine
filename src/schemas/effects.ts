@@ -413,6 +413,12 @@ export type Effect =
   // through unhalved. RAW reading scoped to the weapon's damage
   // line, not every damage source the attack triggers.
   | { kind: 'HalvesStrengthWeaponDamage' }
+  // Slice 679: marker — bearer's death saving throws are rolled
+  // with advantage. RAW user: Beacon of Hope ("It has Advantage
+  // on Wisdom saving throws and Death Saving Throws"). Read by
+  // `planDeathSaveAtTurnStart` via the character's effect stack;
+  // when set, rolls 2d20 and takes the max (RAW advantage).
+  | { kind: 'GrantDeathSaveAdvantage' }
   // Slice 542: Heroic Inspiration on Long Rest. RAW: "You gain
   // Heroic Inspiration whenever you finish a Long Rest." Wired
   // on Human Resourceful; future features that grant per-long-
@@ -850,6 +856,9 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       kind: z.literal('HalvesStrengthWeaponDamage'),
     }),
     z.object({
+      kind: z.literal('GrantDeathSaveAdvantage'),
+    }),
+    z.object({
       kind: z.literal('GrantHeroicInspirationOnLongRest'),
     }),
     z.object({
@@ -984,6 +993,7 @@ export const EFFECT_KINDS = [
   'GrantAbilitySubstitution',
   'GrantHalflingLuck',
   'HalvesStrengthWeaponDamage',
+  'GrantDeathSaveAdvantage',
   'GrantHeroicInspirationOnLongRest',
   'GrantAdvantageToAttackers',
   'ImposeDisadvantageOnAttackers',

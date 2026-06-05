@@ -218,6 +218,7 @@ export class EffectAccumulator {
   // the reroll-on-natural-1 mechanic.
   private halflingLuckFlag: boolean = false;
   private halvesStrengthWeaponDamageFlag: boolean = false;
+  private deathSaveAdvantageFlag: boolean = false;
   // Slice 542: Heroic Inspiration on Long Rest presence marker.
   // Read by planLongRest to auto-grant Heroic Inspiration to
   // participants with the marker on their effect stack (Human
@@ -905,6 +906,14 @@ export class EffectAccumulator {
   hasHalvesStrengthWeaponDamage(): boolean {
     return this.halvesStrengthWeaponDamageFlag;
   }
+  // Slice 679: marker — bearer's death saves roll with advantage.
+  // RAW user: Beacon of Hope.
+  markDeathSaveAdvantage(): void {
+    this.deathSaveAdvantageFlag = true;
+  }
+  hasDeathSaveAdvantage(): boolean {
+    return this.deathSaveAdvantageFlag;
+  }
   markHeroicInspirationOnLongRest(): void {
     this.heroicInspirationOnLongRestFlag = true;
   }
@@ -1183,6 +1192,9 @@ export const applyEffectToBuilder = (
       return;
     case 'HalvesStrengthWeaponDamage':
       acc.markHalvesStrengthWeaponDamage();
+      return;
+    case 'GrantDeathSaveAdvantage':
+      acc.markDeathSaveAdvantage();
       return;
     case 'GrantHeroicInspirationOnLongRest':
       acc.markHeroicInspirationOnLongRest();

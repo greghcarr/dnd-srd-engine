@@ -143,9 +143,26 @@ const planDeathSaveAtTurnStart = (
   if (character.deathSaves.stable) return [];
   if (character.deathSaves.failures >= DEATH_SAVE_FAILURES_TO_DIE) return [];
   if (character.deathSaves.successes >= DEATH_SAVE_SUCCESSES_TO_STABILIZE) return [];
-  const rolls: number[] = [rollDie(D20_SIDES, rng)];
-  // Slice 543: Halfling Luck on death save.
-  const d20 = applyHalflingLuckForCharacter(rolls[0]!, character.id, state, content, rolls, rng);
+  // Slice 679: death-save advantage from the bearer's effect stack
+  // (Beacon of Hope's GrantDeathSaveAdvantage marker). When set,
+  // roll 2d20 and take the higher per RAW advantage rules.
+  const effects = buildEffectStack({
+    character,
+    content,
+    itemInstances: state.itemInstances,
+    pendingChoices: state.pendingChoices,
+  });
+  const advantage = effects.hasDeathSaveAdvantage();
+  const first = rollDie(D20_SIDES, rng);
+  const rolls: number[] = [first];
+  let chosen = first;
+  if (advantage) {
+    const second = rollDie(D20_SIDES, rng);
+    rolls.push(second);
+    chosen = Math.max(first, second);
+  }
+  // Slice 543: Halfling Luck on death save (reroll-on-nat-1).
+  const d20 = applyHalflingLuckForCharacter(chosen, character.id, state, content, rolls, rng);
   const success = d20 >= DEATH_SAVE_SUCCESS_THRESHOLD;
   const critical = d20 === NAT_20;
   const save: DeathSaveRolledEvent = {

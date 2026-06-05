@@ -8808,12 +8808,13 @@
     {
       "id": "beacon-of-hope-active",
       "name": "Beacon of Hope",
-      "description": "Slice 671: composite-buff condition from Beacon of Hope. Projects advantage on WIS saves and the GrantMaxHealingDice marker (each healing spell that affects the bearer regains the maximum possible amount). Death-save advantage arm is consumer-managed (auto-rolled death saves in planDeathSaveAtTurnStart don't consult the effect stack today; future engine slice can thread SetAdvantage on death saves through that path). Auto-cleared on the caster's concentration drop.",
+      "description": "Slice 671: composite-buff condition from Beacon of Hope. Projects advantage on WIS saves + `GrantMaxHealingDice` (each healing spell affecting the bearer regains max possible). Slice 679: now also projects `GrantDeathSaveAdvantage` so `planDeathSaveAtTurnStart` rolls 2d20 and takes the higher per RAW. Auto-cleared on the caster's concentration drop.",
       "stackable": false,
       "endsOn": [],
       "effects": [
         { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "WIS" }, "mode": "advantage" },
-        { "kind": "GrantMaxHealingDice" }
+        { "kind": "GrantMaxHealingDice" },
+        { "kind": "GrantDeathSaveAdvantage" }
       ]
     },
     {
