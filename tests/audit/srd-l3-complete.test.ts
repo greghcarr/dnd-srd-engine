@@ -501,7 +501,11 @@ describe('slice 645: SRD L3 completeness audit', () => {
       expect(choice?.options.length).toBe(11);
     });
 
-    it('fresh L3 Druid with Circle of the Land emits Land-type ChoiceRequired with the 4 SRD lands', () => {
+    it('fresh L3 Druid with Circle of the Land emits Land-type ChoiceRequired via offerLongRestChoices (slice 660)', () => {
+      // Slice 660: Circle of the Land Spells uses when: 'onLongRest'
+      // per RAW ("Whenever you finish a Long Rest, choose one type
+      // of land"). Surfaces via offerLongRestChoices, not
+      // offerCharacterChoices.
       const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(1) });
       const druid = buildL3Character('druid', {
         classes: [{ classId: 'druid', level: 3, hitDiceRemaining: 3, subclassId: 'circle-of-the-land' }],
@@ -517,7 +521,7 @@ describe('slice 645: SRD L3 completeness audit', () => {
           snapshot: druid,
         } satisfies CharacterCreatedEvent,
       ]);
-      const { events } = engine.plan.offerCharacterChoices(campaign.state, {
+      const { events } = engine.plan.offerLongRestChoices(campaign.state, {
         characterId: druid.id,
       });
       const choice = findChoice(events, 'circle-of-the-land-type');

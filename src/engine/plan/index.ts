@@ -44,6 +44,10 @@ export {
   type OfferCharacterChoicesIntent,
 } from './offer-character-choices.js';
 export {
+  planOfferLongRestChoices,
+  type OfferLongRestChoicesIntent,
+} from './offer-long-rest-choices.js';
+export {
   planSave,
   planAbilityCheck,
   type SaveIntent,

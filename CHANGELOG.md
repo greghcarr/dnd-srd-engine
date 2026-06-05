@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine + content (slice 660): `offerLongRestChoices` (Circle of the Land land swap)**
+**Eighth and final slice of the L3 RAW-completeness push.** New planner `engine.plan.offerLongRestChoices` — sibling of slice-618's `offerCharacterChoices` for onLongRest OfferChoices. Dedupes against unresolved PendingChoices; lets resolved ones re-fire on subsequent long rests (RAW: "each long rest = new pick"). Circle of the Land Spells content flipped from `when: 'onAcquire'` → `when: 'onLongRest'`. Land-swap supersession (clearing the prior land's grants when a new land is picked) documented as deferred. **The L3 RAW completeness punch list (slices 653-660) is closed; ready to tag `v0.3.0-alpha.0` + `v0.4.0-alpha.0`.**
+Detail: [slice-660.md](docs/changelog/slice-660.md).
+
 **Engine (slice 659): Primal Knowledge ability-substitution gate**
 RAW Barbarian L3 second arm: "while raging, may use STR for Acrobatics / Intimidation / Perception / Stealth / Survival." Slice 649 wired the first arm (OfferChoice for the extra skill prof); this slice wires the second via a new opt-in `useAbilitySubstitution: boolean` on `AbilityCheckIntent`. When set, planner enforces 4 gates (Barbarian L3+, raging, ability=STR, skill in 5-skill set); throws on failure. Default unset preserves permissive back-compat.
 Detail: [slice-659.md](docs/changelog/slice-659.md).

@@ -113,6 +113,11 @@ const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
   // (Fighter Fighting Style, future L1 origin-feat picks). Not a player
   // action and not part of the action-economy dispatch.
   'offerCharacterChoices',
+  // Slice 660: post-LongRestEnded choice cascade — consumer invokes
+  // after committing LongRestEnded to surface onLongRest OfferChoice
+  // entries (Druid Circle of the Land's per-rest land pick). Sibling
+  // of offerCharacterChoices.
+  'offerLongRestChoices',
 ]);
 
 describe('planner-wiring audit: every engine.plan method is dispatch-routed or allowlisted', () => {

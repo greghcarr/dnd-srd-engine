@@ -146,9 +146,10 @@ describe('slice 654: subclass-selection cascade', () => {
     campaign = commit(campaign, resolveOut.events);
 
     // Now the druid has subclassId set. Re-invoke
-    // offerCharacterChoices to surface the nested OfferChoices
-    // (Circle Cantrip + Circle Spells) the subclass's
-    // levelGrants['3'] ships.
+    // offerCharacterChoices to surface the nested onAcquire
+    // OfferChoice (Circle Cantrip). Circle Spells (Land Type) is an
+    // onLongRest choice as of slice 660 and surfaces via
+    // offerLongRestChoices instead.
     const cascade = s.engine.plan.offerCharacterChoices(campaign.state, {
       characterId: druid.id,
     });
@@ -156,12 +157,16 @@ describe('slice 654: subclass-selection cascade', () => {
       (e): e is ChoiceRequiredEvent =>
         e.type === 'ChoiceRequired' && e.promptKey === 'circle-of-the-land-cantrip',
     );
-    const landChoice = cascade.events.find(
+    expect(cantripChoice, 'Circle Cantrip choice not surfaced post-resolution').toBeDefined();
+    // Slice 660: Land Type now fires via offerLongRestChoices.
+    const longRestCascade = s.engine.plan.offerLongRestChoices(campaign.state, {
+      characterId: druid.id,
+    });
+    const landChoice = longRestCascade.events.find(
       (e): e is ChoiceRequiredEvent =>
         e.type === 'ChoiceRequired' && e.promptKey === 'circle-of-the-land-type',
     );
-    expect(cantripChoice, 'Circle Cantrip choice not surfaced post-resolution').toBeDefined();
-    expect(landChoice, 'Circle Spells (land type) choice not surfaced post-resolution').toBeDefined();
+    expect(landChoice, 'Circle Spells (land type) choice not surfaced post-resolution via offerLongRestChoices').toBeDefined();
   });
 
   it('subclass cascade does NOT fire if enrollment.subclassId is already set (createPC path)', () => {

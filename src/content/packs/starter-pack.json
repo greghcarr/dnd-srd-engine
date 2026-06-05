@@ -938,7 +938,7 @@
                 "choiceId": "circle-of-the-land-type",
                 "prompt": "Choose one type of land: arid, polar, temperate, or tropical. You always have the spells listed for your Druid level and lower prepared.",
                 "oneOf": 1,
-                "when": "onAcquire",
+                "when": "onLongRest",
                 "options": [
                   {
                     "id": "arid",

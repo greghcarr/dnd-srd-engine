@@ -35,7 +35,9 @@ import {
   planLevelUp,
   planResolveChoice,
   planOfferCharacterChoices,
+  planOfferLongRestChoices,
   type OfferCharacterChoicesIntent,
+  type OfferLongRestChoicesIntent,
   planSave,
   planAbilityCheck,
   planCastSpell,
@@ -381,6 +383,7 @@ export interface Engine {
     levelUp(state: CampaignState, intent: Omit<LevelUpIntent, 'type'>): PlanResult;
     resolveChoice(state: CampaignState, intent: Omit<ResolveChoiceIntent, 'type'>): PlanResult;
     offerCharacterChoices(state: CampaignState, intent: Omit<OfferCharacterChoicesIntent, 'type'>): PlanResult;
+    offerLongRestChoices(state: CampaignState, intent: Omit<OfferLongRestChoicesIntent, 'type'>): PlanResult;
     save(state: CampaignState, intent: Omit<SaveIntent, 'type'>): PlanResult;
     abilityCheck(state: CampaignState, intent: Omit<AbilityCheckIntent, 'type'>): PlanResult;
     castSpell(state: CampaignState, intent: Omit<CastSpellIntent, 'type'>): PlanResult;
@@ -656,6 +659,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     offerCharacterChoices(state, intent) {
       return { events: planOfferCharacterChoices(state, content, { type: 'OfferCharacterChoices', ...intent }) };
+    },
+    offerLongRestChoices(state, intent) {
+      return { events: planOfferLongRestChoices(state, content, { type: 'OfferLongRestChoices', ...intent }) };
     },
     save(state, intent) {
       return { events: planSave(state, content, rng, { type: 'Save', ...intent }) };
