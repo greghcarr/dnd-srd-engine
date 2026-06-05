@@ -240,6 +240,8 @@ exports[`feature-coverage matrix: conditions > wired conditions catalog is stabl
   "searing-smite-active",
   "shield-of-faith-active",
   "shielded",
+  "shining-smite-active",
+  "shining-smite-target-illuminated",
   "slowed-10ft",
   "spider-climbing-active",
   "spirit-shroud-cold-active",

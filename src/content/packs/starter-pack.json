@@ -2376,7 +2376,7 @@
     { "id": "arcanists-magic-aura", "name": "Arcanist's Magic Aura", "level": 2, "school": "illusion", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a small square of silk" }, "duration": "24 hours", "concentration": false, "ritual": false, "classes": ["wizard"], "mechanicalEffects": [] },
     { "id": "pass-without-trace", "name": "Pass without Trace", "level": 2, "school": "abjuration", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "ashes from burned mistletoe" }, "duration": "Concentration, up to 1 hour", "concentration": true, "ritual": false, "classes": ["druid", "ranger"], "targeting": { "shape": "sphere", "size": 30 }, "mechanicalEffects": [{ "kind": "buff", "conditionId": "pass-without-trace-active" }] },
     { "id": "phantasmal-force", "name": "Phantasmal Force", "level": 2, "school": "illusion", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true, "material": "a bit of fleece" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "sorcerer", "wizard"], "targeting": { "shape": "cube", "size": 10 }, "mechanicalEffects": [] },
-    { "id": "ray-of-enfeeblement", "name": "Ray of Enfeeblement", "level": 2, "school": "necromancy", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["warlock", "wizard"], "mechanicalEffects": [] },
+    { "id": "ray-of-enfeeblement", "name": "Ray of Enfeeblement", "level": 2, "school": "necromancy", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["warlock", "wizard"], "mechanicalEffects": [{ "kind": "attack", "attackKind": "ranged", "conditionOnHit": "enfeebled" }] },
     { "id": "rope-trick", "name": "Rope Trick", "level": 2, "school": "transmutation", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a segment of rope" }, "duration": "1 hour", "concentration": false, "ritual": false, "classes": ["wizard"], "mechanicalEffects": [] },
     { "id": "see-invisibility", "name": "See Invisibility", "level": 2, "school": "divination", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "a pinch of talc" }, "duration": "1 hour", "concentration": false, "ritual": false, "classes": ["bard", "sorcerer", "wizard"], "mechanicalEffects": [] },
     { "id": "silence", "name": "Silence", "level": 2, "school": "illusion", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": true, "classes": ["bard", "cleric", "ranger"], "targeting": { "shape": "sphere", "size": 20 }, "mechanicalEffects": [{ "kind": "zone" }] },
@@ -2431,7 +2431,7 @@
     { "id": "ice-knife", "name": "Ice Knife", "level": 1, "school": "conjuration", "castingTime": "Action", "range": "60 feet", "components": { "somatic": true, "material": "a drop of water or a piece of ice" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["druid", "sorcerer", "wizard"], "mechanicalEffects": [{ "kind": "attack", "damageDice": "1d10", "damageType": "piercing", "attackKind": "ranged", "targetScope": "first" }, { "kind": "save", "ability": "DEX", "damageDice": "2d6", "damageType": "cold", "halfOnSuccess": false, "extraDicePerSlotLevel": 1 }] },
     { "id": "illusory-script", "name": "Illusory Script", "level": 1, "school": "illusion", "castingTime": "1 minute", "range": "Touch", "components": { "somatic": true, "material": "ink worth 10+ GP, which the spell consumes" }, "duration": "10 days", "concentration": false, "ritual": true, "classes": ["bard", "warlock", "wizard"], "mechanicalEffects": [] },
     { "id": "mind-spike", "name": "Mind Spike", "level": 2, "school": "divination", "castingTime": "Action", "range": "120 feet", "components": { "somatic": true }, "duration": "Concentration, up to 1 hour", "concentration": true, "ritual": false, "classes": ["sorcerer", "warlock", "wizard"], "mechanicalEffects": [{ "kind": "save", "ability": "WIS", "damageDice": "3d8", "damageType": "psychic", "halfOnSuccess": true, "extraDicePerSlotLevel": 1 }] },
-    { "id": "shining-smite", "name": "Shining Smite", "level": 2, "school": "transmutation", "castingTime": "Bonus Action", "range": "Self", "components": { "verbal": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["paladin"], "mechanicalEffects": [] },
+    { "id": "shining-smite", "name": "Shining Smite", "level": 2, "school": "transmutation", "castingTime": "Bonus Action", "range": "Self", "components": { "verbal": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["paladin"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "shining-smite-active" }] },
     { "id": "sorcerous-burst", "name": "Sorcerous Burst", "level": 0, "school": "evocation", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["sorcerer"], "mechanicalEffects": [{ "kind": "attack", "damageDice": "1d8", "attackKind": "ranged", "cantripScalingDice": "1d8", "explodeOnMaxDie": true, "casterChoosesDamageType": { "allowed": ["acid", "cold", "fire", "lightning", "poison", "psychic", "thunder"] } }] },
     { "id": "summon-dragon", "name": "Summon Dragon", "level": 5, "school": "conjuration", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true, "material": "an object with the image of a dragon engraved on it worth 500+ GP" }, "duration": "Concentration, up to 1 hour", "concentration": true, "ritual": false, "classes": ["wizard"], "mechanicalEffects": [] },
     { "id": "transport-via-plants", "name": "Transport via Plants", "level": 6, "school": "conjuration", "castingTime": "Action", "range": "10 feet", "components": { "verbal": true, "somatic": true }, "duration": "1 minute", "concentration": false, "ritual": false, "classes": ["druid"], "mechanicalEffects": [] },
@@ -8787,6 +8787,61 @@
           "actions": [{ "kind": "AddDamage", "dice": "1d8", "damageType": "radiant" }],
           "consumeOnTrigger": true
         }
+      ]
+    },
+    {
+      "id": "enfeebled",
+      "name": "Enfeebled (Ray of Enfeeblement)",
+      "description": "Slice 666: marker for Ray of Enfeeblement's on-hit rider. RAW (SRD): the target deals only half damage with weapon attacks that use Strength. Engine effect is a marker — the consumer reads the condition + applies the half-damage to STR-based attacks. Save-ends on the target's end-of-turn CON save (consumer-driven via planSave). Auto-cleared when the caster's concentration drops.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": []
+    },
+    {
+      "id": "shining-smite-active",
+      "name": "Shining Smite Active",
+      "description": "Slice 666: caster's next melee weapon hit during the spell's duration deals +2d6 radiant and applies shining-smite-target-illuminated to the target. The rider consumes on the first hit. The lingering target-side advantage-to-attackers + Dim Light + end-of-turn CON save are tracked via the target condition.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        {
+          "kind": "OnEvent",
+          "id": "shining-smite-damage-rider",
+          "trigger": {
+            "eventType": "AttackRolled",
+            "filter": { "kind": "all", "terms": [
+              { "kind": "eq", "path": "event.attackerIsSelf", "value": true },
+              { "kind": "eq", "path": "event.hit", "value": true },
+              { "kind": "eq", "path": "event.attackKind", "value": "melee" }
+            ] }
+          },
+          "actions": [{ "kind": "AddDamage", "dice": "2d6", "damageType": "radiant" }],
+          "consumeOnTrigger": true
+        },
+        {
+          "kind": "OnEvent",
+          "id": "shining-smite-target-condition-rider",
+          "trigger": {
+            "eventType": "AttackRolled",
+            "filter": { "kind": "all", "terms": [
+              { "kind": "eq", "path": "event.attackerIsSelf", "value": true },
+              { "kind": "eq", "path": "event.hit", "value": true },
+              { "kind": "eq", "path": "event.attackKind", "value": "melee" }
+            ] }
+          },
+          "actions": [{ "kind": "ApplyCondition", "conditionId": "shining-smite-target-illuminated" }],
+          "consumeOnTrigger": true
+        }
+      ]
+    },
+    {
+      "id": "shining-smite-target-illuminated",
+      "name": "Shining Smite Illuminated",
+      "description": "Slice 666: target of Shining Smite is sheathed in radiant light. Attacks against the target have advantage. Lingering Dim Light in a 5-foot radius is consumer-managed (engine has no light model). End-of-turn CON save vs the caster's spell save DC ends the condition; auto-cleared when the caster's concentration drops.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "GrantAdvantageToAttackers" }
       ]
     },
     {

@@ -415,6 +415,12 @@ const planAttackMechanic = (
   at: string,
   castingClassId: string | undefined,
   castingAbility: 'INT' | 'WIS' | 'CHA',
+  // Slice 666: when the spell is a concentration spell, the parent
+  // allocates a `concentrationEffectId` and passes it here so any
+  // condition the attack applies on hit (Ray of Enfeeblement's
+  // Enfeebled) is bound to the EffectInstance for cleanup on
+  // concentration drop.
+  concentrationEffectId: string | undefined,
 ): Event[] => {
   const character = state.characters[intent.characterId];
   if (!character) throw new Error(`Unknown character ${intent.characterId}`);
@@ -433,7 +439,16 @@ const planAttackMechanic = (
   const cantripSteps = spell.level === CANTRIP_LEVEL && mechanic.cantripBeamScaling !== true
     ? cantripExtraDice(computeTotalLevel(character))
     : 0;
-  const damageType = resolveAttackDamageType(mechanic, intent, spell.id);
+  // Slice 666: skip damage-type resolution entirely when the
+  // mechanic has no damageDice (Ray of Enfeeblement and any future
+  // attack-spell that only applies an on-hit condition). The
+  // downstream damage-roll path is also short-circuited below;
+  // hoisting this check keeps both ends of the no-damage path
+  // consistent.
+  const damageType =
+    mechanic.damageDice === undefined
+      ? undefined
+      : resolveAttackDamageType(mechanic, intent, spell.id);
   // Slice 204: spell damage now consults the caster's effect stack
   // for `AddModifier { target: 'damage' }` contributions, gated on the
   // `event.damageType` fact. Canonical user: Draconic Sorcery L6
@@ -692,7 +707,42 @@ const planAttackMechanic = (
       !hit && spell.level === CANTRIP_LEVEL && casterEffects.hasPotentCantrip();
     if (!hit && !potentHalfOnMiss) continue;
 
-    const { rolls: baseRolls, modifier } = rollDamage(mechanic.damageDice, bonusDice, rng, isCrit);
+    // Slice 666: optional on-hit condition (Ray of Enfeeblement and
+    // any future attack-spell that primes an Enfeebled-shape rider on
+    // a hit). Fires on hit (not on potent-cantrip half-damage miss);
+    // the condition is stamped on the attack's target with the caster
+    // as `sourceCharacterId` so concentration-drop cleanup removes it.
+    if (hit && mechanic.conditionOnHit !== undefined) {
+      const onHitApplied: ConditionAppliedEvent = {
+        id: newEventId() as ULID,
+        at,
+        type: 'ConditionApplied',
+        targetId: targetId as ULID,
+        conditionId: mechanic.conditionOnHit,
+        appliedConditionId: newAppliedConditionId() as ULID,
+        sourceCharacterId: intent.characterId as ULID,
+        causedByEventId: attackEvent.id,
+        // When the spell is a concentration spell, bind the
+        // condition to the EffectInstance so dropping concentration
+        // removes the condition via `clearConcentrationEffect`'s
+        // sourceEffectInstanceId sweep.
+        ...(concentrationEffectId !== undefined
+          ? { sourceEffectInstanceId: concentrationEffectId as ULID }
+          : {}),
+      };
+      events.push(onHitApplied);
+    }
+
+    // Slice 666: skip the damage path entirely when damageDice is
+    // omitted (attack-only spells like Ray of Enfeeblement). The
+    // attack roll + on-hit condition (above) + trigger dispatch (the
+    // attackEvent's OnEvent rider dispatch already fired) is the
+    // complete planner outcome for this target.
+    if (mechanic.damageDice === undefined || damageType === undefined) continue;
+    const damageDice = mechanic.damageDice;
+    const damageTypeResolved = damageType;
+
+    const { rolls: baseRolls, modifier } = rollDamage(damageDice, bonusDice, rng, isCrit);
     const scalingRolls = rollCantripScaling(mechanic.cantripScalingDice, cantripSteps, rng, isCrit);
     // Slice 498: exploding damage (Sorcerous Burst). Each base/scaling die
     // that maxed spawns an extra die (chained), capped at the caster's
@@ -2173,7 +2223,7 @@ export const planCastSpell = (
   for (const mechanic of spell.mechanicalEffects) {
     if (mechanic.kind === 'attack') {
       events.push(
-        ...planAttackMechanic(state, content, rng, intent, spell, mechanic, declared.id, at, castingClassId, castingAbility),
+        ...planAttackMechanic(state, content, rng, intent, spell, mechanic, declared.id, at, castingClassId, castingAbility, concentrationEffectId),
       );
     } else if (mechanic.kind === 'save') {
       const outcome = planSaveMechanic(
