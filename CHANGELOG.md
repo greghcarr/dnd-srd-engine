@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine + content (slice 672): Blink (cross-plane per-turn ethereal toggle)**
+Closes the final L3 deferred spell — **L3 spells are now 100% wired-or-narrative.** Buff applies `blink-active` marker; new planner `planBlinkTurnEnd` rolls d20 at the end of each of the bearer's turns and applies `blink-ethereal-active` on 11+. Plane semantics + 10-ft re-emergence + duration cleanup are consumer-managed (engine has no positions or plane model). 4 new tests. L3 wired 31 → 32 (0 deferred); aggregate 208/339 → 209/339; conditions 155 → 157. **L1+L2+L3 spell wiring is now 100% wired-or-narrative.**
+Detail: [slice-672.md](docs/changelog/slice-672.md).
+
 **Content (slice 671): Beacon of Hope (composite-buff condition)**
 Closes 1 deferred L3 spell, zero engine change. Buff applies `beacon-of-hope-active` to each target. Condition projects `SetAdvantage on save:WIS` + `GrantMaxHealingDice` (existing primitive — each healing spell hits max). Death-save advantage arm deferred (needs threading effect stack through `planDeathSaveAtTurnStart`). 3 new tests. L3 wired 30 → 31 (1 deferred); aggregate 207/339 → 208/339; conditions 154 → 155.
 Detail: [slice-671.md](docs/changelog/slice-671.md).

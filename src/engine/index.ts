@@ -111,6 +111,7 @@ import {
   planTacticalMind,
   planFrenzy,
   planExhaleDragonsBreath,
+  planBlinkTurnEnd,
   planCuttingWords,
   planMetamagic,
   planWildCompanion,
@@ -279,6 +280,7 @@ import {
   type TacticalMindOutcome,
   type FrenzyIntent,
   type ExhaleDragonsBreathIntent,
+  type BlinkTurnEndIntent,
   type CuttingWordsIntent,
   type CuttingWordsOutcome,
   type MetamagicIntent,
@@ -470,6 +472,7 @@ export interface Engine {
     tacticalMind(state: CampaignState, intent: Omit<TacticalMindIntent, 'type'>): TacticalMindOutcome;
     frenzy(state: CampaignState, intent: Omit<FrenzyIntent, 'type'>): PlanResult;
     exhaleDragonsBreath(state: CampaignState, intent: Omit<ExhaleDragonsBreathIntent, 'type'>): PlanResult;
+    blinkTurnEnd(state: CampaignState, intent: Omit<BlinkTurnEndIntent, 'type'>): PlanResult;
     cuttingWords(state: CampaignState, intent: Omit<CuttingWordsIntent, 'type'>): CuttingWordsOutcome;
     metamagic(state: CampaignState, intent: Omit<MetamagicIntent, 'type'>): PlanResult;
     wildCompanion(state: CampaignState, intent: Omit<WildCompanionIntent, 'type'>): PlanResult;
@@ -913,6 +916,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     exhaleDragonsBreath(state, intent) {
       return { events: planExhaleDragonsBreath(state, content, rng, { type: 'ExhaleDragonsBreath', ...intent }) };
+    },
+    blinkTurnEnd(state, intent) {
+      return { events: planBlinkTurnEnd(state, content, rng, { type: 'BlinkTurnEnd', ...intent }) };
     },
     cuttingWords(state, intent) {
       return planCuttingWords(state, content, rng, { type: 'CuttingWords', ...intent });

@@ -2423,7 +2423,7 @@
     { "id": "wind-wall", "name": "Wind Wall", "level": 3, "school": "evocation", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true, "material": "a fan and a feather" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["druid", "ranger"], "targeting": { "shape": "line", "size": 50 }, "mechanicalEffects": [{ "kind": "zone" }] },
     { "id": "antilife-shell", "name": "Antilife Shell", "level": 5, "school": "abjuration", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 hour", "concentration": true, "ritual": false, "classes": ["druid"], "mechanicalEffects": [] },
     { "id": "befuddlement", "name": "Befuddlement", "level": 8, "school": "enchantment", "castingTime": "Action", "range": "150 feet", "components": { "verbal": true, "somatic": true, "material": "a key ring with no keys" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["bard", "druid", "warlock", "wizard"], "mechanicalEffects": [{ "kind": "save", "ability": "INT", "damageDice": "10d12", "damageType": "psychic", "halfOnSuccess": true }] },
-    { "id": "blink", "name": "Blink", "level": 3, "school": "transmutation", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true }, "duration": "1 minute", "concentration": false, "ritual": false, "classes": ["sorcerer", "wizard"], "mechanicalEffects": [] },
+    { "id": "blink", "name": "Blink", "level": 3, "school": "transmutation", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true }, "duration": "1 minute", "concentration": false, "ritual": false, "classes": ["sorcerer", "wizard"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "blink-active" }] },
     { "id": "divine-smite", "name": "Divine Smite", "level": 1, "school": "evocation", "castingTime": "Bonus Action", "range": "Self", "components": { "verbal": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["paladin"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "divine-smite-active" }] },
     { "id": "elementalism", "name": "Elementalism", "level": 0, "school": "transmutation", "castingTime": "Action", "range": "30 feet", "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["druid", "sorcerer", "wizard"], "mechanicalEffects": [] },
     { "id": "floating-disk", "name": "Floating Disk", "level": 1, "school": "conjuration", "castingTime": "Action", "range": "30 feet", "components": { "verbal": true, "somatic": true, "material": "a drop of mercury" }, "duration": "1 hour", "concentration": false, "ritual": true, "classes": ["wizard"], "mechanicalEffects": [] },
@@ -8788,6 +8788,22 @@
           "consumeOnTrigger": true
         }
       ]
+    },
+    {
+      "id": "blink-active",
+      "name": "Blink",
+      "description": "Slice 672: marker that the Blink spell is active on the bearer. The consumer invokes `engine.plan.blinkTurnEnd({ characterId })` at the end of each of the bearer's turns; on 11+ the bearer gains `blink-ethereal-active`. Duration is consumer-managed (1 minute = 10 rounds; consumer commits ConditionRemoved when expired).",
+      "stackable": false,
+      "endsOn": [],
+      "effects": []
+    },
+    {
+      "id": "blink-ethereal-active",
+      "name": "Blink (Ethereal Plane)",
+      "description": "Slice 672: marker that the bearer is on the Ethereal Plane via Blink. Per RAW: while ethereal, the bearer can see + hear original plane (~60-ft), can pass through objects, attacks against/from the bearer auto-miss, and abilities/conditions don't carry across planes. Position changes (10-ft re-emergence) are consumer-managed (engine has no positions). Consumer commits ConditionRemoved at the START of the bearer's next turn.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": []
     },
     {
       "id": "beacon-of-hope-active",

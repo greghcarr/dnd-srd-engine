@@ -160,6 +160,7 @@ export {
   planExhaleDragonsBreath,
   type ExhaleDragonsBreathIntent,
 } from './exhale-dragons-breath.js';
+export { planBlinkTurnEnd, type BlinkTurnEndIntent } from './blink-turn-end.js';
 export {
   planCuttingWords,
   type CuttingWordsIntent,
