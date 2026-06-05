@@ -178,30 +178,168 @@ const planDeathSaveAtTurnStart = (
   return [save];
 };
 
+export interface CreateEncounterCombatant {
+  readonly characterId: string;
+  // Slice 683: optional starting position for the combatant on the
+  // encounter's battle map. When omitted, the combatant joins
+  // positionless (mid-encounter placement via planPlaceCombatant
+  // can set it later).
+  readonly position?: { x: number; y: number };
+}
+
 export interface CreateEncounterIntent {
   readonly type: 'CreateEncounter';
-  readonly combatantIds: ReadonlyArray<string>;
+  // Slice 683: prefer `combatants` for placement-aware encounters.
+  // `combatantIds` is retained for back-compat (no positions).
+  // Exactly one of the two must be supplied.
+  readonly combatants?: ReadonlyArray<CreateEncounterCombatant>;
+  readonly combatantIds?: ReadonlyArray<string>;
   readonly name?: string;
   readonly encounterId?: string;
   readonly at?: string;
 }
 
+// Slice 683: per-combatant placement validation. When the
+// associated location has a map, the position must be (a) in bounds,
+// (b) not on impassable terrain, and (c) not overlapping any other
+// combatant in the SAME placement batch. Cross-batch collision
+// checks (e.g., against existing combatants placed earlier) live
+// in planPlaceCombatant below.
+const validatePlacementAgainstMap = (
+  state: CampaignState,
+  characterId: string,
+  position: { x: number; y: number },
+  otherPositions: ReadonlyArray<{ characterId: string; position: { x: number; y: number } }>,
+): void => {
+  const locationId = state.characterLocations[characterId];
+  const map = locationId !== undefined ? state.locations[locationId]?.map : undefined;
+  if (map !== undefined) {
+    if (
+      position.x < 0 ||
+      position.x >= map.widthCells ||
+      position.y < 0 ||
+      position.y >= map.heightCells
+    ) {
+      throw new Error(
+        `Combatant ${characterId} placement (${position.x},${position.y}) is out of bounds for the location map`,
+      );
+    }
+    const terrain = map.terrain[position.y]?.[position.x];
+    if (terrain === 'impassable') {
+      throw new Error(
+        `Combatant ${characterId} placement (${position.x},${position.y}) is on impassable terrain`,
+      );
+    }
+  }
+  // Per-batch collision (and cross-batch when invoked from
+  // planPlaceCombatant with existing combatants supplied).
+  for (const other of otherPositions) {
+    if (other.characterId === characterId) continue;
+    if (other.position.x === position.x && other.position.y === position.y) {
+      throw new Error(
+        `Combatant ${characterId} placement (${position.x},${position.y}) collides with combatant ${other.characterId}`,
+      );
+    }
+  }
+};
+
 export const planCreateEncounter = (
-  _state: CampaignState,
+  state: CampaignState,
   _content: ResolvedContent,
   intent: CreateEncounterIntent,
 ): { events: ReadonlyArray<Event>; encounterId: string } => {
+  if (intent.combatants === undefined && intent.combatantIds === undefined) {
+    throw new Error('CreateEncounterIntent requires either `combatants` or `combatantIds`');
+  }
+  if (intent.combatants !== undefined && intent.combatantIds !== undefined) {
+    throw new Error(
+      'CreateEncounterIntent: pass `combatants` (placement-aware) OR `combatantIds` (legacy), not both',
+    );
+  }
   const encounterId = intent.encounterId ?? newEncounterId();
   const at = intent.at ?? nowIso();
+
+  if (intent.combatants !== undefined) {
+    // Validate placements against location maps + per-batch collision.
+    const placed: { characterId: string; position: { x: number; y: number } }[] = intent.combatants
+      .filter((c): c is CreateEncounterCombatant & { position: { x: number; y: number } } =>
+        c.position !== undefined,
+      )
+      .map((c) => ({ characterId: c.characterId, position: c.position }));
+    for (const entry of placed) {
+      validatePlacementAgainstMap(state, entry.characterId, entry.position, placed);
+    }
+    const event: EncounterCreatedEvent = {
+      id: newEventId() as ULID,
+      at,
+      type: 'EncounterCreated',
+      encounterId,
+      ...(intent.name !== undefined ? { name: intent.name } : {}),
+      combatants: intent.combatants.map((c) => ({
+        characterId: c.characterId,
+        ...(c.position !== undefined ? { position: { x: c.position.x, y: c.position.y } } : {}),
+      })),
+    };
+    return { events: [event], encounterId };
+  }
+
   const event: EncounterCreatedEvent = {
     id: newEventId() as ULID,
     at,
     type: 'EncounterCreated',
     encounterId,
     ...(intent.name !== undefined ? { name: intent.name } : {}),
-    combatantIds: [...intent.combatantIds],
+    combatantIds: [...intent.combatantIds!],
   };
   return { events: [event], encounterId };
+};
+
+// Slice 683: mid-encounter placement / teleport / dimension-door.
+// Sets the named combatant's position on the encounter. Validates
+// against the location map (in-bounds, not impassable) and against
+// other combatants currently in the encounter (no collision).
+export interface PlaceCombatantIntent {
+  readonly type: 'PlaceCombatant';
+  readonly encounterId: string;
+  readonly combatantId: string;
+  readonly position: { x: number; y: number };
+  readonly at?: string;
+}
+
+export const planPlaceCombatant = (
+  state: CampaignState,
+  _content: ResolvedContent,
+  intent: PlaceCombatantIntent,
+): ReadonlyArray<Event> => {
+  const encounter = state.encounters[intent.encounterId];
+  if (encounter === undefined) {
+    throw new Error(`Encounter ${intent.encounterId} not found`);
+  }
+  const combatant = encounter.combatants.find((c) => c.combatantId === intent.combatantId);
+  if (combatant === undefined) {
+    throw new Error(
+      `Combatant ${intent.combatantId} not in encounter ${intent.encounterId}`,
+    );
+  }
+  // Cross-combatant collision: gather every OTHER combatant's
+  // position (excluding the moving combatant itself, so a re-place
+  // to the same cell is OK).
+  const others = encounter.combatants
+    .filter((c) => c.combatantId !== intent.combatantId && c.position !== undefined)
+    .map((c) => ({ characterId: c.combatantId, position: c.position! }));
+  validatePlacementAgainstMap(state, intent.combatantId, intent.position, others);
+
+  const at = intent.at ?? nowIso();
+  return [
+    {
+      id: newEventId() as ULID,
+      at,
+      type: 'CombatantPlaced',
+      encounterId: intent.encounterId as ULID,
+      combatantId: intent.combatantId as ULID,
+      position: { x: intent.position.x, y: intent.position.y },
+    },
+  ];
 };
 
 export interface RollInitiativeIntent {

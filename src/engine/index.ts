@@ -27,6 +27,7 @@ import {
   planAttack,
   planCleave,
   planCreateEncounter,
+  planPlaceCombatant,
   planRollInitiative,
   planSwapInitiative,
   planStartEncounter,
@@ -291,6 +292,7 @@ import {
   type MultiattackIntent,
   type FallingIntent,
   type CreateEncounterIntent,
+  type PlaceCombatantIntent,
   type RollInitiativeIntent,
   type SwapInitiativeIntent,
   type StartEncounterIntent,
@@ -379,6 +381,7 @@ export interface Engine {
       state: CampaignState,
       intent: Omit<CreateEncounterIntent, 'type'>,
     ): { events: ReadonlyArray<Event>; encounterId: string };
+    placeCombatant(state: CampaignState, intent: Omit<PlaceCombatantIntent, 'type'>): PlanResult;
     rollInitiative(state: CampaignState, intent: Omit<RollInitiativeIntent, 'type'>): PlanResult;
     swapInitiative(state: CampaignState, intent: Omit<SwapInitiativeIntent, 'type'>): PlanResult;
     startEncounter(state: CampaignState, intent: Omit<StartEncounterIntent, 'type'>): PlanResult;
@@ -635,6 +638,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     createEncounter(state, intent) {
       return planCreateEncounter(state, content, { type: 'CreateEncounter', ...intent });
+    },
+    placeCombatant(state, intent) {
+      return { events: planPlaceCombatant(state, content, { type: 'PlaceCombatant', ...intent }) };
     },
     rollInitiative(state, intent) {
       return {

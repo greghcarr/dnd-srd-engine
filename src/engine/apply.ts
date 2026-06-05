@@ -39,6 +39,7 @@ import {
   applyRoundEnded,
   applyTurnEnded,
   applyTurnStarted,
+  applyCombatantPlaced,
 } from './reducers/encounter.js';
 import { applyAttackRolled, applyDamageRolled, applyWeaponLoaded } from './reducers/attack.js';
 import {
@@ -268,6 +269,9 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
         break;
       case 'EncounterCreated':
         applyEncounterCreated(draft, event);
+        break;
+      case 'CombatantPlaced':
+        applyCombatantPlaced(draft, event);
         break;
       case 'EncounterStarted':
         applyEncounterStarted(draft, event);

@@ -37,6 +37,7 @@ import {
   RoundEndedEventSchema,
   TurnEndedEventSchema,
   TurnStartedEventSchema,
+  CombatantPlacedEventSchema,
 } from './encounter.js';
 import {
   AttackRolledEventSchema,
@@ -235,6 +236,7 @@ export const EventSchema = z.discriminatedUnion('type', [
   LongRestStartedEventSchema,
   LongRestEndedEventSchema,
   EncounterCreatedEventSchema,
+  CombatantPlacedEventSchema,
   EncounterStartedEventSchema,
   InitiativeRolledEventSchema,
   InitiativeSwappedEventSchema,
@@ -391,6 +393,7 @@ export const EVENT_TYPES = [
   'LongRestStarted',
   'LongRestEnded',
   'EncounterCreated',
+  'CombatantPlaced',
   'EncounterStarted',
   'InitiativeRolled',
   'InitiativeSwapped',
@@ -599,6 +602,8 @@ export { CharacterCreatedEventSchema } from './progression.js';
 export { EventEnvelopeSchema } from './envelope.js';
 export {
   EncounterCreatedEventSchema,
+  CombatantPlacedEventSchema,
+  EncounterCombatantPlacementSchema,
   EncounterStartedEventSchema,
   InitiativeRolledEventSchema,
   InitiativeRollSchema,
@@ -607,6 +612,10 @@ export {
   TurnEndedEventSchema,
   RoundEndedEventSchema,
   EncounterEndedEventSchema,
+} from './encounter.js';
+export type {
+  CombatantPlacedEvent,
+  EncounterCombatantPlacement,
 } from './encounter.js';
 export {
   AttackRolledEventSchema,

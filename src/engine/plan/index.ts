@@ -19,6 +19,7 @@ export {
 } from './opportunity-attack.js';
 export {
   planCreateEncounter,
+  planPlaceCombatant,
   planRollInitiative,
   planSwapInitiative,
   planStartEncounter,
@@ -26,6 +27,8 @@ export {
   planBeginFirstTurn,
   planEndEncounter,
   type CreateEncounterIntent,
+  type CreateEncounterCombatant,
+  type PlaceCombatantIntent,
   type RollInitiativeIntent,
   type SwapInitiativeIntent,
   type StartEncounterIntent,

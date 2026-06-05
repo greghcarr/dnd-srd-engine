@@ -262,8 +262,12 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       return `\n## Long rest begins (${event.participantIds.map((id) => characterName(stateBefore, id)).join(', ')})\n`;
     case 'LongRestEnded':
       return `Long rest ends.\n`;
-    case 'EncounterCreated':
-      return `\n## Encounter created: ${event.name ?? 'unnamed'} (${event.combatantIds.length} combatants)\n`;
+    case 'EncounterCreated': {
+      const count = event.combatants?.length ?? event.combatantIds?.length ?? 0;
+      return `\n## Encounter created: ${event.name ?? 'unnamed'} (${count} combatants)\n`;
+    }
+    case 'CombatantPlaced':
+      return `_(${characterName(stateBefore, event.combatantId)} placed at (${event.position.x}, ${event.position.y}))_`;
     case 'InitiativeRolled': {
       const sorted = [...event.rolls].sort((a, b) => b.total - a.total);
       const order = sorted.map(

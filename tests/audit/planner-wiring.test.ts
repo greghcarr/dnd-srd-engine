@@ -68,6 +68,10 @@ const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
   'custom',
   // Encounter lifecycle (sequenced by the consumer, not a single intent):
   'createEncounter', 'rollInitiative', 'swapInitiative', 'startEncounter', 'beginFirstTurn', 'advanceTurn', 'endEncounter',
+  // Slice 683: mid-encounter placement (summons, teleports). Consumer
+  // invokes when placing a previously-positionless combatant or
+  // teleporting one to a new cell.
+  'placeCombatant',
   // Reactions / triggered planners (called after observing a trigger event;
   // several return a derived outcome the consumer branches on):
   'dodge', 'shield', 'sanctuaryWardSave', 'protection', 'consumeGuidance',

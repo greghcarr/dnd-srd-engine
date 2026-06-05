@@ -9,6 +9,7 @@ import type {
   RoundEndedEvent,
   TurnEndedEvent,
   TurnStartedEvent,
+  CombatantPlacedEvent,
 } from '../../schemas/events/encounter.js';
 import { invariant } from '../../internal/invariants.js';
 import {
@@ -24,12 +25,20 @@ export const applyEncounterCreated = (
     state.encounters[event.encounterId] === undefined,
     `Encounter ${event.encounterId} already exists`,
   );
+  // Slice 683: prefer `event.combatants` (placement-aware) when set;
+  // fall back to the legacy `combatantIds` (no positions). Both
+  // shapes share the same per-combatant runtime structure.
+  const placements: ReadonlyArray<{ characterId: string; position?: { x: number; y: number } }> =
+    event.combatants !== undefined
+      ? event.combatants
+      : (event.combatantIds ?? []).map((id) => ({ characterId: id }));
+  invariant(placements.length > 0, 'EncounterCreated requires at least one combatant');
   state.encounters[event.encounterId] = {
     id: event.encounterId,
     ...(event.name !== undefined ? { name: event.name } : {}),
     status: 'planning',
-    combatants: event.combatantIds.map((id) => ({
-      combatantId: id,
+    combatants: placements.map((p) => ({
+      combatantId: p.characterId,
       initiative: 0,
       initiativeOrder: 0,
       hasActedThisRound: false,
@@ -49,10 +58,29 @@ export const applyEncounterCreated = (
         steadyAimActive: false,
         speedZeroUntilEndOfTurn: false,
       },
+      ...(p.position !== undefined ? { position: { x: p.position.x, y: p.position.y } } : {}),
     })),
     round: 0,
     activeIndex: 0,
   };
+};
+
+// Slice 683: mid-encounter placement / teleport reducer. Sets the
+// named combatant's `position` on the encounter; planner-side
+// validation (in-bounds, not impassable, not occupied) runs at plan
+// time so the reducer's invariants only check structural existence.
+export const applyCombatantPlaced = (
+  state: Draft<CampaignState>,
+  event: CombatantPlacedEvent,
+): void => {
+  const encounter = state.encounters[event.encounterId];
+  invariant(encounter !== undefined, `Encounter ${event.encounterId} not found`);
+  const combatant = encounter.combatants.find((c) => c.combatantId === event.combatantId);
+  invariant(
+    combatant !== undefined,
+    `Combatant ${event.combatantId} not in encounter ${event.encounterId}`,
+  );
+  combatant.position = { x: event.position.x, y: event.position.y };
 };
 
 export const applyInitiativeRolled = (

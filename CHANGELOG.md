@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine (slice 683): combatant placement (Work item 1 of the spatial combat plan)**
+**First slice of the spatial combat support cycle (683-685).** Unblocks the dnd-web viewer: combatants can now start an encounter at real positions, and `planPlaceCombatant` handles mid-encounter placement (summons, teleports). `EncounterCreated` gains an optional `combatants: ReadonlyArray<{ characterId, position? }>` alongside legacy `combatantIds`; new `CombatantPlaced` event for mid-encounter. Placement validation: in-bounds + not impassable + no same-cell collision (when a location map is present). Map context resolves via existing `state.characterLocations[id] → state.locations[id].map` (same path `plan.move` uses). 9 new tests including replay-equivalence; full suite 539/539 files green.
+Detail: [slice-683.md](docs/changelog/slice-683.md).
+
 **Engine (slice 682): Slow's spellcasting V/S d20 fizzle gate**
 **Sixth and final slice of the strict-RAW completeness cycle (677-682).** New `SpellCastFizzledEvent` (no-op reducer, transcript-only marker). `planCastSpell` rolls a d20 before SpellCastDeclared when the caster has `slowed-by-spell-active` AND the spell has V or S components; on ≤ 10 emits SpellCastDeclared + SpellCastFizzled + ActionEconomyConsumed and returns early (slot preserved per RAW). 3 new tests. Snapshot regen for `enfeebled` (now wired via slice 678's HalvesStrengthWeaponDamage). **Engine is now strict-RAW-complete for L1, L2, L3** — every documented "engine *could* enforce" arm is closed; engine-scope-excluded arms (positions, plane, scene) stay consumer-managed by design.
 Detail: [slice-682.md](docs/changelog/slice-682.md).
