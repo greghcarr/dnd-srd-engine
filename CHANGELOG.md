@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Feat (slice 695): tactical movement policy + opportunity-attack resolution**
+Completes the tactical fuzz mode: combatants now move intelligently (melee close + corner, ranged kite / reposition for line of sight, low-HP flee + break LoS + Disengage), and a move that provokes is fully resolved as an opportunity attack. New pure `planTacticalMove` (`scripts/tactical/policy.ts`) runs a flee/kite/close/stay cascade over `reachableCells`/`hasLineOfSight`, RNG-free, with every choice forced through an explicit `(score, x, y)` total order. New `makeTacticalMovePolicy` (`scripts/tactical/move-policy.ts`) captures `resolveContent` once (tactical-only), commits the move, and resolves provoked OAs in emitted order using a melee-capable reactor weapon (skipping ranged-only reactors). `runBattle` selects it in one line. `'none'` byte-identical; tactical logs replay-equivalent + seed-deterministic. Diagnostic over 80 battles: 680 moves, OAs resolved in 25/80, zero throws.
+Detail: [slice-695.md](docs/changelog/slice-695.md).
+
 **Feat (slice 694): arena map generation + spread placement for the tactical fuzz**
 Tactical mode now spawns combatants spread out on a deterministically-generated arena with scattered impassable cover. New pure `generateArenaMap(seed, teamSize)` (`scripts/tactical/arena.ts`) forks its RNG from `seededRNG(seed).fork(MAP_SALT)` (independent of the engine roll stream), scales dims with team size, and places cover as isolated pillars so an A↔B path is structural (no regenerate loop). New `emitTacticalSetup` emits `LocationCreated` → per-combatant `CharacterLocationChanged` → positioned `EncounterCreated`; `runBattle` branches once on `movement` and sets `result.locationId`. No movement yet (slice 695). `'none'` byte-identical. Tactical logs replay-equivalent + seed-deterministic.
 Detail: [slice-694.md](docs/changelog/slice-694.md).

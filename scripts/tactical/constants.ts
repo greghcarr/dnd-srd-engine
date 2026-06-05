@@ -27,3 +27,34 @@ export const COVER_BAND_MARGIN_CELLS = 2;
 
 // Fraction of middle-band cells turned into impassable cover pillars.
 export const COVER_DENSITY = 0.18;
+
+// --- Movement policy tunables (slice 695) ---
+
+// Below this fraction of max HP, a combatant flees: retreats to the cell
+// that maximizes distance (preferring to break line of sight) and uses
+// Disengage to avoid an opportunity attack on the way out.
+export const FLEE_HP_FRACTION = 0.3;
+
+// A ranged combatant kites when an enemy is within this distance (or when
+// it has lost line of sight and needs to reposition to shoot).
+export const MELEE_THREAT_DISTANCE_FEET = 10;
+
+// Melee reach in feet: 5 normally, 10 with a reach weapon.
+export const MELEE_REACH_FEET = 5;
+export const REACH_WEAPON_FEET = 10;
+
+// Effective attack ranges used to gate kiting (sit at max in-range
+// distance). A ranged weapon without an authored range falls back to the
+// default; spellcasters use a flat cantrip range (most damaging cantrips
+// reach 120 ft, beyond any arena, so kiting just maximizes distance).
+export const RANGED_WEAPON_DEFAULT_RANGE_FEET = 80;
+export const CASTER_CANTRIP_RANGE_FEET = 120;
+
+// Scoring weights for the destination total order. LoS-break dominates the
+// flee score; KITE_IN_RANGE_BONUS dominates the kite score; the small
+// bonuses are sub-one-cell (< 5 ft) so they only break ties, never flip
+// the distance ordering.
+export const LOS_BREAK_BONUS = 1000;
+export const KITE_IN_RANGE_BONUS = 1000;
+export const COVER_ADJACENT_BONUS = 3;
+export const CORNER_TIEBREAK_WEIGHT = 0.5;

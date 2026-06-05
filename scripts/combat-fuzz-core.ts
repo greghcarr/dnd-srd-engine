@@ -20,7 +20,9 @@ import { commit, type Campaign } from '../src/engine/commit.js';
 import { performIntent } from '../src/engine/conveniences.js';
 import type { ItemInstance } from '../src/schemas/runtime/item-instance.js';
 import type { Event } from '../src/schemas/events/index.js';
+import { resolveContent } from '../src/content/pack.js';
 import { emitTacticalSetup } from './tactical/setup.js';
+import { makeTacticalMovePolicy } from './tactical/move-policy.js';
 
 export const MAX_ROUNDS = 20;
 const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8] as const;
@@ -524,7 +526,7 @@ const buildL1 = (name: string, rngFloat: () => number, pack: Pack): BuiltCharact
   return { character, weaponInstance, armorInstance, shieldInstance, potionInstance, build };
 };
 
-interface Combatant {
+export interface Combatant {
   readonly built: BuiltCharacter;
   firstTurnBuffTried?: boolean;
   firstTurnActionBuffTried?: boolean;
@@ -987,9 +989,13 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
     return null;
   };
 
-  // Slice 693: 'none' (default) is the identity policy → byte-identical
-  // log. Slice 695 selects the tactical policy when movement==='tactical'.
-  const movePolicy: MovePolicy = NO_MOVE;
+  // Slice 693/695: 'none' (default) is the identity policy → byte-identical
+  // log. 'tactical' moves the active combatant via the policy, which is
+  // the only place tactical mode consumes RNG (opportunity attacks).
+  // resolveContent runs only in tactical mode, so 'none' is untouched.
+  const movePolicy: MovePolicy = movement === 'tactical'
+    ? makeTacticalMovePolicy({ content: resolveContent([pack]) })
+    : NO_MOVE;
 
   let rounds = 1;
   let winner: string | null = null;
