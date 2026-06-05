@@ -32,6 +32,7 @@
   ],
   "sideEffects": false,
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
     "build": "vite build && tsc --emitDeclarationOnly --project tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
