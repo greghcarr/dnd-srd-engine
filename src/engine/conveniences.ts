@@ -73,6 +73,7 @@ export const performIntent = (
     PeerlessSkill: (i) => engine.plan.peerlessSkill(campaign.state, i),
     TacticalMind: (i) => engine.plan.tacticalMind(campaign.state, i),
     Frenzy: (i) => engine.plan.frenzy(campaign.state, i),
+    ExhaleDragonsBreath: (i) => engine.plan.exhaleDragonsBreath(campaign.state, i),
     Metamagic: (i) => engine.plan.metamagic(campaign.state, i),
     WildCompanion: (i) => engine.plan.wildCompanion(campaign.state, i),
     OffHandAttack: (i) => engine.plan.offHandAttack(campaign.state, i),

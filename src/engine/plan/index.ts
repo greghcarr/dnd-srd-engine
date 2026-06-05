@@ -157,6 +157,10 @@ export { planPeerlessSkill, type PeerlessSkillIntent, type PeerlessSkillOutcome 
 export { planTacticalMind, type TacticalMindIntent, type TacticalMindOutcome } from './tactical-mind.js';
 export { planFrenzy, type FrenzyIntent } from './frenzy.js';
 export {
+  planExhaleDragonsBreath,
+  type ExhaleDragonsBreathIntent,
+} from './exhale-dragons-breath.js';
+export {
   planCuttingWords,
   type CuttingWordsIntent,
   type CuttingWordsOutcome,

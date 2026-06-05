@@ -2357,7 +2357,7 @@
     { "id": "darkness", "name": "Darkness", "level": 2, "school": "evocation", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "material": "bat fur and a piece of coal" }, "duration": "Concentration, up to 10 minutes", "concentration": true, "ritual": false, "classes": ["sorcerer", "warlock", "wizard"], "targeting": { "shape": "sphere", "size": 15 }, "mechanicalEffects": [{ "kind": "zone" }] },
     { "id": "darkvision", "name": "Darkvision", "level": 2, "school": "transmutation", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a dried carrot" }, "duration": "8 hours", "concentration": false, "ritual": false, "classes": ["druid", "ranger", "sorcerer", "wizard"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "darkvision-active" }] },
     { "id": "detect-thoughts", "name": "Detect Thoughts", "level": 2, "school": "divination", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "1 Copper Piece" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "sorcerer", "wizard"], "mechanicalEffects": [] },
-    { "id": "dragons-breath", "name": "Dragon's Breath", "level": 2, "school": "transmutation", "castingTime": "Bonus Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a hot pepper" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["sorcerer", "wizard"], "targeting": { "shape": "cone", "size": 15 }, "mechanicalEffects": [] },
+    { "id": "dragons-breath", "name": "Dragon's Breath", "level": 2, "school": "transmutation", "castingTime": "Bonus Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a hot pepper" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["sorcerer", "wizard"], "targeting": { "shape": "cone", "size": 15 }, "mechanicalEffects": [{ "kind": "buff", "casterChoosesVariant": { "variants": [{ "key": "acid", "conditionId": "dragons-breath-acid-active" }, { "key": "cold", "conditionId": "dragons-breath-cold-active" }, { "key": "fire", "conditionId": "dragons-breath-fire-active" }, { "key": "lightning", "conditionId": "dragons-breath-lightning-active" }, { "key": "poison", "conditionId": "dragons-breath-poison-active" }] } }] },
     { "id": "enhance-ability", "name": "Enhance Ability", "level": 2, "school": "transmutation", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "fur or a feather" }, "duration": "Concentration, up to 1 hour", "concentration": true, "ritual": false, "classes": ["bard", "cleric", "druid", "ranger", "sorcerer", "wizard"], "mechanicalEffects": [{ "kind": "buff", "casterChoosesVariant": { "variants": [{ "key": "bulls-strength", "conditionId": "bulls-strength-active" }, { "key": "cats-grace", "conditionId": "cats-grace-active" }, { "key": "eagles-splendor", "conditionId": "eagles-splendor-active" }, { "key": "foxs-cunning", "conditionId": "foxs-cunning-active" }, { "key": "owls-wisdom", "conditionId": "owls-wisdom-active" }] } }] },
     { "id": "enlarge-reduce", "name": "Enlarge/Reduce", "level": 2, "school": "transmutation", "castingTime": "Action", "range": "30 feet", "components": { "verbal": true, "somatic": true, "material": "a pinch of powdered iron" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "druid", "sorcerer", "wizard"], "mechanicalEffects": [{ "kind": "buff", "casterChoosesVariant": { "variants": [{ "key": "enlarge", "conditionId": "enlarged-active" }, { "key": "reduce", "conditionId": "reduced-active" }] } }] },
     { "id": "enthrall", "name": "Enthrall", "level": 2, "school": "enchantment", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "warlock"], "mechanicalEffects": [{ "kind": "save", "ability": "WIS", "conditionOnFail": "enthralled-active" }] },
@@ -8788,6 +8788,46 @@
           "consumeOnTrigger": true
         }
       ]
+    },
+    {
+      "id": "dragons-breath-acid-active",
+      "name": "Dragon's Breath (Acid)",
+      "description": "Slice 669: marker — the buffed creature can take its action to exhale a 15-ft cone of acid; targets DEX-save vs the caster's spell save DC for 3d6 acid (+1d6/slot above L2), half on success. Consumer invokes `engine.plan.exhaleDragonsBreath({ damageType: 'acid', ... })` on the buffed creature's action. Auto-cleared on the caster's concentration drop.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": []
+    },
+    {
+      "id": "dragons-breath-cold-active",
+      "name": "Dragon's Breath (Cold)",
+      "description": "Slice 669: cold variant of Dragon's Breath. See dragons-breath-acid-active.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": []
+    },
+    {
+      "id": "dragons-breath-fire-active",
+      "name": "Dragon's Breath (Fire)",
+      "description": "Slice 669: fire variant of Dragon's Breath. See dragons-breath-acid-active.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": []
+    },
+    {
+      "id": "dragons-breath-lightning-active",
+      "name": "Dragon's Breath (Lightning)",
+      "description": "Slice 669: lightning variant of Dragon's Breath. See dragons-breath-acid-active.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": []
+    },
+    {
+      "id": "dragons-breath-poison-active",
+      "name": "Dragon's Breath (Poison)",
+      "description": "Slice 669: poison variant of Dragon's Breath. See dragons-breath-acid-active.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": []
     },
     {
       "id": "levitating-active",
