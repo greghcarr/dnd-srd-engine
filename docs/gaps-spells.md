@@ -67,9 +67,9 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 **Narrative (12):** alarm, comprehend-languages, create-or-destroy-water, detect-evil-and-good, detect-magic, detect-poison-and-disease, disguise-self, floating-disk (slice 507: cast emits no mechanical events; the 500-lb-capacity follow-the-caster disk is a consumer-side world entity, engine-out-of-scope per the no-positions stance), illusory-script, jump, purify-food-and-drink, speak-with-animals.
 
-## Level 2 (57 in pack): 39 wired, 15 narrative, 3 deferred
+## Level 2 (57 in pack): 40 wired, 15 narrative, 2 deferred
 
-**Wired, cast-time (31):** acid-arrow, aid, barkskin, blindness-deafness, blur, calm-emotions, darkvision, enhance-ability, enlarge-reduce, enthrall (WIS save -> `enthralled-active`: -10 to Perception checks; slice 343), find-steed, flame-blade, gust-of-wind, heat-metal, hold-person, invisibility, lesser-restoration, mind-spike, mirror-image, moonbeam, pass-without-trace, prayer-of-healing, protection-from-poison, ray-of-enfeeblement (slice 666: ranged spell attack — on hit applies `enfeebled` to the target, the new `conditionOnHit` field on the attack mechanic; the condition is consumer-managed for the half-damage-with-STR-weapon-attacks arm, save-ends via the consumer-driven end-of-turn CON save; auto-cleared on concentration drop), scorching-ray, shatter, spider-climb, spiritual-weapon, suggestion, warding-bond, web. (Mirror Image carries a `buff` condition on cast plus the slice-124 `planAttack` deflection pool.)
+**Wired, cast-time (32):** acid-arrow, aid, barkskin, blindness-deafness, blur, calm-emotions, darkvision, enhance-ability, enlarge-reduce, enthrall (WIS save -> `enthralled-active`: -10 to Perception checks; slice 343), find-steed, flame-blade, gust-of-wind, heat-metal, hold-person, invisibility, lesser-restoration, mind-spike, mirror-image, moonbeam, pass-without-trace, phantasmal-force (slice 667: INT save -> `phantasmal-force-active` on fail + per-turn 1d6 psychic recurring damage via the existing `recurring` mechanic; consumer drives `planTickRecurring` on the target's turn while concentration holds; auto-cleared on concentration drop), prayer-of-healing, protection-from-poison, ray-of-enfeeblement (slice 666: ranged spell attack — on hit applies `enfeebled` to the target, the new `conditionOnHit` field on the attack mechanic; the condition is consumer-managed for the half-damage-with-STR-weapon-attacks arm, save-ends via the consumer-driven end-of-turn CON save; auto-cleared on concentration drop), scorching-ray, shatter, spider-climb, spiritual-weapon, suggestion, warding-bond, web. (Mirror Image carries a `buff` condition on cast plus the slice-124 `planAttack` deflection pool.)
 
 **Wired, zone-tick (2):** flaming-sphere (DEX save 2d6 `aura-damage`), spike-growth (2d4-per-5ft `movement-damage`).
 
@@ -79,8 +79,7 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 **Wired, buff (1):** shining-smite (slice 666: paladin bonus-action self-buff via the existing `buff` mechanic — applies `shining-smite-active` with two OnEvent riders that consume on the first melee-weapon hit: AddDamage 2d6 radiant + ApplyCondition `shining-smite-target-illuminated` (advantage to attackers). The lingering Dim Light 5-ft and end-of-turn CON save are consumer-managed.)
 
-**Deferred (3):**
-- **recurring-rider primitive:** phantasmal-force.
+**Deferred (2):**
 - **flight / hover condition:** levitate.
 - **on-action rider:** dragons-breath.
 

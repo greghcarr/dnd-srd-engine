@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Content (slice 667): Phantasmal Force via existing recurring-rider primitive**
+Closes 1 deferred L2 spell with zero engine change. The existing `recurring` mechanic schema comment explicitly cited Phantasmal Force as a canonical user; the engine had the primitive, the spell just needed authoring. Composition: `save INT -> phantasmal-force-active on fail` + `recurring damage 1d6 psychic` (consumer drives `planTickRecurring` on the target's turn). New `phantasmal-force-active` marker condition (auto-cleared on concentration drop via slice-110 sweep). Disbelieve-on-INT-investigation arm + "damage applies if phantasm could damage" arm stay consumer-driven (the engine doesn't model phantasm semantics). 4 new tests. L2 wired 39 → 40 (2 deferred). Aggregate 203/339 → 204/339; conditions 146 → 147.
+Detail: [slice-667.md](docs/changelog/slice-667.md).
+
 **Engine + content (slice 666): on-hit rider via castSpell (shining-smite, ray-of-enfeeblement)**
 Second spell-wiring primitive of the post-L3-RAW push; closes 2 deferred L2 spells. New `conditionOnHit?: string` on the attack mechanic (plus `damageDice` now optional) — Ray of Enfeeblement: ranged spell attack with `conditionOnHit: 'enfeebled'`, no damage emitted; concentration drop sweeps the condition off the target via `sourceEffectInstanceId`. Shining Smite: existing buff + OnEvent infrastructure (zero engine change for this one) — `shining-smite-active` carries two consume-on-trigger OnEvent riders (+2d6 radiant on first melee hit + apply target debuff `shining-smite-target-illuminated` for advantage-to-attackers). 3 new conditions, 6 new tests; L2 spell wiring 37 → 39 (3 deferred). Aggregate 201/339 → 203/339 wired; conditions 143 → 146. Save-ends arms for both spells stay consumer-driven (no recurring-save mechanic today).
 Detail: [slice-666.md](docs/changelog/slice-666.md).

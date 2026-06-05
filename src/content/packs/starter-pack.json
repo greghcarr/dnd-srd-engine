@@ -2375,7 +2375,7 @@
     { "id": "mirror-image", "name": "Mirror Image", "level": 2, "school": "illusion", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true }, "duration": "1 minute", "concentration": false, "ritual": false, "classes": ["bard", "sorcerer", "warlock", "wizard"], "mechanicalEffects": [{ "kind": "buff", "conditionId": "mirror-image-active", "appliedConditionLevel": 3 }] },
     { "id": "arcanists-magic-aura", "name": "Arcanist's Magic Aura", "level": 2, "school": "illusion", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a small square of silk" }, "duration": "24 hours", "concentration": false, "ritual": false, "classes": ["wizard"], "mechanicalEffects": [] },
     { "id": "pass-without-trace", "name": "Pass without Trace", "level": 2, "school": "abjuration", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "ashes from burned mistletoe" }, "duration": "Concentration, up to 1 hour", "concentration": true, "ritual": false, "classes": ["druid", "ranger"], "targeting": { "shape": "sphere", "size": 30 }, "mechanicalEffects": [{ "kind": "buff", "conditionId": "pass-without-trace-active" }] },
-    { "id": "phantasmal-force", "name": "Phantasmal Force", "level": 2, "school": "illusion", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true, "material": "a bit of fleece" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "sorcerer", "wizard"], "targeting": { "shape": "cube", "size": 10 }, "mechanicalEffects": [] },
+    { "id": "phantasmal-force", "name": "Phantasmal Force", "level": 2, "school": "illusion", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true, "material": "a bit of fleece" }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["bard", "sorcerer", "wizard"], "targeting": { "shape": "cube", "size": 10 }, "mechanicalEffects": [{ "kind": "save", "ability": "INT", "conditionOnFail": "phantasmal-force-active" }, { "kind": "recurring", "effect": "damage", "amountDice": "1d6", "damageType": "psychic" }] },
     { "id": "ray-of-enfeeblement", "name": "Ray of Enfeeblement", "level": 2, "school": "necromancy", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "Concentration, up to 1 minute", "concentration": true, "ritual": false, "classes": ["warlock", "wizard"], "mechanicalEffects": [{ "kind": "attack", "attackKind": "ranged", "conditionOnHit": "enfeebled" }] },
     { "id": "rope-trick", "name": "Rope Trick", "level": 2, "school": "transmutation", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true, "material": "a segment of rope" }, "duration": "1 hour", "concentration": false, "ritual": false, "classes": ["wizard"], "mechanicalEffects": [] },
     { "id": "see-invisibility", "name": "See Invisibility", "level": 2, "school": "divination", "castingTime": "Action", "range": "Self", "components": { "verbal": true, "somatic": true, "material": "a pinch of talc" }, "duration": "1 hour", "concentration": false, "ritual": false, "classes": ["bard", "sorcerer", "wizard"], "mechanicalEffects": [] },
@@ -8788,6 +8788,14 @@
           "consumeOnTrigger": true
         }
       ]
+    },
+    {
+      "id": "phantasmal-force-active",
+      "name": "Phantasmal Force",
+      "description": "Slice 667: marker for Phantasmal Force's per-turn psychic damage tick. Per RAW, while the creature is convinced of the phantasm, on each of its turns it takes 1d6 psychic damage if the phantasm could damage it (the consumer drives this via planTickRecurring at the start of the target's turn). The disbelieve-on-INT-investigation arm is consumer-driven. Auto-cleared on the caster's concentration drop.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": []
     },
     {
       "id": "enfeebled",
