@@ -88,32 +88,41 @@ describe('slice 659: Primal Knowledge ability-substitution gate', () => {
     }
   });
 
-  it('rejects: skill not in the eligible set (e.g. athletics, which is already STR-default)', () => {
+  it('rejects: skill not in the eligible set (history is INT-default and not in Primal Knowledge skills)', () => {
+    // Pre-663: this slot used (STR, athletics) which is now a RAW-
+    // default match so the substitution check is skipped. Switched
+    // to (STR, history) — STR is NOT history's default (INT is) so
+    // the substitution gate fires; Primal Knowledge doesn't cover
+    // history → throws.
     const barb = buildBarbarian(3, { raging: true });
     const s = seed(barb);
     expect(() =>
       s.engine.plan.abilityCheck(s.campaign.state, {
         characterId: barb.id,
         ability: 'STR',
-        skill: 'athletics',
+        skill: 'history',
         dc: 10,
         useAbilitySubstitution: true,
       }),
-    ).toThrow(/no ability substitution matching.*skill='athletics'/);
+    ).toThrow(/skill='history'.*no ability substitution matching/);
   });
 
-  it('rejects: ability is not STR', () => {
+  it('rejects: ability is not STR (DEX for intimidation, which is Primal-Knowledge-eligible but only via STR)', () => {
+    // Pre-663: (DEX, acrobatics) is now a RAW-default match.
+    // Switched to (DEX, intimidation) — CHA is intimidation's
+    // default so DEX requires a substitution; Primal Knowledge
+    // only grants STR for intimidation, not DEX → throws.
     const barb = buildBarbarian(3, { raging: true });
     const s = seed(barb);
     expect(() =>
       s.engine.plan.abilityCheck(s.campaign.state, {
         characterId: barb.id,
         ability: 'DEX',
-        skill: 'acrobatics',
+        skill: 'intimidation',
         dc: 10,
         useAbilitySubstitution: true,
       }),
-    ).toThrow(/no ability substitution matching ability='DEX'/);
+    ).toThrow(/ability='DEX'.*no ability substitution matching/);
   });
 
   it('rejects: barbarian under L3 (no Primal Knowledge feature in effect stack yet)', () => {
@@ -167,11 +176,34 @@ describe('slice 659: Primal Knowledge ability-substitution gate', () => {
     ).toThrow(/no ability substitution matching.*while raging/);
   });
 
-  it('back-compat: useAbilitySubstitution=false (default) preserves permissive behavior (no gate)', () => {
-    // A non-raging Wizard can still call planAbilityCheck with
-    // ability='STR', skill='perception' (totally unrealistic per
-    // RAW, but the engine's existing permissive behavior is
-    // preserved when useAbilitySubstitution is not set).
+  it('slice 663: always-enforce (useAbilitySubstitution flag is a no-op; the gate fires whenever ability != SKILL_ABILITY[skill])', () => {
+    // Pre-663: useAbilitySubstitution=false made the engine
+    // permissively accept (STR, perception). Slice 663 lifts
+    // the gate so the substitution check is always-enforced —
+    // any non-default-ability skill check needs a granted
+    // substitution. The flag is retained as a no-op.
+    const wizard = CharacterSchema.parse({
+      id: newCharacterId(),
+      name: 'Pell',
+      speciesId: 'human',
+      backgroundId: 'sage',
+      classes: [{ classId: 'wizard', level: 5, hitDiceRemaining: 5 }],
+      abilityScores: { STR: 8, DEX: 14, CON: 14, INT: 16, WIS: 12, CHA: 8 },
+      hp: { current: 28, max: 28, temp: 0 },
+    });
+    const s = seed(wizard);
+    expect(() =>
+      s.engine.plan.abilityCheck(s.campaign.state, {
+        characterId: wizard.id,
+        ability: 'STR',
+        skill: 'perception',
+        dc: 10,
+        // useAbilitySubstitution NOT set — slice 663 still gates.
+      }),
+    ).toThrow(/cannot use ability='STR' for skill='perception'/);
+  });
+
+  it('slice 663: RAW-default ability still passes (WIS for perception, the default)', () => {
     const wizard = CharacterSchema.parse({
       id: newCharacterId(),
       name: 'Pell',
@@ -184,10 +216,9 @@ describe('slice 659: Primal Knowledge ability-substitution gate', () => {
     const s = seed(wizard);
     const out = s.engine.plan.abilityCheck(s.campaign.state, {
       characterId: wizard.id,
-      ability: 'STR',
+      ability: 'WIS',
       skill: 'perception',
       dc: 10,
-      // useAbilitySubstitution NOT set
     });
     expect(out.events.some((e) => e.type === 'AbilityCheckRolled')).toBe(true);
   });

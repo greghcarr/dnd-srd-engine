@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine (slice 663): always-enforce ability substitutions**
+Closes the slice-660 "always-enforce mode for ability substitutions" deferral. `planAbilityCheck` now always validates `(ability, skill)`: accept iff the ability matches `SKILL_ABILITY[skill]` (the RAW default) OR a `GrantAbilitySubstitution` on the bearer's effect stack covers the combo and its `activeWhileConditionId` (if set) is satisfied. Otherwise throw. The `useAbilitySubstitution: boolean` field is retained as a no-op for back-compat (substitution is checked implicitly now). Pre-663 permissive behavior (any ability for any skill) is gone. 6 new tests + slice-659/662 tests updated. Full suite green (no other engine call site relied on permissive combos).
+Detail: [slice-663.md](docs/changelog/slice-663.md).
+
 **Engine + content (slice 662): generic `GrantAbilitySubstitution` Effect primitive**
 Closes the slice-660 "generic primitive" deferral (and the original slice-659 follow-up). New effect kind `GrantAbilitySubstitution { ability, skills, activeWhileConditionId? }`. The slice-659 hardcoded Primal Knowledge gate (5 constants + multi-branch check) is replaced with an effect-stack walk + generic match. Primal Knowledge content ships the new effect; future ability-substitution features are content-only additions. Behavior preserved; error messages shifted to a generic shape (slice 659 tests updated). EFFECT_KINDS count 61 → 62 (61 primitives + `Custom`); doc-counts updated across README / status / concepts / authoring-content-packs.
 Detail: [slice-662.md](docs/changelog/slice-662.md).

@@ -7,6 +7,7 @@ import type {
   SaveRolledEvent,
 } from '../../schemas/events/checks.js';
 import type { AbilityScore, Skill } from '../../schemas/primitives.js';
+import { SKILL_ABILITY } from '../../schemas/primitives.js';
 import type { RNG } from '../../rng/index.js';
 import { rollDie } from '../../rng/dice.js';
 import { newEventId } from '../../ids.js';
@@ -171,12 +172,15 @@ export interface AbilityCheckIntent {
   // Undefined = consumer didn't specify; sense-gated entries don't
   // fire.
   readonly sense?: 'sight' | 'hearing' | 'smell' | 'touch' | 'taste';
-  // Slice 659: opt-in flag for a Primal Knowledge-style ability
-  // substitution. When true, the planner enforces the
-  // Primal-Knowledge gate (Barbarian L3+ raging, ability === 'STR',
-  // skill in {acrobatics, intimidation, perception, stealth,
-  // survival}). Default false preserves the engine's permissive
-  // ability-acceptance for pre-existing tests.
+  // Slice 659 / 662 / 663: opt-in flag was for "validate this
+  // substitution." As of slice 663 the substitution check is
+  // ALWAYS enforced: the planner accepts (ability, skill) iff the
+  // ability matches the skill's RAW-default (per SKILL_ABILITY)
+  // OR a GrantAbilitySubstitution on the bearer's effect stack
+  // covers the requested combo (and its activeWhileConditionId,
+  // if set, is satisfied). The flag is retained as a no-op for
+  // back-compat with existing call sites; it has no effect on
+  // gating today and may be removed in a future major version.
   readonly useAbilitySubstitution?: boolean;
   readonly at?: string;
 }
@@ -189,18 +193,19 @@ export const planAbilityCheck = (
 ): ReadonlyArray<Event> => {
   const character = state.characters[intent.characterId];
   if (!character) throw new Error(`Unknown character ${intent.characterId}`);
-  // Slice 662: generic ability-substitution gate. When the consumer
-  // sets `useAbilitySubstitution: true`, walk the bearer's effect
-  // stack for `GrantAbilitySubstitution` effects and accept iff
-  // SOME granted substitution matches (ability, skill,
-  // activeWhileConditionId-if-set). The hardcoded Primal Knowledge
-  // gate from slice 659 is now content-driven.
-  if (intent.useAbilitySubstitution === true) {
-    if (intent.skill === undefined) {
-      throw new Error(
-        `Ability substitution requires a skill (none provided on AbilityCheckIntent)`,
-      );
-    }
+  // Slice 663: always-enforce ability substitutions. When a skill
+  // is supplied, the planner accepts iff:
+  //   1. The requested ability is the skill's RAW default
+  //      (SKILL_ABILITY[skill]), OR
+  //   2. The bearer has a GrantAbilitySubstitution covering the
+  //      requested (ability, skill) AND (if the grant carries an
+  //      activeWhileConditionId) that condition is active.
+  // Otherwise the planner throws — the consumer can't pick an
+  // arbitrary ability for a skill check. Raw ability checks (no
+  // skill on the intent) are unaffected (any ability is permitted
+  // for a generic check; the caller is asserting they want that
+  // specific ability check).
+  if (intent.skill !== undefined && intent.ability !== SKILL_ABILITY[intent.skill]) {
     const grants = collectEffectsFromCharacter({
       character,
       content,
@@ -225,7 +230,7 @@ export const planAbilityCheck = (
             .map((g) => `${g.ability}+[${g.skills.join(',')}]${g.activeWhileConditionId ? ` while ${g.activeWhileConditionId}` : ''}`)
             .join('; ');
       throw new Error(
-        `${character.name} has no ability substitution matching ability='${intent.ability}' skill='${intent.skill}' [granted: ${have}]`,
+        `${character.name} cannot use ability='${intent.ability}' for skill='${intent.skill}' (RAW default is '${SKILL_ABILITY[intent.skill]}'): no ability substitution matching this combination [granted: ${have}]`,
       );
     }
   }

@@ -44,6 +44,8 @@ const buildTestPack = (): ContentPack => ({
     {
       id: 'sub-test-unconditional',
       name: 'Sub Test (Unconditional)',
+      stackable: false,
+      endsOn: [],
       effects: [
         {
           kind: 'GrantAbilitySubstitution',
@@ -55,6 +57,8 @@ const buildTestPack = (): ContentPack => ({
     {
       id: 'sub-test-gated-on-blessed',
       name: 'Sub Test (Gated on Blessed)',
+      stackable: false,
+      endsOn: [],
       effects: [
         {
           kind: 'GrantAbilitySubstitution',
@@ -67,6 +71,8 @@ const buildTestPack = (): ContentPack => ({
     {
       id: 'sub-test-multi-skill',
       name: 'Sub Test (Multi-skill)',
+      stackable: false,
+      endsOn: [],
       effects: [
         {
           kind: 'GrantAbilitySubstitution',
@@ -163,18 +169,18 @@ describe('slice 662: GrantAbilitySubstitution primitive (reusable)', () => {
     }
   });
 
-  it('multi-skill grant REJECTS a skill not in its list', () => {
+  it('multi-skill grant REJECTS a skill not in its list (athletics is STR-default; the INT grant only covers persuasion/deception)', () => {
     const character = buildCharacter(['sub-test-multi-skill']);
     const s = seed(character);
     expect(() =>
       s.engine.plan.abilityCheck(s.campaign.state, {
         characterId: character.id,
         ability: 'INT',
-        skill: 'history',
+        skill: 'athletics',
         dc: 10,
         useAbilitySubstitution: true,
       }),
-    ).toThrow(/no ability substitution matching.*skill='history'/);
+    ).toThrow(/skill='athletics'.*no ability substitution matching/);
   });
 
   it('multiple grants on one bearer compose (any matching grant accepts)', () => {
