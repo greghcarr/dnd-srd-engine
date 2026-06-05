@@ -5,7 +5,7 @@ import type {
   ActionEconomyConsumedEvent,
   DeflectAttacksUsedEvent,
 } from '../../schemas/events/action-economy.js';
-import type { DamageAppliedEvent } from '../../schemas/events/combat.js';
+import type { DamageAppliedEvent, HealedEvent } from '../../schemas/events/combat.js';
 import type { ResourceSpentEvent } from '../../schemas/events/resources.js';
 import type { RNG } from '../../rng/index.js';
 import { rollDie, parseDiceExpression } from '../../rng/dice.js';
@@ -28,6 +28,7 @@ const DEFLECTABLE_DAMAGE_TYPES = ['bludgeoning', 'piercing', 'slashing'] as cons
 type DeflectableDamageType = (typeof DEFLECTABLE_DAMAGE_TYPES)[number];
 const KI_RESOURCE_ID = 'ki';
 const DEFLECT_COUNTER_SOURCE = 'deflect-attacks-counter';
+const DEFLECT_REDUCTION_SOURCE = 'deflect-attacks';
 const MONK_FEATURE_DC_BASE = 8;
 const DEFLECT_COUNTER_DIE_COUNT = 2;
 
@@ -61,9 +62,18 @@ export interface DeflectAttacksOutcome {
   readonly events: ReadonlyArray<Event>;
   // The 1d10 + DEX mod + monk level reduction amount.
   readonly reduction: number;
-  // max(0, incomingDamage - reduction). The consumer subtracts this
-  // from the pending damage by emitting a modified DamageApplied.
+  // max(0, incomingDamage - reduction). The consumer no longer
+  // needs to manually subtract this — slice 664 auto-emits a
+  // `Healed { amount: appliedReduction }` after the triggering
+  // DamageApplied so the engine restores the deflected damage.
+  // Field retained for back-compat with slice-648/658 consumers
+  // that inspect the value for UI / transcript formatting.
   readonly remainingDamage: number;
+  // Slice 664: actual healed amount, clamped to `min(reduction,
+  // incomingDamage)` so the reaction never grants HP beyond the
+  // incoming damage. Always >= 0. The committed Healed event uses
+  // this amount.
+  readonly appliedReduction: number;
   // Slice 658: counter arm outcome fields. counterFired is true iff
   // the reduction zeroed the damage AND a counter target was
   // supplied AND ki was available; the planner spent 1 ki and rolled
@@ -90,12 +100,23 @@ export interface DeflectAttacksOutcome {
 // has no positions; the consumer passes whatever target satisfies
 // the range.
 //
-// Damage-pipeline integration is also deferred: the planner returns
-// the rolled reduction and remaining damage; the consumer subtracts
-// the reduction from the pending DamageApplied by emitting a smaller
-// damage event (or by canceling the pending damage and re-emitting).
-// Auto-integration into the damage pipeline (similar to
-// interceptFatalDamage) is a future engine slice.
+// Damage-pipeline integration (slice 664): the planner emits a
+// `Healed { amount: min(reduction, incomingDamage), source:
+// 'deflect-attacks' }` after the marker event, so the engine
+// automatically restores the deflected HP. Consumers commit
+// planAttack's events (which include DamageApplied) FIRST, then
+// call planDeflectAttacks and commit its events — the Healed
+// reverses the deflected portion of the damage. `applyHealed`
+// already clamps to maxHP, so the heal never grants HP beyond the
+// pre-attack state.
+//
+// Event-ordering caveat: a fatal attack drops the monk to 0 (or
+// below, capped to 0) BEFORE the Healed lands. `applyHealed`'s
+// wasUnconscious branch correctly resets death saves when the heal
+// brings HP > 0, so post-state matches RAW (the monk dodged
+// enough to never effectively go down). The transcript shows a
+// transient 0-HP step before the heal — documented in the
+// changelog as an event-ordering artifact, not a RAW deviation.
 export const planDeflectAttacks = (
   state: CampaignState,
   _content: ResolvedContent,
@@ -172,6 +193,26 @@ export const planDeflectAttacks = (
       remainingDamage,
     };
     events.push(used);
+  }
+
+  // Slice 664: auto-integrate with the damage pipeline. Emit a
+  // Healed event for `min(reduction, incomingDamage)` so the engine
+  // restores the deflected portion of the damage the monk just
+  // absorbed via the pending DamageApplied. The consumer no longer
+  // needs to manually emit a reduced DamageApplied or subtract by
+  // hand; commit planDeflectAttacks's events after the triggering
+  // attack chain and the engine handles the math.
+  const appliedReduction = Math.max(0, Math.min(reduction, intent.incomingDamage));
+  if (appliedReduction > 0) {
+    const healed: HealedEvent = {
+      id: newEventId() as ULID,
+      at,
+      type: 'Healed',
+      targetId: intent.monkId as ULID,
+      amount: appliedReduction,
+      source: DEFLECT_REDUCTION_SOURCE,
+    };
+    events.push(healed);
   }
 
   // Slice 658: counter arm. Fires only when the reduction zeroed
@@ -283,6 +324,7 @@ export const planDeflectAttacks = (
     events,
     reduction,
     remainingDamage,
+    appliedReduction,
     counterFired,
     ...(counterSaveSuccess !== undefined ? { counterSaveSuccess } : {}),
     ...(counterDamage !== undefined ? { counterDamage } : {}),
