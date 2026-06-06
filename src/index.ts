@@ -308,7 +308,20 @@ export {
 export type { ContentPack, ResolvedContent, ContentValidationIssue, ContentPackIssue } from './content/index.js';
 export { loadStarterPack, STARTER_PACK_RAW } from './content/packs/starter.js';
 export { querySpells, queryMonsters, queryItems, buildCharacterSheet, buildEncounterView } from './query/index.js';
+export {
+  legalMoveDestinations,
+  actionEconomy,
+  availableActions,
+  legalTargets,
+  castableSpells,
+} from './query/index.js';
 export type {
+  MoveDestination,
+  ActionEconomyView,
+  AvailableAction,
+  AffordanceActionId,
+  TargetCandidate,
+  CastableSpell,
   SpellFilter,
   MonsterFilter,
   ItemFilter,

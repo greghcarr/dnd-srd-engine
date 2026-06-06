@@ -16,6 +16,7 @@ Returns an `Engine` with five namespaces:
 - `engine.undo(campaign)`, `engine.redo(campaign)`: move the cursor along the log.
 - `engine.plan.*`: planners that consume RNG and return events to commit. See [planners](#planners).
 - `engine.derive.*`: pure derivations that read state and return typed results. See [derivations](#derivations).
+- `engine.query.*`: intent-shaped affordance queries ("what can this combatant legally do right now?"). See [affordance queries](#affordance-queries-intent-shaped).
 
 Also exported: `engine.do(campaign, intent)` (dispatches on `intent.type` to the right planner and commits in one call), `engine.content` (the resolved content pack), `engine.schemaVersion`, `engine.rng`.
 
@@ -185,6 +186,20 @@ buildEncounterView(state, content, encounterId); // -> EncounterView | undefined
 ```
 
 `buildEncounterView` is the combat-tracker view model. It returns the encounter's `status` / `round` / `activeCombatantId` plus `combatants` in initiative order, each a `CombatantView` with `name` / `initiative` / `isActive` / `hp` / `ac` / `exhaustion` / `conditions` (`{ id, name }`) / `defeated` (HP <= 0) / `turn` (action / bonus / reaction used + feet moved). Combatants are `Character` entities (PCs and monsters alike); a missing character is skipped. Returns undefined for an unknown encounter id.
+
+## Affordance queries (intent-shaped)
+
+`engine.query.*` answers "what can this combatant legally do right now?" in intent terms, so an interactive UI renders the answers and never re-derives rules from primitives. Pure + read-only; each wraps the existing derive helpers (pathing, terrain, action-economy, speed, spell-slots) and the planner precondition guard; every list is deterministically ordered.
+
+```ts
+engine.query.legalMoveDestinations(state, encounterId, combatantId); // -> MoveDestination[]  ({ position (feet), costFeet, path })
+engine.query.actionEconomy(state, encounterId, combatantId);          // -> ActionEconomyView | undefined
+engine.query.availableActions(state, encounterId, combatantId);       // -> AvailableAction[]  ({ action, enabled, reason? })
+engine.query.legalTargets(state, encounterId, combatantId, 'attack'); // -> TargetCandidate[]  (in reach + LoS, nearest first)
+engine.query.castableSpells(state, characterId);                      // -> CastableSpell[]  ({ spellId, minLevel, levelOptions })
+```
+
+`availableActions` covers `move | attack | dash | disengage | dodge`; when an action is disabled its `reason` is machine-readable (a blocking-condition id such as `'stunned'`, or `'action-used'` / `'no-target-in-range'` / `'no-movement'` / `'speed-zero'`). `legalMoveDestinations` honors terrain, occupancy, Dash, Steady-Aim (speed 0), and the Frightened "can't move closer to the source" rule; positions are in feet (pass straight to `engine.plan.move`). `castableSpells` is a scaffold (slots + level options; no per-spell range/target validation yet).
 
 ## RNG
 

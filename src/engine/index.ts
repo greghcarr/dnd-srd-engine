@@ -315,6 +315,15 @@ import { newCampaignId, newEventId, newAppliedConditionId, newEffectInstanceId }
 import { nowIso } from '../internal/clock.js';
 import { rollDie, rollExpression } from '../rng/dice.js';
 import { withRollProvider as withRollProviderScope, type RollProvider } from '../rng/roll-provider.js';
+import * as affordances from '../query/affordances.js';
+import type {
+  MoveDestination,
+  ActionEconomyView,
+  AvailableAction,
+  AffordanceActionId,
+  TargetCandidate,
+  CastableSpell,
+} from '../query/affordances.js';
 import { HANDLER_API_VERSION } from '../handlers/index.js';
 import { assertActorCanAct } from './plan/_actor-state.js';
 import { assertReactionAvailable, economyConsumedIfEncountered } from './plan/reactive-spells.js';
@@ -568,6 +577,34 @@ export interface Engine {
     spellSlots(state: CampaignState, characterId: string): ReturnType<typeof computeSpellSlots>;
     abilityModifier(score: number): number;
     proficiencyBonus(level: number): number;
+  };
+
+  // Slice 705 (A1): intent-shaped affordance queries ("what can this
+  // combatant legally do right now?"). Pure + read-only; content closed
+  // over (mirrors `derive`).
+  query: {
+    legalMoveDestinations(
+      state: CampaignState,
+      encounterId: string,
+      combatantId: string,
+    ): ReadonlyArray<MoveDestination>;
+    actionEconomy(
+      state: CampaignState,
+      encounterId: string,
+      combatantId: string,
+    ): ActionEconomyView | undefined;
+    availableActions(
+      state: CampaignState,
+      encounterId: string,
+      combatantId: string,
+    ): ReadonlyArray<AvailableAction>;
+    legalTargets(
+      state: CampaignState,
+      encounterId: string,
+      combatantId: string,
+      action: AffordanceActionId,
+    ): ReadonlyArray<TargetCandidate>;
+    castableSpells(state: CampaignState, characterId: string): ReadonlyArray<CastableSpell>;
   };
 }
 
@@ -1107,6 +1144,24 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     return result;
   };
 
+  const queryNs: Engine['query'] = {
+    legalMoveDestinations(state, encounterId, combatantId) {
+      return affordances.legalMoveDestinations(state, content, encounterId, combatantId);
+    },
+    actionEconomy(state, encounterId, combatantId) {
+      return affordances.actionEconomy(state, content, encounterId, combatantId);
+    },
+    availableActions(state, encounterId, combatantId) {
+      return affordances.availableActions(state, content, encounterId, combatantId);
+    },
+    legalTargets(state, encounterId, combatantId, action) {
+      return affordances.legalTargets(state, content, encounterId, combatantId, action);
+    },
+    castableSpells(state, characterId) {
+      return affordances.castableSpells(state, content, characterId);
+    },
+  };
+
   const deriveNs: Engine['derive'] = {
     character(state, id) {
       return memoize(['character', id], state, () =>
@@ -1219,6 +1274,7 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     plan: planNs,
     derive: deriveNs,
+    query: queryNs,
   };
 };
 

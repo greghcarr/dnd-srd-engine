@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine (slice 705): intent-shaped affordance query API (interactive-play A1)**
+Adds `engine.query.*` (mirrors `engine.derive.*`): `legalMoveDestinations`, `actionEconomy`, `availableActions` (with machine-readable disabled reasons), `legalTargets`, `castableSpells` — pure, read-only, deterministically ordered, wrapping the existing pathing/terrain/action-economy/speed/spell-slot helpers so a UI renders affordances without reconstructing rules. No event schema change.
+Detail: [slice-705.md](docs/changelog/slice-705.md).
+
 **Engine (slice 704): die-typed roll-provider seam (interactive-play A2)**
 Adds a die-typed, resumable roll seam (`RollProvider` / `SeededRollProvider` / `SuppliedRollProvider` / `NeedRoll` / `withRollProvider`) so a consumer can supply player-entered physical dice while planning stays sync + pure. `rollDie` routes through an ambient provider; with none installed the default path is byte-identical (golden + replay-equivalence unchanged). No event schema change.
 Detail: [slice-704.md](docs/changelog/slice-704.md).
