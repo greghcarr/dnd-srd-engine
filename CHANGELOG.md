@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Tests (slice 702): CI-guarded "L4 SRD complete" floor audit**
+Opens the L4 cycle. 20-test audit (5 green + 15 xfail) pinning L4's surface: the universal Ability Score Improvement at L4 (unmodeled today — every class's `levelTable['4']` is empty), Monk Slow Fall + Fighter Second Wind 3 (present), and the Sorcery Points / Focus Points → 4 resource scaling. The 15 xfails are the punch list; when they flip, tag `0.7.0-alpha.0`.
+Detail: [slice-702.md](docs/changelog/slice-702.md).
+
 **Release (slice 701): bump to 0.6.0-alpha.0**
 Promotes the post-0.5.0 cohort (slices 697-700) to a tagged release: the engine Push forced-movement fix (698), richer tactical arenas (700), and a tactical-convergence experiment (697) that was reverted (699) — so tactical movement is back to the 0.5.0 draws-accepted behavior. No engine-API breaking change; `'none'` byte-identical; `SCHEMA_VERSION` stays 1.
 Detail: [slice-701.md](docs/changelog/slice-701.md).
