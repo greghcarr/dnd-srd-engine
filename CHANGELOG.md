@@ -6,6 +6,20 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Release (slice 696): bump to 0.5.0-alpha.0**
+Promotes the post-0.4.0 cohort (slices 689-695) to a tagged release: cross-repo sibling-consumer infra (689-692) + tactical movement support for the combat fuzz (693-695). No engine-API breaking change; `'none'` byte-identical; `SCHEMA_VERSION` stays 1.
+Detail: [slice-696.md](docs/changelog/slice-696.md).
+
+## 0.5.0-alpha.0 - 2026-06-05
+
+**Release (slice 696): bump to 0.5.0-alpha.0**
+
+Promotes the post-0.4.0 cohort (slices 689-695) to a tagged release: the cross-repo sibling-consumer infrastructure (689-692) and tactical movement support for the combat fuzz (693-695). `package.json` bumps `0.4.0-alpha.0` → `0.5.0-alpha.0`; `package-lock.json` updated to match. `SCHEMA_VERSION` stays 1: the location / positioned-encounter / movement event shapes this cohort exercises shipped additively in the 0.4.0 spatial cycle (slices 683-685).
+
+**Breaking:** none. `runBattle` gains an optional `movement` parameter defaulting to `'none'`, byte-identical to the prior positionless path; no engine `src/` surface changed.
+
+**RNG stream:** `'none'` battles are byte-identical (the fuzz-matrix + replay-equivalence suites pass unchanged). Tactical movement is new behavior behind the option, not a shift to existing seeds.
+
 **Feat (slice 695): tactical movement policy + opportunity-attack resolution**
 Completes the tactical fuzz mode: combatants now move intelligently (melee close + corner, ranged kite / reposition for line of sight, low-HP flee + break LoS + Disengage), and a move that provokes is fully resolved as an opportunity attack. New pure `planTacticalMove` (`scripts/tactical/policy.ts`) runs a flee/kite/close/stay cascade over `reachableCells`/`hasLineOfSight`, RNG-free, with every choice forced through an explicit `(score, x, y)` total order. New `makeTacticalMovePolicy` (`scripts/tactical/move-policy.ts`) captures `resolveContent` once (tactical-only), commits the move, and resolves provoked OAs in emitted order using a melee-capable reactor weapon (skipping ranged-only reactors). `runBattle` selects it in one line. `'none'` byte-identical; tactical logs replay-equivalent + seed-deterministic. Diagnostic over 80 battles: 680 moves, OAs resolved in 25/80, zero throws.
 Detail: [slice-695.md](docs/changelog/slice-695.md).
