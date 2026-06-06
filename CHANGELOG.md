@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Feat (slice 700): richer tactical arenas (irregular rock border, terrain types, fenced pens)**
+Rewrites `generateArenaMap`: an irregular per-seed rock border (smooth edge random walks, so the playable shape varies by seed), fewer hard obstacles (impassable cover 0.18 → 0.07) plus passable `difficult` + `water` terrain, and an occasional fenced pen (an impassable ring with a guaranteed non-corner side gate, so it always has a real entrance) on the larger map. Dims enlarged a little (duel 18×13, squad 22×16). Connectivity stays structural via a protected spawn-to-spawn corridor (no border/fence/pillar can disconnect A↔B); deterministic; `'none'` unaffected (tactical-only). Verified over seeds 1-100: 0 connectivity failures, fences ~15% of seeds, every pen interior reachable from a spawn, draw rate unchanged (3.8%), 0 illegal moves. CHANGELOG note: this slice also evicted the 0.4.0-alpha.0 release narrative to [released-versions-0.4.0-alpha.0.md](docs/changelog/released-versions-0.4.0-alpha.0.md) (doc-size discipline).
+Detail: [slice-700.md](docs/changelog/slice-700.md).
+
 **Revert (slice 699): restore the slice-695 kiting tactical policy (accept draws again)**
 Undoes the slice-697 convergence push: `planTacticalMove` goes back to the slice-695 flee/kite/close cascade, so tactical battles stalemate to draws again (≈4% over seeds 1-40 × {1v1,2v2}; seed 42 1v1 draws at the round cap), as at the 0.5.0 release — per request, forcing convergence wasn't wanted. **Kept** as orthogonal correctness improvements: slice 698 (Push lands on a legal cell) and the slice-697 `normalizeEvents` compound-ulid oracle fix. `policy.ts` / `constants.ts` / `move-policy.ts` + their unit tests restored to slice-695; the slice-697 convergence assertion removed (the slice-698 move-legality guard stays). `'none'` byte-identical; no API change.
 Detail: [slice-699.md](docs/changelog/slice-699.md).
@@ -62,102 +66,6 @@ Detail: [slice-689.md](docs/changelog/slice-689.md).
 **Release (slice 688): bump to 0.4.0-alpha.0**
 Promotes the spatial combat support cycle (slices 683-685) + the in-repo web-demo retirement (slice 686) to a tagged release. Back-to-back with the slice-687 v0.3 cut; v0.3 marked strict-RAW completeness, v0.4 marks spatial combat support shipped + GUI moved out of the engine repo. `SCHEMA_VERSION` stays 1.
 Detail: [slice-688.md](docs/changelog/slice-688.md).
-
-## 0.4.0-alpha.0 - 2026-06-05
-
-**Release (slice 688): bump to 0.4.0-alpha.0**
-
-Promotes the spatial combat support cycle (slices 683-685) plus the in-repo web-demo retirement (slice 686) to a tagged release. The minor pre-1.0 bump (per [VERSIONING.md](VERSIONING.md)'s escape hatch) marks this cycle's chapter status — **spatial combat support is shipped**: combatants can start an encounter at positions, `plan.move` costs the shortest legal path, and `plan.attack` + `plan.castSpell` gate on weapon range / spell range + line of sight when both actor and target are positioned on a mapped location. `package.json` bumps `0.3.0-alpha.0` → `0.4.0-alpha.0`; `package-lock.json` updated to match. `SCHEMA_VERSION` stays 1: the new event shapes are additive.
-
-Back-to-back with [slice 687](docs/changelog/slice-687.md) (the v0.3.0-alpha.0 cut). The two release tags exist because the strict-RAW cohort (633-682) and the spatial + infra cohort (683-686) are independently meaningful milestones that a consumer might want to adopt separately.
-
-### Highlights
-
-- **Spatial combat support cycle (slices 683-685).** Combatants can now START an encounter at positions: `engine.plan.createEncounter` accepts an optional `combatants: ReadonlyArray<{ characterId, position? }>` alongside the legacy `combatantIds: ULID[]` (slice 683). New `engine.plan.placeCombatant` handles mid-encounter placement (summons, teleports). New `src/derive/pathing.ts` exposes `findPath` and `reachableCells` (Dijkstra over `movementCostAt`, respecting impassable terrain + closed/locked doors + occupied cells); `plan.move` now costs the shortest LEGAL path, not the straight Bresenham line (slice 684). New `src/engine/plan/_spatial-gates.ts` gates `plan.attack` on line-of-sight and `plan.castSpell` on RAW spell range + line-of-effect, both throwing at plan time when violated (slice 685). All three gates are no-ops when the spatial context can't be resolved (positionless / map-less encounters), preserving pre-cycle behavior for the bulk of existing test fixtures.
-- **In-repo web demo retired (slice 686).** The browser GUI built around the combat-fuzz replay viewer (slice 32, expanded through slices 583-619) moved to a sibling project so it can evolve on its own cadence without gating engine CI on front-end concerns. Deletes `web/`, `vite.web.config.ts`, `dist-web/`, `tests/integration/web-scenarios.test.ts`, `tests/unit/web-scrub-cache.test.ts`, `docs/web-demo-plan.md`, `.github/workflows/deploy-demo.yml`, and the `dev:web` / `build:web` / `preview:web` package scripts. **The fuzz CODE stays** — `scripts/combat-fuzz.ts` (CLI) and `scripts/combat-fuzz-core.ts` (pure simulator) remain in-repo as engine-debug surfaces and continue to back the four fuzz audit / integration tests.
-
-### Breaking changes
-
-#### Slice 683: `EncounterCreatedEvent` schema gains optional `combatants` field (additive, no migration)
-
-**Pre-slice:** `EncounterCreatedEvent` carried only `combatantIds: ULID[]`. Encounters started with no per-combatant position state.
-
-**Post-slice:** `EncounterCreatedEvent` carries either `combatantIds: ULID[]` (legacy) OR `combatants: ReadonlyArray<{ characterId, position? }>` (new). The new shape lets the consumer seed positions at encounter start. The either-or invariant is enforced in the planner and reducer (the Zod discriminated union doesn't carry a `.refine` so downstream type narrowing keeps working).
-
-**Why:** unblocks position-aware consumers (top-down viewers, VTTs) that need to render real combatant positions from the event log instead of synthesizing formations.
-
-**Migration:** existing consumers using `combatantIds` are unaffected; the planner accepts both shapes. Replay of pre-683 events is byte-identical (no migration needed).
-
-**Detection:** new code only. Existing event logs replay unchanged.
-
-#### Slice 684: `plan.move` cost is now shortest LEGAL path, not straight Bresenham
-
-**Pre-slice:** `plan.move` costed a move by walking the Bresenham line from origin to target. A move whose Bresenham line passed through impassable terrain threw "Path crosses impassable terrain"; a move whose Bresenham crossed a closed door similarly threw.
-
-**Post-slice:** `plan.move` calls `findPath` (Dijkstra). If a legal path exists, the cost is the path's total feet. If no legal path exists, it throws "No legal path from (X,Y) to (X,Y)..." If the path cost exceeds the actor's remaining movement, it throws (same `exceeds available movement` shape as before).
-
-**Why:** RAW correction. A 5e move resolves over the shortest LEGAL route, not a straight line. Pre-684 the engine rejected RAW-correct routes that detoured around obstacles.
-
-**Migration:** byte-identical when no obstacles sit between origin and destination (the Bresenham line === the shortest path). Tests or transcripts asserting on the old "Path crosses impassable terrain" throw will need to update to either "No legal path" (when sealed) or accept the now-correct detour cost.
-
-**Detection:** any test that previously asserted a throw containing "crosses impassable" will fail. Tests asserting on `feetTraveled` for obstructed routes will see the detour cost instead of the straight-line cost.
-
-#### Slice 685: positioned attacks / spells throw on out-of-range or blocked LoS
-
-**Pre-slice:** `plan.attack` enforced weapon range against position via `assertWeaponInRange` (since slice ~568) but did NOT check line of sight. `plan.castSpell` did not enforce spell range or line-of-effect.
-
-**Post-slice:** `plan.attack` calls `assertLineOfSightForAttack` after `assertWeaponInRange` — throws "line of sight blocked" when the Bresenham ray crosses impassable terrain or a closed/locked door. `plan.castSpell` calls `assertWithinSpellRange` per target — throws "spell range N ft" when distance > range or "line of effect blocked" when the ray is blocked. Both gates are no-ops when the spatial context can't be resolved (positionless / map-less encounters), preserving pre-685 behavior for the majority of existing test fixtures.
-
-**Why:** RAW correction. Pre-685 a positioned attacker could "attack" a target behind a wall, and a positioned caster could "cast Fire Bolt" 200 ft away (Fire Bolt's RAW range is 120 ft).
-
-**Migration:** tests / transcripts that synthesize positions on a mapped location but assume no spatial enforcement will see new errors. Two opt-out paths: (a) drop positions from the combatants (positionless preserves pre-685 behavior), or (b) drop the map from the location.
-
-**Detection:** any throw with "line of sight blocked", "line of effect blocked", or "spell range N ft".
-
-#### Slice 686: `dev:web` / `build:web` / `preview:web` npm scripts removed
-
-**Pre-slice:** `npm run dev:web` / `build:web` / `preview:web` launched the in-repo web demo via Vite.
-
-**Post-slice:** those scripts no longer exist (npm exits with the usual missing-script error). The GUI moved to a sibling project; consumers who used the in-repo demo should track the sibling project for the equivalent.
-
-**Why:** GUI moved out of the engine repo (see slice 686 rationale above).
-
-**Migration:** none for engine consumers — the engine API is byte-identical. Anyone who had `dev:web` muscle memory uses the sibling project's equivalent.
-
-**Detection:** `npm run dev:web` exits with `Missing script: "dev:web"`.
-
-### RNG-stream changes (per-seed reproducibility shifts)
-
-Per [docs/determinism.md](docs/determinism.md), per-seed RNG reproducibility is version-sensitive. The following changes in this cycle MAY change per-seed `combat-fuzz` transcripts:
-
-- **Slice 684**: `plan.move` cost is now the shortest legal path. A move whose pre-684 Bresenham route differed from the post-684 shortest-path route emits a different `CombatantMoved` event (same shape, different `feetTraveled`). RNG itself is not consumed by `findPath`; the stream is identical, but downstream events that gate on remaining movement (e.g. "did the actor have 5 ft left to dash?") may diverge.
-- **Slice 685**: positioned attacks / spells that pre-cycle silently emitted normal events now throw at plan time. A pre-cycle transcript with an out-of-range positioned attack would have emitted `AttackRolled` + `DamageRolled` + ...; post-cycle the plan rejects and emits nothing. RNG is not consumed; the stream is identical for any path that pre-cycle would have passed the gate.
-
-A `combat-fuzz --seed N` transcript generated on `0.3.0-alpha.0` will byte-match the same command on `0.4.0-alpha.0` only if no positioned attack/spell hit a gate AND no `plan.move` had a Bresenham-vs-shortest-path mismatch.
-
-### Cycle inventory
-
-Per-slice detail for slices 683-688 lives in `docs/changelog/slice-NNN.md` files. The pointer list below indexes the cycle.
-
-**Release (slice 687): bump to 0.3.0-alpha.0**
-Promotes the strict-RAW completeness cohort (slices 633-682, 50 slices) to a tagged release. Engine is now strict-RAW-complete for L1, L2, L3. `SCHEMA_VERSION` stays 1.
-Detail: [slice-687.md](docs/changelog/slice-687.md).
-
-**Infra (slice 686): retire the in-repo combat-fuzzer web demo (GUI moved to a sibling project)**
-Deletes `web/`, `vite.web.config.ts`, `dist-web/`, `tests/integration/web-scenarios.test.ts`, `tests/unit/web-scrub-cache.test.ts`, `docs/web-demo-plan.md`, and `.github/workflows/deploy-demo.yml`. Prunes `dev:web` / `build:web` / `preview:web` from `package.json` and trims tsconfig + README + roadmap accordingly. **The fuzz code stays** — `scripts/combat-fuzz.ts` (CLI) and `scripts/combat-fuzz-core.ts` (pure simulator) remain in-repo as engine-debug surfaces and continue to back the fuzz audit tests. Extends `tests/audit/doc-links.test.ts` SKIP_PREFIXES to exclude `docs/changelog/archive-` + `docs/changelog/released-versions` (frozen historical narrative; their references to since-removed paths are accurate snapshots). No engine-API change; suite drops to 540/540 files / 4118 tests (exactly the two retired web test files).
-Detail: [slice-686.md](docs/changelog/slice-686.md).
-
-**Engine (slice 685): range + line-of-sight enforcement on attacks and spells (Work item 3 of the spatial combat plan)**
-**Final slice of the spatial combat support cycle (683-685) — cycle complete.** New `src/engine/plan/_spatial-gates.ts` with `resolveSpatialContext`, `assertLineOfSightForAttack`, `assertWithinSpellRange`, `parseSpellRange`. `planAttack` now throws on LoS-blocked attacks (range was already enforced); `planCastSpell` throws on out-of-range or LoE-blocked spell targets. Both gates are no-ops when the spatial context can't be resolved (positionless / map-less encounters), preserving pre-685 behavior. Per-target enforcement; first violation rejects the cast. `parseSpellRange` handles the RAW vocabulary (Self / Touch / N feet / Sight / Special / 1 mile). 14 new tests; full suite 542/542 files green. **The dnd-web viewer can now surface engine-thrown range / LoS errors directly to the player.**
-Detail: [slice-685.md](docs/changelog/slice-685.md).
-
-**Engine (slice 684): pathfinding helpers + shortest-path move cost (Work item 2 of the spatial combat plan)**
-New `src/derive/pathing.ts` with `findPath`, `reachableCells`, `feetToCell` / `cellToFeet` — Dijkstra over `movementCostAt`, respecting impassable, closed/locked doors, and occupied cells. `plan.move` refactored: cost is now the shortest LEGAL path (not straight Bresenham). Sealed destinations throw "No legal path"; detours that exceed remaining movement throw. Bundled slice-683 inline fix: placement validation now uses `feetToCell` to convert feet-coord positions (engine-wide convention) before bounds/terrain checks. 18 new tests (10 pathing + 4 plan.move + 4 fixture adjustments to slice 683); full suite 541/541 files green.
-Detail: [slice-684.md](docs/changelog/slice-684.md).
-
-**Engine (slice 683): combatant placement (Work item 1 of the spatial combat plan)**
-**First slice of the spatial combat support cycle (683-685).** Unblocks the dnd-web viewer: combatants can now start an encounter at real positions, and `planPlaceCombatant` handles mid-encounter placement (summons, teleports). `EncounterCreated` gains an optional `combatants: ReadonlyArray<{ characterId, position? }>` alongside legacy `combatantIds`; new `CombatantPlaced` event for mid-encounter. Placement validation: in-bounds + not impassable + no same-cell collision (when a location map is present). Map context resolves via existing `state.characterLocations[id] → state.locations[id].map` (same path `plan.move` uses). 9 new tests including replay-equivalence; full suite 539/539 files green.
-Detail: [slice-683.md](docs/changelog/slice-683.md).
 
 ## 0.3.0-alpha.0 - 2026-06-05
 
@@ -396,4 +304,4 @@ Detail: [slice-632.md](docs/changelog/slice-632.md).
 
 ## Older releases
 
-Tagged release `0.2.0-alpha.0` lives in [docs/changelog/released-versions-0.2.0-alpha.0.md](docs/changelog/released-versions-0.2.0-alpha.0.md); `0.1.0-alpha.15` lives in [docs/changelog/released-versions-alpha-15.md](docs/changelog/released-versions-alpha-15.md); `0.1.0-alpha.14` lives in [docs/changelog/released-versions-alpha-14.md](docs/changelog/released-versions-alpha-14.md); `0.1.0-alpha.6` through `0.1.0-alpha.13` live in [docs/changelog/released-versions-alpha-6-13.md](docs/changelog/released-versions-alpha-6-13.md); `0.1.0-alpha.0` through `0.1.0-alpha.5` (the pre-rename `ttrpg-engine-dnd` package, all unpublished from npm in May 2026 on IP-cleanup grounds) live in [docs/changelog/released-versions.md](docs/changelog/released-versions.md). Per-cohort slice-detail archives are indexed in [docs/changelog/README.md](docs/changelog/README.md).
+Tagged release `0.4.0-alpha.0` lives in [docs/changelog/released-versions-0.4.0-alpha.0.md](docs/changelog/released-versions-0.4.0-alpha.0.md); `0.2.0-alpha.0` lives in [docs/changelog/released-versions-0.2.0-alpha.0.md](docs/changelog/released-versions-0.2.0-alpha.0.md); `0.1.0-alpha.15` lives in [docs/changelog/released-versions-alpha-15.md](docs/changelog/released-versions-alpha-15.md); `0.1.0-alpha.14` lives in [docs/changelog/released-versions-alpha-14.md](docs/changelog/released-versions-alpha-14.md); `0.1.0-alpha.6` through `0.1.0-alpha.13` live in [docs/changelog/released-versions-alpha-6-13.md](docs/changelog/released-versions-alpha-6-13.md); `0.1.0-alpha.0` through `0.1.0-alpha.5` (the pre-rename `ttrpg-engine-dnd` package, all unpublished from npm in May 2026 on IP-cleanup grounds) live in [docs/changelog/released-versions.md](docs/changelog/released-versions.md). Per-cohort slice-detail archives are indexed in [docs/changelog/README.md](docs/changelog/README.md).
