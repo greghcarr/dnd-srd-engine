@@ -24,19 +24,15 @@ import type { ContentPack } from '../../src/content/pack.js';
 import type { Weapon } from '../../src/schemas/content/item.js';
 import {
   FLEE_HP_FRACTION,
+  MELEE_THREAT_DISTANCE_FEET,
   MELEE_REACH_FEET,
   REACH_WEAPON_FEET,
-  RANGED_KITE_STANDOFF_FEET,
   RANGED_WEAPON_DEFAULT_RANGE_FEET,
   CASTER_CANTRIP_RANGE_FEET,
-  INITIAL_STANDOFF_FEET,
-  CLOSE_RATE_FEET_PER_ROUND,
-  MIN_STANDOFF_FEET,
-  LOS_PREFERENCE_BONUS,
-  FLEE_BREAK_LOS_BONUS,
+  LOS_BREAK_BONUS,
+  KITE_IN_RANGE_BONUS,
   COVER_ADJACENT_BONUS,
   CORNER_TIEBREAK_WEIGHT,
-  STAY_BIAS_BONUS,
 } from './constants.js';
 
 export type TacticalRoleKind = 'ranged' | 'melee';
@@ -103,15 +99,7 @@ export interface TacticalMoveInput {
   readonly effectiveRangeFeet: number;
   readonly reachFeet: number;
   readonly hpFraction: number;
-  // Slice 697: the 1-based encounter round drives the standoff leash that
-  // forces convergence. Round 1 = the loosest leash.
-  readonly round: number;
 }
-
-// Slice 697: the maximum standoff a combatant may keep from its enemy this
-// round. Shrinks each round so the gap trends down to melee.
-export const maxStandoffFeet = (round: number): number =>
-  Math.max(MIN_STANDOFF_FEET, INITIAL_STANDOFF_FEET - CLOSE_RATE_FEET_PER_ROUND * (round - 1));
 
 export interface TacticalMove {
   readonly to: Position; // feet-coords destination
@@ -153,42 +141,34 @@ export const planTacticalMove = (input: TacticalMoveInput): TacticalMove | null 
 
   const lowHp = input.hpFraction < FLEE_HP_FRACTION;
   const ranged = input.role === 'ranged';
-  const leashFeet = maxStandoffFeet(input.round);
+  const currentDist = distFeet(fromCell);
 
-  // Desired distance to the enemy this turn. Melee wants reach (adjacency);
-  // ranged wants its kite standoff (capped by weapon range); a fleeing
-  // combatant backs off to the leash edge. Every desired distance is then
-  // capped by the round leash, which shrinks each round, so a held standoff
-  // cannot outlast the battle: by the time the leash reaches its floor, even
-  // a kiter or fleer is forced to engage. This is the convergence guarantee.
-  const desiredFeet = lowHp
-    ? leashFeet
-    : Math.min(ranged ? Math.min(RANGED_KITE_STANDOFF_FEET, input.effectiveRangeFeet) : input.reachFeet, leashFeet);
+  let scoreOf: (cell: Position) => number;
+  let disengage = false;
 
-  // Score: among reachable cells, the one nearest the desired distance wins.
-  // An attacking combatant strongly prefers line of sight (it must see the
-  // enemy to shoot). A fleer takes only a sub-one-cell bonus for breaking
-  // line of sight, so it still backs off to the leash edge rather than
-  // sprinting to a distant sightless corner. Cover (and, for a closing melee
-  // combatant, cornering the enemy against terrain) breaks remaining ties.
-  const scoreOf = (cell: Position): number => {
-    // Hold rather than shuffle sideways when the current cell is already
-    // optimal (smallest tiebreak, so a better cell still wins).
-    const stay = cell.x === fromCell.x && cell.y === fromCell.y ? STAY_BIAS_BONUS : 0;
-    const distance = -Math.abs(distFeet(cell) - desiredFeet);
-    const cover = coverAdjacent(input.map, cell) ? COVER_ADJACENT_BONUS : 0;
-    if (lowHp) {
-      return distance + (los(cell) ? 0 : FLEE_BREAK_LOS_BONUS) + cover + stay;
-    }
-    const losBonus = los(cell) ? LOS_PREFERENCE_BONUS : 0;
-    const corner = ranged ? 0 : CORNER_TIEBREAK_WEIGHT * (8 - openNeighbours(input.map, cell));
-    return losBonus + distance + cover + corner + stay;
-  };
+  if (lowHp) {
+    // Flee: maximize distance, strongly preferring to break line of sight.
+    disengage = true;
+    scoreOf = (cell) => (los(cell) ? 0 : LOS_BREAK_BONUS) + distFeet(cell);
+  } else if (ranged && (currentDist <= MELEE_THREAT_DISTANCE_FEET || !los(fromCell))) {
+    // Kite: reposition to a cell that keeps line of sight and stays in
+    // range, maximizing distance; prefer cover. Cells with LoS-and-in-range
+    // beat LoS-only, which beat no-LoS.
+    scoreOf = (cell) => {
+      const d = distFeet(cell);
+      if (!los(cell)) return -1;
+      const inRange = d <= input.effectiveRangeFeet;
+      return (inRange ? KITE_IN_RANGE_BONUS : 0) + d + (coverAdjacent(input.map, cell) ? COVER_ADJACENT_BONUS : 0);
+    };
+  } else if (!ranged && currentDist > input.reachFeet) {
+    // Close: minimize distance to the enemy; tiebreak toward cornering
+    // (fewer open neighbours ≈ nearer a wall/edge/cover).
+    scoreOf = (cell) => -distFeet(cell) + CORNER_TIEBREAK_WEIGHT * (8 - openNeighbours(input.map, cell));
+  } else {
+    return null; // already well-positioned: stay and act.
+  }
 
   const best = pickByTotalOrder(cells, scoreOf);
   if (best === null || (best.x === fromCell.x && best.y === fromCell.y)) return null;
-  // Disengage only when fleeing: it won't attack this turn anyway, so avoid
-  // the opportunity attack. Closing / kiting accept the OA (which exercises
-  // the OA-resolution path).
-  return { to: cellToFeet(best, cellSize), disengage: lowHp };
+  return { to: cellToFeet(best, cellSize), disengage };
 };

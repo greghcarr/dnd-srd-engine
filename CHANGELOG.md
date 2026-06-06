@@ -6,13 +6,16 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Revert (slice 699): restore the slice-695 kiting tactical policy (accept draws again)**
+Undoes the slice-697 convergence push: `planTacticalMove` goes back to the slice-695 flee/kite/close cascade, so tactical battles stalemate to draws again (≈4% over seeds 1-40 × {1v1,2v2}; seed 42 1v1 draws at the round cap), as at the 0.5.0 release — per request, forcing convergence wasn't wanted. **Kept** as orthogonal correctness improvements: slice 698 (Push lands on a legal cell) and the slice-697 `normalizeEvents` compound-ulid oracle fix. `policy.ts` / `constants.ts` / `move-policy.ts` + their unit tests restored to slice-695; the slice-697 convergence assertion removed (the slice-698 move-legality guard stays). `'none'` byte-identical; no API change.
+Detail: [slice-699.md](docs/changelog/slice-699.md).
+
 **Fix (slice 698): Push forced-movement lands on a legal cell, not an off-grid vector**
 The weapon-mastery Push (and, by pattern-check, Open Hand Push) computed the shove destination by adding a *cell count* to a *feet* coordinate with no map validation, so a target could be shoved off-grid onto cover or off the map (seeds 19, 29 at 2v2). Slice 697's convergence surfaced it (melee Push hits now land). New pure `pushDestination` helper (`src/derive/pathing.ts`) steps the shove cell-by-cell and stops against the first out-of-bounds / impassable / occupied / closed-door cell, returning a grid-aligned position; both Push planners now use it. Verified: 0 illegal `CombatantMoved`/final positions across seeds 1-40 × {1v1,2v2} (matrix assertion added). Corrects positioned Push for every consumer, not just the fuzz. `'none'` byte-identical (positionless → Push emits no move); no API change.
 Detail: [slice-698.md](docs/changelog/slice-698.md).
 
-**Fix (slice 697): tactical movement converges instead of stalemating**
-The slice-695 kite/flee heuristics let combatants camp opposite arena edges until the round cap (seed 42 drew at the 20-round cap; 5.0% draws over seeds 1-40 × {1v1, 2v2}). Replaces the flee/kite/close cascade in `planTacticalMove` with a round-leashed desired-distance model: a per-round shrinking standoff ceiling (`maxStandoffFeet`) pulls the gap down to melee, flee is bounded to the leash edge (line-of-sight-break demoted to a tiebreak), and a stay-bias removes lateral jitter. Result: **0% draws over seeds 1-40, avg 4.8 rounds (was 6.1), seed 42 resolves in 3 rounds**, with movement preserved. Also fixes a latent `normalizeEvents` blind spot (compound `<ulid>:name` ids now intern via substring matching) that the new sneak-attack path exposed. `'none'` byte-identical; pure + RNG-free + deterministic; new convergence test pins draws ≤ 3%.
-Detail: [slice-697.md](docs/changelog/slice-697.md).
+**Fix (slice 697): tactical movement converges instead of stalemating** — **Reverted by slice 699.**
+The round-leashed `planTacticalMove` convergence model is no longer in the tree (the user opted to accept draws). Its `normalizeEvents` compound-ulid oracle fix was kept. Original detail (for the record): [slice-697.md](docs/changelog/slice-697.md).
 
 **Release (slice 696): bump to 0.5.0-alpha.0**
 Promotes the post-0.4.0 cohort (slices 689-695) to a tagged release: cross-repo sibling-consumer infra (689-692) + tactical movement support for the combat fuzz (693-695). No engine-API breaking change; `'none'` byte-identical; `SCHEMA_VERSION` stays 1.

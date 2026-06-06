@@ -113,7 +113,6 @@ export const makeTacticalMovePolicy = (deps: { readonly content: ResolvedContent
       effectiveRangeFeet,
       reachFeet,
       hpFraction: character.hp.current / Math.max(1, character.hp.max),
-      round: encounter!.round,
     });
     if (decision === null) return campaign;
 

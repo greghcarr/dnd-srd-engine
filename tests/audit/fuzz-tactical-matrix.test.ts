@@ -53,33 +53,11 @@ describe('fuzz tactical matrix (slice 695)', () => {
   });
 });
 
-// Slice 697: tactical battles must converge to a decisive outcome, not
-// stalemate at the round cap. Before slice 697 the kite/flee heuristics let
-// combatants camp opposite arena edges and hit the cap; the round standoff
-// leash forces the gap down to melee. This pins the draw rate well under the
-// 5% bar and the specific seed the consumer reported (42, 1v1).
-const CONVERGENCE_SEEDS = Array.from({ length: 40 }, (_, i) => i + 1);
-const MAX_DRAW_RATE = 0.03; // observed 0% over this matrix; baseline was 5%.
-
-describe('tactical convergence (slice 697)', () => {
-  it(`draw rate stays under ${(MAX_DRAW_RATE * 100).toFixed(0)}% across seeds 1-40 x {1v1, 2v2}`, () => {
-    let battles = 0;
-    let draws = 0;
-    for (const teamSize of [1, 2]) {
-      for (const seed of CONVERGENCE_SEEDS) {
-        const r = runBattle({ seed, pack: STARTER, level: 1, teamSize, movement: 'tactical' });
-        battles += 1;
-        if (r.winner === null) draws += 1;
-      }
-    }
-    expect(draws / battles, `${draws}/${battles} battles drew (hit the round cap)`).toBeLessThanOrEqual(MAX_DRAW_RATE);
-  });
-
-  it('seed 42 1v1 resolves to a winner (the consumer-reported stalemate)', () => {
-    const r = runBattle({ seed: 42, pack: STARTER, level: 1, teamSize: 1, movement: 'tactical' });
-    expect(r.winner, 'seed 42 1v1 still draws').not.toBeNull();
-  });
-});
+// Slice 699: the slice-697 convergence push was reverted (tactical battles
+// accept draws again, as they did at the 0.5.0 release, so there is no
+// draw-rate assertion). The seed list below only feeds the slice-698
+// move-legality guard, which is independent of convergence.
+const LEGALITY_SEEDS = Array.from({ length: 40 }, (_, i) => i + 1);
 
 // Slice 698: every position emitted by a tactical battle must be legal —
 // in-bounds, on a non-impassable cell, and grid-aligned. A forced-movement
@@ -89,7 +67,7 @@ describe('tactical convergence (slice 697)', () => {
 describe('tactical move legality (slice 698)', () => {
   it('no CombatantMoved or final position is off-grid, out-of-bounds, or impassable (seeds 1-40 x {1v1, 2v2})', () => {
     for (const teamSize of [1, 2]) {
-      for (const seed of CONVERGENCE_SEEDS) {
+      for (const seed of LEGALITY_SEEDS) {
         const r = runBattle({ seed, pack: STARTER, level: 1, teamSize, movement: 'tactical' });
         const map = (Object.values(r.campaign.state.locations)[0] as { map?: { widthCells: number; heightCells: number; cellSizeFeet?: number; terrain: string[][] } } | undefined)?.map;
         expect(map, `seed ${seed} teamSize ${teamSize} has a map`).toBeDefined();
