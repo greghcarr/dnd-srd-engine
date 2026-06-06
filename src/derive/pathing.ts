@@ -217,3 +217,44 @@ export const reachableCells = (
   }
   return { cells, costFeetByCellKey };
 };
+
+// Slice 698: forced-movement (Push / shove) destination. Steps the target
+// cell-by-cell from `fromFeet` in the (dx, dy) sign direction up to
+// `distanceFeet`, stopping before the first cell that is out of bounds,
+// impassable, occupied, or behind a closed / locked door — RAW forced
+// movement stops against an obstacle, it doesn't pass through it. Returns a
+// grid-aligned feet position (which may equal `fromFeet` when the very
+// first cell is blocked). Without a map there's no terrain to clamp
+// against, so it returns the raw grid-aligned destination (the engine-wide
+// "positions are consumer-managed when map-less" convention).
+export const pushDestination = (
+  fromFeet: Position,
+  dir: { dx: number; dy: number },
+  distanceFeet: number,
+  options: {
+    map?: LocationMap;
+    doors?: ReadonlyArray<Door>;
+    occupiedFeet?: ReadonlyArray<Position>;
+  } = {},
+): Position => {
+  const { map } = options;
+  const cellSize = map?.cellSizeFeet ?? DEFAULT_CELL_SIZE_FEET;
+  if (map === undefined) {
+    return { x: fromFeet.x + dir.dx * distanceFeet, y: fromFeet.y + dir.dy * distanceFeet };
+  }
+  const fromCell = feetToCell(fromFeet, cellSize);
+  const occupied = new Set((options.occupiedFeet ?? []).map((p) => cellKey(feetToCell(p, cellSize))));
+  const blockedDoors = new Set(
+    (options.doors ?? []).filter(doorBlocksMovement).map((d) => cellKey(d.position)),
+  );
+  const steps = Math.round(distanceFeet / cellSize);
+  let last = fromCell;
+  for (let step = 1; step <= steps; step += 1) {
+    const cell = { x: fromCell.x + dir.dx * step, y: fromCell.y + dir.dy * step };
+    if (!Number.isFinite(movementCostAt(map, cell.x, cell.y))) break; // out of bounds or impassable
+    const key = cellKey(cell);
+    if (occupied.has(key) || blockedDoors.has(key)) break;
+    last = cell;
+  }
+  return cellToFeet(last, cellSize);
+};

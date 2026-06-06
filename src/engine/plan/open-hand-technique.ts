@@ -8,6 +8,7 @@ import { applyHalflingLuckForCharacter } from './_halfling-luck.js';
 import { newEventId, newAppliedConditionId } from '../../ids.js';
 import { D20_SIDES } from '../../internal/constants.js';
 import { abilityModifier, proficiencyBonus } from '../../derive/ability.js';
+import { pushDestination } from '../../derive/pathing.js';
 import { computeTotalLevel } from '../../schemas/runtime/character.js';
 import type { ULID } from '../ids-utils.js';
 import type { ConditionAppliedEvent } from '../../schemas/events/combat.js';
@@ -22,7 +23,6 @@ export type OpenHandTechnique = 'addle' | 'push' | 'topple';
 
 const SAVE_DC_BASE = 8;
 const PUSH_DISTANCE_FEET = 15; // RAW: Open Hand Push is 15 ft (mastery Push is 10).
-const CELL_SIZE_FEET = 5;
 const ADDLED_CONDITION_ID = 'addled';
 const PRONE_CONDITION_ID = 'prone';
 
@@ -123,21 +123,36 @@ export const applyOpenHandTechnique = (input: OpenHandTechniqueInput): ReadonlyA
     return [event];
   }
   const monkPos = encounter.combatants.find((c) => c.combatantId === monk.id)?.position;
-  const dx = monkPos !== undefined ? Math.sign(targetCombatant.position.x - monkPos.x) || 1 : 1;
-  const dy = monkPos !== undefined ? Math.sign(targetCombatant.position.y - monkPos.y) || 0 : 0;
-  const cells = PUSH_DISTANCE_FEET / CELL_SIZE_FEET;
+  const from = targetCombatant.position;
+  const dx = monkPos !== undefined ? Math.sign(from.x - monkPos.x) || 1 : 1;
+  const dy = monkPos !== undefined ? Math.sign(from.y - monkPos.y) || 0 : 0;
+  // Slice 698: shove onto a legal cell (in-bounds, non-impassable,
+  // unoccupied), stopping against an obstacle, instead of a raw off-grid
+  // vector. Same fix as weapon-mastery Push.
+  const locationId = state.characterLocations[targetId];
+  const location = locationId !== undefined ? state.locations[locationId] : undefined;
+  const doors = (location?.doorIds ?? [])
+    .map((id) => state.doors[id])
+    .filter((d): d is NonNullable<typeof d> => d !== undefined);
+  const occupiedFeet = encounter.combatants
+    .filter((c) => c.combatantId !== targetId && c.position !== undefined)
+    .map((c) => c.position as { x: number; y: number });
+  const to = pushDestination({ x: from.x, y: from.y }, { dx, dy }, PUSH_DISTANCE_FEET, {
+    map: location?.map,
+    doors,
+    occupiedFeet,
+  });
+  const feetTraveled = Math.max(Math.abs(to.x - from.x), Math.abs(to.y - from.y));
+  if (feetTraveled === 0) return [event]; // shoved against an obstacle: no move
   const moved: CombatantMovedEvent = {
     id: newEventId() as ULID,
     at,
     type: 'CombatantMoved',
     encounterId: encounter.id,
     combatantId: targetId,
-    fromPosition: { x: targetCombatant.position.x, y: targetCombatant.position.y },
-    toPosition: {
-      x: targetCombatant.position.x + dx * cells,
-      y: targetCombatant.position.y + dy * cells,
-    },
-    feetTraveled: PUSH_DISTANCE_FEET,
+    fromPosition: { x: from.x, y: from.y },
+    toPosition: to,
+    feetTraveled,
   };
   return [event, moved];
 };
