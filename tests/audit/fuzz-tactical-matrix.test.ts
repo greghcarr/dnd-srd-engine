@@ -52,3 +52,31 @@ describe('fuzz tactical matrix (slice 695)', () => {
     expect(resolvedOAs, 'no opportunity attack resolved across the whole matrix').toBeGreaterThan(0);
   });
 });
+
+// Slice 697: tactical battles must converge to a decisive outcome, not
+// stalemate at the round cap. Before slice 697 the kite/flee heuristics let
+// combatants camp opposite arena edges and hit the cap; the round standoff
+// leash forces the gap down to melee. This pins the draw rate well under the
+// 5% bar and the specific seed the consumer reported (42, 1v1).
+const CONVERGENCE_SEEDS = Array.from({ length: 40 }, (_, i) => i + 1);
+const MAX_DRAW_RATE = 0.03; // observed 0% over this matrix; baseline was 5%.
+
+describe('tactical convergence (slice 697)', () => {
+  it(`draw rate stays under ${(MAX_DRAW_RATE * 100).toFixed(0)}% across seeds 1-40 x {1v1, 2v2}`, () => {
+    let battles = 0;
+    let draws = 0;
+    for (const teamSize of [1, 2]) {
+      for (const seed of CONVERGENCE_SEEDS) {
+        const r = runBattle({ seed, pack: STARTER, level: 1, teamSize, movement: 'tactical' });
+        battles += 1;
+        if (r.winner === null) draws += 1;
+      }
+    }
+    expect(draws / battles, `${draws}/${battles} battles drew (hit the round cap)`).toBeLessThanOrEqual(MAX_DRAW_RATE);
+  });
+
+  it('seed 42 1v1 resolves to a winner (the consumer-reported stalemate)', () => {
+    const r = runBattle({ seed: 42, pack: STARTER, level: 1, teamSize: 1, movement: 'tactical' });
+    expect(r.winner, 'seed 42 1v1 still draws').not.toBeNull();
+  });
+});

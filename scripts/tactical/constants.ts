@@ -30,31 +30,53 @@ export const COVER_DENSITY = 0.18;
 
 // --- Movement policy tunables (slice 695) ---
 
-// Below this fraction of max HP, a combatant flees: retreats to the cell
-// that maximizes distance (preferring to break line of sight) and uses
-// Disengage to avoid an opportunity attack on the way out.
+// Below this fraction of max HP, a combatant flees: it backs off (toward
+// the leashed standoff, preferring to break line of sight) and uses
+// Disengage to avoid an opportunity attack on the way out. Slice 697:
+// flee is bounded by the standoff leash below, so it can no longer retreat
+// forever.
 export const FLEE_HP_FRACTION = 0.3;
-
-// A ranged combatant kites when an enemy is within this distance (or when
-// it has lost line of sight and needs to reposition to shoot).
-export const MELEE_THREAT_DISTANCE_FEET = 10;
 
 // Melee reach in feet: 5 normally, 10 with a reach weapon.
 export const MELEE_REACH_FEET = 5;
 export const REACH_WEAPON_FEET = 10;
 
-// Effective attack ranges used to gate kiting (sit at max in-range
-// distance). A ranged weapon without an authored range falls back to the
-// default; spellcasters use a flat cantrip range (most damaging cantrips
-// reach 120 ft, beyond any arena, so kiting just maximizes distance).
+// A ranged combatant's preferred standoff: far enough to stay out of melee,
+// close enough to keep line of sight + be in range. The round leash (below)
+// can pull this in over time.
+export const RANGED_KITE_STANDOFF_FEET = 30;
+
+// Effective attack ranges (used only as the in-range ceiling on the kite
+// standoff). A ranged weapon without an authored range falls back to the
+// default; spellcasters use a flat cantrip range.
 export const RANGED_WEAPON_DEFAULT_RANGE_FEET = 80;
 export const CASTER_CANTRIP_RANGE_FEET = 120;
 
-// Scoring weights for the destination total order. LoS-break dominates the
-// flee score; KITE_IN_RANGE_BONUS dominates the kite score; the small
-// bonuses are sub-one-cell (< 5 ft) so they only break ties, never flip
-// the distance ordering.
-export const LOS_BREAK_BONUS = 1000;
-export const KITE_IN_RANGE_BONUS = 1000;
+// Slice 697 — round standoff leash. The convergence mechanism: the maximum
+// standoff a combatant is allowed to keep from its enemy shrinks every
+// round, so the gap trends monotonically down to melee instead of pinning
+// at the arena width. `maxStandoff(round) = max(MIN, INITIAL - RATE*(round-1))`.
+// INITIAL sits below the 1v1 spawn gap (~65 ft) so both sides close from
+// turn one; by the time the leash reaches MIN everyone is forced to engage.
+// This subsumes the "no-progress detector": pressure is unconditional.
+export const INITIAL_STANDOFF_FEET = 50;
+export const CLOSE_RATE_FEET_PER_ROUND = 10;
+export const MIN_STANDOFF_FEET = 5;
+
+// Scoring weights for the destination total order. An attacking combatant
+// must see its enemy, so having line of sight dominates; among LoS cells the
+// one nearest the desired distance wins. The remaining bonuses are
+// sub-one-cell (< 5 ft) so they only break ties, never override the leashed
+// distance. FLEE_BREAK_LOS_BONUS is deliberately a tiebreak (not a
+// dominator): a fleeing combatant still backs off only to the leash edge and
+// breaks line of sight when a covered cell sits at that distance, rather than
+// sprinting to any sightless corner (the slice-695 unbounded-flee bug).
+export const LOS_PREFERENCE_BONUS = 1000;
+export const FLEE_BREAK_LOS_BONUS = 4;
 export const COVER_ADJACENT_BONUS = 3;
 export const CORNER_TIEBREAK_WEIGHT = 0.5;
+// Smallest tiebreak: when the current cell is already as good as any
+// reachable cell, prefer to hold rather than shuffle sideways to an
+// equally-scored neighbour. Below CORNER_TIEBREAK_WEIGHT so a genuinely
+// better cell (more cover, better corner) still wins.
+export const STAY_BIAS_BONUS = 0.1;

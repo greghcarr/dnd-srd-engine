@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Fix (slice 697): tactical movement converges instead of stalemating**
+The slice-695 kite/flee heuristics let combatants camp opposite arena edges until the round cap (seed 42 drew at the 20-round cap; 5.0% draws over seeds 1-40 × {1v1, 2v2}). Replaces the flee/kite/close cascade in `planTacticalMove` with a round-leashed desired-distance model: a per-round shrinking standoff ceiling (`maxStandoffFeet`) pulls the gap down to melee, flee is bounded to the leash edge (line-of-sight-break demoted to a tiebreak), and a stay-bias removes lateral jitter. Result: **0% draws over seeds 1-40, avg 4.8 rounds (was 6.1), seed 42 resolves in 3 rounds**, with movement preserved. Also fixes a latent `normalizeEvents` blind spot (compound `<ulid>:name` ids now intern via substring matching) that the new sneak-attack path exposed. `'none'` byte-identical; pure + RNG-free + deterministic; new convergence test pins draws ≤ 3%.
+Detail: [slice-697.md](docs/changelog/slice-697.md).
+
 **Release (slice 696): bump to 0.5.0-alpha.0**
 Promotes the post-0.4.0 cohort (slices 689-695) to a tagged release: cross-repo sibling-consumer infra (689-692) + tactical movement support for the combat fuzz (693-695). No engine-API breaking change; `'none'` byte-identical; `SCHEMA_VERSION` stays 1.
 Detail: [slice-696.md](docs/changelog/slice-696.md).
