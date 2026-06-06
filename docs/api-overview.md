@@ -201,6 +201,14 @@ engine.query.castableSpells(state, characterId);                      // -> Cast
 
 `availableActions` covers `move | attack | dash | disengage | dodge`; when an action is disabled its `reason` is machine-readable (a blocking-condition id such as `'stunned'`, or `'action-used'` / `'no-target-in-range'` / `'no-movement'` / `'speed-zero'`). `legalMoveDestinations` honors terrain, occupancy, Dash, Steady-Aim (speed 0), and the Frightened "can't move closer to the source" rule; positions are in feet (pass straight to `engine.plan.move`). `castableSpells` is a scaffold (slots + level options; no per-spell range/target validation yet).
 
+## Tactical AI
+
+```ts
+import { planTacticalMove, classifyTacticalRole } from 'dnd-srd-engine';
+```
+
+The pure, deterministic enemy-movement policy (`planTacticalMove` — flee / kite / close / stay over `reachableCells` + `hasLineOfSight`; `classifyTacticalRole` — ranged vs melee from weapon + cantrips; `pickByTotalOrder` — a stable argmax). Lets a consumer drive an AI combatant's movement without depending on the fuzz scripts. The per-turn intent chooser and the event-committing move orchestration remain in the fuzz harness (`scripts/`).
+
 ## RNG
 
 ```ts

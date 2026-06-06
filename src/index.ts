@@ -315,6 +315,19 @@ export {
   legalTargets,
   castableSpells,
 } from './query/index.js';
+// Slice 706 (A3): tactical enemy AI policy, graduated from scripts/ so
+// consumers can import it from the package.
+export {
+  planTacticalMove,
+  classifyTacticalRole,
+  pickByTotalOrder,
+} from './ai/index.js';
+export type {
+  TacticalRole,
+  TacticalRoleKind,
+  TacticalMove,
+  TacticalMoveInput,
+} from './ai/index.js';
 export type {
   MoveDestination,
   ActionEconomyView,

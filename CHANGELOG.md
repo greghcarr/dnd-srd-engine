@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Refactor (slice 706): graduate the tactical enemy policy to the package (interactive-play A3)**
+Relocates the pure tactical movement policy (`planTacticalMove` / `classifyTacticalRole` / `pickByTotalOrder` + types) from `scripts/tactical/` into `src/ai/`, barrel-exported so a consumer imports it from the package instead of `scripts/`. `scripts/tactical/{policy,constants}.ts` become re-export shims, so the fuzz harness + its tests are byte-identical (golden tactical transcript + fuzz determinism unchanged). `pickIntent` / `makeTacticalMovePolicy` stay in scripts (fuzz-type-coupled). No behavior or schema change.
+Detail: [slice-706.md](docs/changelog/slice-706.md).
+
 **Engine (slice 705): intent-shaped affordance query API (interactive-play A1)**
 Adds `engine.query.*` (mirrors `engine.derive.*`): `legalMoveDestinations`, `actionEconomy`, `availableActions` (with machine-readable disabled reasons), `legalTargets`, `castableSpells` — pure, read-only, deterministically ordered, wrapping the existing pathing/terrain/action-economy/speed/spell-slot helpers so a UI renders affordances without reconstructing rules. No event schema change.
 Detail: [slice-705.md](docs/changelog/slice-705.md).
