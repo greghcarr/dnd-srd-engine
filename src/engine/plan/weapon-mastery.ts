@@ -22,10 +22,10 @@ import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { isMagicWeaponAttack } from '../../derive/magicality.js';
 import { creatureSize, isLargeOrSmaller } from '../../derive/creature-size.js';
 import { canUseWeaponMastery } from '../../derive/weapon-mastery.js';
+import { pushDestination } from '../../derive/pathing.js';
 import { applyAll } from '../apply.js';
 
 const UNARMED_DC_BASE = 8;
-const CELL_SIZE_FEET = 5;
 const PUSH_DISTANCE_FEET = 10;
 
 const masterySaveDC = (character: { abilityScores: { STR: number }; classes: Array<{ level: number }> }): number =>
@@ -260,28 +260,41 @@ export const planWeaponMastery = (
         : undefined;
       const targetCombatant = encounter?.combatants.find((c) => c.combatantId === intent.targetId);
       if (encounter !== undefined && targetCombatant?.position !== undefined) {
-        const attackerCombatant = encounter.combatants.find((c) => c.combatantId === intent.attackerId);
-        const attackerPos = attackerCombatant?.position;
-        const dx = attackerPos !== undefined
-          ? Math.sign(targetCombatant.position.x - attackerPos.x) || 1
-          : 1;
-        const dy = attackerPos !== undefined
-          ? Math.sign(targetCombatant.position.y - attackerPos.y) || 0
-          : 0;
-        const cells = PUSH_DISTANCE_FEET / CELL_SIZE_FEET;
-        events.push({
-          id: newEventId() as ULID,
-          at,
-          type: 'CombatantMoved',
-          encounterId: encounter.id,
-          combatantId: intent.targetId,
-          fromPosition: { x: targetCombatant.position.x, y: targetCombatant.position.y },
-          toPosition: {
-            x: targetCombatant.position.x + dx * cells,
-            y: targetCombatant.position.y + dy * cells,
-          },
-          feetTraveled: PUSH_DISTANCE_FEET,
-        } satisfies CombatantMovedEvent);
+        const attackerPos = encounter.combatants.find((c) => c.combatantId === intent.attackerId)?.position;
+        const from = targetCombatant.position;
+        const dx = attackerPos !== undefined ? Math.sign(from.x - attackerPos.x) || 1 : 1;
+        const dy = attackerPos !== undefined ? Math.sign(from.y - attackerPos.y) || 0 : 0;
+        // Slice 698: shove the target onto a legal cell (in-bounds,
+        // non-impassable, unoccupied), stopping against an obstacle, rather
+        // than emitting a raw off-grid vector. Resolve the location map +
+        // doors the same way plan.move does; map-less encounters keep the
+        // grid-aligned raw shove.
+        const locationId = state.characterLocations[intent.targetId];
+        const location = locationId !== undefined ? state.locations[locationId] : undefined;
+        const doors = (location?.doorIds ?? [])
+          .map((id) => state.doors[id])
+          .filter((d): d is NonNullable<typeof d> => d !== undefined);
+        const occupiedFeet = encounter.combatants
+          .filter((c) => c.combatantId !== intent.targetId && c.position !== undefined)
+          .map((c) => c.position as { x: number; y: number });
+        const to = pushDestination({ x: from.x, y: from.y }, { dx, dy }, PUSH_DISTANCE_FEET, {
+          map: location?.map,
+          doors,
+          occupiedFeet,
+        });
+        const feetTraveled = Math.max(Math.abs(to.x - from.x), Math.abs(to.y - from.y));
+        if (feetTraveled > 0) {
+          events.push({
+            id: newEventId() as ULID,
+            at,
+            type: 'CombatantMoved',
+            encounterId: encounter.id,
+            combatantId: intent.targetId,
+            fromPosition: { x: from.x, y: from.y },
+            toPosition: to,
+            feetTraveled,
+          } satisfies CombatantMovedEvent);
+        }
       }
       break;
     }

@@ -52,3 +52,44 @@ describe('fuzz tactical matrix (slice 695)', () => {
     expect(resolvedOAs, 'no opportunity attack resolved across the whole matrix').toBeGreaterThan(0);
   });
 });
+
+// Slice 699: the slice-697 convergence push was reverted (tactical battles
+// accept draws again, as they did at the 0.5.0 release, so there is no
+// draw-rate assertion). The seed list below only feeds the slice-698
+// move-legality guard, which is independent of convergence.
+const LEGALITY_SEEDS = Array.from({ length: 40 }, (_, i) => i + 1);
+
+// Slice 698: every position emitted by a tactical battle must be legal —
+// in-bounds, on a non-impassable cell, and grid-aligned. A forced-movement
+// (Push) bug emitted off-grid shoves onto cover / off the map (seeds 19,
+// 29 at 2v2). This pins every CombatantMoved destination AND every final
+// combatant position across the matrix.
+describe('tactical move legality (slice 698)', () => {
+  it('no CombatantMoved or final position is off-grid, out-of-bounds, or impassable (seeds 1-40 x {1v1, 2v2})', () => {
+    for (const teamSize of [1, 2]) {
+      for (const seed of LEGALITY_SEEDS) {
+        const r = runBattle({ seed, pack: STARTER, level: 1, teamSize, movement: 'tactical' });
+        const map = (Object.values(r.campaign.state.locations)[0] as { map?: { widthCells: number; heightCells: number; cellSizeFeet?: number; terrain: string[][] } } | undefined)?.map;
+        expect(map, `seed ${seed} teamSize ${teamSize} has a map`).toBeDefined();
+        const cell = map!.cellSizeFeet ?? 5;
+        const legal = (p: { x: number; y: number }, label: string): void => {
+          expect(p.x % cell, `${label} x off-grid: ${p.x}`).toBe(0);
+          expect(p.y % cell, `${label} y off-grid: ${p.y}`).toBe(0);
+          const cx = Math.floor(p.x / cell);
+          const cy = Math.floor(p.y / cell);
+          expect(cx >= 0 && cy >= 0 && cx < map!.widthCells && cy < map!.heightCells, `${label} out of bounds: (${p.x},${p.y})`).toBe(true);
+          expect(map!.terrain[cy]![cx], `${label} on impassable: (${p.x},${p.y})`).not.toBe('impassable');
+        };
+        for (const e of r.campaign.events) {
+          if (e.type === 'CombatantMoved') {
+            legal((e as { toPosition: { x: number; y: number } }).toPosition, `seed ${seed}/${teamSize}v CombatantMoved`);
+          }
+        }
+        const enc = Object.values(r.campaign.state.encounters)[0] as { combatants: Array<{ position?: { x: number; y: number } }> };
+        for (const c of enc.combatants) {
+          if (c.position !== undefined) legal(c.position, `seed ${seed}/${teamSize}v final position`);
+        }
+      }
+    }
+  });
+});

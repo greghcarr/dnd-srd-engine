@@ -27,7 +27,7 @@ describe('combat-fuzz tactical setup (slice 694)', () => {
     expect((encCreated as { combatants?: unknown }).combatants).toBeDefined();
 
     const loc = result.campaign.state.locations[result.locationId!];
-    expect(loc?.map?.widthCells).toBe(16);
+    expect(loc?.map?.widthCells).toBe(18);
 
     const enc = Object.values(result.campaign.state.encounters)[0]!;
     for (const c of enc.combatants) expect(c.position).toBeDefined();

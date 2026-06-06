@@ -11,22 +11,41 @@
 export const MAP_SALT = 0x4d4150;
 
 // Arena cell dimensions, scaled by team size. teamSize > 2 clamps to the
-// squad case (1v1 and 2v2 are the only fuzz modes).
+// squad case (1v1 and 2v2 are the only fuzz modes). Slice 700: enlarged a
+// little so the rock border + features leave a comfortable interior.
 export const ARENA_DIMS = {
-  duel: { widthCells: 16, heightCells: 12 },
-  squad: { widthCells: 20, heightCells: 14 },
+  duel: { widthCells: 18, heightCells: 13 },
+  squad: { widthCells: 22, heightCells: 16 },
 } as const;
 
-// Spawn columns sit this many cells in from each edge.
-export const SPAWN_COLUMN_INSET_CELLS = 1;
+// Spawn columns sit this many cells in from each edge — far enough in to
+// clear the thickest rock border (BORDER_MIN + BORDER_MAX_EXTRA = 3).
+export const SPAWN_COLUMN_INSET_CELLS = 4;
 
-// Cover is confined to the middle band: columns at least this many cells
-// away from each spawn column, so cover never sits on or adjacent to a
-// spawn (adjacency is 1 cell; margin 2 keeps a clear gap).
-export const COVER_BAND_MARGIN_CELLS = 2;
+// Slice 700 — irregular rock border. Every edge carries at least
+// BORDER_MIN_THICKNESS_CELLS of rock, thickened inward by a smooth
+// per-position random walk up to BORDER_MAX_EXTRA_CELLS more, so the
+// playable region is an irregular blob whose shape varies by seed.
+export const BORDER_MIN_THICKNESS_CELLS = 1;
+export const BORDER_MAX_EXTRA_CELLS = 2;
 
-// Fraction of middle-band cells turned into impassable cover pillars.
-export const COVER_DENSITY = 0.18;
+// Cells around each spawn kept clear of every obstacle (fair starts).
+export const SPAWN_CLEARANCE_RADIUS_CELLS = 1;
+
+// Slice 700 — obstacle densities (fractions of the open interior). Lower
+// than the slice-694 single-type 0.18: fewer hard blocks, plus softer
+// difficult / water texture that slows movement without blocking it.
+export const IMPASSABLE_COVER_DENSITY = 0.07;
+export const DIFFICULT_TERRAIN_DENSITY = 0.06;
+export const WATER_DENSITY = 0.04;
+
+// Slice 700 — a fenced-in pen (an impassable ring with a one-cell gate)
+// appears this fraction of the time, and only when the interior has room
+// (so in practice only on the larger / squad map).
+export const FENCE_CHANCE = 0.4;
+export const FENCE_MIN_INTERIOR_WIDTH_CELLS = 18;
+export const FENCE_SIDE_MIN_CELLS = 4;
+export const FENCE_SIDE_MAX_CELLS = 6;
 
 // --- Movement policy tunables (slice 695) ---
 
