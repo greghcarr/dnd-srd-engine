@@ -103,8 +103,20 @@ That snippet shows the shortest "engine is alive" path: load the starter pack, b
 | [docs/](docs/) | Working docs: [status](docs/status.md), [roadmap](docs/roadmap.md), [slice template](docs/slice-template.md), [per-category gap catalogs](docs/starter-pack-gaps.md). |
 | [examples/](examples/) | Small runnable scripts showing API usage. |
 | [references/srd-markdown/](references/srd-markdown/) | The SRD 5.2.1 markdown clone (git submodule). Canonical source for rules text; never substitute web lookups. |
+| [.githooks/](.githooks/) | Repo-tracked git hooks. `pre-push` runs typecheck + build in any sibling consumer it finds (see "Sibling consumers" below). Activated by `npm install`. |
 | [CONTRIBUTING.md](CONTRIBUTING.md) / [docs/architecture.md](docs/architecture.md) | Contributor manual + engine internals. Anyone doing non-trivial work reads these end-to-end first. |
 | [CLAUDE.md](CLAUDE.md) / [AGENTS.md](AGENTS.md) / [.cursorrules](.cursorrules) | Per-agent safety-rail summaries + pointers to the contributor manual. Auto-loaded by their respective tools. |
+
+### Sibling consumers (separate repos)
+
+Two consumer apps bundle this engine from source via a Vite alias on `../dnd-srd-engine`. Each is its own repo, deployed independently:
+
+| Repo | Stack | What it is |
+|---|---|---|
+| [greghcarr/dndbnb](https://github.com/greghcarr/dndbnb) | React + Supabase | A D&D Beyond-style consumer app — character creation, sheets, campaigns, browse, favorites, PDF export. Live at https://greghcarr.github.io/dndbnb/. |
+| [greghcarr/dnd-web](https://github.com/greghcarr/dnd-web) | Phaser | A 2D top-down browser viewer for combat-fuzz replay scenarios. Live at https://greghcarr.github.io/dnd-web/. |
+
+Both check the engine out as a sibling directory at deploy time and bundle its TypeScript directly (no version pin between the engine and either consumer). The local pre-push hook above guards engine `main` pushes against silently breaking either consumer. See [DEVELOPMENT.md](DEVELOPMENT.md) "Consumer integration" for the Vite-alias pattern.
 
 ## Documentation
 

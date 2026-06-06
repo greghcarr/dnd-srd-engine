@@ -1,6 +1,6 @@
 # Breaking changes queued for the next release
 
-Items that landed on `dev` after the most-recent tagged release ([0.4.0-alpha.0](../CHANGELOG.md), 2026-06-05) and constitute consumer-facing breaking changes. When the next release tag is cut, these become the release-notes "Breaking" section.
+Items that landed on `dev` after the most-recent tagged release ([0.5.0-alpha.0](../CHANGELOG.md), 2026-06-05) and constitute consumer-facing breaking changes. When the next release tag is cut, these become the release-notes "Breaking" section.
 
 Per [VERSIONING.md](../VERSIONING.md), the pre-1.0 escape hatch is the minor bump: `0.x.y-alpha.N` may ship breaking API changes without a major bump as long as they're announced in the release notes. This doc keeps the announcement queue durable across slices.
 

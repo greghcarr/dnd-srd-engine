@@ -170,3 +170,30 @@ export const isoTimestamp = (offsetMs = 0): string =>
   new Date(1_700_000_000_000 + offsetMs).toISOString();
 
 export const eventId = (): string => ulid();
+
+// Slice 693: two same-seed runs carry two kinds of volatile-but-not-
+// RNG-driven data that defeat a raw JSON compare: (1) entity ids are
+// fresh `ulid()`s (timestamp + entropy) each run; (2) engine-planned
+// events stamp `at` from the wall clock (`nowIso()`), since the fuzz
+// passes no `at`. Neither encodes a decision. `normalizeEvents` interns
+// every ULID-shaped string (26-char Crockford base32) to a stable
+// positional token and blanks every `at` field, so what remains —
+// event types, order, and every RNG-driven value (rolls, damage, chosen
+// cells) — still surfaces real divergence. Lets a test assert
+// seed-determinism of the *battle*, not of the id/clock space.
+const ULID_PATTERN = /^[0-9A-HJKMNP-TV-Z]{26}$/;
+export const normalizeEvents = (events: ReadonlyArray<unknown>): unknown => {
+  const interned = new Map<string, string>();
+  return JSON.parse(JSON.stringify(events), (key: string, value: unknown) => {
+    if (key === 'at') return '<at>';
+    if (typeof value === 'string' && ULID_PATTERN.test(value)) {
+      let token = interned.get(value);
+      if (token === undefined) {
+        token = `ulid#${interned.size}`;
+        interned.set(value, token);
+      }
+      return token;
+    }
+    return value;
+  });
+};

@@ -20,6 +20,9 @@ import { commit, type Campaign } from '../src/engine/commit.js';
 import { performIntent } from '../src/engine/conveniences.js';
 import type { ItemInstance } from '../src/schemas/runtime/item-instance.js';
 import type { Event } from '../src/schemas/events/index.js';
+import { resolveContent } from '../src/content/pack.js';
+import { emitTacticalSetup } from './tactical/setup.js';
+import { makeTacticalMovePolicy } from './tactical/move-policy.js';
 
 export const MAX_ROUNDS = 20;
 const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8] as const;
@@ -38,6 +41,12 @@ type Pack = ContentPack;
 
 export type FuzzRest = 'none' | 'short' | 'long';
 export type FuzzVs = 'pc' | 'monster';
+// Slice 693: positionless ('none', default) vs spread-out tactical
+// movement ('tactical'). 'none' is byte-identical to the legacy path;
+// 'tactical' generates an arena, spreads combatants, and moves them via
+// the move-policy seam (NO_MOVE for 'none'). dnd-web replays the
+// resulting CombatantMoved events.
+export type FuzzMovement = 'none' | 'tactical';
 
 // Per-class build spec: which ability gets the 15, which weapon /
 // armor / cantrips / L1 spells were drawn from the pool for THIS
@@ -517,7 +526,7 @@ const buildL1 = (name: string, rngFloat: () => number, pack: Pack): BuiltCharact
   return { character, weaponInstance, armorInstance, shieldInstance, potionInstance, build };
 };
 
-interface Combatant {
+export interface Combatant {
   readonly built: BuiltCharacter;
   firstTurnBuffTried?: boolean;
   firstTurnActionBuffTried?: boolean;
@@ -828,6 +837,9 @@ export interface FuzzBattleOptions {
   readonly rest?: FuzzRest;
   readonly teamSize?: number;
   readonly vs?: FuzzVs;
+  /** Slice 693: 'none' (default) is byte-identical to the legacy path;
+   *  'tactical' spreads combatants on a generated arena and moves them. */
+  readonly movement?: FuzzMovement;
 }
 
 export interface FuzzBattleResult {
@@ -838,7 +850,36 @@ export interface FuzzBattleResult {
   readonly teamACharacterIds: ReadonlyArray<string>;
   /** Character ids on the "Bran" (or "Beast") team. Slice 607: lets the web demo color-code teams. */
   readonly teamBCharacterIds: ReadonlyArray<string>;
+  /** Slice 693: which movement mode produced this battle. */
+  readonly movement: FuzzMovement;
+  /** Slice 694: the generated arena's location id (tactical mode only).
+   *  The map + positions live in the event log / state; this is a
+   *  convenience pointer for the viewer. */
+  readonly locationId?: string;
 }
+
+// Move-policy seam (slice 693). The turn loop calls `movePolicy` once
+// per turn. 'none' uses NO_MOVE (identity), keeping the event log
+// byte-identical to the positionless path; slice 695 swaps in the
+// tactical policy for 'tactical'. Varying behavior through one injected
+// policy (rather than scattered `if (tactical)` branches) keeps
+// byte-identity robust against future turn-loop edits.
+export type Engine = ReturnType<typeof createEngine>;
+
+export interface MovePolicyContext {
+  readonly engine: Engine;
+  readonly pack: Pack;
+  readonly campaign: Campaign;
+  readonly encounterId: string;
+  readonly active: Combatant;
+  readonly opponent: Combatant;
+  readonly allies: ReadonlyArray<Combatant>;
+  readonly combatants: Record<string, Combatant>;
+}
+
+export type MovePolicy = (ctx: MovePolicyContext) => Campaign;
+
+const NO_MOVE: MovePolicy = (ctx) => ctx.campaign;
 
 export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
   const seed = opts.seed;
@@ -847,6 +888,7 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
   const rest: FuzzRest = opts.rest ?? 'none';
   const teamSize = opts.teamSize ?? 1;
   const vs: FuzzVs = opts.vs ?? 'pc';
+  const movement: FuzzMovement = opts.movement ?? 'none';
 
   const engine = createEngine({ contentPacks: [pack], rng: seededRNG(seed) });
   let cursor = seed * 13 + 7;
@@ -893,10 +935,34 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
   }
 
   const allCharacterIds = [...teamA.map((pc) => pc.character.id), ...teamB.map((pc) => pc.character.id)];
-  const enc = engine.plan.createEncounter(campaign.state, {
-    combatantIds: allCharacterIds,
-    name: 'Fuzz arena',
-  });
+
+  // Slice 694: tactical mode spreads the combatants across a generated
+  // arena. Emit the location + per-combatant placement events, then create
+  // the encounter via the positioned path. 'none' keeps the legacy
+  // positionless `combatantIds` call (byte-identical).
+  let locationId: string | undefined;
+  let enc: { events: ReadonlyArray<Event>; encounterId: string };
+  if (movement === 'tactical') {
+    const setup = emitTacticalSetup({
+      campaign,
+      seed,
+      teamSize,
+      teamACharacterIds: teamA.map((pc) => pc.character.id),
+      teamBCharacterIds: teamB.map((pc) => pc.character.id),
+      nextAt,
+    });
+    campaign = setup.campaign;
+    locationId = setup.locationId;
+    enc = engine.plan.createEncounter(campaign.state, {
+      combatants: setup.placements,
+      name: 'Fuzz arena',
+    });
+  } else {
+    enc = engine.plan.createEncounter(campaign.state, {
+      combatantIds: allCharacterIds,
+      name: 'Fuzz arena',
+    });
+  }
   campaign = commit(campaign, enc.events);
   campaign = commit(campaign, engine.plan.rollInitiative(campaign.state, { encounterId: enc.encounterId }).events);
   campaign = commit(campaign, engine.plan.startEncounter(campaign.state, { encounterId: enc.encounterId }).events);
@@ -922,6 +988,14 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
     if (!aliveB) return 'A';
     return null;
   };
+
+  // Slice 693/695: 'none' (default) is the identity policy → byte-identical
+  // log. 'tactical' moves the active combatant via the policy, which is
+  // the only place tactical mode consumes RNG (opportunity attacks).
+  // resolveContent runs only in tactical mode, so 'none' is untouched.
+  const movePolicy: MovePolicy = movement === 'tactical'
+    ? makeTacticalMovePolicy({ content: resolveContent([pack]) })
+    : NO_MOVE;
 
   let rounds = 1;
   let winner: string | null = null;
@@ -949,6 +1023,23 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
       rounds = campaign.state.encounters[enc.encounterId]?.round ?? rounds;
       continue;
     }
+
+    // Move-policy seam (slice 693): one call per turn, before the action
+    // loop. NO_MOVE ('none') returns the campaign unchanged → byte-
+    // identical log. Slice 695 emits CombatantMoved + resolves OAs here.
+    campaign = movePolicy({
+      engine,
+      pack,
+      campaign,
+      encounterId: enc.encounterId,
+      active,
+      opponent,
+      allies: (teamAIds.has(active.built.character.id) ? teamA : teamB)
+        .filter((pc) => pc.character.id !== active.built.character.id
+          && campaign.state.characters[pc.character.id]!.hp.current > 0)
+        .map((pc) => combatants[pc.character.id]!),
+      combatants,
+    });
 
     let actions = 0;
     while (actions < 4) {
@@ -1087,5 +1178,7 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
     rounds,
     teamACharacterIds: teamA.map((pc) => pc.character.id),
     teamBCharacterIds: teamB.map((pc) => pc.character.id),
+    movement,
+    ...(locationId !== undefined ? { locationId } : {}),
   };
 };

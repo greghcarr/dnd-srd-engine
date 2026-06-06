@@ -61,6 +61,22 @@ Every slice writes a per-slice file at `docs/changelog/slice-NNN.md` plus a 3-li
 
 If a check fails, fix the cause. Never `--no-verify` or skip.
 
+### Sibling-consumer awareness
+
+The engine has two known consumer apps that bundle it from source via Vite alias as a sibling checkout (`../dnd-srd-engine`):
+
+- [greghcarr/dndbnb](https://github.com/greghcarr/dndbnb) — a D&D Beyond-style consumer app (React + Supabase). Lives at `../dndbnb/` if cloned alongside this repo.
+- [greghcarr/dnd-web](https://github.com/greghcarr/dnd-web) — a 2D top-down replay viewer for combat-fuzz scenarios (Phaser). Lives at `../dnd-web/`.
+
+What this means for engine work:
+
+- Engine changes that compile + test cleanly here can still break a consumer's TypeScript build. The engine's own CI doesn't run consumer builds. A **pre-push hook** at [.githooks/pre-push](.githooks/pre-push) (activated by `npm install` via the `prepare` script) runs `npm run typecheck` + `npm run build` in each sibling consumer when pushing the local `main` ref. The hook is the seam that catches consumer-breakage before the engine commit reaches `main`. See [CONTRIBUTING.md](CONTRIBUTING.md#pre-push-consumer-verification).
+- **Don't propose consumer-side work from inside this conversation.** The user runs separate Claude Code sessions in each consumer repo. If the user asks for a consumer-side change explicitly here, do it (they're overriding the default); don't initiate it.
+- **Engine `main` IS the consumers' pin.** Both consumers' deploy workflows check out the engine at `ref: main` at deploy time. There's no version pin between them. A broken engine `main` breaks both consumers' next deploys. Treat `main` as production.
+- Consumers redeploy ONLY on their own main commits + manual triggers — no cross-repo auto-rebuild from engine pushes (the prior `notify-dndbnb` workflow was removed in slice 691).
+
+If you find a sibling consumer dir doesn't exist (`../dndbnb`, `../dnd-web`), the pre-push hook skips it with a warning. Engine work doesn't require either consumer to be checked out.
+
 ## Engineering quality framing (internal, not for marketing copy)
 
 The "Quality bar" section of [CONTRIBUTING.md](CONTRIBUTING.md#quality-bar) is the user-facing framing. Internally, the engine is held to a library-quality standard: TypeScript strict mode (`noUncheckedIndexedAccess`), deterministic replay, plan/commit RNG capture, 80%+ coverage on `src/engine/` / `src/derive/` / `src/effects/`, golden transcripts on every behavior change, drift-audited content against the SRD markdown clone.
