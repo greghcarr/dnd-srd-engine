@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine (slice 704): die-typed roll-provider seam (interactive-play A2)**
+Adds a die-typed, resumable roll seam (`RollProvider` / `SeededRollProvider` / `SuppliedRollProvider` / `NeedRoll` / `withRollProvider`) so a consumer can supply player-entered physical dice while planning stays sync + pure. `rollDie` routes through an ambient provider; with none installed the default path is byte-identical (golden + replay-equivalence unchanged). No event schema change.
+Detail: [slice-704.md](docs/changelog/slice-704.md).
+
 **Content (slice 703): the Ability Score Improvement feat (L4 core)**
 Adds the SRD 5.2.1 ASI feat (General, Level 4+, repeatable): a two-tier OfferChoice (+2 one / +1 two, max 20) over `IncreaseAbilityScore`, riding the existing nested-OfferChoice cascade. ASI was the one missing SRD feat, so the SRD 5.2.1 feat catalog is now complete (17/17). Flips the L4 floor's Section 3 xfail.
 Detail: [slice-703.md](docs/changelog/slice-703.md).

@@ -314,6 +314,7 @@ import {
 import { newCampaignId, newEventId, newAppliedConditionId, newEffectInstanceId } from '../ids.js';
 import { nowIso } from '../internal/clock.js';
 import { rollDie, rollExpression } from '../rng/dice.js';
+import { withRollProvider as withRollProviderScope, type RollProvider } from '../rng/roll-provider.js';
 import { HANDLER_API_VERSION } from '../handlers/index.js';
 import { assertActorCanAct } from './plan/_actor-state.js';
 import { assertReactionAvailable, economyConsumedIfEncountered } from './plan/reactive-spells.js';
@@ -364,6 +365,14 @@ export interface Engine {
   undo(campaign: Campaign): Campaign;
   redo(campaign: Campaign): Campaign;
   do(campaign: Campaign, intent: { readonly type: string } & Record<string, unknown>): Campaign;
+
+  // Slice 704 (A2): resolve ONE planning call against a chosen die-typed
+  // RollProvider without making planning async. Installs `provider` as the
+  // ambient roll source for the synchronous `fn`, restoring the previous
+  // one afterward. With a SuppliedRollProvider, `fn` may throw NeedRoll
+  // when the queue is exhausted; planning is pure, so the caller can
+  // prompt for the die, extend the queue, and re-attempt `fn`.
+  withRollProvider<T>(provider: RollProvider, fn: () => T): T;
 
   plan: {
     // Consumer-extensible action seam: dispatches to a handler registered
@@ -1204,6 +1213,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     redo,
     do(campaign, intent) {
       return performIntent(this, campaign, intent);
+    },
+    withRollProvider(provider, fn) {
+      return withRollProviderScope(provider, fn);
     },
     plan: planNs,
     derive: deriveNs,

@@ -341,8 +341,13 @@ export {
   rollDice,
   rollExpression,
   parseDiceExpression,
+  NeedRoll,
+  SeededRollProvider,
+  SuppliedRollProvider,
+  withRollProvider,
+  getActiveRollProvider,
 } from './rng/index.js';
-export type { RNG, DieRoll, DiceRollResult } from './rng/index.js';
+export type { RNG, DieRoll, DiceRollResult, RollProvider, RollContext } from './rng/index.js';
 
 export {
   abilityModifier,

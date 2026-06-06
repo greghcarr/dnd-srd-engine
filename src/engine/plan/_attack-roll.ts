@@ -74,9 +74,9 @@ export const resolveAttackRoll = (input: ResolveAttackRollInput): ResolveAttackR
     rng,
   } = input;
 
-  const rolls: number[] = [rollDie(D20_SIDES, rng)];
+  const rolls: number[] = [rollDie(D20_SIDES, rng, 'attack')];
   if (advantage !== 'none') {
-    rolls.push(rollDie(D20_SIDES, rng));
+    rolls.push(rollDie(D20_SIDES, rng, 'attack'));
   }
   let usedRoll =
     advantage === 'advantage'

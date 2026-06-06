@@ -194,6 +194,14 @@ import { defaultRNG, seededRNG, throwOnCallRNG } from 'dnd-srd-engine';
 
 `seededRNG(seed)` for deterministic tests. `throwOnCallRNG()` is the architectural canary: pass it into a replay to prove `apply()` never reaches for randomness.
 
+### Roll providers (die-typed, resumable)
+
+```ts
+import { withRollProvider, SuppliedRollProvider, SeededRollProvider, NeedRoll } from 'dnd-srd-engine';
+```
+
+For interactive play (a player entering physical dice), a **die-typed** seam sits over the value-typed RNG. `engine.withRollProvider(provider, fn)` runs one synchronous planning call against `provider`; `rollDie` routes each draw through it. `SeededRollProvider(rng)` reproduces the default RNG path bit-for-bit (it's the default). `SuppliedRollProvider(queue)` returns caller-supplied faces in order and throws `NeedRoll { die, context }` when the queue is exhausted — the consumer prompts for that die, appends the answer, and re-attempts (planning is pure, so the same prefix re-draws identical earlier dice). `context` (`'attack' | 'damage' | 'save' | ...`) labels the prompt. One shared stream; no per-combatant forking (intentional). The ranked/daily path keeps using `SeededRollProvider`.
+
 ## IDs
 
 Branded string types per kind. Factories: `newCharacterId`, `newCreatureId`, `newPartyId`, `newEncounterId`, `newCampaignId`, `newSessionId`, `newLocationId`, `newQuestId`, `newJournalEntryId`, `newEventId`, `newChoiceId`, `newEffectInstanceId`, `newAppliedConditionId`, `newItemInstanceId`, `newTrapId`, `newSensorId`, `newIllusionId`. Brand casts: `asCharacterId`, `asSpeciesId`, etc.
