@@ -33,9 +33,9 @@
 //      ChoiceRequired (xfail until the L4 OfferChoice rows land).
 //   5. L4 resource scaffolding (Fighter Second Wind max 3, Sorcerer
 //      Sorcery Points → 4, Monk Focus Points → 4) — passing today.
-//   6. Planner presence for Slow Fall (xfail: planSlowFall not built;
-//      the cycle decides to wire the reduction calculator or
-//      reclassify Slow Fall as consumer-managed).
+//   6. Planner presence for Slow Fall — already wired via planFalling's
+//      useSlowFall arm (the row was corrected from a wrongly-assumed
+//      planSlowFall to the real planner in slice 708).
 //
 // What this audit deliberately does NOT cover (deferred to later L4
 // hardening slices, same pattern as the L2/L3 floors 639-644 / 650-653):
@@ -265,21 +265,22 @@ describe('slice 702: SRD L4 completeness audit', () => {
   });
 
   describe('Section 6: planner presence per L4 feature', () => {
-    // Slow Fall (Monk L4) is a reaction that reduces falling damage by
-    // 5 × monk level. The engine has no falling-damage model, so the
-    // canonical surface is a reduction calculator (mirror of slice
-    // 648's planDeflectAttacks reaction-reduction shape) the consumer
-    // applies. Xfail until the cycle decides to wire planSlowFall or
-    // reclassify Slow Fall as consumer-managed/narrative.
+    // Slow Fall (Monk L4) reduces falling damage by 5 × monk level as a
+    // Reaction. It is already wired via `planFalling`'s `useSlowFall`
+    // arm (src/engine/plan/falling.ts) — planFalling models the fall
+    // damage itself and subtracts the reduction. Slice 702's floor audit
+    // assumed a separate `planSlowFall`; slice 708 corrected this row to
+    // the real planner after the pack-integrity + planner-wiring audits
+    // flagged a redundant duplicate.
     interface PlannerExpectation {
       readonly featureId: string;
       readonly plannerExport: string;
     }
     const PLANNERS: ReadonlyArray<PlannerExpectation> = [
-      { featureId: 'slow-fall', plannerExport: 'planSlowFall' },
+      { featureId: 'slow-fall', plannerExport: 'planFalling' },
     ];
     for (const expectation of PLANNERS) {
-      it.fails(`xfail: ${expectation.featureId} → ${expectation.plannerExport} (not built)`, () => {
+      it(`${expectation.featureId} → ${expectation.plannerExport}`, () => {
         expect(
           plan[expectation.plannerExport],
           `planner ${expectation.plannerExport} not exported from src/engine/plan/index.ts`,

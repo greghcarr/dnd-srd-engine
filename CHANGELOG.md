@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Tests (slice 708): correct the L4 floor audit's Slow Fall planner reference**
+Monk Slow Fall was already wired via `planFalling`'s `useSlowFall` arm (5 × monk level, Monk L4+, reaction-consuming, with a real fall-damage model); slice 702's floor audit wrongly assumed a separate `planSlowFall`. Points Section 6 at the real `planFalling` and drops the redundant duplicate (caught by the pack-integrity + planner-wiring audits). Closes the last L4 floor-audit xfail — **the L4 floor is now 20/20 green** (fuzz extension + release tag remain). No engine/content/schema change.
+Detail: [slice-708.md](docs/changelog/slice-708.md).
+
 **Content (slice 707): the L4 Ability Score Improvement choice across all 12 classes**
 Adds an `ability-score-improvement-4` feature to every class's L4 row: an OfferChoice granting the ASI feat (slice 703) or another general feat (Grappler) via `GrantFeat`, riding the existing level-up + cascade + derive machinery (no new primitive). Leveling 3→4 → pick ASI → +2/+1 → ability picker now moves the derived ability score. Flips the L4 floor audit's Section 1 (12) + Section 4; only Slow Fall (Section 6) remains. Per-character feat eligibility (Grappler's ability prereq) is a documented follow-up.
 Detail: [slice-707.md](docs/changelog/slice-707.md).
