@@ -198,6 +198,30 @@
     { "id": "boon-of-the-night-spirit", "name": "Boon of the Night Spirit", "category": "epic-boon", "repeatable": false, "prerequisites": ["Level 19+"], "effects": [] },
     { "id": "boon-of-truesight", "name": "Boon of Truesight", "category": "epic-boon", "repeatable": false, "prerequisites": ["Level 19+"], "effects": [{ "kind": "GrantSense", "sense": "truesight", "range": 60 }] },
     { "id": "grappler", "name": "Grappler", "category": "general", "repeatable": false, "prerequisites": ["Level 4+", "Strength or Dexterity 13+"], "effects": [] },
+    { "id": "ability-score-improvement", "name": "Ability Score Improvement", "category": "general", "repeatable": true, "prerequisites": ["Level 4+"], "effects": [
+      { "kind": "OfferChoice", "choiceId": "ability-score-improvement", "prompt": "Increase one ability score by 2, or two ability scores by 1 each (maximum 20).", "oneOf": 1, "when": "onAcquire", "options": [
+        { "id": "plus-2-one", "label": "+2 to one ability score", "effects": [
+          { "kind": "OfferChoice", "choiceId": "asi-plus2-ability", "prompt": "Choose one ability score to increase by 2 (maximum 20).", "oneOf": 1, "when": "onAcquire", "options": [
+            { "id": "str", "label": "Strength", "effects": [{ "kind": "IncreaseAbilityScore", "ability": "STR", "amount": 2, "max": 20 }] },
+            { "id": "dex", "label": "Dexterity", "effects": [{ "kind": "IncreaseAbilityScore", "ability": "DEX", "amount": 2, "max": 20 }] },
+            { "id": "con", "label": "Constitution", "effects": [{ "kind": "IncreaseAbilityScore", "ability": "CON", "amount": 2, "max": 20 }] },
+            { "id": "int", "label": "Intelligence", "effects": [{ "kind": "IncreaseAbilityScore", "ability": "INT", "amount": 2, "max": 20 }] },
+            { "id": "wis", "label": "Wisdom", "effects": [{ "kind": "IncreaseAbilityScore", "ability": "WIS", "amount": 2, "max": 20 }] },
+            { "id": "cha", "label": "Charisma", "effects": [{ "kind": "IncreaseAbilityScore", "ability": "CHA", "amount": 2, "max": 20 }] }
+          ] }
+        ] },
+        { "id": "plus-1-two", "label": "+1 to two ability scores", "effects": [
+          { "kind": "OfferChoice", "choiceId": "asi-plus1-abilities", "prompt": "Choose two ability scores to increase by 1 each (maximum 20).", "oneOf": 2, "when": "onAcquire", "options": [
+            { "id": "str", "label": "Strength", "effects": [{ "kind": "IncreaseAbilityScore", "ability": "STR", "amount": 1, "max": 20 }] },
+            { "id": "dex", "label": "Dexterity", "effects": [{ "kind": "IncreaseAbilityScore", "ability": "DEX", "amount": 1, "max": 20 }] },
+            { "id": "con", "label": "Constitution", "effects": [{ "kind": "IncreaseAbilityScore", "ability": "CON", "amount": 1, "max": 20 }] },
+            { "id": "int", "label": "Intelligence", "effects": [{ "kind": "IncreaseAbilityScore", "ability": "INT", "amount": 1, "max": 20 }] },
+            { "id": "wis", "label": "Wisdom", "effects": [{ "kind": "IncreaseAbilityScore", "ability": "WIS", "amount": 1, "max": 20 }] },
+            { "id": "cha", "label": "Charisma", "effects": [{ "kind": "IncreaseAbilityScore", "ability": "CHA", "amount": 1, "max": 20 }] }
+          ] }
+        ] }
+      ] }
+    ] },
     { "id": "boon-of-fate", "name": "Boon of Fate", "category": "epic-boon", "repeatable": false, "prerequisites": ["Level 19+"], "effects": [] }
   ],
   "classes": [

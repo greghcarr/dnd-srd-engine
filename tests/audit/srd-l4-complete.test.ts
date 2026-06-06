@@ -145,8 +145,8 @@ describe('slice 702: SRD L4 completeness audit', () => {
     // feat's RAW text: "Increase one ability score by 2, or two ability
     // scores by 1 each, to a maximum of 20." Modeled as an OfferChoice
     // (+2 one / +1 two) whose options carry IncreaseAbilityScore
-    // effects (the slice-308 primitive). No such feat ships yet → xfail.
-    it.fails('xfail: an Ability Score Improvement feat ships with IncreaseAbilityScore options', () => {
+    // effects (the slice-308 primitive). Landed in slice 703.
+    it('an Ability Score Improvement feat ships with IncreaseAbilityScore options', () => {
       const feat = (PACK.feats ?? []).find((f) => /ability-score-improvement/i.test(f.id));
       expect(feat, 'no ability-score-improvement feat in the pack').toBeDefined();
       // Once it lands, it offers ability increases (directly or via a

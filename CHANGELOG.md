@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Content (slice 703): the Ability Score Improvement feat (L4 core)**
+Adds the SRD 5.2.1 ASI feat (General, Level 4+, repeatable): a two-tier OfferChoice (+2 one / +1 two, max 20) over `IncreaseAbilityScore`, riding the existing nested-OfferChoice cascade. ASI was the one missing SRD feat, so the SRD 5.2.1 feat catalog is now complete (17/17). Flips the L4 floor's Section 3 xfail.
+Detail: [slice-703.md](docs/changelog/slice-703.md).
+
 **Tests (slice 702): CI-guarded "L4 SRD complete" floor audit**
 Opens the L4 cycle. 20-test audit (5 green + 15 xfail) pinning L4's surface: the universal Ability Score Improvement at L4 (unmodeled today — every class's `levelTable['4']` is empty), Monk Slow Fall + Fighter Second Wind 3 (present), and the Sorcery Points / Focus Points → 4 resource scaling. The 15 xfails are the punch list; when they flip, tag `0.7.0-alpha.0`.
 Detail: [slice-702.md](docs/changelog/slice-702.md).
