@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Content (slice 707): the L4 Ability Score Improvement choice across all 12 classes**
+Adds an `ability-score-improvement-4` feature to every class's L4 row: an OfferChoice granting the ASI feat (slice 703) or another general feat (Grappler) via `GrantFeat`, riding the existing level-up + cascade + derive machinery (no new primitive). Leveling 3→4 → pick ASI → +2/+1 → ability picker now moves the derived ability score. Flips the L4 floor audit's Section 1 (12) + Section 4; only Slow Fall (Section 6) remains. Per-character feat eligibility (Grappler's ability prereq) is a documented follow-up.
+Detail: [slice-707.md](docs/changelog/slice-707.md).
+
 **Refactor (slice 706): graduate the tactical enemy policy to the package (interactive-play A3)**
 Relocates the pure tactical movement policy (`planTacticalMove` / `classifyTacticalRole` / `pickByTotalOrder` + types) from `scripts/tactical/` into `src/ai/`, barrel-exported so a consumer imports it from the package instead of `scripts/`. `scripts/tactical/{policy,constants}.ts` become re-export shims, so the fuzz harness + its tests are byte-identical (golden tactical transcript + fuzz determinism unchanged). `pickIntent` / `makeTacticalMovePolicy` stay in scripts (fuzz-type-coupled). No behavior or schema change.
 Detail: [slice-706.md](docs/changelog/slice-706.md).

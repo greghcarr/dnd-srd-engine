@@ -108,12 +108,11 @@ const hasAsiOfferChoice = (classId: string): boolean =>
 describe('slice 702: SRD L4 completeness audit', () => {
   describe('Section 1: Ability Score Improvement present in every class L4 row', () => {
     // RAW (SRD 5.2.1 classes.md): every class gains "Ability Score
-    // Improvement" at L4. Today every levelTable['4'] ships an empty
-    // feature row (no ASI), so the feat-or-ASI OfferChoice is absent.
-    // Each cell xfails until the L4 content slice lands the row; flip
-    // it.fails → it per class as the rows are wired.
+    // Improvement" at L4. Landed in slice 707 — each class's
+    // levelTable['4'] now ships an `ability-score-improvement-4` feature
+    // whose OfferChoice grants the ASI feat or another general feat.
     for (const classId of ALL_CLASS_IDS) {
-      it.fails(`xfail: ${classId} L4 row offers the ASI/feat choice (unmodeled today)`, () => {
+      it(`${classId} L4 row offers the ASI/feat choice`, () => {
         expect(
           hasAsiOfferChoice(classId),
           `${classId} levelTable['4'] has no ASI/feat OfferChoice — RAW grants Ability Score Improvement at L4`,
@@ -163,10 +162,10 @@ describe('slice 702: SRD L4 completeness audit', () => {
     // Behavioral pin. A Fighter is used because its L4 row carries no
     // subclass-selection complication (subclassLevel is 3) and its
     // current L4 row (second-wind-3) emits no OfferChoice — so today
-    // no ChoiceRequired fires on the 3→4 level-up. Once the feat-or-ASI
-    // OfferChoice row lands, planLevelUp auto-emits the ChoiceRequired
-    // (it already walks new-level OfferChoice effects). Flip to `it`.
-    it.fails('xfail: a Fighter leveling 3→4 receives an ASI/feat ChoiceRequired', () => {
+    // no ChoiceRequired fired on the 3→4 level-up. Slice 707 landed the
+    // feat-or-ASI OfferChoice row, so planLevelUp now auto-emits the
+    // ChoiceRequired (it already walks new-level OfferChoice effects).
+    it('a Fighter leveling 3→4 receives an ASI/feat ChoiceRequired', () => {
       const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(1) });
       const fighter: Character = CharacterSchema.parse({
         id: newCharacterId(),
