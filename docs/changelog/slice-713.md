@@ -52,4 +52,5 @@ Legal targets at a slot, honoring range + line of effect + target kind, discrimi
 ## Open follow-ups (next slice)
 
 - ~~`bonusActions(...)` enumeration + the generic `engine.plan.useOption(...)` dispatcher (interactive-play part (b)). Bonus-action spells are surfaced in `castableSpells` filtered by `castingTime === 'bonus-action'`.~~ **Closed by slice 714.**
-- AOE point targeting for self-origin cones is approximate (direction vs point); refine if the consumer needs exact cone aiming. Multi-target `maxTargets > 1` awaits a content target-count field. **Still open.**
+- ~~Multi-target `maxTargets > 1` awaits a content target-count field.~~ **Closed by slice 716** (derived from the spell's own mechanics — beam-scaling cantrips + `auto-hit` darts; no new content field needed).
+- ~~AOE point targeting for self-origin cones is approximate (direction vs point); refine if the consumer needs exact cone aiming.~~ **Resolved by slice 716 as consumer scope:** exact "which cells the cone covers" is the app's spatial query per [engine-scope.md](../engine-scope.md) ("Spell area target selection"). The engine returns candidate origin/aim cells (in range + LoE); it does not enumerate a specific cone direction's cells.

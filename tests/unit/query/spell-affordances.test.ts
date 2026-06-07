@@ -27,7 +27,7 @@ import type { Event } from '../../../src/schemas/events/index.js';
 
 const PACK = loadStarterPack();
 
-const SPELLS = ['fire-bolt', 'cure-wounds', 'hold-person', 'shield', 'fireball', 'healing-word', 'mage-armor'];
+const SPELLS = ['fire-bolt', 'cure-wounds', 'hold-person', 'shield', 'fireball', 'healing-word', 'mage-armor', 'magic-missile', 'eldritch-blast'];
 
 const buildWizard = (overrides: Partial<Character> = {}): Character =>
   CharacterSchema.parse({
@@ -218,5 +218,39 @@ describe('slice 713: legalSpellTargets', () => {
       const [bx, by] = b.split(',').map(Number);
       return ax! - bx! || ay! - by!;
     }));
+  });
+});
+
+describe('slice 716: multi-target maxTargets', () => {
+  const spellsOf = () => {
+    const s = setup({ x: 10, y: 0 });
+    const list = s.engine.query.castableSpells(s.campaign.state, s.casterId);
+    return Object.fromEntries(list.map((c) => [c.spellId, c]));
+  };
+
+  it('Magic Missile: 3 darts at base slot → creatures maxTargets 3', () => {
+    const mm = spellsOf()['magic-missile']!;
+    expect(mm.resolves).toBe('auto');
+    expect(mm.target).toEqual({ kind: 'creatures', maxTargets: 3, allow: 'enemies' });
+  });
+
+  it('Eldritch Blast: beam count scales with character level (L5 → 2)', () => {
+    const eb = spellsOf()['eldritch-blast']!;
+    expect(eb.resolves).toBe('attack');
+    expect(eb.target).toEqual({ kind: 'creatures', maxTargets: 2, allow: 'enemies' });
+  });
+
+  it('single-target spells stay maxTargets 1', () => {
+    expect((spellsOf()['fire-bolt']!.target as { maxTargets: number }).maxTargets).toBe(1);
+    expect((spellsOf()['hold-person']!.target as { maxTargets: number }).maxTargets).toBe(1);
+  });
+
+  it('legalSpellTargets scales Magic Missile darts by slot (1→3, 3→5)', () => {
+    const s = setup({ x: 10, y: 0 });
+    const atBase = s.engine.query.legalSpellTargets(s.campaign.state, s.encounterId, s.casterId, 'magic-missile', 1);
+    const atThree = s.engine.query.legalSpellTargets(s.campaign.state, s.encounterId, s.casterId, 'magic-missile', 3);
+    if (atBase.kind !== 'creatures' || atThree.kind !== 'creatures') throw new Error('expected creatures');
+    expect(atBase.maxTargets).toBe(3);
+    expect(atThree.maxTargets).toBe(5);
   });
 });

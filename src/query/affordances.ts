@@ -16,6 +16,7 @@ import type { CampaignState } from '../schemas/runtime/campaign.js';
 import type { ResolvedContent } from '../content/pack.js';
 import type { Position } from '../schemas/runtime/encounter.js';
 import type { Character } from '../schemas/runtime/character.js';
+import { computeTotalLevel } from '../schemas/runtime/character.js';
 import type { Weapon } from '../schemas/content/item.js';
 import { DEFAULT_CELL_SIZE_FEET, type Door, type LocationMap } from '../schemas/runtime/location.js';
 import { reachableCells, findPath, feetToCell, cellToFeet } from '../derive/pathing.js';
@@ -25,6 +26,9 @@ import { computeActionEconomyBudget } from '../derive/action-economy.js';
 import { computeAvailableSpellSlots } from '../derive/spell-slots.js';
 import type { AbilityScore } from '../schemas/primitives.js';
 import type { Spell, SpellAreaShape } from '../schemas/content/spell.js';
+// cantripExtraDice: the beam-count tiers (Eldritch Blast → 1/2/3/4 beams),
+// reused so maxTargets matches the cast-spell beam-scaling gate exactly.
+import { cantripExtraDice } from '../schemas/content/spell.js';
 // The same precondition check the planners throw on (assertActorCanAct),
 // but returning the blocking-condition id instead of throwing.
 import { findActorBlockingCondition } from '../engine/plan/_actor-state.js';
@@ -410,12 +414,19 @@ const creatureCandidatesInRange = (
   return candidates;
 };
 
-// Legal AOE placement cells: cells within `radiusFeet` (chebyshev) of the
-// caster that are in-bounds, not impassable, and have line of effect.
+// Legal AOE placement / aim cells: cells within `radiusFeet` (chebyshev) of
+// the caster that are in-bounds, not impassable, and have line of effect.
 // `radiusFeet` = the spell range for ranged-placed areas (Fireball 150 ft),
-// or the area size for self-origin areas (Burning Hands cone; approximate
-// — a cone needs a direction, this returns candidate aim cells). Returns
-// FEET positions sorted by (x, y).
+// or the area size for self-origin areas (Burning Hands cone — candidate
+// AIM cells, since a cone needs a direction). Returns FEET positions sorted
+// by (x, y).
+//
+// Scope (engine-scope.md, "Spell area target selection"): computing WHICH
+// creatures a cone/sphere/line actually covers from positions is the
+// consumer's spatial query — the cast-spell planner takes `targetIds` from
+// the app. This returns origin/aim candidates the consumer can preview the
+// shape around; it deliberately does NOT enumerate the affected cells of a
+// specific cone direction (that geometry lives in the consumer).
 const aoePlacementPoints = (
   state: CampaignState,
   casterId: string,
@@ -453,12 +464,16 @@ export const legalSpellTargets = (
   encounterId: string,
   casterId: string,
   spellId: string,
-  _slotLevel: number,
+  slotLevel: number,
 ): LegalSpellTargets => {
   const spell = content.spells.get(spellId);
   if (spell === undefined) return { kind: 'creatures', candidates: [], maxTargets: 0 };
+  const caster = state.characters[casterId];
+  const casterLevel = caster !== undefined ? computeTotalLevel(caster) : 0;
   const { resolves } = spellResolves(spell);
-  const desc = spellTarget(spell, resolves);
+  // Slot-scaled maxTargets (Magic Missile gains a dart per slot above base).
+  const maxTargets = spellMaxTargets(spell, casterLevel, slotLevel);
+  const desc = spellTarget(spell, resolves, maxTargets);
 
   if (desc.kind === 'self') return { kind: 'self' };
   if (desc.kind === 'point') {
@@ -471,7 +486,7 @@ export const legalSpellTargets = (
   return {
     kind: 'creatures',
     candidates: creatureCandidatesInRange(state, encounterId, casterId, gate, includeSelf),
-    maxTargets: desc.maxTargets,
+    maxTargets,
   };
 };
 
@@ -613,25 +628,57 @@ const spellResolves = (spell: Spell): { resolves: SpellResolves; saveAbility?: A
   return { resolves: 'auto' };
 };
 
-const spellTarget = (spell: Spell, resolves: SpellResolves): SpellTargetDescriptor => {
+// maxTargets: how many DISTINCT creatures the cast may pick. Slice 716:
+// derived from the spell's own mechanics, matching the cast-spell gate —
+//   - beam-scaling cantrips (Eldritch Blast): 1 + cantripExtraDice(level),
+//     i.e. 1/2/3/4 beams at character L1/5/11/17;
+//   - dart spells (Magic Missile, `auto-hit`): dartsAtBaseSlot +
+//     extraDartsPerSlotLevel per slot above the spell's base level;
+//   - everything else: 1.
+// RAW lets darts/beams pile on one creature, so this is the UPPER bound a
+// UI may select. A multi-ray spell the pack authors as a single attack
+// (Scorching Ray today) stays 1 until its content models the extra rays.
+const spellMaxTargets = (spell: Spell, characterLevel: number, slotLevel: number): number => {
+  const auto = spell.mechanicalEffects.find((m) => m.kind === 'auto-hit') as
+    | { dartsAtBaseSlot: number; extraDartsPerSlotLevel: number }
+    | undefined;
+  if (auto !== undefined) {
+    const slotsAbove = Math.max(0, slotLevel - spell.level);
+    return auto.dartsAtBaseSlot + auto.extraDartsPerSlotLevel * slotsAbove;
+  }
+  const hasBeamScaling = spell.mechanicalEffects.some(
+    (m) => m.kind === 'attack' && m.cantripBeamScaling === true,
+  );
+  if (hasBeamScaling) return 1 + cantripExtraDice(characterLevel);
+  return 1;
+};
+
+const spellTarget = (
+  spell: Spell,
+  resolves: SpellResolves,
+  maxTargets: number,
+): SpellTargetDescriptor => {
   // An authored AOE (shape + size) is always a positioned-area spell.
   if (spell.targeting !== undefined) {
     return { kind: 'point', shape: spell.targeting.shape, sizeFeet: spell.targeting.size };
   }
   if (parseSpellRange(spell.range).kind === 'self') return { kind: 'self' };
-  // Single-creature target (the common case; multi-target counts aren't
-  // encoded in content, so maxTargets defaults to 1 — refine when a
-  // target-count field lands). Beneficial spells point at allies.
+  // Single- or multi-creature target. Beneficial spells point at allies.
   const allow: SpellTargetAllow = resolves === 'heal' || resolves === 'buff' ? 'allies' : 'enemies';
-  return { kind: 'creatures', maxTargets: 1, allow };
+  return { kind: 'creatures', maxTargets, allow };
 };
 
-const spellMetadata = (spell: Spell): Omit<CastableSpell, 'spellId' | 'minLevel' | 'levelOptions'> => {
+const spellMetadata = (
+  spell: Spell,
+  characterLevel: number,
+): Omit<CastableSpell, 'spellId' | 'minLevel' | 'levelOptions'> => {
   const { resolves, saveAbility } = spellResolves(spell);
   return {
     castingTime: parseCastingTime(spell.castingTime),
     rangeFeet: spellRangeFeet(spell),
-    target: spellTarget(spell, resolves),
+    // Base maxTargets at the spell's own level (cantrips scale by character
+    // level); legalSpellTargets recomputes per chosen slot.
+    target: spellTarget(spell, resolves, spellMaxTargets(spell, characterLevel, spell.level)),
     resolves,
     ...(saveAbility !== undefined ? { saveAbility } : {}),
     concentration: spell.concentration,
@@ -666,7 +713,7 @@ export const castableSpells = (
     }
     if (levelOptions.length === 0) continue;
     levelOptions.sort((a, b) => a - b);
-    result.push({ spellId, minLevel: level, levelOptions, ...spellMetadata(spell) });
+    result.push({ spellId, minLevel: level, levelOptions, ...spellMetadata(spell, computeTotalLevel(character)) });
   }
   result.sort((a, b) => (a.spellId < b.spellId ? -1 : a.spellId > b.spellId ? 1 : 0));
   return result;

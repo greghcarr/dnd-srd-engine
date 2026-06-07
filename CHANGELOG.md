@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine (slice 716): spell-targeting refinements — multi-target maxTargets**
+`castableSpells.target` + `legalSpellTargets` now report real `maxTargets` for multi-target spells, derived from the spell's own mechanics (beam-scaling cantrips like Eldritch Blast → 1/2/3/4 by character level; `auto-hit` darts like Magic Missile → 3 at slot 1, +1 per slot above), matching the cast-spell gate; `legalSpellTargets` recomputes per chosen slot. Exact AOE cone aiming was resolved as consumer scope (engine-scope.md: area cell selection is the app's spatial query). Additive; no new export.
+Detail: [slice-716.md](docs/changelog/slice-716.md).
+
 **Engine (slice 715): complete the bonus-action surface**
 `engine.plan.useOption` grows a `{ targetId, amount, weaponInstanceId }` param bag (`amount` for Lay on Hands heal, `weaponInstanceId` for Flurry of Blows) and `bonusActions` adds five options: `lay-on-hands-heal`, `flurry-of-blows`, `adrenaline-rush` (Orc), `nimble-escape-disengage` / `nimble-escape-hide` (Goblin). Frenzy was reclassified as a Rage modifier (not a bonus action) and is intentionally not enumerated. Additive; reuses the existing planners; closes the slice-714 bonus-action deferrals.
 Detail: [slice-715.md](docs/changelog/slice-715.md).
