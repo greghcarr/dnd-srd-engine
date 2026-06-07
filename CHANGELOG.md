@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine (slice 723): Fighter Tactical Shift (L5)**
+`planSecondWind` now grants half-Speed no-provoke movement when a level-5+ fighter activates Second Wind as a Bonus Action — a `Disengaged{limitedToFeet}` event (the Rogue Withdraw primitive → `noProvokeMovementUpToFeet`). Gated on L5 + the bonus-action arm; sub-L5 and out-of-encounter Second Wind byte-identical (no RNG change).
+Detail: [slice-723.md](docs/changelog/slice-723.md).
+
 **Content (slice 722): Paladin Faithful Steed (L5)**
 The Paladin L5 `faithful-steed` feature now grants `GrantSpell{ find-steed, oncePerLongRest, CHA }`: Find Steed is always prepared (castable with a 2nd-level slot) and free-castable once per long rest, reusing the effectiveSpellList + free-cast machinery. Find Steed is an already-wired summon spell. Content-only.
 Detail: [slice-722.md](docs/changelog/slice-722.md).

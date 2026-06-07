@@ -144,3 +144,41 @@ describe('Fighter Second Wind (slice 545)', () => {
     expect(after.resources.find((r) => r.resourceId === 'second-wind')?.current).toBe(1);
   });
 });
+
+describe('Fighter Tactical Shift (slice 723)', () => {
+  const noProvokeAfter = (engine: ReturnType<typeof createEngine>, fighterId: string, campaign: ReturnType<typeof startEncounter>): number => {
+    const enc = campaign.state.encounters[campaign.state.activeEncounterId!]!;
+    return enc.combatants.find((c) => c.combatantId === fighterId)!.turnUsage.noProvokeMovementUpToFeet;
+  };
+
+  it('L5 Second Wind as a Bonus Action grants half-Speed no-provoke movement', () => {
+    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(2) });
+    const fighter = buildFighter(5); // Speed 30 → half 15
+    let campaign = startEncounter(engine, [fighter]);
+    const events = engine.plan.secondWind(campaign.state, { fighterId: fighter.id }).events;
+    const disengaged = events.find((e) => e.type === 'Disengaged') as { limitedToFeet?: number } | undefined;
+    expect(disengaged).toBeDefined();
+    expect(disengaged!.limitedToFeet).toBe(15);
+    campaign = commit(campaign, events);
+    expect(noProvokeAfter(engine, fighter.id, campaign)).toBe(15);
+  });
+
+  it('a Fighter below L5 gets no Tactical Shift (no Disengaged event)', () => {
+    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(2) });
+    const fighter = buildFighter(4);
+    const campaign = startEncounter(engine, [fighter]);
+    const events = engine.plan.secondWind(campaign.state, { fighterId: fighter.id }).events;
+    expect(events.some((e) => e.type === 'Disengaged')).toBe(false);
+  });
+
+  it('out-of-encounter L5 Second Wind has no Tactical Shift (no Bonus Action)', () => {
+    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(2) });
+    const fighter = buildFighter(5);
+    let campaign = engine.createCampaign({ name: 'sw-rest' });
+    campaign = commit(campaign, [
+      { id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: fighter } satisfies CharacterCreatedEvent,
+    ]);
+    const events = engine.plan.secondWind(campaign.state, { fighterId: fighter.id }).events;
+    expect(events.some((e) => e.type === 'Disengaged')).toBe(false);
+  });
+});

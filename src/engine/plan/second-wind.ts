@@ -3,9 +3,11 @@ import type { ResolvedContent } from '../../content/pack.js';
 import type { Event } from '../../schemas/events/index.js';
 import type { ActionEconomyConsumedEvent } from '../../schemas/events/action-economy.js';
 import type { HealedEvent } from '../../schemas/events/combat.js';
+import type { DisengagedEvent } from '../../schemas/events/movement.js';
 import type { ResourceSpentEvent } from '../../schemas/events/resources.js';
 import type { RNG } from '../../rng/index.js';
 import { rollDie } from '../../rng/dice.js';
+import { getEffectiveSpeed } from '../../derive/speed.js';
 import { newEventId } from '../../ids.js';
 import { nowIso } from '../../internal/clock.js';
 import type { ULID } from '../ids-utils.js';
@@ -13,6 +15,10 @@ import type { ULID } from '../ids-utils.js';
 const FIGHTER_CLASS_ID = 'fighter';
 const SECOND_WIND_RESOURCE = 'second-wind';
 const SECOND_WIND_DIE_SIDES = 10;
+// Tactical Shift (Fighter L5): activating Second Wind as a Bonus Action
+// also lets the fighter move up to half Speed without provoking.
+const TACTICAL_SHIFT_LEVEL = 5;
+const HALF = 2;
 
 export interface SecondWindIntent {
   readonly type: 'SecondWind';
@@ -40,7 +46,7 @@ export interface SecondWindIntent {
 // This planner covers only the L1 HP-regain path.
 export const planSecondWind = (
   state: CampaignState,
-  _content: ResolvedContent,
+  content: ResolvedContent,
   rng: RNG,
   intent: SecondWindIntent,
 ): ReadonlyArray<Event> => {
@@ -79,6 +85,30 @@ export const planSecondWind = (
         kind: 'bonusAction',
       };
       events.push(bonusConsumed);
+
+      // Tactical Shift (Fighter L5): activating Second Wind with a Bonus
+      // Action grants up to half-Speed no-provoke movement. Same primitive
+      // as Rogue Withdraw — a Disengaged event with `limitedToFeet` that
+      // the move planner reads as a no-provoke distance budget (it does NOT
+      // set the full disengaged flag).
+      if (fighterClass.level >= TACTICAL_SHIFT_LEVEL) {
+        const halfSpeed = Math.floor(
+          getEffectiveSpeed({
+            character: fighter,
+            content,
+            itemInstances: state.itemInstances,
+            pendingChoices: state.pendingChoices,
+          }) / HALF,
+        );
+        events.push({
+          id: newEventId() as ULID,
+          at,
+          type: 'Disengaged',
+          encounterId: activeEncounterId,
+          combatantId: intent.fighterId as ULID,
+          limitedToFeet: halfSpeed,
+        } satisfies DisengagedEvent);
+      }
     }
   }
 
