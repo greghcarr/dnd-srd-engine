@@ -78,6 +78,7 @@ export const planIntent = (
     WholenessOfBody: (i) => plan.wholenessOfBody(state, i),
     WildResurgence: (i) => plan.wildResurgence(state, i),
     MemorizeSpell: (i) => plan.memorizeSpell(state, i),
+    NaturalRecovery: (i) => plan.naturalRecovery(state, i),
     PeerlessSkill: (i) => plan.peerlessSkill(state, i),
     TacticalMind: (i) => plan.tacticalMind(state, i),
     Frenzy: (i) => plan.frenzy(state, i),

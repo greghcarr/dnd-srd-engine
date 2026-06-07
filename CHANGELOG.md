@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine (slice 729): Druid Natural Recovery slot recovery (Circle of the Land L6)**
+New `engine.plan.naturalRecovery(state, { druidId, slots })`: recover expended spell slots on a short rest, combined level ≤ ceil(druid/2), no L6+, once per long rest (gated by the `natural-recovery` resource; reuses the slice-721 `SpellSlotsRegained` event). The free-Circle-spell-cast arm is deferred to the land-specific Circle Spells wiring.
+Detail: [slice-729.md](docs/changelog/slice-729.md).
+
 **Engine (slice 728): Barbarian Mindless Rage (Berserker L6)**
 `planRage` now applies a new `mindless-rage-active` condition (Charmed/Frightened immunity) alongside `raging` for a Berserker at L6+, and ends existing Charmed/Frightened on entering Rage. Reuses the `GrantConditionImmunity` + `isImmuneToCondition` gate; gated on subclass + level; non-Berserker / sub-L6 rage byte-identical. Conditions count 157→158.
 Detail: [slice-728.md](docs/changelog/slice-728.md).
