@@ -3,7 +3,7 @@ import type { ResolvedContent } from '../../content/pack.js';
 import type { Event } from '../../schemas/events/index.js';
 import type { ActionEconomyConsumedEvent } from '../../schemas/events/action-economy.js';
 import type { ResourceSpentEvent } from '../../schemas/events/resources.js';
-import type { ConditionAppliedEvent } from '../../schemas/events/combat.js';
+import type { ConditionAppliedEvent, ConditionRemovedEvent } from '../../schemas/events/combat.js';
 import { newAppliedConditionId, newEventId } from '../../ids.js';
 import { nowIso } from '../../internal/clock.js';
 import type { ULID } from '../ids-utils.js';
@@ -11,6 +11,12 @@ import type { ULID } from '../ids-utils.js';
 const BARBARIAN_CLASS_ID = 'barbarian';
 const RAGE_RESOURCE_ID = 'rage';
 const RAGING_CONDITION_ID = 'raging';
+// Path of the Berserker L6 Mindless Rage: immune to Charmed/Frightened
+// while raging, and entering Rage ends those conditions if present.
+const BERSERKER_SUBCLASS_ID = 'path-of-the-berserker';
+const MINDLESS_RAGE_LEVEL = 6;
+const MINDLESS_RAGE_CONDITION_ID = 'mindless-rage-active';
+const MINDLESS_RAGE_ENDS: ReadonlyArray<string> = ['charmed', 'frightened'];
 
 export interface RageIntent {
   readonly type: 'Rage';
@@ -122,6 +128,32 @@ export const planRage = (
     conditionId: RAGING_CONDITION_ID,
     appliedConditionId: newAppliedConditionId(),
   } satisfies ConditionAppliedEvent);
+
+  // Mindless Rage (Path of the Berserker L6): while raging, immune to
+  // Charmed/Frightened (the `mindless-rage-active` condition carries the
+  // GrantConditionImmunity entries, same consumer-managed lifecycle as
+  // `raging`), and entering Rage ends those conditions if already present.
+  if (barbClass.subclassId === BERSERKER_SUBCLASS_ID && barbClass.level >= MINDLESS_RAGE_LEVEL) {
+    events.push({
+      id: newEventId() as ULID,
+      at,
+      type: 'ConditionApplied',
+      targetId: intent.barbarianId as ULID,
+      conditionId: MINDLESS_RAGE_CONDITION_ID,
+      appliedConditionId: newAppliedConditionId(),
+    } satisfies ConditionAppliedEvent);
+    for (const conditionId of MINDLESS_RAGE_ENDS) {
+      if (barbarian.appliedConditions.some((c) => c.conditionId === conditionId)) {
+        events.push({
+          id: newEventId() as ULID,
+          at,
+          type: 'ConditionRemoved',
+          targetId: intent.barbarianId as ULID,
+          conditionId,
+        } satisfies ConditionRemovedEvent);
+      }
+    }
+  }
 
   return events;
 };

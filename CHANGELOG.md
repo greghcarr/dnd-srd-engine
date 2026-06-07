@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine (slice 728): Barbarian Mindless Rage (Berserker L6)**
+`planRage` now applies a new `mindless-rage-active` condition (Charmed/Frightened immunity) alongside `raging` for a Berserker at L6+, and ends existing Charmed/Frightened on entering Rage. Reuses the `GrantConditionImmunity` + `isImmuneToCondition` gate; gated on subclass + level; non-Berserker / sub-L6 rage byte-identical. Conditions count 157→158.
+Detail: [slice-728.md](docs/changelog/slice-728.md).
+
 **Content (slice 727): Fighter L6 Ability Score Improvement**
 The Fighter's L6 row (previously empty) gains `ability-score-improvement-6` — the same OfferChoice as L4 (ASI feat or another general feat), reusing the level-up cascade. SRD gives the Fighter extra ASIs at 6/14 beyond the every-class 4/8/12/16. Opens the L6 SRD-complete cycle. Content-only.
 Detail: [slice-727.md](docs/changelog/slice-727.md).

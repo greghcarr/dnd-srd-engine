@@ -9934,6 +9934,10 @@
       { "kind": "SetAdvantage", "on": { "kind": "check", "ability": "STR" }, "mode": "advantage" },
       { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "STR" }, "mode": "advantage" }
     ] },
+    { "id": "mindless-rage-active", "name": "Mindless Rage", "description": "Path of the Berserker L6 Mindless Rage: while raging, the Barbarian is immune to the Charmed and Frightened conditions (SRD 5.2.1). Applied by planRage alongside `raging` when the barbarian has the Berserker subclass at level 6+; consumer-managed lifecycle (same `endsOn: longRest` as `raging`).", "stackable": false, "endsOn": [{ "kind": "longRest" }], "effects": [
+      { "kind": "GrantConditionImmunity", "conditionId": "charmed" },
+      { "kind": "GrantConditionImmunity", "conditionId": "frightened" }
+    ] },
     {
       "id": "longstrider-active",
       "name": "Longstrider",
