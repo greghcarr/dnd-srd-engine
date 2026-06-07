@@ -91,6 +91,10 @@ const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
   // Slice 559: Storm's Thunder is the sibling reaction; returns
   // StormsThunderOutcome with the thunder damage dealt to the attacker.
   'stormsThunder',
+  // Slice 730: Dark One's Own Luck (Fiend L6) — returns a
+  // DarkOnesOwnLuckOutcome { events, d10 } the consumer folds into the
+  // augmented ability check / saving throw (Hero Points shape).
+  'darkOnesOwnLuck',
   // Per-moment ticks / duration sweeps (called at turn boundaries / on movement):
   'expireSpellDurations', 'tickAura', 'tickMovementDamage', 'tickRecurring', 'tickRecurringSave', 'triggerTrap',
   // Stirge Blood Drain (slice 490): drain fires at the stirge's turn-start

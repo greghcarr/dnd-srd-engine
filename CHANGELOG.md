@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine (slice 730): Warlock Dark One's Own Luck (Fiend Patron L6)**
+New `engine.plan.darkOnesOwnLuck(state, { warlockId })` → `{ events, d10 }`: spend a use (the `dark-ones-own-luck` resource, max CHA-mod, long-rest recharge) and roll a d10 the consumer folds into an ability check or saving throw (Hero Points shape; engine doesn't mutate the linked roll). No new event/condition.
+Detail: [slice-730.md](docs/changelog/slice-730.md).
+
 **Engine (slice 729): Druid Natural Recovery slot recovery (Circle of the Land L6)**
 New `engine.plan.naturalRecovery(state, { druidId, slots })`: recover expended spell slots on a short rest, combined level ≤ ceil(druid/2), no L6+, once per long rest (gated by the `natural-recovery` resource; reuses the slice-721 `SpellSlotsRegained` event). The free-Circle-spell-cast arm is deferred to the land-specific Circle Spells wiring.
 Detail: [slice-729.md](docs/changelog/slice-729.md).
