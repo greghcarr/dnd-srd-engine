@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Fuzz harness (slice 717): Free Duel class pin (`playerClass`)**
+`runBattle`'s `FuzzBattleOptions` gains `playerClass?: string` — a valid `CLASS_POOLS` classId builds team A[0] (the duel's player) as that class; unknown/unset stays random. The pin uses an isolated RNG cursor so the seed-driven opponent + tactical map are byte-identical with or without it (class is an independent axis from the seed), and A[0] levels via the same `levelUpTo` path as everyone else. Default path byte-identical; no engine API change.
+Detail: [slice-717.md](docs/changelog/slice-717.md).
+
 **Engine (slice 716): spell-targeting refinements — multi-target maxTargets**
 `castableSpells.target` + `legalSpellTargets` now report real `maxTargets` for multi-target spells, derived from the spell's own mechanics (beam-scaling cantrips like Eldritch Blast → 1/2/3/4 by character level; `auto-hit` darts like Magic Missile → 3 at slot 1, +1 per slot above), matching the cast-spell gate; `legalSpellTargets` recomputes per chosen slot. Exact AOE cone aiming was resolved as consumer scope (engine-scope.md: area cell selection is the app's spatial query). Additive; no new export.
 Detail: [slice-716.md](docs/changelog/slice-716.md).

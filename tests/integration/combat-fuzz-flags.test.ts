@@ -97,4 +97,51 @@ describe('combat-fuzz CLI flag matrix (slice 614)', () => {
       expect(hasLongRest).toBe(true);
     }
   });
+
+  // Slice 717: Free Duel class pin (playerClass).
+  const teamAClass = (r: ReturnType<typeof runBattle>): string | undefined =>
+    r.campaign.state.characters[r.teamACharacterIds[0]!]?.classes[0]?.classId;
+  const opponentBuild = (r: ReturnType<typeof runBattle>) => {
+    const b = r.campaign.state.characters[r.teamBCharacterIds[0]!]!;
+    return { classId: b.classes[0]?.classId, speciesId: b.speciesId, backgroundId: b.backgroundId };
+  };
+
+  it('--class wizard: pins team A[0] to wizard, leveled like everyone else', () => {
+    const result = runBattle({ seed: 6, pack: STARTER, playerClass: 'wizard', level: 4 });
+    const a0 = result.campaign.state.characters[result.teamACharacterIds[0]!]!;
+    expect(a0.classes[0]?.classId).toBe('wizard');
+    expect(a0.classes[0]?.level).toBe(4); // leveled via the same levelUpTo path
+  });
+
+  it('class pin is an independent axis: opponent + map identical with or without the pin', () => {
+    const base = runBattle({ seed: 7, pack: STARTER, movement: 'tactical' });
+    const pinned = runBattle({ seed: 7, pack: STARTER, playerClass: 'wizard', movement: 'tactical' });
+    // The seed-driven opponent is byte-identical (the pin uses an isolated
+    // RNG cursor and never perturbs the shared stream).
+    expect(opponentBuild(pinned)).toEqual(opponentBuild(base));
+    // The tactical map is seed-derived, so the arena is the same too.
+    const mapOf = (r: ReturnType<typeof runBattle>) =>
+      r.locationId !== undefined ? r.campaign.state.locations[r.locationId]?.map : undefined;
+    expect(mapOf(pinned)).toEqual(mapOf(base));
+    // A[0] is the pinned class regardless of what the seed would have rolled.
+    expect(teamAClass(pinned)).toBe('wizard');
+  });
+
+  it('class pin is deterministic for a given (seed, playerClass)', () => {
+    const a = runBattle({ seed: 9, pack: STARTER, playerClass: 'cleric' });
+    const b = runBattle({ seed: 9, pack: STARTER, playerClass: 'cleric' });
+    const sheet = (r: ReturnType<typeof runBattle>) => {
+      const c = r.campaign.state.characters[r.teamACharacterIds[0]!]!;
+      return { classId: c.classes[0]?.classId, speciesId: c.speciesId, backgroundId: c.backgroundId };
+    };
+    expect(sheet(a)).toEqual(sheet(b));
+    expect(sheet(a).classId).toBe('cleric');
+  });
+
+  it('unknown playerClass falls back to a random A[0] (no pin, stream unchanged)', () => {
+    const base = runBattle({ seed: 8, pack: STARTER });
+    const bogus = runBattle({ seed: 8, pack: STARTER, playerClass: 'not-a-class' });
+    expect(teamAClass(bogus)).toBe(teamAClass(base)); // identical to the no-pin random build
+    expect(opponentBuild(bogus)).toEqual(opponentBuild(base));
+  });
 });
