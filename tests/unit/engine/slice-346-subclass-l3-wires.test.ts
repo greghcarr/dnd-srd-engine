@@ -56,10 +56,13 @@ describe('slice 346: Oath of Devotion always-prepared spells', () => {
   });
 
   it('higher tiers accrue with paladin level (L9 has L3 + L5 + L9 spells, not L13/L17)', () => {
+    // find-steed is granted by the base Paladin L5 Faithful Steed feature
+    // (slice 722), independent of the oath.
     expect(grantedSpellIds(buildPaladin(9, 'oath-of-devotion'))).toEqual([
       'aid',
       'beacon-of-hope',
       'dispel-magic',
+      'find-steed',
       'protection-from-evil-and-good',
       'shield-of-faith',
       'zone-of-truth',
@@ -72,6 +75,7 @@ describe('slice 346: Oath of Devotion always-prepared spells', () => {
       'beacon-of-hope',
       'commune',
       'dispel-magic',
+      'find-steed',
       'flame-strike',
       'freedom-of-movement',
       'guardian-of-faith',
@@ -81,8 +85,11 @@ describe('slice 346: Oath of Devotion always-prepared spells', () => {
     ]);
   });
 
-  it('a paladin without the oath gets no granted spells', () => {
-    expect(grantedSpellIds(buildPaladin(9, null))).toEqual([]);
+  it('a paladin without the oath gets no oath spells (only Faithful Steed at L5+)', () => {
+    // L3: below Faithful Steed (L5), so nothing without an oath.
+    expect(grantedSpellIds(buildPaladin(3, null))).toEqual([]);
+    // L9: the base Faithful Steed grant (find-steed) is present; no oath spells.
+    expect(grantedSpellIds(buildPaladin(9, null))).toEqual(['find-steed']);
   });
 });
 

@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Content (slice 722): Paladin Faithful Steed (L5)**
+The Paladin L5 `faithful-steed` feature now grants `GrantSpell{ find-steed, oncePerLongRest, CHA }`: Find Steed is always prepared (castable with a 2nd-level slot) and free-castable once per long rest, reusing the effectiveSpellList + free-cast machinery. Find Steed is an already-wired summon spell. Content-only.
+Detail: [slice-722.md](docs/changelog/slice-722.md).
+
 **Engine (slice 721): Druid Wild Resurgence (L5)**
 New `engine.plan.wildResurgence(state, { druidId, mode })`: `slot-to-wild-shape` expends a spell slot to regain a Wild Shape use when out of uses; `wild-shape-to-slot` expends a Wild Shape use to regain a level-1 slot, once per Long Rest (gate resource). Adds a `SpellSlotsRegained` event (standard-slot sibling of `PactSlotsRegained`). Both no-action; pure.
 Detail: [slice-721.md](docs/changelog/slice-721.md).
