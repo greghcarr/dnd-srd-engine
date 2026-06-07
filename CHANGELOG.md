@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Content (slice 733): Bard College of Lore Magical Discoveries (L6)**
+The previously-absent College of Lore L6 row gains `magical-discoveries`: an `OfferChoice` (oneOf 2, onAcquire) whose 18 curated options each grant a Cleric/Druid/Wizard spell (cantrip–level 3) `always-prepared` — the cross-list learn shape from Pact of the Tome (slice 517). Granted spells are treated as known by the cast path, so a chosen Wizard spell (e.g. Fireball) casts as a Bard spell with the bard's CHA + slots. No new engine primitive; the replace-on-level-up arm stays consumer-driven.
+Detail: [slice-733.md](docs/changelog/slice-733.md).
+
 **Engine (slice 732): Wizard Evoker Sculpt Spells (L6)**
 New flag effect `GrantSculptSpells`: when an Evoker casts an Evocation save spell, `intent.sculptedTargetIds` names up to 1 + slot level creatures to exclude — each auto-succeeds and takes no damage (modeled as full exclusion: no save, no damage, no forced movement). Validated (feature/school/count/membership) and opt-in, so unsculpted casts are byte-identical. EFFECT_KINDS 65→66.
 Detail: [slice-732.md](docs/changelog/slice-732.md).

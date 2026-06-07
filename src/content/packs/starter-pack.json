@@ -827,6 +827,41 @@
             "effects": [{ "kind": "Custom", "handlerId": "cutting-words" }]
           }
         ],
+        "6": [
+          {
+            "id": "magical-discoveries",
+            "name": "Magical Discoveries",
+            "effects": [
+              {
+                "kind": "OfferChoice",
+                "choiceId": "magical-discoveries",
+                "prompt": "Learn two spells from the Cleric, Druid, or Wizard spell list (a cantrip or a spell of level 1-3). They are always prepared and count as Bard spells for you.",
+                "oneOf": 2,
+                "when": "onAcquire",
+                "options": [
+                  { "id": "sacred-flame", "label": "Sacred Flame (Cleric cantrip)", "effects": [{ "kind": "GrantSpell", "spellId": "sacred-flame", "preparation": "always-prepared" }] },
+                  { "id": "fire-bolt", "label": "Fire Bolt (Wizard cantrip)", "effects": [{ "kind": "GrantSpell", "spellId": "fire-bolt", "preparation": "always-prepared" }] },
+                  { "id": "produce-flame", "label": "Produce Flame (Druid cantrip)", "effects": [{ "kind": "GrantSpell", "spellId": "produce-flame", "preparation": "always-prepared" }] },
+                  { "id": "guidance", "label": "Guidance (Cleric/Druid cantrip)", "effects": [{ "kind": "GrantSpell", "spellId": "guidance", "preparation": "always-prepared" }] },
+                  { "id": "guiding-bolt", "label": "Guiding Bolt (Cleric 1)", "effects": [{ "kind": "GrantSpell", "spellId": "guiding-bolt", "preparation": "always-prepared" }] },
+                  { "id": "inflict-wounds", "label": "Inflict Wounds (Cleric 1)", "effects": [{ "kind": "GrantSpell", "spellId": "inflict-wounds", "preparation": "always-prepared" }] },
+                  { "id": "magic-missile", "label": "Magic Missile (Wizard 1)", "effects": [{ "kind": "GrantSpell", "spellId": "magic-missile", "preparation": "always-prepared" }] },
+                  { "id": "chromatic-orb", "label": "Chromatic Orb (Wizard 1)", "effects": [{ "kind": "GrantSpell", "spellId": "chromatic-orb", "preparation": "always-prepared" }] },
+                  { "id": "entangle", "label": "Entangle (Druid 1)", "effects": [{ "kind": "GrantSpell", "spellId": "entangle", "preparation": "always-prepared" }] },
+                  { "id": "spiritual-weapon", "label": "Spiritual Weapon (Cleric 2)", "effects": [{ "kind": "GrantSpell", "spellId": "spiritual-weapon", "preparation": "always-prepared" }] },
+                  { "id": "scorching-ray", "label": "Scorching Ray (Wizard 2)", "effects": [{ "kind": "GrantSpell", "spellId": "scorching-ray", "preparation": "always-prepared" }] },
+                  { "id": "moonbeam", "label": "Moonbeam (Druid 2)", "effects": [{ "kind": "GrantSpell", "spellId": "moonbeam", "preparation": "always-prepared" }] },
+                  { "id": "flaming-sphere", "label": "Flaming Sphere (Druid/Wizard 2)", "effects": [{ "kind": "GrantSpell", "spellId": "flaming-sphere", "preparation": "always-prepared" }] },
+                  { "id": "fireball", "label": "Fireball (Wizard 3)", "effects": [{ "kind": "GrantSpell", "spellId": "fireball", "preparation": "always-prepared" }] },
+                  { "id": "spirit-guardians", "label": "Spirit Guardians (Cleric 3)", "effects": [{ "kind": "GrantSpell", "spellId": "spirit-guardians", "preparation": "always-prepared" }] },
+                  { "id": "call-lightning", "label": "Call Lightning (Druid 3)", "effects": [{ "kind": "GrantSpell", "spellId": "call-lightning", "preparation": "always-prepared" }] },
+                  { "id": "counterspell", "label": "Counterspell (Wizard 3)", "effects": [{ "kind": "GrantSpell", "spellId": "counterspell", "preparation": "always-prepared" }] },
+                  { "id": "revivify", "label": "Revivify (Cleric 3)", "effects": [{ "kind": "GrantSpell", "spellId": "revivify", "preparation": "always-prepared" }] }
+                ]
+              }
+            ]
+          }
+        ],
         "14": [
           {
             "id": "peerless-skill",
