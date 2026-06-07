@@ -229,6 +229,7 @@ export class EffectAccumulator {
   private selfRestorationFlag: boolean = false;
   private maxHealingDiceFlag: boolean = false;
   private blessedHealerFlag: boolean = false;
+  private sculptSpellsFlag: boolean = false;
   private unarmedAsMagicalFlag: boolean = false;
   private divineInterventionWishFlag: boolean = false;
   private auraRangeBonusTotal: number = 0;
@@ -964,6 +965,13 @@ export class EffectAccumulator {
   hasBlessedHealer(): boolean {
     return this.blessedHealerFlag;
   }
+  // Wizard Evoker L6 Sculpt Spells via the `GrantSculptSpells` effect.
+  markSculptSpells(): void {
+    this.sculptSpellsFlag = true;
+  }
+  hasSculptSpells(): boolean {
+    return this.sculptSpellsFlag;
+  }
   // Slice 207: marker that flags the bearer's unarmed strikes as
   // magical for resistance/immunity-piercing purposes. Set by Monk
   // L6 Empowered Strikes via `GrantUnarmedAsMagical`.
@@ -1218,6 +1226,9 @@ export const applyEffectToBuilder = (
       return;
     case 'GrantBlessedHealer':
       acc.markBlessedHealer();
+      return;
+    case 'GrantSculptSpells':
+      acc.markSculptSpells();
       return;
     case 'GrantMaxHealingDice':
       acc.markMaxHealingDice();

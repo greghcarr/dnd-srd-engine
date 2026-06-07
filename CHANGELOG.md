@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine (slice 732): Wizard Evoker Sculpt Spells (L6)**
+New flag effect `GrantSculptSpells`: when an Evoker casts an Evocation save spell, `intent.sculptedTargetIds` names up to 1 + slot level creatures to exclude — each auto-succeeds and takes no damage (modeled as full exclusion: no save, no damage, no forced movement). Validated (feature/school/count/membership) and opt-in, so unsculpted casts are byte-identical. EFFECT_KINDS 65→66.
+Detail: [slice-732.md](docs/changelog/slice-732.md).
+
 **Engine (slice 731): Cleric Blessed Healer (Life Domain L6)**
 New flag effect `GrantBlessedHealer` (the `GrantMaxHealingDice` pattern): the cast-spell heal handler now self-heals the cleric 2 + slot level once when a slot heal lands on a creature other than the caster (cantrips/free casts excluded). EFFECT_KINDS 64→65.
 Detail: [slice-731.md](docs/changelog/slice-731.md).

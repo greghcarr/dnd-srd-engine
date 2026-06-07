@@ -487,6 +487,12 @@ export type Effect =
   // slot spell that heals another creature also heals the caster (2 +
   // slot level). Read by the cast-spell heal handler.
   | { kind: 'GrantBlessedHealer' }
+  // Slice 732. Marker: Wizard Evoker L6 Sculpt Spells — when casting an
+  // Evocation spell, the caster may exclude up to (1 + slot level)
+  // creatures it can see; they auto-succeed on the save and take no
+  // damage. Read by `planSaveMechanic` from the caster's effect stack;
+  // the excluded targets are named in `intent.sculptedTargetIds`.
+  | { kind: 'GrantSculptSpells' }
   // Slice 207. Marker primitive: the bearer's unarmed strikes count
   // as magical attacks for the purposes of overcoming Resistance and
   // Immunity to nonmagical damage. RAW Monk L6 Empowered Strikes.
@@ -899,6 +905,9 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       kind: z.literal('GrantBlessedHealer'),
     }),
     z.object({
+      kind: z.literal('GrantSculptSpells'),
+    }),
+    z.object({
       kind: z.literal('GrantUnarmedAsMagical'),
     }),
     z.object({
@@ -1016,6 +1025,7 @@ export const EFFECT_KINDS = [
   'GrantSelfRestoration',
   'GrantMaxHealingDice',
   'GrantBlessedHealer',
+  'GrantSculptSpells',
   'GrantUnarmedAsMagical',
   'GrantDivineInterventionWish',
   'ExpandAuraRange',

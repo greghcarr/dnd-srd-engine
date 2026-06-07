@@ -1600,7 +1600,7 @@
           {
             "id": "sculpt-spells",
             "name": "Sculpt Spells",
-            "effects": []
+            "effects": [{ "kind": "GrantSculptSpells" }]
           }
         ],
         "10": [
