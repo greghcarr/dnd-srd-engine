@@ -47,11 +47,13 @@ const planners = new Set(
 );
 
 // The performIntent dispatch targets, parsed from the canonical
-// `engine.plan.X(campaign.state, i)` shape in conveniences.ts.
+// `plan.X(state, i)` shape of the `planIntent` table in conveniences.ts
+// (slice 714 extracted the table from performIntent into planIntent, which
+// performIntent and engine.plan.useOption now share).
 const dispatchTargets = new Set(
   [
     ...readFileSync(resolve(REPO_ROOT, 'src/engine/conveniences.ts'), 'utf8').matchAll(
-      /engine\.plan\.(\w+)\(campaign\.state/g,
+      /\bplan\.(\w+)\(state\b/g,
     ),
   ].map((m) => m[1]!),
 );
@@ -122,6 +124,10 @@ const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
   // entries (Druid Circle of the Land's per-rest land pick). Sibling
   // of offerCharacterChoices.
   'offerLongRestChoices',
+  // Slice 714: generic bonus-action executor — maps a query.bonusActions
+  // option id to its own planner and routes it through the shared
+  // planIntent table. It IS the dispatcher, not a routed intent.
+  'useOption',
 ]);
 
 describe('planner-wiring audit: every engine.plan method is dispatch-routed or allowlisted', () => {

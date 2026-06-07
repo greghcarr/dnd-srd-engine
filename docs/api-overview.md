@@ -198,11 +198,15 @@ engine.query.availableActions(state, encounterId, combatantId);       // -> Avai
 engine.query.legalTargets(state, encounterId, combatantId, 'attack'); // -> TargetCandidate[]  (in reach + LoS, nearest first)
 engine.query.castableSpells(state, characterId);                      // -> CastableSpell[]
 engine.query.legalSpellTargets(state, encounterId, casterId, spellId, slotLevel); // -> LegalSpellTargets
+engine.query.bonusActions(state, encounterId, combatantId);           // -> BonusActionOption[]  ({ id, label, target, enabled, reason? })
+engine.plan.useOption(state, { combatantId, optionId, targetId? });   // -> PlanResult  (perform an enumerated bonus action by id)
 ```
 
 `availableActions` covers `move | attack | dash | disengage | dodge`; when an action is disabled its `reason` is machine-readable (a blocking-condition id such as `'stunned'`, or `'action-used'` / `'no-target-in-range'` / `'no-movement'` / `'speed-zero'`). `legalMoveDestinations` honors terrain, occupancy, Dash, Steady-Aim (speed 0), and the Frightened "can't move closer to the source" rule; positions are in feet (pass straight to `engine.plan.move`).
 
 `castableSpells` (slice 713) carries content-derived metadata so a UI buckets + targets a spell without parsing its text: `castingTime` (`'action'|'bonus-action'|'reaction'|'other'`), `rangeFeet` (`number|'self'|'touch'|'unbounded'`), a discriminated `target` (`{kind:'self'}` | `{kind:'creatures', maxTargets, allow}` | `{kind:'point', shape, sizeFeet}`), `resolves` (`'attack'|'save'|'auto'|'heal'|'buff'` + `saveAbility` when `'save'`), and `concentration`, alongside `spellId`/`minLevel`/`levelOptions`. `legalSpellTargets` returns the legal targets at a slot honoring range + line of effect, discriminated to mirror the descriptor: `{kind:'self'}` | `{kind:'creatures', candidates, maxTargets}` (includes the caster for non-enemy spells) | `{kind:'points', cells}` (legal AOE placement cells). Bonus-action spells appear in `castableSpells` filtered by `castingTime === 'bonus-action'`.
+
+`bonusActions` (slice 714) enumerates the bonus-action **features** a combatant owns (Second Wind, Rage, Cunning Action, Patient Defense / Step of the Wind ± Focus, Bardic Inspiration, Lay on Hands cure-poison), each `{ id, label, target: 'none'|'self'|'creature', enabled, reason? }`; a disabled `reason` is machine-readable (a blocking-condition id, or `not-your-turn` / `bonus-action-used` / `no-uses` / `no-focus` / `heavy-armor` / `already-dashed` / `already-disengaged`). `engine.plan.useOption(state, { combatantId, optionId, targetId? })` performs a chosen option by id — a generic executor that maps the id to its dedicated planner and returns its `PlanResult`, so the UI never wires each feature's bespoke intent. It throws on an unknown id or a missing required target; dice route through the active RollProvider (it delegates to the same planners as every action). A Bonus Actions menu unions `bonusActions` (features) with `castableSpells` filtered to `castingTime === 'bonus-action'` (spells).
 
 ## Tactical AI
 

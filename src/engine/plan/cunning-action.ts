@@ -31,7 +31,10 @@ const CUNNING_ACTION_MIN_CLASS_LEVEL = 2;
 
 const HIDE_DEFAULT_DC = 15;
 
-const characterHasCunningAction = (
+// Exported so the read layer (bonusActions enumeration, slice 714) can
+// predict ownership with the SAME predicate the planner gates on — no
+// drift between "is this option offered" and "does the planner accept it".
+export const characterHasCunningAction = (
   character: { classes: ReadonlyArray<{ classId: string; level: number }>; statblockId?: string },
 ): boolean => {
   if (character.statblockId !== undefined && CUNNING_ACTION_STATBLOCKS.has(character.statblockId)) {

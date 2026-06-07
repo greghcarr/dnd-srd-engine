@@ -57,3 +57,12 @@ export {
   type SpellTargetDescriptor,
   type LegalSpellTargets,
 } from './affordances.js';
+// Slice 714: bonus-action affordances ("what bonus action can this
+// combatant use right now?") + the option-id → intent dispatch builder.
+export {
+  bonusActions,
+  bonusActionIntent,
+  type BonusActionOption,
+  type BonusActionTargetKind,
+  type BonusActionIntent,
+} from './bonus-actions.js';

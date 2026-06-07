@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine (slice 714): bonus-action affordances — bonusActions + useOption**
+New `engine.query.bonusActions(state, encounterId, combatantId)` enumerates the bonus-action features a combatant owns (Second Wind, Rage, Cunning Action, Patient Defense / Step of the Wind ± Focus, Bardic Inspiration, Lay on Hands cure-poison), each flagged `enabled` with a machine-readable `reason` and a `target` kind; new `engine.plan.useOption(state, { combatantId, optionId, targetId? })` is a generic executor that maps an option id to its dedicated planner (no per-feature wiring in the UI). Pure/read-only enumeration; dispatch reuses the existing planners (one shared dispatch table) so behavior is byte-identical and dice route through the slice-704 RollProvider. So the dnd-web duel renders + performs a Bonus Actions menu without reimplementing rules.
+Detail: [slice-714.md](docs/changelog/slice-714.md).
+
 **Engine (slice 713): spell affordances — enriched castableSpells + legalSpellTargets**
 `engine.query.castableSpells` entries now carry UI-driving metadata read from spell content (`castingTime`, `rangeFeet`, a discriminated `target` descriptor, `resolves` + `saveAbility`, `concentration`); new `engine.query.legalSpellTargets(state, encounterId, casterId, spellId, slotLevel)` returns the legal targets at a slot honoring range + line of effect (self / creatures+candidates / AOE points). Pure, deterministic, additive; `legalTargets` byte-identical. So the dnd-web Spells menu buckets + targets without parsing spell text.
 Detail: [slice-713.md](docs/changelog/slice-713.md).

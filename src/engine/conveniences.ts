@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { Campaign } from './commit.js';
+import type { CampaignState } from '../schemas/runtime/campaign.js';
 import type { Engine, PlanResult } from './index.js';
 import { commit } from './commit.js';
 import { replay } from './replay.js';
@@ -9,88 +10,93 @@ import { newCharacterId } from '../ids.js';
 import { SCHEMA_VERSION } from '../version.js';
 
 /**
- * Plan + commit in one call. Dispatches the intent to the right planner
- * by its `type` tag and appends the resulting events to the campaign.
+ * Plan-only dispatch: route an intent to the right planner by its `type`
+ * tag and return its PlanResult (no commit). Shared by `performIntent`
+ * (which commits) and `engine.plan.useOption` (which returns the result
+ * for the caller to commit), so there's one dispatch table, not two.
  */
-export const performIntent = (
-  engine: Engine,
-  campaign: Campaign,
-  intent: { readonly type: string } & Record<string, unknown>,
-): Campaign => {
+export const planIntent = (
+  plan: Engine['plan'],
+  state: CampaignState,
+  // Only `type` is read here (to pick the planner); the rest is forwarded
+  // verbatim. Kept loose so both the generic `{ type, ...fields }` form and
+  // a typed intent union (e.g. BonusActionIntent) dispatch through it.
+  intent: { readonly type: string },
+): PlanResult => {
   const dispatch: Readonly<Record<string, (i: never) => PlanResult>> = {
-    Attack: (i) => engine.plan.attack(campaign.state, i),
-    OpportunityAttack: (i) => engine.plan.opportunityAttack(campaign.state, i),
-    ShortRest: (i) => engine.plan.shortRest(campaign.state, i),
-    LongRest: (i) => engine.plan.longRest(campaign.state, i),
-    CastSpell: (i) => engine.plan.castSpell(campaign.state, i),
-    CheckConcentration: (i) => engine.plan.checkConcentration(campaign.state, i),
-    Save: (i) => engine.plan.save(campaign.state, i),
-    AbilityCheck: (i) => engine.plan.abilityCheck(campaign.state, i),
-    LevelUp: (i) => engine.plan.levelUp(campaign.state, i),
-    ResolveChoice: (i) => engine.plan.resolveChoice(campaign.state, i),
-    Move: (i) => engine.plan.move(campaign.state, i),
-    Dash: (i) => engine.plan.dash(campaign.state, i),
-    Disengage: (i) => engine.plan.disengage(campaign.state, i),
-    ActionSurge: (i) => engine.plan.actionSurge(campaign.state, i),
-    SacredWeapon: (i) => engine.plan.sacredWeapon(campaign.state, i),
-    ChooseWeaponMasteries: (i) => engine.plan.chooseWeaponMasteries(campaign.state, i),
-    ConjurePactWeapon: (i) => engine.plan.conjurePactWeapon(campaign.state, i),
-    RecklessAttack: (i) => engine.plan.recklessAttack(campaign.state, i),
-    SteadyAim: (i) => engine.plan.steadyAim(campaign.state, i),
-    FastHands: (i) => engine.plan.fastHands(campaign.state, i),
-    StunningStrike: (i) => engine.plan.stunningStrike(campaign.state, i),
-    FlurryOfBlows: (i) => engine.plan.flurryOfBlows(campaign.state, i),
-    PatientDefense: (i) => engine.plan.patientDefense(campaign.state, i),
-    StepOfTheWind: (i) => engine.plan.stepOfTheWind(campaign.state, i),
-    AdrenalineRush: (i) => engine.plan.adrenalineRush(campaign.state, i),
-    Stonecunning: (i) => engine.plan.stonecunning(campaign.state, i),
-    DragonbornBreath: (i) => engine.plan.dragonbornBreath(campaign.state, i),
-    ConsumeHeroicInspiration: (i) => engine.plan.consumeHeroicInspiration(campaign.state, i),
-    SecondWind: (i) => engine.plan.secondWind(campaign.state, i),
-    UseHealersKit: (i) => engine.plan.useHealersKit(campaign.state, i),
-    Rage: (i) => engine.plan.rage(campaign.state, i),
-    Help: (i) => engine.plan.help(campaign.state, i),
-    Ready: (i) => engine.plan.ready(campaign.state, i),
-    BardicInspiration: (i) => engine.plan.bardicInspiration(campaign.state, i),
-    LayOnHands: (i) => engine.plan.layOnHands(campaign.state, i),
-    Search: (i) => engine.plan.search(campaign.state, i),
-    Study: (i) => engine.plan.study(campaign.state, i),
-    Influence: (i) => engine.plan.influence(campaign.state, i),
-    Utilize: (i) => engine.plan.utilize(campaign.state, i),
-    CloudsJaunt: (i) => engine.plan.cloudsJaunt(campaign.state, i),
-    NimbleEscape: (i) => engine.plan.nimbleEscape(campaign.state, i),
-    CunningAction: (i) => engine.plan.cunningAction(campaign.state, i),
-    ExpeditiousRetreatDash: (i) => engine.plan.expeditiousRetreatDash(campaign.state, i),
-    TurnUndead: (i) => engine.plan.turnUndead(campaign.state, i),
-    DivineSpark: (i) => engine.plan.divineSpark(campaign.state, i),
-    UncannyMetabolism: (i) => engine.plan.uncannyMetabolism(campaign.state, i),
-    MagicalCunning: (i) => engine.plan.magicalCunning(campaign.state, i),
-    IntimidatingPresence: (i) => engine.plan.intimidatingPresence(campaign.state, i),
-    DragonWings: (i) => engine.plan.dragonWings(campaign.state, i),
-    PreserveLife: (i) => engine.plan.preserveLife(campaign.state, i),
-    LandsAid: (i) => engine.plan.landsAid(campaign.state, i),
-    WholenessOfBody: (i) => engine.plan.wholenessOfBody(campaign.state, i),
-    PeerlessSkill: (i) => engine.plan.peerlessSkill(campaign.state, i),
-    TacticalMind: (i) => engine.plan.tacticalMind(campaign.state, i),
-    Frenzy: (i) => engine.plan.frenzy(campaign.state, i),
-    ExhaleDragonsBreath: (i) => engine.plan.exhaleDragonsBreath(campaign.state, i),
-    BlinkTurnEnd: (i) => engine.plan.blinkTurnEnd(campaign.state, i),
-    Metamagic: (i) => engine.plan.metamagic(campaign.state, i),
-    WildCompanion: (i) => engine.plan.wildCompanion(campaign.state, i),
-    OffHandAttack: (i) => engine.plan.offHandAttack(campaign.state, i),
-    Multiattack: (i) => engine.plan.multiattack(campaign.state, i),
-    Falling: (i) => engine.plan.falling(campaign.state, i),
-    Grapple: (i) => engine.plan.grapple(campaign.state, i),
-    Shove: (i) => engine.plan.shove(campaign.state, i),
-    Hide: (i) => engine.plan.hide(campaign.state, i),
-    Counterspell: (i) => engine.plan.counterspell(campaign.state, i),
-    DispelMagic: (i) => engine.plan.dispelMagic(campaign.state, i),
-    Identify: (i) => engine.plan.identify(campaign.state, i),
-    WeaponMastery: (i) => engine.plan.weaponMastery(campaign.state, i),
-    Forage: (i) => engine.plan.forage(campaign.state, i),
-    NavigationCheck: (i) => engine.plan.navigationCheck(campaign.state, i),
-    MoraleCheck: (i) => engine.plan.moraleCheck(campaign.state, i),
-    ReactionRoll: (i) => engine.plan.reactionRoll(campaign.state, i),
+    Attack: (i) => plan.attack(state, i),
+    OpportunityAttack: (i) => plan.opportunityAttack(state, i),
+    ShortRest: (i) => plan.shortRest(state, i),
+    LongRest: (i) => plan.longRest(state, i),
+    CastSpell: (i) => plan.castSpell(state, i),
+    CheckConcentration: (i) => plan.checkConcentration(state, i),
+    Save: (i) => plan.save(state, i),
+    AbilityCheck: (i) => plan.abilityCheck(state, i),
+    LevelUp: (i) => plan.levelUp(state, i),
+    ResolveChoice: (i) => plan.resolveChoice(state, i),
+    Move: (i) => plan.move(state, i),
+    Dash: (i) => plan.dash(state, i),
+    Disengage: (i) => plan.disengage(state, i),
+    ActionSurge: (i) => plan.actionSurge(state, i),
+    SacredWeapon: (i) => plan.sacredWeapon(state, i),
+    ChooseWeaponMasteries: (i) => plan.chooseWeaponMasteries(state, i),
+    ConjurePactWeapon: (i) => plan.conjurePactWeapon(state, i),
+    RecklessAttack: (i) => plan.recklessAttack(state, i),
+    SteadyAim: (i) => plan.steadyAim(state, i),
+    FastHands: (i) => plan.fastHands(state, i),
+    StunningStrike: (i) => plan.stunningStrike(state, i),
+    FlurryOfBlows: (i) => plan.flurryOfBlows(state, i),
+    PatientDefense: (i) => plan.patientDefense(state, i),
+    StepOfTheWind: (i) => plan.stepOfTheWind(state, i),
+    AdrenalineRush: (i) => plan.adrenalineRush(state, i),
+    Stonecunning: (i) => plan.stonecunning(state, i),
+    DragonbornBreath: (i) => plan.dragonbornBreath(state, i),
+    ConsumeHeroicInspiration: (i) => plan.consumeHeroicInspiration(state, i),
+    SecondWind: (i) => plan.secondWind(state, i),
+    UseHealersKit: (i) => plan.useHealersKit(state, i),
+    Rage: (i) => plan.rage(state, i),
+    Help: (i) => plan.help(state, i),
+    Ready: (i) => plan.ready(state, i),
+    BardicInspiration: (i) => plan.bardicInspiration(state, i),
+    LayOnHands: (i) => plan.layOnHands(state, i),
+    Search: (i) => plan.search(state, i),
+    Study: (i) => plan.study(state, i),
+    Influence: (i) => plan.influence(state, i),
+    Utilize: (i) => plan.utilize(state, i),
+    CloudsJaunt: (i) => plan.cloudsJaunt(state, i),
+    NimbleEscape: (i) => plan.nimbleEscape(state, i),
+    CunningAction: (i) => plan.cunningAction(state, i),
+    ExpeditiousRetreatDash: (i) => plan.expeditiousRetreatDash(state, i),
+    TurnUndead: (i) => plan.turnUndead(state, i),
+    DivineSpark: (i) => plan.divineSpark(state, i),
+    UncannyMetabolism: (i) => plan.uncannyMetabolism(state, i),
+    MagicalCunning: (i) => plan.magicalCunning(state, i),
+    IntimidatingPresence: (i) => plan.intimidatingPresence(state, i),
+    DragonWings: (i) => plan.dragonWings(state, i),
+    PreserveLife: (i) => plan.preserveLife(state, i),
+    LandsAid: (i) => plan.landsAid(state, i),
+    WholenessOfBody: (i) => plan.wholenessOfBody(state, i),
+    PeerlessSkill: (i) => plan.peerlessSkill(state, i),
+    TacticalMind: (i) => plan.tacticalMind(state, i),
+    Frenzy: (i) => plan.frenzy(state, i),
+    ExhaleDragonsBreath: (i) => plan.exhaleDragonsBreath(state, i),
+    BlinkTurnEnd: (i) => plan.blinkTurnEnd(state, i),
+    Metamagic: (i) => plan.metamagic(state, i),
+    WildCompanion: (i) => plan.wildCompanion(state, i),
+    OffHandAttack: (i) => plan.offHandAttack(state, i),
+    Multiattack: (i) => plan.multiattack(state, i),
+    Falling: (i) => plan.falling(state, i),
+    Grapple: (i) => plan.grapple(state, i),
+    Shove: (i) => plan.shove(state, i),
+    Hide: (i) => plan.hide(state, i),
+    Counterspell: (i) => plan.counterspell(state, i),
+    DispelMagic: (i) => plan.dispelMagic(state, i),
+    Identify: (i) => plan.identify(state, i),
+    WeaponMastery: (i) => plan.weaponMastery(state, i),
+    Forage: (i) => plan.forage(state, i),
+    NavigationCheck: (i) => plan.navigationCheck(state, i),
+    MoraleCheck: (i) => plan.moraleCheck(state, i),
+    ReactionRoll: (i) => plan.reactionRoll(state, i),
   };
   const planner = dispatch[intent.type];
   if (planner === undefined) {
@@ -98,9 +104,18 @@ export const performIntent = (
   }
   const { type: _, ...rest } = intent;
   void _;
-  const result = planner(rest as never);
-  return commit(campaign, result.events);
+  return planner(rest as never);
 };
+
+/**
+ * Plan + commit in one call. Dispatches the intent to the right planner
+ * by its `type` tag and appends the resulting events to the campaign.
+ */
+export const performIntent = (
+  engine: Engine,
+  campaign: Campaign,
+  intent: { readonly type: string } & Record<string, unknown>,
+): Campaign => commit(campaign, planIntent(engine.plan, campaign.state, intent).events);
 
 const SerializedCampaignSchema = z.object({
   id: z.string(),

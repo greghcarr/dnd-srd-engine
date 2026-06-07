@@ -51,5 +51,5 @@ Legal targets at a slot, honoring range + line of effect + target kind, discrimi
 
 ## Open follow-ups (next slice)
 
-- `bonusActions(...)` enumeration + the generic `engine.plan.useOption(...)` dispatcher (interactive-play part (b)). Bonus-action spells are surfaced in `castableSpells` filtered by `castingTime === 'bonus-action'`.
-- AOE point targeting for self-origin cones is approximate (direction vs point); refine if the consumer needs exact cone aiming. Multi-target `maxTargets > 1` awaits a content target-count field.
+- ~~`bonusActions(...)` enumeration + the generic `engine.plan.useOption(...)` dispatcher (interactive-play part (b)). Bonus-action spells are surfaced in `castableSpells` filtered by `castingTime === 'bonus-action'`.~~ **Closed by slice 714.**
+- AOE point targeting for self-origin cones is approximate (direction vs point); refine if the consumer needs exact cone aiming. Multi-target `maxTargets > 1` awaits a content target-count field. **Still open.**
