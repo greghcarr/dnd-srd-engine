@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Content (slice 727): Fighter L6 Ability Score Improvement**
+The Fighter's L6 row (previously empty) gains `ability-score-improvement-6` — the same OfferChoice as L4 (ASI feat or another general feat), reusing the level-up cascade. SRD gives the Fighter extra ASIs at 6/14 beyond the every-class 4/8/12/16. Opens the L6 SRD-complete cycle. Content-only.
+Detail: [slice-727.md](docs/changelog/slice-727.md).
+
 ## 0.8.0-alpha.0 - 2026-06-07
 
 **Release (slice 726): bump to 0.8.0-alpha.0**

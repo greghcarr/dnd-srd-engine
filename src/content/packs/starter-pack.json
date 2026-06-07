@@ -324,7 +324,7 @@
           ],
           "columns": {}
         },
-        "6": { "proficiencyBonus": 3, "features": [], "columns": {} },
+        "6": { "proficiencyBonus": 3, "features": [{ "id": "ability-score-improvement-6", "name": "Ability Score Improvement", "effects": [{ "kind": "OfferChoice", "choiceId": "ability-score-improvement-6", "prompt": "Gain the Ability Score Improvement feat or another feat you qualify for.", "oneOf": 1, "when": "onAcquire", "options": [{ "id": "ability-score-improvement", "label": "Ability Score Improvement", "effects": [{ "kind": "GrantFeat", "featId": "ability-score-improvement" }] }, { "id": "grappler", "label": "Grappler", "effects": [{ "kind": "GrantFeat", "featId": "grappler" }] }] }] }], "columns": {} },
         "7": { "proficiencyBonus": 3, "features": [], "columns": {} },
         "8": { "proficiencyBonus": 3, "features": [], "columns": {} },
         "9": { "proficiencyBonus": 4, "features": [{ "id": "indomitable", "name": "Indomitable", "effects": [{ "kind": "GrantResource", "resourceId": "indomitable", "max": 1, "recharge": "longRest" }] }, { "id": "tactical-master", "name": "Tactical Master", "effects": [] }], "columns": {} },
