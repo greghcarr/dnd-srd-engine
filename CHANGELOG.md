@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine (slice 720): Cleric Sear Undead (L5)**
+`planTurnUndead` now applies Sear Undead for a level-5+ cleric: one pooled roll of max(1, WIS mod) d8s of Radiant to each Undead that fails the Turn Undead save, through the normal mitigate + fatal-intercept pipeline. Emitted before the Frightened/Incapacitated conditions (which carry endsOnDamage) so it doesn't end the turn effect, per RAW. Gated on cleric L5; sub-L5 Turn Undead byte-identical.
+Detail: [slice-720.md](docs/changelog/slice-720.md).
+
 **Content (slice 719): Warlock Eldritch Invocation count labels match SRD 5.2.1**
 The L5 audit found the Warlock invocations-known labels were drifted (L5 read "4 known"; SRD is 5). Corrected the whole column's `name` labels to the SRD values (L1 1, L2 3, L5 5, L7 6, L9 7, L12 8, L15 9, L18 10); ids keep their suffixes (load-bearing). Display-only — the per-tier invocation gain/replace system is still unwired (tracked in gaps-class-features). No engine change.
 Detail: [slice-719.md](docs/changelog/slice-719.md).
