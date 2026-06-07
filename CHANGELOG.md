@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine (slice 724): Wizard Memorize Spell (L5)**
+New `engine.plan.memorizeSpell(state, { wizardId, removeSpellId, addSpellId })`: swap one prepared level-1+ spell for a non-prepared spellbook (knownSpells) spell, validated per RAW. Adds a `PreparedSpellsChanged` event (the first to mutate `preparedSpells`). The engine doesn't enforce prepared-spell counts, so this is the swap mechanic (short-rest timing consumer-driven). Completes the L5 stub set.
+Detail: [slice-724.md](docs/changelog/slice-724.md).
+
 **Engine (slice 723): Fighter Tactical Shift (L5)**
 `planSecondWind` now grants half-Speed no-provoke movement when a level-5+ fighter activates Second Wind as a Bonus Action — a `Disengaged{limitedToFeet}` event (the Rogue Withdraw primitive → `noProvokeMovementUpToFeet`). Gated on L5 + the bonus-action arm; sub-L5 and out-of-encounter Second Wind byte-identical (no RNG change).
 Detail: [slice-723.md](docs/changelog/slice-723.md).

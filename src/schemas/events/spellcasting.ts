@@ -73,6 +73,20 @@ export const SpellSlotsRegainedEventSchema = EventEnvelopeSchema.extend({
 });
 export type SpellSlotsRegainedEvent = z.infer<typeof SpellSlotsRegainedEventSchema>;
 
+// Slice 724: swap one prepared spell for another from the spellbook
+// (Wizard L5 Memorize Spell). Reducer removes `removed` from and adds
+// `added` to `preparedSpells`. The engine doesn't enforce prepared-spell
+// counts, so this is the mechanical realization of the swap, not a
+// count-gated re-preparation.
+export const PreparedSpellsChangedEventSchema = EventEnvelopeSchema.extend({
+  type: z.literal('PreparedSpellsChanged'),
+  characterId: ULIDSchema,
+  removed: z.string(),
+  added: z.string(),
+  source: z.string(),
+});
+export type PreparedSpellsChangedEvent = z.infer<typeof PreparedSpellsChangedEventSchema>;
+
 // Slice 486: emitted when a cast consumes a oncePerLongRest free cast
 // from a GrantSpell grant (Magic Initiate, Warlock Contact Patron).
 // Reducer pushes `spellId` onto the bearer's `usedFreeCastSpellIds`;

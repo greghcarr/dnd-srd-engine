@@ -5,6 +5,7 @@ import type {
   FreeCastUsedEvent,
   PactSlotConsumedEvent,
   PactSlotsRegainedEvent,
+  PreparedSpellsChangedEvent,
   SpellCastDeclaredEvent,
   SpellSlotConsumedEvent,
   SpellSlotsRegainedEvent,
@@ -66,6 +67,19 @@ export const applySpellSlotsRegained = (
   const key = String(event.slotLevel);
   const previous = character.spellSlotsUsed[key] ?? 0;
   character.spellSlotsUsed[key] = Math.max(0, previous - event.count);
+};
+
+// Slice 724: Wizard Memorize Spell swaps one prepared spell. Remove the
+// outgoing spell and add the incoming one (idempotent on the add).
+export const applyPreparedSpellsChanged = (
+  state: Draft<CampaignState>,
+  event: PreparedSpellsChangedEvent,
+): void => {
+  const character = requireCharacter(state, event.characterId);
+  character.preparedSpells = character.preparedSpells.filter((s) => s !== event.removed);
+  if (!character.preparedSpells.includes(event.added)) {
+    character.preparedSpells.push(event.added);
+  }
 };
 
 // Slice 486: records that the bearer's once-per-long-rest free cast for

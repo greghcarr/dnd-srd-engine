@@ -66,6 +66,7 @@ import {
   applyFreeCastUsed,
   applyPactSlotConsumed,
   applyPactSlotsRegained,
+  applyPreparedSpellsChanged,
   applySpellCastDeclared,
   applySpellSlotConsumed,
   applySpellSlotsRegained,
@@ -344,6 +345,9 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
         break;
       case 'SpellSlotsRegained':
         applySpellSlotsRegained(draft, event);
+        break;
+      case 'PreparedSpellsChanged':
+        applyPreparedSpellsChanged(draft, event);
         break;
       case 'FreeCastUsed':
         applyFreeCastUsed(draft, event);
