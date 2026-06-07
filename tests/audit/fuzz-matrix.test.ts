@@ -10,8 +10,8 @@
 //     L3 planners shipped in 646-648 + the resource scaffolding in
 //     650). 36 cells × 30 seeds = 1,080 battles per CI run.
 //
-// Matrix (36 cells, 30 seeds each = 1,080 battles per CI run):
-//   - Levels:  1, 2, 3
+// Matrix (48 cells, 30 seeds each = 1,440 battles per CI run):
+//   - Levels:  1, 2, 3, 4
 //   - Shapes:  1v1 PC-vs-PC, 2v2 PC-vs-PC, 1v1 PC-vs-monster,
 //              2v2 PC-vs-monster
 //   - Rests:   none, short, long
@@ -55,7 +55,12 @@ const PACK = loadStarterPack();
 // fuzz cycle ran each shipped L3 planner through its dedicated
 // per-planner test; this audit catches cross-cutting regressions
 // that show up only under random encounter shapes.
-const LEVELS = [1, 2, 3] as const;
+// Slice 709: extended from [1, 2, 3] to [1, 2, 3, 4] to cover the L4
+// surface — every class's L4 Ability Score Improvement choice (slice
+// 707) is resolved by `drainPendingChoices` as each fuzz character
+// levels to 4 (it walks the feat → +2/+1 allocate → ability-picker
+// cascade), plus Monk Slow Fall / Fighter Second Wind 3 at L4.
+const LEVELS = [1, 2, 3, 4] as const;
 const SHAPES: ReadonlyArray<{
   teamSize: 1 | 2;
   vs: FuzzVs;
@@ -73,9 +78,9 @@ const RESTS: ReadonlyArray<FuzzRest> = ['none', 'short', 'long'];
 // cells = 1,080 battles per CI run; ~10ms/battle = ~10s wall-clock.
 const SEEDS_PER_CELL = 30;
 
-describe('slice 644 / 651 / 674: fuzz matrix audit (L1 + L2 + L3 across shapes + rests)', () => {
+describe('slice 644 / 651 / 674 / 709: fuzz matrix audit (L1-L4 across shapes + rests)', () => {
   it(`enumerates ${LEVELS.length * SHAPES.length * RESTS.length} matrix cells (${LEVELS.length} levels x ${SHAPES.length} shapes x ${RESTS.length} rests)`, () => {
-    expect(LEVELS.length * SHAPES.length * RESTS.length).toBe(36);
+    expect(LEVELS.length * SHAPES.length * RESTS.length).toBe(48);
   });
 
   for (const level of LEVELS) {

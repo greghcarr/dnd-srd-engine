@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Tests (slice 709): extend the fuzz matrix to L4 (the L4 fuzz floor)**
+Extends the fuzz matrix `LEVELS` from `[1,2,3]` to `[1,2,3,4]` — now 48 cells × 30 seeds = 1,440 battles per CI run. Each L4 fuzz character levels to 4 via `planLevelUp` + `drainPendingChoices`, exercising the slice-707 ASI choice cascade before fighting. All 1,440 complete without throwing. The L4 cycle's end-to-end runtime guard; the L4 floor audit (20/20) + this fuzz floor make L4 release-ready.
+Detail: [slice-709.md](docs/changelog/slice-709.md).
+
 **Tests (slice 708): correct the L4 floor audit's Slow Fall planner reference**
 Monk Slow Fall was already wired via `planFalling`'s `useSlowFall` arm (5 × monk level, Monk L4+, reaction-consuming, with a real fall-damage model); slice 702's floor audit wrongly assumed a separate `planSlowFall`. Points Section 6 at the real `planFalling` and drops the redundant duplicate (caught by the pack-integrity + planner-wiring audits). Closes the last L4 floor-audit xfail — **the L4 floor is now 20/20 green** (fuzz extension + release tag remain). No engine/content/schema change.
 Detail: [slice-708.md](docs/changelog/slice-708.md).
