@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Content (slice 719): Warlock Eldritch Invocation count labels match SRD 5.2.1**
+The L5 audit found the Warlock invocations-known labels were drifted (L5 read "4 known"; SRD is 5). Corrected the whole column's `name` labels to the SRD values (L1 1, L2 3, L5 5, L7 6, L9 7, L12 8, L15 9, L18 10); ids keep their suffixes (load-bearing). Display-only — the per-tier invocation gain/replace system is still unwired (tracked in gaps-class-features). No engine change.
+Detail: [slice-719.md](docs/changelog/slice-719.md).
+
 **Engine (slice 718): wire RecoverResource on a Short Rest (L5 Font of Inspiration + Sorcerous Restoration)**
 `RecoverResource` was a no-op, so two L5 features were inert. `planShortRest` now resolves `RecoverResource{when:'shortRest'}` effects into `resourceDeltas` on the `ShortRestEnded` event and the reducer applies them: Bard Font of Inspiration regains all Bardic Inspiration on a short rest; Sorcerer Sorcerous Restoration regains floor(level/2) Sorcery Points once per long rest (new `limitedByResourceId` gate + half-level Formula; corrects the prior flat amount). Plan/commit-pure, backward-compatible `planShortRest`. First L5-SRD-complete slice.
 Detail: [slice-718.md](docs/changelog/slice-718.md).
