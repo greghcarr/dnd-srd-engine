@@ -6,6 +6,20 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+## 0.8.0-alpha.0 - 2026-06-07
+
+**Release (slice 726): bump to 0.8.0-alpha.0**
+
+Promotes the post-0.7.0 cohort (slices 712-725) to a tagged release. `package.json` + `package-lock.json` bump `0.7.0-alpha.0` → `0.8.0-alpha.0`; `SCHEMA_VERSION` stays 1 (the new events are additive, no persisted-shape change). Two headline cohorts:
+
+- **L5 SRD complete** (slices 718-725): the marquee L5 mechanics (Extra Attack, 3rd/2nd-level slots, Uncanny Dodge, Stunning Strike, Sneak Attack 3d6) were already wired, so the cycle closed the real gaps — `RecoverResource` on a Short Rest activating Bard Font of Inspiration + Sorcerer Sorcerous Restoration (718), and the per-class L5 features: Cleric Sear Undead (720), Druid Wild Resurgence (721), Paladin Faithful Steed (722), Fighter Tactical Shift (723), Wizard Memorize Spell (724) — plus a Warlock invocation-count content fix (719). Two new additive events (`SpellSlotsRegained`, `PreparedSpellsChanged`). The CI-guarded "L5 SRD complete" floor audit is 24/24 and the fuzz matrix now covers L1-L5 (60 cells × 30 seeds = 1,800 battles per run).
+- **Interactive-play affordances + Free Duel** (slices 713-717): enriched `engine.query.castableSpells` (castingTime / rangeFeet / target descriptor / resolves / concentration / multi-target `maxTargets`) + `legalSpellTargets` (713/716); `engine.query.bonusActions` + the generic `engine.plan.useOption` executor for the duel's Bonus Actions menu (714/715); and a `runBattle({ playerClass })` Free-Duel class pin on its own isolated RNG cursor (717). Plus a docs backlog slice (712).
+
+**Breaking:** none. **Additive surface:** two new events (`SpellSlotsRegained`, `PreparedSpellsChanged`), new optional event fields (`ShortRestEnded.resourceDeltas`, `RecoverResource.limitedByResourceId`), new `engine.query.*` / `engine.plan.*` methods (`bonusActions`, `useOption`, `legalSpellTargets`, `wildResurgence`, `memorizeSpell`), and new exported types — all purely additive.
+
+**RNG stream:** the new behavior is gated (L5 features fire only at L5+ / on the relevant arm) so sub-L5 and the default paths are byte-identical (golden + replay-equivalence + rng-capture unchanged); the L5 fuzz tier is new this cycle, so no prior per-seed transcript is pinned across the boundary. The Free-Duel class pin uses an isolated RNG cursor, so the seed-driven opponent + map are byte-identical with or without it.
+Detail: [slice-726.md](docs/changelog/slice-726.md).
+
 **Tests/docs (slice 725): L5 SRD-complete floor audit + fuzz-to-L5**
 New `tests/audit/srd-l5-complete.test.ts` (24 tests) pins the L5 floor: Extra Attack (5 martial classes), 3rd/2nd-level slots, Warlock pact level 3, and the per-class L5 features (slices 718-724). The fuzz matrix extends to L5 (`[1..5]`, 60 cells × 30 seeds = 1,800 battles). The five L5 stubs in gaps-class-features are annotated closed. Capstone of the L5 cycle. No engine change.
 Detail: [slice-725.md](docs/changelog/slice-725.md).
@@ -65,56 +79,6 @@ Detail: [slice-712.md](docs/changelog/slice-712.md).
 **Release (slice 711): bump to 0.7.0-alpha.0**
 Promotes the post-0.6.0 cohort (slices 702-710) to a tagged release: L4 SRD-completeness and the interactive-play public seams, plus the audit-found effective-ability-score fix. No engine-API breaking change; `SCHEMA_VERSION` stays 1; positionless `'none'` byte-identical.
 Detail: [slice-711.md](docs/changelog/slice-711.md).
-
-## 0.7.0-alpha.0 - 2026-06-06
-
-**Release (slice 711): bump to 0.7.0-alpha.0**
-
-Promotes the post-0.6.0 cohort (slices 702-710) to a tagged release. `package.json` + `package-lock.json` bump `0.6.0-alpha.0` → `0.7.0-alpha.0`; `SCHEMA_VERSION` stays 1 (no persisted-shape change). Two headline features plus an audit-found fix:
-
-- **L4 SRD complete** (slices 702-703, 707-709): every class gains the Ability Score Improvement choice at L4 — the ASI feat (+2 one / +1 two ability scores, max 20) or another general feat, via the existing `GrantFeat` cascade — which also completed the SRD 5.2.1 feat catalog (17/17). Monk Slow Fall (already wired via `planFalling`), Fighter Second Wind 3 uses, and Sorcery/Focus Points → 4 round out the tier. The CI-guarded "L4 SRD complete" floor audit is 20/20, and the fuzz matrix now covers L1-L4 (48 cells × 30 seeds = 1,440 battles per run).
-- **Interactive-play public seams** (slices 704-706; the A1/A2/A3 cohort for the dnd-web interactive viewer): `engine.query.*` intent-shaped affordance queries (legal move destinations / action economy / available actions / legal targets / castable spells); a die-typed, resumable `engine.withRollProvider` roll seam (`SeededRollProvider` / `SuppliedRollProvider` / `NeedRoll`) for player-entered physical dice; and the tactical enemy policy graduated from `scripts/` into `src/ai/` (barrel-exported `planTacticalMove` / `classifyTacticalRole`).
-- **Fix** (slice 710): the derived character + AC now reflect effective ability scores (ASI / items / floors), not base.
-
-**Breaking:** none ([docs/breaking-changes-queued.md](docs/breaking-changes-queued.md) was "(none queued)" at cut). **Behavior note (slice 710):** `engine.derive.character` / `buildCharacterSheet` ability modifiers now reflect EFFECTIVE ability scores instead of base, and `DerivedCharacter` gains an effective `abilityScores` field — a consumer that pinned the prior (buggy) base-derived modifiers will see corrected values. The `engine.query.*` / roll-provider / `src/ai` additions are purely additive.
-
-**RNG stream:** positionless `'none'` fuzz (L1-L3) + golden transcripts + replay-equivalence + rng-capture are byte-identical — the A2 roll-provider seam is a no-op with no provider installed, and the L4 content changes a character's ability scores only via a post-level-up choice, not the combat RNG stream. L4 fuzz is new this cycle (slice 709), so no prior per-seed transcript is pinned across the boundary.
-
-**Fix (slice 710): derived character + AC reflect effective ability scores (not base)**
-The L4 audit found `computeDerivedCharacter.abilityModifiers` + `computeArmorAC`'s DEX used base scores, so ASI / Ioun Stones / Belt / floors didn't show in the derived character, character sheet, initiative, or light/medium/unarmored AC (saves/checks/attacks were already correct — an internal inconsistency). Both now use `effectiveAbilityScore`; `DerivedCharacter` gains an effective `abilityScores` field. Pattern-checked the rest; three minor edges (mirror-image dup AC, finesse ability-choice, a monster-only per-trait save) tracked. No event schema change.
-Detail: [slice-710.md](docs/changelog/slice-710.md).
-
-**Tests (slice 709): extend the fuzz matrix to L4 (the L4 fuzz floor)**
-Extends the fuzz matrix `LEVELS` from `[1,2,3]` to `[1,2,3,4]` — now 48 cells × 30 seeds = 1,440 battles per CI run. Each L4 fuzz character levels to 4 via `planLevelUp` + `drainPendingChoices`, exercising the slice-707 ASI choice cascade before fighting. All 1,440 complete without throwing. The L4 cycle's end-to-end runtime guard; the L4 floor audit (20/20) + this fuzz floor make L4 release-ready.
-Detail: [slice-709.md](docs/changelog/slice-709.md).
-
-**Tests (slice 708): correct the L4 floor audit's Slow Fall planner reference**
-Monk Slow Fall was already wired via `planFalling`'s `useSlowFall` arm (5 × monk level, Monk L4+, reaction-consuming, with a real fall-damage model); slice 702's floor audit wrongly assumed a separate `planSlowFall`. Points Section 6 at the real `planFalling` and drops the redundant duplicate (caught by the pack-integrity + planner-wiring audits). Closes the last L4 floor-audit xfail — **the L4 floor is now 20/20 green** (fuzz extension + release tag remain). No engine/content/schema change.
-Detail: [slice-708.md](docs/changelog/slice-708.md).
-
-**Content (slice 707): the L4 Ability Score Improvement choice across all 12 classes**
-Adds an `ability-score-improvement-4` feature to every class's L4 row: an OfferChoice granting the ASI feat (slice 703) or another general feat (Grappler) via `GrantFeat`, riding the existing level-up + cascade + derive machinery (no new primitive). Leveling 3→4 → pick ASI → +2/+1 → ability picker now moves the derived ability score. Flips the L4 floor audit's Section 1 (12) + Section 4; only Slow Fall (Section 6) remains. Per-character feat eligibility (Grappler's ability prereq) is a documented follow-up.
-Detail: [slice-707.md](docs/changelog/slice-707.md).
-
-**Refactor (slice 706): graduate the tactical enemy policy to the package (interactive-play A3)**
-Relocates the pure tactical movement policy (`planTacticalMove` / `classifyTacticalRole` / `pickByTotalOrder` + types) from `scripts/tactical/` into `src/ai/`, barrel-exported so a consumer imports it from the package instead of `scripts/`. `scripts/tactical/{policy,constants}.ts` become re-export shims, so the fuzz harness + its tests are byte-identical (golden tactical transcript + fuzz determinism unchanged). `pickIntent` / `makeTacticalMovePolicy` stay in scripts (fuzz-type-coupled). No behavior or schema change.
-Detail: [slice-706.md](docs/changelog/slice-706.md).
-
-**Engine (slice 705): intent-shaped affordance query API (interactive-play A1)**
-Adds `engine.query.*` (mirrors `engine.derive.*`): `legalMoveDestinations`, `actionEconomy`, `availableActions` (with machine-readable disabled reasons), `legalTargets`, `castableSpells` — pure, read-only, deterministically ordered, wrapping the existing pathing/terrain/action-economy/speed/spell-slot helpers so a UI renders affordances without reconstructing rules. No event schema change.
-Detail: [slice-705.md](docs/changelog/slice-705.md).
-
-**Engine (slice 704): die-typed roll-provider seam (interactive-play A2)**
-Adds a die-typed, resumable roll seam (`RollProvider` / `SeededRollProvider` / `SuppliedRollProvider` / `NeedRoll` / `withRollProvider`) so a consumer can supply player-entered physical dice while planning stays sync + pure. `rollDie` routes through an ambient provider; with none installed the default path is byte-identical (golden + replay-equivalence unchanged). No event schema change.
-Detail: [slice-704.md](docs/changelog/slice-704.md).
-
-**Content (slice 703): the Ability Score Improvement feat (L4 core)**
-Adds the SRD 5.2.1 ASI feat (General, Level 4+, repeatable): a two-tier OfferChoice (+2 one / +1 two, max 20) over `IncreaseAbilityScore`, riding the existing nested-OfferChoice cascade. ASI was the one missing SRD feat, so the SRD 5.2.1 feat catalog is now complete (17/17). Flips the L4 floor's Section 3 xfail.
-Detail: [slice-703.md](docs/changelog/slice-703.md).
-
-**Tests (slice 702): CI-guarded "L4 SRD complete" floor audit**
-Opens the L4 cycle. 20-test audit (5 green + 15 xfail) pinning L4's surface: the universal Ability Score Improvement at L4 (unmodeled today — every class's `levelTable['4']` is empty), Monk Slow Fall + Fighter Second Wind 3 (present), and the Sorcery Points / Focus Points → 4 resource scaling. The 15 xfails are the punch list; when they flip, tag `0.7.0-alpha.0`.
-Detail: [slice-702.md](docs/changelog/slice-702.md).
 
 ## 0.6.0-alpha.0 - 2026-06-05
 
@@ -382,4 +346,4 @@ Detail: [slice-632.md](docs/changelog/slice-632.md).
 
 ## Older releases
 
-Tagged release `0.5.0-alpha.0` lives in [docs/changelog/released-versions-0.5.0-alpha.0.md](docs/changelog/released-versions-0.5.0-alpha.0.md); `0.4.0-alpha.0` lives in [docs/changelog/released-versions-0.4.0-alpha.0.md](docs/changelog/released-versions-0.4.0-alpha.0.md); `0.2.0-alpha.0` lives in [docs/changelog/released-versions-0.2.0-alpha.0.md](docs/changelog/released-versions-0.2.0-alpha.0.md); `0.1.0-alpha.15` lives in [docs/changelog/released-versions-alpha-15.md](docs/changelog/released-versions-alpha-15.md); `0.1.0-alpha.14` lives in [docs/changelog/released-versions-alpha-14.md](docs/changelog/released-versions-alpha-14.md); `0.1.0-alpha.6` through `0.1.0-alpha.13` live in [docs/changelog/released-versions-alpha-6-13.md](docs/changelog/released-versions-alpha-6-13.md); `0.1.0-alpha.0` through `0.1.0-alpha.5` (the pre-rename `ttrpg-engine-dnd` package, all unpublished from npm in May 2026 on IP-cleanup grounds) live in [docs/changelog/released-versions.md](docs/changelog/released-versions.md). Per-cohort slice-detail archives are indexed in [docs/changelog/README.md](docs/changelog/README.md).
+Tagged release `0.7.0-alpha.0` lives in [docs/changelog/released-versions-0.7.0-alpha.0.md](docs/changelog/released-versions-0.7.0-alpha.0.md); `0.5.0-alpha.0` lives in [docs/changelog/released-versions-0.5.0-alpha.0.md](docs/changelog/released-versions-0.5.0-alpha.0.md); `0.4.0-alpha.0` lives in [docs/changelog/released-versions-0.4.0-alpha.0.md](docs/changelog/released-versions-0.4.0-alpha.0.md); `0.2.0-alpha.0` lives in [docs/changelog/released-versions-0.2.0-alpha.0.md](docs/changelog/released-versions-0.2.0-alpha.0.md); `0.1.0-alpha.15` lives in [docs/changelog/released-versions-alpha-15.md](docs/changelog/released-versions-alpha-15.md); `0.1.0-alpha.14` lives in [docs/changelog/released-versions-alpha-14.md](docs/changelog/released-versions-alpha-14.md); `0.1.0-alpha.6` through `0.1.0-alpha.13` live in [docs/changelog/released-versions-alpha-6-13.md](docs/changelog/released-versions-alpha-6-13.md); `0.1.0-alpha.0` through `0.1.0-alpha.5` (the pre-rename `ttrpg-engine-dnd` package, all unpublished from npm in May 2026 on IP-cleanup grounds) live in [docs/changelog/released-versions.md](docs/changelog/released-versions.md). Per-cohort slice-detail archives are indexed in [docs/changelog/README.md](docs/changelog/README.md).
