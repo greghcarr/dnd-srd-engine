@@ -11,7 +11,7 @@ import { loadStarterPack } from '../../../src/content/packs/starter.js';
 import { CharacterSchema, type Character } from '../../../src/schemas/runtime/character.js';
 import { newCharacterId, newAppliedConditionId } from '../../../src/ids.js';
 import { SuppliedRollProvider } from '../../../src/rng/roll-provider.js';
-import { eventId, isoTimestamp } from '../../fixtures/index.js';
+import { eventId, isoTimestamp, makeItemInstance } from '../../fixtures/index.js';
 import type { CharacterCreatedEvent } from '../../../src/schemas/events/progression.js';
 import type {
   InitiativeRolledEvent,
@@ -62,6 +62,24 @@ const paladin = (pool = 5): Character =>
   });
 const wizard = (): Character =>
   base({ classes: [{ classId: 'wizard', level: 3, hitDiceRemaining: 3 }] });
+const orc = (rush = 2): Character =>
+  base({
+    speciesId: 'orc',
+    classes: [{ classId: 'fighter', level: 1, hitDiceRemaining: 1 }],
+    resources: [{ resourceId: 'adrenaline-rush', current: rush, max: 2 }],
+  });
+const goblin = (): Character =>
+  CharacterSchema.parse({
+    id: newCharacterId(),
+    kind: 'creature',
+    name: 'Goblin',
+    speciesId: 'companion',
+    backgroundId: 'companion',
+    statblockId: 'goblin-warrior',
+    classes: [{ classId: 'companion', level: 1, hitDiceRemaining: 1 }],
+    abilityScores: { STR: 8, DEX: 15, CON: 10, INT: 10, WIS: 8, CHA: 8 },
+    hp: { current: 10, max: 10, temp: 0 },
+  });
 
 interface Setup {
   engine: ReturnType<typeof createEngine>;
@@ -125,6 +143,15 @@ const applyPoisoned = (s: Setup, targetId: string): Campaign =>
       appliedConditionId: newAppliedConditionId(),
     } satisfies ConditionAppliedEvent,
   ]);
+
+// Seed an unarmed-strike item instance into state (Flurry strikes with one).
+const acquireFist = (s: Setup): string => {
+  const fist = makeItemInstance('unarmed-strike');
+  s.campaign = commit(s.campaign, [
+    { id: eventId(), at: isoTimestamp(), type: 'ItemAcquired', instance: fist },
+  ]);
+  return fist.id;
+};
 
 const byId = (s: Setup, combatantId: string) =>
   Object.fromEntries(
@@ -303,5 +330,122 @@ describe('slice 714: useOption dispatch', () => {
     ).events;
     const healed = events.find((e) => e.type === 'Healed') as HealedEvent | undefined;
     expect(healed?.amount).toBe(SUPPLIED_D10 + 3);
+  });
+});
+
+describe('slice 715: extended bonus-action surface', () => {
+  it('Orc: Adrenaline Rush enabled (dash), target none', () => {
+    const o = orc();
+    const s = setup([o], o.id);
+    expect(byId(s, o.id)['adrenaline-rush']).toMatchObject({ target: 'none', enabled: true });
+  });
+
+  it('Goblin: Nimble Escape disengage + hide, target none', () => {
+    const g = goblin();
+    const s = setup([g], g.id);
+    const opts = byId(s, g.id);
+    expect(opts['nimble-escape-disengage']).toMatchObject({ target: 'none', enabled: true });
+    expect(opts['nimble-escape-hide']).toMatchObject({ target: 'none', enabled: true });
+  });
+
+  it('Paladin: both Lay on Hands heal and cure-poison, target creature', () => {
+    const p = paladin(5);
+    const s = setup([p], p.id);
+    const opts = byId(s, p.id);
+    expect(opts['lay-on-hands-heal']).toMatchObject({ target: 'creature', enabled: true });
+    expect(opts['lay-on-hands-cure-poison']).toMatchObject({ target: 'creature', enabled: true });
+  });
+
+  it('Monk: Flurry of Blows targets a creature; needs a Focus Point', () => {
+    const m = monk(0); // no ki
+    const s = setup([m], m.id);
+    expect(byId(s, m.id)['flurry-of-blows']).toMatchObject({
+      target: 'creature',
+      enabled: false,
+      reason: 'no-focus',
+    });
+  });
+
+  it('Frenzy is NOT enumerated (it is a Rage modifier, not a bonus action)', () => {
+    const b = barbarian();
+    const s = setup([b], b.id);
+    expect(byId(s, b.id)['frenzy']).toBeUndefined();
+  });
+
+  it('adrenaline-rush → Dashed + TempHPGranted', () => {
+    const o = orc();
+    const s = setup([o], o.id);
+    const types = s.engine.plan
+      .useOption(s.campaign.state, { combatantId: o.id, optionId: 'adrenaline-rush' })
+      .events.map((e) => e.type);
+    expect(types).toContain('Dashed');
+    expect(types).toContain('TempHPGranted');
+  });
+
+  it('nimble-escape-disengage → Disengaged', () => {
+    const g = goblin();
+    const s = setup([g], g.id);
+    const types = s.engine.plan
+      .useOption(s.campaign.state, { combatantId: g.id, optionId: 'nimble-escape-disengage' })
+      .events.map((e) => e.type);
+    expect(types).toContain('Disengaged');
+  });
+
+  it('lay-on-hands-heal routes amount + target to a Healed of that amount', () => {
+    const p = paladin(5);
+    const ally = wizard();
+    const s = setup([p, ally], p.id);
+    const HEAL = 3;
+    const events = s.engine.plan.useOption(s.campaign.state, {
+      combatantId: p.id,
+      optionId: 'lay-on-hands-heal',
+      targetId: ally.id,
+      amount: HEAL,
+    }).events;
+    const healed = events.find((e) => e.type === 'Healed') as HealedEvent | undefined;
+    expect(healed?.targetId).toBe(ally.id);
+    expect(healed?.amount).toBe(HEAL);
+  });
+
+  it('flurry-of-blows routes target + weapon to Unarmed Strikes', () => {
+    const m = monk(2);
+    const target = wizard();
+    const s = setup([m, target], m.id);
+    const fistId = acquireFist(s);
+    const types = s.engine.plan
+      .useOption(s.campaign.state, {
+        combatantId: m.id,
+        optionId: 'flurry-of-blows',
+        targetId: target.id,
+        weaponInstanceId: fistId,
+      })
+      .events.map((e) => e.type);
+    expect(types).toContain('AttackRolled');
+  });
+
+  it('throws when lay-on-hands-heal is missing amount', () => {
+    const p = paladin(5);
+    const ally = wizard();
+    const s = setup([p, ally], p.id);
+    expect(() =>
+      s.engine.plan.useOption(s.campaign.state, {
+        combatantId: p.id,
+        optionId: 'lay-on-hands-heal',
+        targetId: ally.id,
+      }),
+    ).toThrow(/requires an amount/);
+  });
+
+  it('throws when flurry-of-blows is missing weaponInstanceId', () => {
+    const m = monk(2);
+    const target = wizard();
+    const s = setup([m, target], m.id);
+    expect(() =>
+      s.engine.plan.useOption(s.campaign.state, {
+        combatantId: m.id,
+        optionId: 'flurry-of-blows',
+        targetId: target.id,
+      }),
+    ).toThrow(/requires a weaponInstanceId/);
   });
 });

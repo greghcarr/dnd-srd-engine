@@ -347,6 +347,7 @@ export type {
   BonusActionOption,
   BonusActionTargetKind,
   BonusActionIntent,
+  BonusActionParams,
   SpellFilter,
   MonsterFilter,
   ItemFilter,

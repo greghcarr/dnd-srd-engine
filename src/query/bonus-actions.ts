@@ -16,11 +16,17 @@
 //     action, so dice route through the active RollProvider and the
 //     planner re-validates authoritatively.
 //
-// Scope: the bonus-action features whose planner intent is expressible
-// from (combatantId, targetId) alone. Documented deferrals (need a param
-// beyond a target, or a non-class gate): Flurry of Blows (weaponInstanceId),
-// Lay on Hands heal (amount), Adrenaline Rush (Orc species), Nimble Escape
-// (Goblin statblock), Frenzy (subclass). They keep their dedicated planners.
+// Scope (slice 714 + 715): the bonus-action features whose planner intent
+// is expressible from (combatantId) plus the optional params bag (targetId
+// / amount / weaponInstanceId). Covers Second Wind, Rage, Cunning Action,
+// Patient Defense / Step of the Wind (± Focus), Bardic Inspiration, Lay on
+// Hands (heal + cure-poison), Flurry of Blows, Adrenaline Rush (Orc), and
+// Nimble Escape (Goblin).
+//
+// Deliberately NOT here: Frenzy. Despite the slice-714 note, it is not a
+// bonus action — its planner consumes a Rage charge + applies the
+// `frenzied` condition (a Rage modifier), emitting no ActionEconomyConsumed.
+// It belongs with Rage, not in the Bonus Actions menu.
 
 import type { CampaignState } from '../schemas/runtime/campaign.js';
 import type { ResolvedContent } from '../content/pack.js';
@@ -28,9 +34,10 @@ import type { Character } from '../schemas/runtime/character.js';
 // The same precondition predictor `availableActions` uses: returns the
 // blocking-condition id (incapacitated / stunned / ...) or undefined.
 import { findActorBlockingCondition } from '../engine/plan/_actor-state.js';
-// Reuse the planner's own ownership predicate (Rogue L2+ or a statblock
-// that carries Cunning Action) so enumeration matches dispatch exactly.
+// Reuse each planner's own ownership predicate / allowlist so enumeration
+// matches dispatch exactly (no drift between "offered" and "accepted").
 import { characterHasCunningAction, type CunningActionMode } from '../engine/plan/cunning-action.js';
+import { characterHasNimbleEscape } from '../engine/plan/nimble-escape.js';
 import type { SecondWindIntent } from '../engine/plan/second-wind.js';
 import type { RageIntent } from '../engine/plan/rage.js';
 import type { CunningActionIntent } from '../engine/plan/cunning-action.js';
@@ -38,6 +45,9 @@ import type { PatientDefenseIntent } from '../engine/plan/patient-defense.js';
 import type { StepOfTheWindIntent } from '../engine/plan/step-of-the-wind.js';
 import type { BardicInspirationIntent } from '../engine/plan/bardic-inspiration.js';
 import type { LayOnHandsIntent } from '../engine/plan/lay-on-hands.js';
+import type { AdrenalineRushIntent } from '../engine/plan/adrenaline-rush.js';
+import type { NimbleEscapeIntent } from '../engine/plan/nimble-escape.js';
+import type { FlurryOfBlowsIntent } from '../engine/plan/flurry-of-blows.js';
 
 // ── Named constants ─────────────────────────────────────────────────
 const FIGHTER_CLASS_ID = 'fighter';
@@ -45,6 +55,7 @@ const BARBARIAN_CLASS_ID = 'barbarian';
 const MONK_CLASS_ID = 'monk';
 const BARD_CLASS_ID = 'bard';
 const PALADIN_CLASS_ID = 'paladin';
+const ORC_SPECIES_ID = 'orc';
 const MONKS_FOCUS_LEVEL = 2;
 
 const SECOND_WIND_RESOURCE = 'second-wind';
@@ -52,6 +63,7 @@ const RAGE_RESOURCE = 'rage';
 const KI_RESOURCE = 'ki';
 const BARDIC_INSPIRATION_RESOURCE = 'bardic-inspiration';
 const LAY_ON_HANDS_RESOURCE = 'lay-on-hands';
+const ADRENALINE_RUSH_RESOURCE = 'adrenaline-rush';
 const LAY_ON_HANDS_CURE_POISON_COST = 5; // matches CURE_POISON_COST in lay-on-hands.ts
 const HEAVY_ARMOR_CATEGORY = 'heavy';
 
@@ -95,7 +107,21 @@ export type BonusActionIntent =
   | PatientDefenseIntent
   | StepOfTheWindIntent
   | BardicInspirationIntent
-  | LayOnHandsIntent;
+  | LayOnHandsIntent
+  | AdrenalineRushIntent
+  | NimbleEscapeIntent
+  | FlurryOfBlowsIntent;
+
+/**
+ * Per-option parameters for `bonusActionIntent` / `engine.plan.useOption`.
+ * `targetId` for creature-target options; `amount` for metered heals (Lay on
+ * Hands); `weaponInstanceId` for strike options (Flurry of Blows).
+ */
+export interface BonusActionParams {
+  readonly targetId?: string;
+  readonly amount?: number;
+  readonly weaponInstanceId?: string;
+}
 
 // ── Registry ────────────────────────────────────────────────────────
 interface BonusActionDescriptor {
@@ -119,7 +145,11 @@ interface BonusActionDescriptor {
     state: CampaignState,
     content: ResolvedContent,
   ) => string | undefined;
-  readonly toIntent: (combatantId: string, targetId?: string) => BonusActionIntent;
+  /** Requires `params.amount` (a metered heal, e.g. Lay on Hands heal). */
+  readonly requiresAmount?: boolean;
+  /** Requires `params.weaponInstanceId` (a strike, e.g. Flurry of Blows). */
+  readonly requiresWeapon?: boolean;
+  readonly toIntent: (combatantId: string, params: BonusActionParams) => BonusActionIntent;
 }
 
 const hasClass = (character: Character, classId: string): boolean =>
@@ -228,10 +258,25 @@ const REGISTRY: ReadonlyArray<BonusActionDescriptor> = [
     target: 'creature',
     owns: (c) => hasClass(c, BARD_CLASS_ID),
     resourceId: BARDIC_INSPIRATION_RESOURCE,
-    toIntent: (id, targetId) => ({
+    toIntent: (id, params) => ({
       type: 'BardicInspiration',
       bardId: id,
-      recipientId: targetId as string,
+      recipientId: params.targetId as string,
+    }),
+  },
+  {
+    id: 'lay-on-hands-heal',
+    label: 'Lay on Hands: Heal',
+    target: 'creature',
+    owns: (c) => hasClass(c, PALADIN_CLASS_ID),
+    resourceId: LAY_ON_HANDS_RESOURCE,
+    requiresAmount: true,
+    toIntent: (id, params) => ({
+      type: 'LayOnHands',
+      paladinId: id,
+      targetId: params.targetId as string,
+      mode: 'heal',
+      amount: params.amount,
     }),
   },
   {
@@ -241,12 +286,50 @@ const REGISTRY: ReadonlyArray<BonusActionDescriptor> = [
     owns: (c) => hasClass(c, PALADIN_CLASS_ID),
     resourceId: LAY_ON_HANDS_RESOURCE,
     resourceMin: LAY_ON_HANDS_CURE_POISON_COST,
-    toIntent: (id, targetId) => ({
+    toIntent: (id, params) => ({
       type: 'LayOnHands',
       paladinId: id,
-      targetId: targetId as string,
+      targetId: params.targetId as string,
       mode: 'cure-poison',
     }),
+  },
+  {
+    id: 'flurry-of-blows',
+    label: 'Flurry of Blows',
+    target: 'creature',
+    owns: (c) => hasClassLevel(c, MONK_CLASS_ID, MONKS_FOCUS_LEVEL),
+    needsFocus: true,
+    requiresWeapon: true,
+    toIntent: (id, params) => ({
+      type: 'FlurryOfBlows',
+      monkId: id,
+      targetId: params.targetId as string,
+      weaponInstanceId: params.weaponInstanceId as string,
+    }),
+  },
+  {
+    id: 'adrenaline-rush',
+    label: 'Adrenaline Rush (Dash)',
+    target: 'none',
+    owns: (c) => c.speciesId === ORC_SPECIES_ID,
+    resourceId: ADRENALINE_RUSH_RESOURCE,
+    dashConflict: true,
+    toIntent: (id) => ({ type: 'AdrenalineRush', orcId: id }),
+  },
+  {
+    id: 'nimble-escape-disengage',
+    label: 'Nimble Escape: Disengage',
+    target: 'none',
+    owns: characterHasNimbleEscape,
+    disengageConflict: true,
+    toIntent: (id) => ({ type: 'NimbleEscape', goblinId: id, mode: 'disengage' }),
+  },
+  {
+    id: 'nimble-escape-hide',
+    label: 'Nimble Escape: Hide',
+    target: 'none',
+    owns: characterHasNimbleEscape,
+    toIntent: (id) => ({ type: 'NimbleEscape', goblinId: id, mode: 'hide' }),
   },
 ];
 
@@ -330,12 +413,18 @@ export const bonusActions = (
 export const bonusActionIntent = (
   optionId: string,
   combatantId: string,
-  targetId?: string,
+  params: BonusActionParams = {},
 ): BonusActionIntent => {
   const d = REGISTRY.find((x) => x.id === optionId);
   if (d === undefined) throw new Error(`Unknown bonus-action option: ${optionId}`);
-  if (d.target === 'creature' && targetId === undefined) {
+  if (d.target === 'creature' && params.targetId === undefined) {
     throw new Error(`Bonus-action option '${optionId}' requires a targetId`);
   }
-  return d.toIntent(combatantId, targetId);
+  if (d.requiresAmount === true && params.amount === undefined) {
+    throw new Error(`Bonus-action option '${optionId}' requires an amount`);
+  }
+  if (d.requiresWeapon === true && params.weaponInstanceId === undefined) {
+    throw new Error(`Bonus-action option '${optionId}' requires a weaponInstanceId`);
+  }
+  return d.toIntent(combatantId, params);
 };

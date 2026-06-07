@@ -64,5 +64,5 @@ Bonus-action **spells** stay in `castableSpells` (slice 713), surfaced by filter
 
 ## Open follow-ups (next slice)
 
-- Options needing a param beyond a target keep their dedicated planner (documented deferrals): Flurry of Blows (`weaponInstanceId`), Lay on Hands **heal** (`amount`). A future `useOption` could grow an optional params bag.
-- Non-class bonus actions not yet enumerated: Adrenaline Rush (Orc species), Nimble Escape (Goblin statblock), Frenzy (Berserker subclass). Add when the duel needs them.
+- ~~Options needing a param beyond a target keep their dedicated planner (documented deferrals): Flurry of Blows (`weaponInstanceId`), Lay on Hands **heal** (`amount`). A future `useOption` could grow an optional params bag.~~ **Closed by slice 715** (`useOption` grew a `{ targetId, amount, weaponInstanceId }` param bag).
+- ~~Non-class bonus actions not yet enumerated: Adrenaline Rush (Orc species), Nimble Escape (Goblin statblock), Frenzy (Berserker subclass). Add when the duel needs them.~~ **Closed by slice 715** for Adrenaline Rush + Nimble Escape. Frenzy was reclassified: on inspection its planner is a Rage modifier (consumes a Rage charge + applies `frenzied`, no `ActionEconomyConsumed`), not a bonus action, so it is intentionally NOT enumerated.

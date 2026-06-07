@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine (slice 715): complete the bonus-action surface**
+`engine.plan.useOption` grows a `{ targetId, amount, weaponInstanceId }` param bag (`amount` for Lay on Hands heal, `weaponInstanceId` for Flurry of Blows) and `bonusActions` adds five options: `lay-on-hands-heal`, `flurry-of-blows`, `adrenaline-rush` (Orc), `nimble-escape-disengage` / `nimble-escape-hide` (Goblin). Frenzy was reclassified as a Rage modifier (not a bonus action) and is intentionally not enumerated. Additive; reuses the existing planners; closes the slice-714 bonus-action deferrals.
+Detail: [slice-715.md](docs/changelog/slice-715.md).
+
 **Engine (slice 714): bonus-action affordances — bonusActions + useOption**
 New `engine.query.bonusActions(state, encounterId, combatantId)` enumerates the bonus-action features a combatant owns (Second Wind, Rage, Cunning Action, Patient Defense / Step of the Wind ± Focus, Bardic Inspiration, Lay on Hands cure-poison), each flagged `enabled` with a machine-readable `reason` and a `target` kind; new `engine.plan.useOption(state, { combatantId, optionId, targetId? })` is a generic executor that maps an option id to its dedicated planner (no per-feature wiring in the UI). Pure/read-only enumeration; dispatch reuses the existing planners (one shared dispatch table) so behavior is byte-identical and dice route through the slice-704 RollProvider. So the dnd-web duel renders + performs a Bonus Actions menu without reimplementing rules.
 Detail: [slice-714.md](docs/changelog/slice-714.md).

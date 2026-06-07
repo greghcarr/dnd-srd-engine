@@ -65,4 +65,5 @@ export {
   type BonusActionOption,
   type BonusActionTargetKind,
   type BonusActionIntent,
+  type BonusActionParams,
 } from './bonus-actions.js';

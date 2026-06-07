@@ -363,11 +363,16 @@ export interface PlanResult {
   readonly events: ReadonlyArray<Event>;
 }
 
-/** Slice 714: argument to `engine.plan.useOption` (a `bonusActions` option id). */
+/** Slice 714/715: argument to `engine.plan.useOption` (a `bonusActions` option id). */
 export interface UseOptionOptions {
   readonly combatantId: string;
   readonly optionId: string;
+  /** Target creature for creature-target options (Bardic Inspiration, Lay on Hands, Flurry). */
   readonly targetId?: string;
+  /** Hit Points to restore for metered heals (Lay on Hands heal). */
+  readonly amount?: number;
+  /** Unarmed-strike item instance for strike options (Flurry of Blows). */
+  readonly weaponInstanceId?: string;
 }
 
 export interface Engine {
@@ -688,7 +693,11 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
       return { events: handler.plan(ctx, intent.params) };
     },
     useOption(state, opts) {
-      const intent = bonusActionIntent(opts.optionId, opts.combatantId, opts.targetId);
+      const intent = bonusActionIntent(opts.optionId, opts.combatantId, {
+        targetId: opts.targetId,
+        amount: opts.amount,
+        weaponInstanceId: opts.weaponInstanceId,
+      });
       return planIntent(planNs, state, intent);
     },
     shortRest(state, intent) {

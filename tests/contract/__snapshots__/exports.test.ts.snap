@@ -430,6 +430,7 @@ exports[`public API contract: src/index.ts > source-level exports (runtime + typ
   "BeginFirstTurnIntent",
   "BonusActionIntent",
   "BonusActionOption",
+  "BonusActionParams",
   "BonusActionTargetKind",
   "CHARACTER_LEVEL_MAX",
   "CHARACTER_LEVEL_MIN",
