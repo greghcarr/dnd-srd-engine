@@ -26,7 +26,7 @@ export const applyShortRestStarted = (
 
 export const applyShortRestEnded = (
   state: Draft<CampaignState>,
-  _event: ShortRestEndedEvent,
+  event: ShortRestEndedEvent,
 ): void => {
   const session = state.activeShortRest;
   invariant(session !== undefined, 'No active short rest to end');
@@ -50,6 +50,17 @@ export const applyShortRestEnded = (
         resource.current = Math.min(resource.max, resource.current + 1);
       }
     }
+  }
+  // Slice 718: apply the RecoverResource deltas the planner resolved
+  // against the pre-rest state (Font of Inspiration regains all Bardic
+  // Inspiration; Sorcerous Restoration regains floor(level/2) Sorcery
+  // Points and spends its once-per-Long-Rest gate). Clamped to 0..max.
+  for (const d of event.resourceDeltas ?? []) {
+    const character = state.characters[d.characterId];
+    if (!character) continue;
+    const resource = character.resources.find((r) => r.resourceId === d.resourceId);
+    if (resource === undefined) continue;
+    resource.current = Math.max(0, Math.min(resource.max, resource.current + d.delta));
   }
   clearShortRestCountersForCharacters(state, session.participantIds);
 };

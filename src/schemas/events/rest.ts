@@ -2,6 +2,17 @@ import { z } from 'zod';
 import { ULIDSchema } from '../primitives.js';
 import { EventEnvelopeSchema } from './envelope.js';
 
+// Slice 718: per-participant resource changes a rest applies beyond the
+// per-resource recharge cadence — the resolved deltas of `RecoverResource`
+// effects (Font of Inspiration, Sorcerous Restoration) plus any gate
+// spend. Computed at plan time (amount 'all'/formula resolved against the
+// pre-rest state) and applied (clamped to 0..max) by the rest reducer.
+const ResourceDeltaSchema = z.object({
+  characterId: ULIDSchema,
+  resourceId: z.string(),
+  delta: z.number().int(),
+});
+
 export const ShortRestStartedEventSchema = EventEnvelopeSchema.extend({
   type: z.literal('ShortRestStarted'),
   participantIds: z.array(ULIDSchema).min(1),
@@ -16,6 +27,7 @@ export type ShortRestStartedEvent = z.infer<typeof ShortRestStartedEventSchema>;
 
 export const ShortRestEndedEventSchema = EventEnvelopeSchema.extend({
   type: z.literal('ShortRestEnded'),
+  resourceDeltas: z.array(ResourceDeltaSchema).optional(),
 });
 export type ShortRestEndedEvent = z.infer<typeof ShortRestEndedEventSchema>;
 
@@ -28,5 +40,6 @@ export type LongRestStartedEvent = z.infer<typeof LongRestStartedEventSchema>;
 
 export const LongRestEndedEventSchema = EventEnvelopeSchema.extend({
   type: z.literal('LongRestEnded'),
+  resourceDeltas: z.array(ResourceDeltaSchema).optional(),
 });
 export type LongRestEndedEvent = z.infer<typeof LongRestEndedEventSchema>;

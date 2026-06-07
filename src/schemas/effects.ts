@@ -310,7 +310,7 @@ export type Effect =
   | { kind: 'GrantSpellSlots'; level: SpellLevel; count: number; source: 'full' | 'half' | 'third' | 'pact' }
   | { kind: 'GrantSpell'; spellId: string; preparation: 'always-prepared' | 'prepared' | 'known' | 'at-will' | 'oncePerLongRest' | 'oncePerShortRest'; spellcastingAbility?: AbilityScore; freeCastResourceId?: string }
   | { kind: 'OnEvent'; id?: string; trigger: { eventType: string; filter?: Predicate }; actions: TriggerAction[]; oncePer?: 'turn' | 'round' | 'shortRest' | 'longRest'; requiresReaction?: boolean; consumeOnTrigger?: boolean }
-  | { kind: 'RecoverResource'; resourceId: string; amount: number | 'all' | Formula; when: 'shortRest' | 'longRest' | 'turnStart' | 'turnEnd' | 'dawn' }
+  | { kind: 'RecoverResource'; resourceId: string; amount: number | 'all' | Formula; when: 'shortRest' | 'longRest' | 'turnStart' | 'turnEnd' | 'dawn'; limitedByResourceId?: string }
   | { kind: 'GrantAction'; actionId: string; name: string; cost: 'action' | 'bonusAction' | 'reaction' | 'free'; resourceCost?: { resourceId: string; amount: number } }
   | { kind: 'ModifyActionEconomy'; op: 'extraAttack' | 'extraAction' | 'extraBonusAction'; count: number; condition?: Predicate }
   | { kind: 'GrantWeaponMastery'; masteries: WeaponMastery[]; slots: number }
@@ -748,6 +748,12 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       resourceId: z.string(),
       amount: z.union([z.number(), z.literal('all'), FormulaSchema]),
       when: z.enum(['shortRest', 'longRest', 'turnStart', 'turnEnd', 'dawn']),
+      // Slice 718: a once-per-X gate. When set, the recovery applies only
+      // if the character's `limitedByResourceId` resource is available
+      // (current > 0), and spends 1 of it (Sorcerous Restoration: gated by
+      // a `sorcerous-restoration` resource that recharges on a Long Rest,
+      // so the recovery fires at most once per Long Rest).
+      limitedByResourceId: z.string().optional(),
     }),
     z.object({
       kind: z.literal('GrantAction'),

@@ -20,7 +20,7 @@ export { undo, redo } from './undo-redo.js';
 export { performIntent, serializeCampaign, loadCampaign, createPC } from './conveniences.js';
 export { seedResourcesFromContent } from './seed-resources.js';
 export type { CreatePCOptions, SerializedCampaign } from './conveniences.js';
-import { performIntent } from './conveniences.js';
+import { performIntent, planIntent } from './conveniences.js';
 import {
   planShortRest,
   planLongRest,
@@ -109,6 +109,8 @@ import {
   planPreserveLife,
   planLandsAid,
   planWholenessOfBody,
+  planWildResurgence,
+  planMemorizeSpell,
   planPeerlessSkill,
   planTacticalMind,
   planFrenzy,
@@ -276,6 +278,8 @@ import {
   type PreserveLifeIntent,
   type LandsAidIntent,
   type WholenessOfBodyIntent,
+  type WildResurgenceIntent,
+  type MemorizeSpellIntent,
   type PeerlessSkillIntent,
   type PeerlessSkillOutcome,
   type TacticalMindIntent,
@@ -323,7 +327,10 @@ import type {
   AffordanceActionId,
   TargetCandidate,
   CastableSpell,
+  LegalSpellTargets,
 } from '../query/affordances.js';
+import { bonusActions as queryBonusActions, bonusActionIntent } from '../query/bonus-actions.js';
+import type { BonusActionOption } from '../query/bonus-actions.js';
 import { HANDLER_API_VERSION } from '../handlers/index.js';
 import { assertActorCanAct } from './plan/_actor-state.js';
 import { assertReactionAvailable, economyConsumedIfEncountered } from './plan/reactive-spells.js';
@@ -360,6 +367,18 @@ export interface PlanResult {
   readonly events: ReadonlyArray<Event>;
 }
 
+/** Slice 714/715: argument to `engine.plan.useOption` (a `bonusActions` option id). */
+export interface UseOptionOptions {
+  readonly combatantId: string;
+  readonly optionId: string;
+  /** Target creature for creature-target options (Bardic Inspiration, Lay on Hands, Flurry). */
+  readonly targetId?: string;
+  /** Hit Points to restore for metered heals (Lay on Hands heal). */
+  readonly amount?: number;
+  /** Unarmed-strike item instance for strike options (Flurry of Blows). */
+  readonly weaponInstanceId?: string;
+}
+
 export interface Engine {
   readonly content: ResolvedContent;
   readonly schemaVersion: number;
@@ -389,6 +408,13 @@ export interface Engine {
     // behavior for a bespoke spell/item/action alongside its JSON, instead
     // of the engine hardcoding it. See docs/plugin-api-design.md.
     custom(state: CampaignState, intent: { handlerId: string; params?: unknown; at?: string }): PlanResult;
+    // Slice 714: generic executor for a `query.bonusActions` option. Maps the
+    // option id (+ optional target) to its dedicated planner and returns that
+    // planner's PlanResult — the UI performs an enumerated bonus action by id
+    // without hardcoding each feature's bespoke intent. Validates + throws on
+    // an unknown id or a missing required target; dice route through the
+    // active RollProvider (it delegates to the same planners as every action).
+    useOption(state: CampaignState, opts: UseOptionOptions): PlanResult;
     shortRest(state: CampaignState, intent: { participantIds: ReadonlyArray<string>; at?: string }): PlanResult;
     longRest(state: CampaignState, intent: { participantIds: ReadonlyArray<string>; at?: string }): PlanResult;
     rest(state: CampaignState, intent: RestIntent): PlanResult;
@@ -490,6 +516,8 @@ export interface Engine {
     preserveLife(state: CampaignState, intent: Omit<PreserveLifeIntent, 'type'>): PlanResult;
     landsAid(state: CampaignState, intent: Omit<LandsAidIntent, 'type'>): PlanResult;
     wholenessOfBody(state: CampaignState, intent: Omit<WholenessOfBodyIntent, 'type'>): PlanResult;
+    wildResurgence(state: CampaignState, intent: Omit<WildResurgenceIntent, 'type'>): PlanResult;
+    memorizeSpell(state: CampaignState, intent: Omit<MemorizeSpellIntent, 'type'>): PlanResult;
     peerlessSkill(state: CampaignState, intent: Omit<PeerlessSkillIntent, 'type'>): PeerlessSkillOutcome;
     tacticalMind(state: CampaignState, intent: Omit<TacticalMindIntent, 'type'>): TacticalMindOutcome;
     frenzy(state: CampaignState, intent: Omit<FrenzyIntent, 'type'>): PlanResult;
@@ -605,6 +633,18 @@ export interface Engine {
       action: AffordanceActionId,
     ): ReadonlyArray<TargetCandidate>;
     castableSpells(state: CampaignState, characterId: string): ReadonlyArray<CastableSpell>;
+    legalSpellTargets(
+      state: CampaignState,
+      encounterId: string,
+      casterId: string,
+      spellId: string,
+      slotLevel: number,
+    ): LegalSpellTargets;
+    bonusActions(
+      state: CampaignState,
+      encounterId: string,
+      combatantId: string,
+    ): ReadonlyArray<BonusActionOption>;
   };
 }
 
@@ -658,14 +698,22 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
       };
       return { events: handler.plan(ctx, intent.params) };
     },
+    useOption(state, opts) {
+      const intent = bonusActionIntent(opts.optionId, opts.combatantId, {
+        targetId: opts.targetId,
+        amount: opts.amount,
+        weaponInstanceId: opts.weaponInstanceId,
+      });
+      return planIntent(planNs, state, intent);
+    },
     shortRest(state, intent) {
-      return { events: planShortRest(state, { type: 'ShortRest', ...intent }) };
+      return { events: planShortRest(state, content, { type: 'ShortRest', ...intent }) };
     },
     longRest(state, intent) {
       return { events: planLongRest(state, content, { type: 'LongRest', ...intent }) };
     },
     rest(state, intent) {
-      if (intent.type === 'ShortRest') return { events: planShortRest(state, intent) };
+      if (intent.type === 'ShortRest') return { events: planShortRest(state, content, intent) };
       return { events: planLongRest(state, content, intent) };
     },
     attack(state, intent) {
@@ -958,6 +1006,12 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     wholenessOfBody(state, intent) {
       return { events: planWholenessOfBody(state, content, rng, { type: 'WholenessOfBody', ...intent }) };
     },
+    wildResurgence(state, intent) {
+      return { events: planWildResurgence(state, content, { type: 'WildResurgence', ...intent }) };
+    },
+    memorizeSpell(state, intent) {
+      return { events: planMemorizeSpell(state, content, { type: 'MemorizeSpell', ...intent }) };
+    },
     peerlessSkill(state, intent) {
       return planPeerlessSkill(state, content, rng, { type: 'PeerlessSkill', ...intent });
     },
@@ -1159,6 +1213,12 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     castableSpells(state, characterId) {
       return affordances.castableSpells(state, content, characterId);
+    },
+    legalSpellTargets(state, encounterId, casterId, spellId, slotLevel) {
+      return affordances.legalSpellTargets(state, content, encounterId, casterId, spellId, slotLevel);
+    },
+    bonusActions(state, encounterId, combatantId) {
+      return queryBonusActions(state, content, encounterId, combatantId);
     },
   };
 

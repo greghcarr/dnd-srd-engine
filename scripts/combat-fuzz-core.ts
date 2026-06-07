@@ -420,8 +420,22 @@ const buildMonster = (name: string, pack: Pack, rngFloat: () => number): BuiltCh
 // Two-handed weapons exclude shields. The returned `build: ClassBuild`
 // is the per-character snapshot pickIntent reads -- pickIntent itself
 // stays RNG-free.
-const buildL1 = (name: string, rngFloat: () => number, pack: Pack): BuiltCharacter => {
-  const pool = pickRandom(CLASS_POOLS, rngFloat());
+const buildL1 = (
+  name: string,
+  rngFloat: () => number,
+  pack: Pack,
+  // Slice 717: optional class pin (the Free Duel's player class). The
+  // pool-pick RNG draw is still consumed (kept identical) and then
+  // overridden with the matching CLASS_POOLS entry; an unknown id falls
+  // back to the random pick. All downstream draws come from the chosen
+  // pool, so they're deterministic for a given (rng stream, forcedClassId).
+  forcedClassId?: string,
+): BuiltCharacter => {
+  const drawnPool = pickRandom(CLASS_POOLS, rngFloat());
+  const pool =
+    forcedClassId !== undefined
+      ? CLASS_POOLS.find((p) => p.classId === forcedClassId) ?? drawnPool
+      : drawnPool;
   const speciesId = pickRandom(SPECIES, rngFloat());
   const backgroundId = pickRandom(BACKGROUNDS, rngFloat());
   const abilities = assignAbilityScores(pool);
@@ -834,6 +848,12 @@ export interface FuzzBattleOptions {
   readonly seed: number;
   readonly pack: Pack;
   readonly level?: number;
+  /** Slice 717: pin team A[0]'s class (the Free Duel's player). A valid
+   *  CLASS_POOLS classId builds A[0] as that class; an unknown id (or
+   *  unset) leaves A[0] random. The seed-driven opponent + map + other
+   *  combatants are byte-identical whether or not a class is pinned —
+   *  class is an independent axis from the seed. */
+  readonly playerClass?: string;
   readonly rest?: FuzzRest;
   readonly teamSize?: number;
   readonly vs?: FuzzVs;
@@ -904,7 +924,28 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
   // bite events look identical.
   const teamNames = (base: 'Aria' | 'Bran' | 'Beast'): string[] =>
     teamSize === 1 ? [base] : Array.from({ length: teamSize }, (_, i) => `${base}-${i + 1}`);
-  const teamA: BuiltCharacter[] = teamNames('Aria').map((n) => buildL1(n, rngFloat, pack));
+  // Slice 717: optional class pin for team A[0] (the duel's player). To
+  // keep the class an INDEPENDENT axis from the seed, A[0] is ALWAYS built
+  // from the shared cursor first (so the seed-driven opponent + map + other
+  // combatants advance the stream identically whether or not a class is
+  // pinned). When a valid class is pinned, that random A[0] is discarded
+  // and rebuilt as the chosen class from an ISOLATED cursor, so the
+  // substitution never perturbs the shared stream. An unknown id is no pin.
+  const pinnedClass =
+    opts.playerClass !== undefined && CLASS_POOLS.some((p) => p.classId === opts.playerClass)
+      ? opts.playerClass
+      : undefined;
+  let pinCursor = seed * 13 + 7;
+  const pinRngFloat = (): number => {
+    pinCursor = (pinCursor * 9301 + 49297) % 233280;
+    return pinCursor / 233280;
+  };
+  const teamA: BuiltCharacter[] = teamNames('Aria').map((n, i) => {
+    const built = buildL1(n, rngFloat, pack); // always consume the shared draws
+    return i === 0 && pinnedClass !== undefined
+      ? buildL1(n, pinRngFloat, pack, pinnedClass) // isolated rebuild as the pinned class
+      : built;
+  });
   const teamB: BuiltCharacter[] = vs === 'monster'
     ? teamNames('Beast').map((n) => buildMonster(n, pack, rngFloat))
     : teamNames('Bran').map((n) => buildL1(n, rngFloat, pack));

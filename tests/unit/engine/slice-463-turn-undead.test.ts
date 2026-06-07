@@ -152,3 +152,53 @@ describe('Cleric Turn Undead (slice 463)', () => {
     ).toThrow(/does not have Channel Divinity/);
   });
 });
+
+describe('Cleric Sear Undead (slice 720)', () => {
+  it('L5 cleric: a failed-save Undead takes Radiant damage that does NOT end the turn effect', () => {
+    // WIS 16 (mod +3) → 3d8 Radiant on each failed save. Loop seeds to
+    // land a save failure (zombie WIS -2 vs DC 8+3+3 = 14).
+    let attempt = 0;
+    let proven = false;
+    while (attempt < 40 && !proven) {
+      attempt += 1;
+      const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(attempt) });
+      const cleric = buildCleric(5);
+      const zombie = buildZombie();
+      let campaign = engine.createCampaign({ name: 'sear' });
+      campaign = commit(campaign, [cleric, zombie].map(
+        (c) => ({ id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: c }) satisfies CharacterCreatedEvent,
+      ));
+      const result = engine.plan.turnUndead(campaign.state, { clericId: cleric.id, targetIds: [zombie.id] });
+      const events = result.events;
+      const save = events.find((e) => e.type === 'SaveRolled') as SaveRolledEvent | undefined;
+      if (save === undefined || save.success) continue;
+
+      // A Sear Undead DamageApplied (radiant) is emitted...
+      const searIdx = events.findIndex((e) => e.type === 'DamageApplied' && (e as { source?: string }).source === 'sear-undead');
+      expect(searIdx).toBeGreaterThanOrEqual(0);
+      const frightenedIdx = events.findIndex(
+        (e) => e.type === 'ConditionApplied' && (e as ConditionAppliedEvent).conditionId === 'frightened',
+      );
+      // ...BEFORE the Frightened condition (so its endsOnDamage doesn't fire).
+      expect(searIdx).toBeLessThan(frightenedIdx);
+
+      // After committing, the zombie still has Frightened + Incapacitated
+      // (the Sear damage did not end them) and its HP dropped.
+      campaign = commit(campaign, events);
+      const z = campaign.state.characters[zombie.id]!;
+      expect(z.hp.current).toBeLessThan(15);
+      expect(z.appliedConditions.some((c) => c.conditionId === 'frightened')).toBe(true);
+      expect(z.appliedConditions.some((c) => c.conditionId === 'incapacitated')).toBe(true);
+      proven = true;
+    }
+    expect(proven, `no save failure in ${attempt} seeds`).toBe(true);
+  });
+
+  it('L4 cleric: no Sear Undead damage (feature is L5+)', () => {
+    const cleric = buildCleric(4);
+    const zombie = buildZombie();
+    const { engine, campaign } = setup([cleric, zombie]);
+    const events = engine.plan.turnUndead(campaign.state, { clericId: cleric.id, targetIds: [zombie.id] }).events;
+    expect(events.some((e) => e.type === 'DamageApplied' && (e as { source?: string }).source === 'sear-undead')).toBe(false);
+  });
+});

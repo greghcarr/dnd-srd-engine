@@ -60,7 +60,13 @@ const PACK = loadStarterPack();
 // 707) is resolved by `drainPendingChoices` as each fuzz character
 // levels to 4 (it walks the feat → +2/+1 allocate → ability-picker
 // cascade), plus Monk Slow Fall / Fighter Second Wind 3 at L4.
-const LEVELS = [1, 2, 3, 4] as const;
+// Slice 725: extended to L5 — Extra Attack (the five martial classes),
+// 3rd-level slots (full casters) / 2nd (half-casters), and the L5
+// feature cohort (slices 718-724: Font of Inspiration, Sorcerous
+// Restoration, Sear Undead, Wild Resurgence, Faithful Steed, Tactical
+// Shift, Memorize Spell). No new level-up choices at L5, so
+// drainPendingChoices reaches L5 unchanged.
+const LEVELS = [1, 2, 3, 4, 5] as const;
 const SHAPES: ReadonlyArray<{
   teamSize: 1 | 2;
   vs: FuzzVs;
@@ -78,9 +84,9 @@ const RESTS: ReadonlyArray<FuzzRest> = ['none', 'short', 'long'];
 // cells = 1,080 battles per CI run; ~10ms/battle = ~10s wall-clock.
 const SEEDS_PER_CELL = 30;
 
-describe('slice 644 / 651 / 674 / 709: fuzz matrix audit (L1-L4 across shapes + rests)', () => {
+describe('slice 644 / 651 / 674 / 709 / 725: fuzz matrix audit (L1-L5 across shapes + rests)', () => {
   it(`enumerates ${LEVELS.length * SHAPES.length * RESTS.length} matrix cells (${LEVELS.length} levels x ${SHAPES.length} shapes x ${RESTS.length} rests)`, () => {
-    expect(LEVELS.length * SHAPES.length * RESTS.length).toBe(48);
+    expect(LEVELS.length * SHAPES.length * RESTS.length).toBe(60);
   });
 
   for (const level of LEVELS) {

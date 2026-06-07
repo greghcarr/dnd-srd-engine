@@ -27,6 +27,13 @@ const NIMBLE_ESCAPE_STATBLOCKS: ReadonlySet<string> = new Set([
 
 const HIDE_DEFAULT_DC = 15;
 
+// Exported so the read layer (bonusActions enumeration, slice 715) predicts
+// ownership with the SAME allowlist the planner gates on — no drift between
+// "is the option offered" and "does the planner accept it".
+export const characterHasNimbleEscape = (
+  character: { statblockId?: string },
+): boolean => character.statblockId !== undefined && NIMBLE_ESCAPE_STATBLOCKS.has(character.statblockId);
+
 export type NimbleEscapeMode = 'disengage' | 'hide';
 
 export interface NimbleEscapeIntent {
@@ -56,7 +63,7 @@ export const planNimbleEscape = (
 ): ReadonlyArray<Event> => {
   const goblin = state.characters[intent.goblinId];
   if (!goblin) throw new Error(`Unknown character ${intent.goblinId}`);
-  if (goblin.statblockId === undefined || !NIMBLE_ESCAPE_STATBLOCKS.has(goblin.statblockId)) {
+  if (!characterHasNimbleEscape(goblin)) {
     throw new Error(`${goblin.name} does not have Nimble Escape (Goblin statblocks only)`);
   }
 

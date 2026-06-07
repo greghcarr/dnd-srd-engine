@@ -5,8 +5,10 @@ import type {
   FreeCastUsedEvent,
   PactSlotConsumedEvent,
   PactSlotsRegainedEvent,
+  PreparedSpellsChangedEvent,
   SpellCastDeclaredEvent,
   SpellSlotConsumedEvent,
+  SpellSlotsRegainedEvent,
 } from '../../schemas/events/spellcasting.js';
 import { invariant } from '../../internal/invariants.js';
 
@@ -52,6 +54,32 @@ export const applyPactSlotsRegained = (
 ): void => {
   const character = requireCharacter(state, event.characterId);
   character.pactSlotsUsed = Math.max(0, character.pactSlotsUsed - event.count);
+};
+
+// Slice 721: regain expended standard slots of a level (Druid Wild
+// Resurgence). Decrements `spellSlotsUsed[slotLevel]`, clamped at 0 so an
+// over-credit can't bank slots above max.
+export const applySpellSlotsRegained = (
+  state: Draft<CampaignState>,
+  event: SpellSlotsRegainedEvent,
+): void => {
+  const character = requireCharacter(state, event.characterId);
+  const key = String(event.slotLevel);
+  const previous = character.spellSlotsUsed[key] ?? 0;
+  character.spellSlotsUsed[key] = Math.max(0, previous - event.count);
+};
+
+// Slice 724: Wizard Memorize Spell swaps one prepared spell. Remove the
+// outgoing spell and add the incoming one (idempotent on the add).
+export const applyPreparedSpellsChanged = (
+  state: Draft<CampaignState>,
+  event: PreparedSpellsChangedEvent,
+): void => {
+  const character = requireCharacter(state, event.characterId);
+  character.preparedSpells = character.preparedSpells.filter((s) => s !== event.removed);
+  if (!character.preparedSpells.includes(event.added)) {
+    character.preparedSpells.push(event.added);
+  }
 };
 
 // Slice 486: records that the bearer's once-per-long-rest free cast for

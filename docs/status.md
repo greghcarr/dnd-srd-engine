@@ -91,7 +91,7 @@ The starter pack is intentionally a slice, not the full 2024 catalogs. This tabl
 
 #### Content triage
 
-The 🔴 items are the ones a level-1-to-5 family-tabletop run notices immediately: a Fighter at level 5 with no Extra Attack hooked up, a Rogue at level 3 with no subclass to pick, a Wizard wanting to cast Web (but it's in the spell list with no mechanics). Closing them is mostly JSON authoring — see the authoring guide.
+A level-1-to-5 family-tabletop run is now well-supported end to end: every class's L1-L5 features are mechanically closed (the CI-guarded srd-l{1..5}-complete floor audits), subclasses land their L3 features, and L1-L5 is fuzzed across shapes + rests (1,800 battles/run). The 🔴 items a low-level run still notices are mostly in the content tail rather than the class chassis: spells that ship in the list but schema-only (e.g. a Wizard wanting to cast Web), subclass features past L3, and the bulk of the MM monster catalog. Closing them is mostly JSON authoring — see the authoring guide.
 
 The 🟡 items become relevant as the campaign progresses past low levels. The ⚪ items are the long tail.
 

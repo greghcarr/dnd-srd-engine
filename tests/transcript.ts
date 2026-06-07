@@ -350,6 +350,10 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       return `Pact slot consumed.`;
     case 'PactSlotsRegained':
       return `Pact slots regained: ${event.count} (${event.source}).`;
+    case 'SpellSlotsRegained':
+      return `Slots regained: ${event.count} ${ordinal(event.slotLevel)}-level (${event.source}).`;
+    case 'PreparedSpellsChanged':
+      return `Prepared spell swapped: ${spellName(content, event.removed)} → ${spellName(content, event.added)} (${event.source}).`;
     case 'FreeCastUsed':
       return `Free cast used: ${spellName(content, event.spellId)}.`;
     case 'ConcentrationStarted': {
