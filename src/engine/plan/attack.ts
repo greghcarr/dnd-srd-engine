@@ -119,13 +119,13 @@ export interface DeflectedAttackInput {
 export const tryBuildDeflectedAttack = (
   input: DeflectedAttackInput,
 ): ReadonlyArray<Event> | undefined => {
-  const deflectionD20 = rollDie(D20_SIDES, input.rng);
+  const deflectionD20 = rollDie(D20_SIDES, input.rng, 'attack');
   const threshold = mirrorImageThreshold(input.mirrorImage.duplicates);
   if (deflectionD20 < threshold) return undefined;
 
   const duplicateAC = computeDuplicateAC(input.mirrorImage.bearerDexMod);
-  const attackRolls: number[] = [rollDie(D20_SIDES, input.rng)];
-  if (input.advantage !== 'none') attackRolls.push(rollDie(D20_SIDES, input.rng));
+  const attackRolls: number[] = [rollDie(D20_SIDES, input.rng, 'attack')];
+  if (input.advantage !== 'none') attackRolls.push(rollDie(D20_SIDES, input.rng, 'attack'));
   const usedRoll =
     input.advantage === 'advantage'
       ? Math.max(...attackRolls)
@@ -1201,8 +1201,8 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     const setA: number[] = [];
     const setB: number[] = [];
     for (let i = 0; i < totalRolls; i++) {
-      setA.push(rollDie(parsed.die, rng));
-      setB.push(rollDie(parsed.die, rng));
+      setA.push(rollDie(parsed.die, rng, 'damage'));
+      setB.push(rollDie(parsed.die, rng, 'damage'));
     }
     const sumA = setA.reduce((s, v) => s + v, 0);
     const sumB = setB.reduce((s, v) => s + v, 0);
@@ -1216,7 +1216,7 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   } else {
     damageRolls = [];
     for (let i = 0; i < totalRolls; i++) {
-      damageRolls.push(rollDie(parsed.die, rng));
+      damageRolls.push(rollDie(parsed.die, rng, 'damage'));
     }
   }
   // Slice 121: Great Weapon Fighting reroll-to-3 rule. Triggers on a

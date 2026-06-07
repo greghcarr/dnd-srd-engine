@@ -1,4 +1,5 @@
 import type { RNG } from './index.js';
+import { getActiveRollProvider, type RollContext } from './roll-provider.js';
 
 const DICE_EXPRESSION_RE = /^(\d+)d(\d+)([+-]\d+)?$/i;
 
@@ -42,27 +43,45 @@ export const parseDiceExpression = (expression: string): ParsedDiceExpression =>
   return { count, die, modifier };
 };
 
-export const rollDie = (die: number, rng: RNG): number => {
+// Slice 704 (A2): when an ambient RollProvider is installed (via
+// `withRollProvider`), the draw routes through it instead of the injected
+// RNG; with none installed this is the untouched `floor(next*die)+1`
+// path, so existing golden + replay output is byte-identical. The
+// optional `context` labels a resulting NeedRoll for the UI.
+export const rollDie = (die: number, rng: RNG, context?: RollContext): number => {
   if (die <= 1 || !Number.isInteger(die)) {
     throw new Error(`Invalid die size: ${die}`);
+  }
+  const provider = getActiveRollProvider();
+  if (provider !== undefined) {
+    return provider.roll(die, context);
   }
   return Math.floor(rng.next() * die) + 1;
 };
 
-export const rollDice = (count: number, die: number, rng: RNG): ReadonlyArray<DieRoll> => {
+export const rollDice = (
+  count: number,
+  die: number,
+  rng: RNG,
+  context?: RollContext,
+): ReadonlyArray<DieRoll> => {
   if (count <= 0 || !Number.isInteger(count)) {
     throw new Error(`Invalid dice count: ${count}`);
   }
   const rolls: DieRoll[] = [];
   for (let i = 0; i < count; i++) {
-    rolls.push({ die, value: rollDie(die, rng) });
+    rolls.push({ die, value: rollDie(die, rng, context) });
   }
   return rolls;
 };
 
-export const rollExpression = (expression: string, rng: RNG): DiceRollResult => {
+export const rollExpression = (
+  expression: string,
+  rng: RNG,
+  context?: RollContext,
+): DiceRollResult => {
   const parsed = parseDiceExpression(expression);
-  const rolls = rollDice(parsed.count, parsed.die, rng);
+  const rolls = rollDice(parsed.count, parsed.die, rng, context);
   const sumOfRolls = rolls.reduce((acc, r) => acc + r.value, 0);
   return {
     rolls,

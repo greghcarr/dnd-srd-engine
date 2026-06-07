@@ -16,6 +16,7 @@ Returns an `Engine` with five namespaces:
 - `engine.undo(campaign)`, `engine.redo(campaign)`: move the cursor along the log.
 - `engine.plan.*`: planners that consume RNG and return events to commit. See [planners](#planners).
 - `engine.derive.*`: pure derivations that read state and return typed results. See [derivations](#derivations).
+- `engine.query.*`: intent-shaped affordance queries ("what can this combatant legally do right now?"). See [affordance queries](#affordance-queries-intent-shaped).
 
 Also exported: `engine.do(campaign, intent)` (dispatches on `intent.type` to the right planner and commits in one call), `engine.content` (the resolved content pack), `engine.schemaVersion`, `engine.rng`.
 
@@ -67,7 +68,7 @@ Every planner returns `{ events: Event[] }` (or `{ events, ...outcome }` for the
 
 All read-only and pure. Memoized per `CampaignState.version`.
 
-- `character(state, id)` → `DerivedCharacter` (totalLevel, proficiency bonus, ability modifiers, HP, `hpMaxBonus` / `effectiveHpMax`, AC, saves, spell slots, pending choices, known languages).
+- `character(state, id)` → `DerivedCharacter` (totalLevel, proficiency bonus, **effective `abilityScores` + `abilityModifiers`** — base plus floors and `IncreaseAbilityScore` from the active effect stack: ASI, Ioun Stones, Belt of Dwarvenkind, etc. — HP, `hpMaxBonus` / `effectiveHpMax`, AC, saves, spell slots, pending choices, known languages).
 - `ac(state, id)`, `savingThrow(state, id, ability)`, `attackBonus(state, id, weaponInstanceId)`.
 - `spellSaveDC(state, id, classId)`, `spellAttackBonus(state, id, classId)`, `spellSlots(state, id)`.
 - `abilityModifier(score)`, `proficiencyBonus(level)`: pure helpers.
@@ -186,6 +187,28 @@ buildEncounterView(state, content, encounterId); // -> EncounterView | undefined
 
 `buildEncounterView` is the combat-tracker view model. It returns the encounter's `status` / `round` / `activeCombatantId` plus `combatants` in initiative order, each a `CombatantView` with `name` / `initiative` / `isActive` / `hp` / `ac` / `exhaustion` / `conditions` (`{ id, name }`) / `defeated` (HP <= 0) / `turn` (action / bonus / reaction used + feet moved). Combatants are `Character` entities (PCs and monsters alike); a missing character is skipped. Returns undefined for an unknown encounter id.
 
+## Affordance queries (intent-shaped)
+
+`engine.query.*` answers "what can this combatant legally do right now?" in intent terms, so an interactive UI renders the answers and never re-derives rules from primitives. Pure + read-only; each wraps the existing derive helpers (pathing, terrain, action-economy, speed, spell-slots) and the planner precondition guard; every list is deterministically ordered.
+
+```ts
+engine.query.legalMoveDestinations(state, encounterId, combatantId); // -> MoveDestination[]  ({ position (feet), costFeet, path })
+engine.query.actionEconomy(state, encounterId, combatantId);          // -> ActionEconomyView | undefined
+engine.query.availableActions(state, encounterId, combatantId);       // -> AvailableAction[]  ({ action, enabled, reason? })
+engine.query.legalTargets(state, encounterId, combatantId, 'attack'); // -> TargetCandidate[]  (in reach + LoS, nearest first)
+engine.query.castableSpells(state, characterId);                      // -> CastableSpell[]  ({ spellId, minLevel, levelOptions })
+```
+
+`availableActions` covers `move | attack | dash | disengage | dodge`; when an action is disabled its `reason` is machine-readable (a blocking-condition id such as `'stunned'`, or `'action-used'` / `'no-target-in-range'` / `'no-movement'` / `'speed-zero'`). `legalMoveDestinations` honors terrain, occupancy, Dash, Steady-Aim (speed 0), and the Frightened "can't move closer to the source" rule; positions are in feet (pass straight to `engine.plan.move`). `castableSpells` is a scaffold (slots + level options; no per-spell range/target validation yet).
+
+## Tactical AI
+
+```ts
+import { planTacticalMove, classifyTacticalRole } from 'dnd-srd-engine';
+```
+
+The pure, deterministic enemy-movement policy (`planTacticalMove` — flee / kite / close / stay over `reachableCells` + `hasLineOfSight`; `classifyTacticalRole` — ranged vs melee from weapon + cantrips; `pickByTotalOrder` — a stable argmax). Lets a consumer drive an AI combatant's movement without depending on the fuzz scripts. The per-turn intent chooser and the event-committing move orchestration remain in the fuzz harness (`scripts/`).
+
 ## RNG
 
 ```ts
@@ -193,6 +216,14 @@ import { defaultRNG, seededRNG, throwOnCallRNG } from 'dnd-srd-engine';
 ```
 
 `seededRNG(seed)` for deterministic tests. `throwOnCallRNG()` is the architectural canary: pass it into a replay to prove `apply()` never reaches for randomness.
+
+### Roll providers (die-typed, resumable)
+
+```ts
+import { withRollProvider, SuppliedRollProvider, SeededRollProvider, NeedRoll } from 'dnd-srd-engine';
+```
+
+For interactive play (a player entering physical dice), a **die-typed** seam sits over the value-typed RNG. `engine.withRollProvider(provider, fn)` runs one synchronous planning call against `provider`; `rollDie` routes each draw through it. `SeededRollProvider(rng)` reproduces the default RNG path bit-for-bit (it's the default). `SuppliedRollProvider(queue)` returns caller-supplied faces in order and throws `NeedRoll { die, context }` when the queue is exhausted — the consumer prompts for that die, appends the answer, and re-attempts (planning is pure, so the same prefix re-draws identical earlier dice). `context` (`'attack' | 'damage' | 'save' | ...`) labels the prompt. One shared stream; no per-combatant forking (intentional). The ranked/daily path keeps using `SeededRollProvider`.
 
 ## IDs
 

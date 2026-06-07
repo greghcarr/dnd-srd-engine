@@ -23,10 +23,21 @@ const computeArmorAC = (
   character: Character,
   itemInstances: Readonly<Record<string, ItemInstance>>,
   content: ResolvedContent,
+  effects: EffectAccumulator,
 ): ACBreakdownEntry[] => {
   const breakdown: ACBreakdownEntry[] = [];
   const armorInstanceId = character.equipped.armor;
-  const dexMod = abilityModifier(character.abilityScores.DEX);
+  // Effective DEX (base + floor + IncreaseAbilityScore) so a DEX boost
+  // (Ioun Stone of Agility, a DEX ASI, etc.) raises AC. The Unarmored
+  // Defense override path (computeUnarmoredOverrideAC) already does this;
+  // before this fix the armored / plain-unarmored path used base DEX.
+  const dexMod = abilityModifier(
+    effectiveAbilityScore(
+      character.abilityScores.DEX,
+      effects.effectiveAbilityScoreFloor('DEX')?.value,
+      effects.effectiveAbilityScoreIncrease('DEX'),
+    ),
+  );
 
   if (armorInstanceId !== undefined) {
     const armorInstance = itemInstances[armorInstanceId];
@@ -187,9 +198,9 @@ export const computeAC = (input: ComputeACInput): ACResult => {
   let breakdown: ACBreakdownEntry[];
   if (armorInstanceId === undefined) {
     const override = computeUnarmoredOverrideAC(input.character, effects);
-    breakdown = override ?? computeArmorAC(input.character, input.itemInstances, input.content);
+    breakdown = override ?? computeArmorAC(input.character, input.itemInstances, input.content, effects);
   } else {
-    breakdown = computeArmorAC(input.character, input.itemInstances, input.content);
+    breakdown = computeArmorAC(input.character, input.itemInstances, input.content, effects);
   }
 
   const modifierBonus = effects.modifierSum('ac', facts);

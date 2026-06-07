@@ -314,6 +314,16 @@ import {
 import { newCampaignId, newEventId, newAppliedConditionId, newEffectInstanceId } from '../ids.js';
 import { nowIso } from '../internal/clock.js';
 import { rollDie, rollExpression } from '../rng/dice.js';
+import { withRollProvider as withRollProviderScope, type RollProvider } from '../rng/roll-provider.js';
+import * as affordances from '../query/affordances.js';
+import type {
+  MoveDestination,
+  ActionEconomyView,
+  AvailableAction,
+  AffordanceActionId,
+  TargetCandidate,
+  CastableSpell,
+} from '../query/affordances.js';
 import { HANDLER_API_VERSION } from '../handlers/index.js';
 import { assertActorCanAct } from './plan/_actor-state.js';
 import { assertReactionAvailable, economyConsumedIfEncountered } from './plan/reactive-spells.js';
@@ -364,6 +374,14 @@ export interface Engine {
   undo(campaign: Campaign): Campaign;
   redo(campaign: Campaign): Campaign;
   do(campaign: Campaign, intent: { readonly type: string } & Record<string, unknown>): Campaign;
+
+  // Slice 704 (A2): resolve ONE planning call against a chosen die-typed
+  // RollProvider without making planning async. Installs `provider` as the
+  // ambient roll source for the synchronous `fn`, restoring the previous
+  // one afterward. With a SuppliedRollProvider, `fn` may throw NeedRoll
+  // when the queue is exhausted; planning is pure, so the caller can
+  // prompt for the die, extend the queue, and re-attempt `fn`.
+  withRollProvider<T>(provider: RollProvider, fn: () => T): T;
 
   plan: {
     // Consumer-extensible action seam: dispatches to a handler registered
@@ -559,6 +577,34 @@ export interface Engine {
     spellSlots(state: CampaignState, characterId: string): ReturnType<typeof computeSpellSlots>;
     abilityModifier(score: number): number;
     proficiencyBonus(level: number): number;
+  };
+
+  // Slice 705 (A1): intent-shaped affordance queries ("what can this
+  // combatant legally do right now?"). Pure + read-only; content closed
+  // over (mirrors `derive`).
+  query: {
+    legalMoveDestinations(
+      state: CampaignState,
+      encounterId: string,
+      combatantId: string,
+    ): ReadonlyArray<MoveDestination>;
+    actionEconomy(
+      state: CampaignState,
+      encounterId: string,
+      combatantId: string,
+    ): ActionEconomyView | undefined;
+    availableActions(
+      state: CampaignState,
+      encounterId: string,
+      combatantId: string,
+    ): ReadonlyArray<AvailableAction>;
+    legalTargets(
+      state: CampaignState,
+      encounterId: string,
+      combatantId: string,
+      action: AffordanceActionId,
+    ): ReadonlyArray<TargetCandidate>;
+    castableSpells(state: CampaignState, characterId: string): ReadonlyArray<CastableSpell>;
   };
 }
 
@@ -1098,6 +1144,24 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     return result;
   };
 
+  const queryNs: Engine['query'] = {
+    legalMoveDestinations(state, encounterId, combatantId) {
+      return affordances.legalMoveDestinations(state, content, encounterId, combatantId);
+    },
+    actionEconomy(state, encounterId, combatantId) {
+      return affordances.actionEconomy(state, content, encounterId, combatantId);
+    },
+    availableActions(state, encounterId, combatantId) {
+      return affordances.availableActions(state, content, encounterId, combatantId);
+    },
+    legalTargets(state, encounterId, combatantId, action) {
+      return affordances.legalTargets(state, content, encounterId, combatantId, action);
+    },
+    castableSpells(state, characterId) {
+      return affordances.castableSpells(state, content, characterId);
+    },
+  };
+
   const deriveNs: Engine['derive'] = {
     character(state, id) {
       return memoize(['character', id], state, () =>
@@ -1205,8 +1269,12 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     do(campaign, intent) {
       return performIntent(this, campaign, intent);
     },
+    withRollProvider(provider, fn) {
+      return withRollProviderScope(provider, fn);
+    },
     plan: planNs,
     derive: deriveNs,
+    query: queryNs,
   };
 };
 

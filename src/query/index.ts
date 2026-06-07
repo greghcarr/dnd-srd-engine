@@ -34,3 +34,19 @@ export {
   type CombatantConditionView,
   type CombatantTurnView,
 } from './encounter-view.js';
+// Slice 705 (A1): intent-shaped affordance queries ("what can this
+// combatant legally do right now?"), surfaced on the engine as
+// engine.query.*.
+export {
+  legalMoveDestinations,
+  actionEconomy,
+  availableActions,
+  legalTargets,
+  castableSpells,
+  type MoveDestination,
+  type ActionEconomyView,
+  type AvailableAction,
+  type AffordanceActionId,
+  type TargetCandidate,
+  type CastableSpell,
+} from './affordances.js';

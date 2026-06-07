@@ -308,7 +308,33 @@ export {
 export type { ContentPack, ResolvedContent, ContentValidationIssue, ContentPackIssue } from './content/index.js';
 export { loadStarterPack, STARTER_PACK_RAW } from './content/packs/starter.js';
 export { querySpells, queryMonsters, queryItems, buildCharacterSheet, buildEncounterView } from './query/index.js';
+export {
+  legalMoveDestinations,
+  actionEconomy,
+  availableActions,
+  legalTargets,
+  castableSpells,
+} from './query/index.js';
+// Slice 706 (A3): tactical enemy AI policy, graduated from scripts/ so
+// consumers can import it from the package.
+export {
+  planTacticalMove,
+  classifyTacticalRole,
+  pickByTotalOrder,
+} from './ai/index.js';
 export type {
+  TacticalRole,
+  TacticalRoleKind,
+  TacticalMove,
+  TacticalMoveInput,
+} from './ai/index.js';
+export type {
+  MoveDestination,
+  ActionEconomyView,
+  AvailableAction,
+  AffordanceActionId,
+  TargetCandidate,
+  CastableSpell,
   SpellFilter,
   MonsterFilter,
   ItemFilter,
@@ -341,8 +367,13 @@ export {
   rollDice,
   rollExpression,
   parseDiceExpression,
+  NeedRoll,
+  SeededRollProvider,
+  SuppliedRollProvider,
+  withRollProvider,
+  getActiveRollProvider,
 } from './rng/index.js';
-export type { RNG, DieRoll, DiceRollResult } from './rng/index.js';
+export type { RNG, DieRoll, DiceRollResult, RollProvider, RollContext } from './rng/index.js';
 
 export {
   abilityModifier,

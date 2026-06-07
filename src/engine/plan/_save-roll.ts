@@ -62,9 +62,9 @@ export const rollSaveAgainstDC = (input: RollSaveInput): SaveRollResult | undefi
       ? { savePreventsCondition: input.savePreventsCondition }
       : {}),
   });
-  const rolls: number[] = [rollDie(D20_SIDES, input.rng)];
+  const rolls: number[] = [rollDie(D20_SIDES, input.rng, 'save')];
   if (derivation.hasAdvantage || derivation.hasDisadvantage) {
-    rolls.push(rollDie(D20_SIDES, input.rng));
+    rolls.push(rollDie(D20_SIDES, input.rng, 'save'));
   }
   const used = derivation.hasAdvantage
     ? 'advantage'
