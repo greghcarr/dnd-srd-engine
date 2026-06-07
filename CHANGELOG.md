@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Docs (slice 712): queue the L4-cycle follow-ups in the deferred-primitives backlog**
+Adds three rows to [docs/gaps-deferred-primitives.md](docs/gaps-deferred-primitives.md) that were recorded only in per-slice changelogs: the L4 ASI-menu feat-eligibility filter (707), the ASI "+1 to two" distinctness guard (703), and the three residual base-vs-effective ability-modifier derive sites (710). No source change.
+Detail: [slice-712.md](docs/changelog/slice-712.md).
+
 **Release (slice 711): bump to 0.7.0-alpha.0**
 Promotes the post-0.6.0 cohort (slices 702-710) to a tagged release: L4 SRD-completeness and the interactive-play public seams, plus the audit-found effective-ability-score fix. No engine-API breaking change; `SCHEMA_VERSION` stays 1; positionless `'none'` byte-identical.
 Detail: [slice-711.md](docs/changelog/slice-711.md).
