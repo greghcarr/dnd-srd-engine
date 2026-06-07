@@ -701,13 +701,13 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
       return planIntent(planNs, state, intent);
     },
     shortRest(state, intent) {
-      return { events: planShortRest(state, { type: 'ShortRest', ...intent }) };
+      return { events: planShortRest(state, content, { type: 'ShortRest', ...intent }) };
     },
     longRest(state, intent) {
       return { events: planLongRest(state, content, { type: 'LongRest', ...intent }) };
     },
     rest(state, intent) {
-      if (intent.type === 'ShortRest') return { events: planShortRest(state, intent) };
+      if (intent.type === 'ShortRest') return { events: planShortRest(state, content, intent) };
       return { events: planLongRest(state, content, intent) };
     },
     attack(state, intent) {

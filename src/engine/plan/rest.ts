@@ -8,10 +8,74 @@ import type {
 } from '../../schemas/events/rest.js';
 import type { HeroicInspirationGrantedEvent } from '../../schemas/events/heroic-inspiration.js';
 import type { Event } from '../../schemas/events/index.js';
+import type { Effect } from '../../schemas/effects.js';
+import type { Formula } from '../../schemas/formula.js';
 import { newEventId } from '../../ids.js';
 import { nowIso } from '../../internal/clock.js';
-import { buildEffectStack } from '../../derive/effect-stack.js';
+import { buildEffectStack, collectEffectsFromCharacter } from '../../derive/effect-stack.js';
+import { evaluateFormula } from '../../effects/formula.js';
+import { proficiencyBonus } from '../../derive/ability.js';
+import { computeTotalLevel } from '../../schemas/runtime/character.js';
 import type { ULID } from '../../engine/ids-utils.js';
+
+type RecoverResourceEffect = Extract<Effect, { kind: 'RecoverResource' }>;
+interface RestResourceDelta {
+  readonly characterId: ULID;
+  readonly resourceId: string;
+  readonly delta: number;
+}
+
+// Slice 718: resolve the `RecoverResource` effects that fire on this rest
+// into concrete per-resource deltas, evaluated against the pre-rest state
+// (so replay is deterministic). 'all' fills to max; a Formula evaluates at
+// the character's levels; a number is capped to the resource's headroom. A
+// `limitedByResourceId` gate (Sorcerous Restoration: once per Long Rest)
+// applies only when its resource is available and spends 1 of it.
+const restRecoveryDeltas = (
+  state: CampaignState,
+  content: ResolvedContent,
+  participantIds: ReadonlyArray<string>,
+  when: 'shortRest' | 'longRest',
+): RestResourceDelta[] => {
+  const deltas: RestResourceDelta[] = [];
+  for (const participantId of participantIds) {
+    const character = state.characters[participantId];
+    if (!character) continue;
+    const effects = collectEffectsFromCharacter({
+      character,
+      content,
+      itemInstances: state.itemInstances,
+      pendingChoices: state.pendingChoices,
+    });
+    for (const rec of effects.filter(
+      (e): e is RecoverResourceEffect => e.kind === 'RecoverResource' && e.when === when,
+    )) {
+      const target = character.resources.find((r) => r.resourceId === rec.resourceId);
+      if (target === undefined) continue;
+      const headroom = target.max - target.current;
+      if (headroom <= 0) continue; // already full — nothing to recover (and don't spend a gate)
+      const want = rec.amount === 'all'
+        ? headroom
+        : typeof rec.amount === 'number'
+          ? rec.amount
+          : evaluateFormula(rec.amount as Formula, {
+              abilityScores: character.abilityScores,
+              proficiencyBonus: proficiencyBonus(computeTotalLevel(character)),
+              classLevels: new Map(character.classes.map((c) => [c.classId, c.level])),
+              totalLevel: computeTotalLevel(character),
+            });
+      const restore = Math.min(Math.max(0, want), headroom);
+      if (restore <= 0) continue;
+      if (rec.limitedByResourceId !== undefined) {
+        const gate = character.resources.find((r) => r.resourceId === rec.limitedByResourceId);
+        if (gate === undefined || gate.current <= 0) continue;
+        deltas.push({ characterId: participantId as ULID, resourceId: rec.limitedByResourceId, delta: -1 });
+      }
+      deltas.push({ characterId: participantId as ULID, resourceId: rec.resourceId, delta: restore });
+    }
+  }
+  return deltas;
+};
 
 export interface LongRestIntent {
   readonly type: 'LongRest';
@@ -37,8 +101,16 @@ const LONG_REST_GRITTY_MINUTES = 60 * 24 * 7;
 
 export const planShortRest = (
   state: CampaignState,
-  intent: ShortRestIntent,
+  contentOrIntent: ResolvedContent | ShortRestIntent,
+  maybeIntent?: ShortRestIntent,
 ): ReadonlyArray<Event> => {
+  // Slice 718 backward-compatible signature (mirrors planLongRest): callers
+  // that pass content get RecoverResource recovery (Font of Inspiration);
+  // callers that don't keep the pre-718 behavior (no recovery deltas).
+  const intent: ShortRestIntent = maybeIntent ?? (contentOrIntent as ShortRestIntent);
+  const content: ResolvedContent | undefined = maybeIntent !== undefined
+    ? (contentOrIntent as ResolvedContent)
+    : undefined;
   const at = intent.at ?? nowIso();
   const expectedDurationMinutes = state.settings.grittyRest
     ? SHORT_REST_GRITTY_MINUTES
@@ -50,11 +122,15 @@ export const planShortRest = (
     participantIds: [...intent.participantIds],
     expectedDurationMinutes,
   };
+  const deltas = content !== undefined
+    ? restRecoveryDeltas(state, content, intent.participantIds, 'shortRest')
+    : [];
   const end: ShortRestEndedEvent = {
     id: newEventId() as ULID,
     at,
     type: 'ShortRestEnded',
     causedByEventId: start.id,
+    ...(deltas.length > 0 ? { resourceDeltas: deltas } : {}),
   };
   return [start, end];
 };
@@ -84,6 +160,10 @@ export const planLongRest = (
     participantIds: [...intent.participantIds],
     expectedDurationMinutes,
   };
+  // Long rest already refills every resource to max in the reducer, so a
+  // RecoverResource{when:'longRest'} would be subsumed (and a gate spend
+  // after that refresh would be wrong). Recovery is short-rest-only; the
+  // `resourceDeltas` field stays unused on LongRestEnded.
   const end: LongRestEndedEvent = {
     id: newEventId() as ULID,
     at,

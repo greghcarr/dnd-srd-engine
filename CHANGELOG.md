@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine (slice 718): wire RecoverResource on a Short Rest (L5 Font of Inspiration + Sorcerous Restoration)**
+`RecoverResource` was a no-op, so two L5 features were inert. `planShortRest` now resolves `RecoverResource{when:'shortRest'}` effects into `resourceDeltas` on the `ShortRestEnded` event and the reducer applies them: Bard Font of Inspiration regains all Bardic Inspiration on a short rest; Sorcerer Sorcerous Restoration regains floor(level/2) Sorcery Points once per long rest (new `limitedByResourceId` gate + half-level Formula; corrects the prior flat amount). Plan/commit-pure, backward-compatible `planShortRest`. First L5-SRD-complete slice.
+Detail: [slice-718.md](docs/changelog/slice-718.md).
+
 **Fuzz harness (slice 717): Free Duel class pin (`playerClass`)**
 `runBattle`'s `FuzzBattleOptions` gains `playerClass?: string` — a valid `CLASS_POOLS` classId builds team A[0] (the duel's player) as that class; unknown/unset stays random. The pin uses an isolated RNG cursor so the seed-driven opponent + tactical map are byte-identical with or without it (class is an independent axis from the seed), and A[0] levels via the same `levelUpTo` path as everyone else. Default path byte-identical; no engine API change.
 Detail: [slice-717.md](docs/changelog/slice-717.md).
