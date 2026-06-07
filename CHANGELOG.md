@@ -6,6 +6,24 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Release (slice 711): bump to 0.7.0-alpha.0**
+Promotes the post-0.6.0 cohort (slices 702-710) to a tagged release: L4 SRD-completeness and the interactive-play public seams, plus the audit-found effective-ability-score fix. No engine-API breaking change; `SCHEMA_VERSION` stays 1; positionless `'none'` byte-identical.
+Detail: [slice-711.md](docs/changelog/slice-711.md).
+
+## 0.7.0-alpha.0 - 2026-06-06
+
+**Release (slice 711): bump to 0.7.0-alpha.0**
+
+Promotes the post-0.6.0 cohort (slices 702-710) to a tagged release. `package.json` + `package-lock.json` bump `0.6.0-alpha.0` → `0.7.0-alpha.0`; `SCHEMA_VERSION` stays 1 (no persisted-shape change). Two headline features plus an audit-found fix:
+
+- **L4 SRD complete** (slices 702-703, 707-709): every class gains the Ability Score Improvement choice at L4 — the ASI feat (+2 one / +1 two ability scores, max 20) or another general feat, via the existing `GrantFeat` cascade — which also completed the SRD 5.2.1 feat catalog (17/17). Monk Slow Fall (already wired via `planFalling`), Fighter Second Wind 3 uses, and Sorcery/Focus Points → 4 round out the tier. The CI-guarded "L4 SRD complete" floor audit is 20/20, and the fuzz matrix now covers L1-L4 (48 cells × 30 seeds = 1,440 battles per run).
+- **Interactive-play public seams** (slices 704-706; the A1/A2/A3 cohort for the dnd-web interactive viewer): `engine.query.*` intent-shaped affordance queries (legal move destinations / action economy / available actions / legal targets / castable spells); a die-typed, resumable `engine.withRollProvider` roll seam (`SeededRollProvider` / `SuppliedRollProvider` / `NeedRoll`) for player-entered physical dice; and the tactical enemy policy graduated from `scripts/` into `src/ai/` (barrel-exported `planTacticalMove` / `classifyTacticalRole`).
+- **Fix** (slice 710): the derived character + AC now reflect effective ability scores (ASI / items / floors), not base.
+
+**Breaking:** none ([docs/breaking-changes-queued.md](docs/breaking-changes-queued.md) was "(none queued)" at cut). **Behavior note (slice 710):** `engine.derive.character` / `buildCharacterSheet` ability modifiers now reflect EFFECTIVE ability scores instead of base, and `DerivedCharacter` gains an effective `abilityScores` field — a consumer that pinned the prior (buggy) base-derived modifiers will see corrected values. The `engine.query.*` / roll-provider / `src/ai` additions are purely additive.
+
+**RNG stream:** positionless `'none'` fuzz (L1-L3) + golden transcripts + replay-equivalence + rng-capture are byte-identical — the A2 roll-provider seam is a no-op with no provider installed, and the L4 content changes a character's ability scores only via a post-level-up choice, not the combat RNG stream. L4 fuzz is new this cycle (slice 709), so no prior per-seed transcript is pinned across the boundary.
+
 **Fix (slice 710): derived character + AC reflect effective ability scores (not base)**
 The L4 audit found `computeDerivedCharacter.abilityModifiers` + `computeArmorAC`'s DEX used base scores, so ASI / Ioun Stones / Belt / floors didn't show in the derived character, character sheet, initiative, or light/medium/unarmored AC (saves/checks/attacks were already correct — an internal inconsistency). Both now use `effectiveAbilityScore`; `DerivedCharacter` gains an effective `abilityScores` field. Pattern-checked the rest; three minor edges (mirror-image dup AC, finesse ability-choice, a monster-only per-trait save) tracked. No event schema change.
 Detail: [slice-710.md](docs/changelog/slice-710.md).
@@ -41,10 +59,6 @@ Detail: [slice-703.md](docs/changelog/slice-703.md).
 **Tests (slice 702): CI-guarded "L4 SRD complete" floor audit**
 Opens the L4 cycle. 20-test audit (5 green + 15 xfail) pinning L4's surface: the universal Ability Score Improvement at L4 (unmodeled today — every class's `levelTable['4']` is empty), Monk Slow Fall + Fighter Second Wind 3 (present), and the Sorcery Points / Focus Points → 4 resource scaling. The 15 xfails are the punch list; when they flip, tag `0.7.0-alpha.0`.
 Detail: [slice-702.md](docs/changelog/slice-702.md).
-
-**Release (slice 701): bump to 0.6.0-alpha.0**
-Promotes the post-0.5.0 cohort (slices 697-700) to a tagged release: the engine Push forced-movement fix (698), richer tactical arenas (700), and a tactical-convergence experiment (697) that was reverted (699) — so tactical movement is back to the 0.5.0 draws-accepted behavior. No engine-API breaking change; `'none'` byte-identical; `SCHEMA_VERSION` stays 1.
-Detail: [slice-701.md](docs/changelog/slice-701.md).
 
 ## 0.6.0-alpha.0 - 2026-06-05
 
