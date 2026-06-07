@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Tests/docs (slice 725): L5 SRD-complete floor audit + fuzz-to-L5**
+New `tests/audit/srd-l5-complete.test.ts` (24 tests) pins the L5 floor: Extra Attack (5 martial classes), 3rd/2nd-level slots, Warlock pact level 3, and the per-class L5 features (slices 718-724). The fuzz matrix extends to L5 (`[1..5]`, 60 cells × 30 seeds = 1,800 battles). The five L5 stubs in gaps-class-features are annotated closed. Capstone of the L5 cycle. No engine change.
+Detail: [slice-725.md](docs/changelog/slice-725.md).
+
 **Engine (slice 724): Wizard Memorize Spell (L5)**
 New `engine.plan.memorizeSpell(state, { wizardId, removeSpellId, addSpellId })`: swap one prepared level-1+ spell for a non-prepared spellbook (knownSpells) spell, validated per RAW. Adds a `PreparedSpellsChanged` event (the first to mutate `preparedSpells`). The engine doesn't enforce prepared-spell counts, so this is the swap mechanic (short-rest timing consumer-driven). Completes the L5 stub set.
 Detail: [slice-724.md](docs/changelog/slice-724.md).
