@@ -483,6 +483,10 @@ export type Effect =
   // Flat modifiers (CHA mod, Disciple of Life boost) compose
   // unchanged on top.
   | { kind: 'GrantMaxHealingDice' }
+  // Slice 731. Marker: Cleric Life Domain L6 Blessed Healer — casting a
+  // slot spell that heals another creature also heals the caster (2 +
+  // slot level). Read by the cast-spell heal handler.
+  | { kind: 'GrantBlessedHealer' }
   // Slice 207. Marker primitive: the bearer's unarmed strikes count
   // as magical attacks for the purposes of overcoming Resistance and
   // Immunity to nonmagical damage. RAW Monk L6 Empowered Strikes.
@@ -892,6 +896,9 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       kind: z.literal('GrantMaxHealingDice'),
     }),
     z.object({
+      kind: z.literal('GrantBlessedHealer'),
+    }),
+    z.object({
       kind: z.literal('GrantUnarmedAsMagical'),
     }),
     z.object({
@@ -1008,6 +1015,7 @@ export const EFFECT_KINDS = [
   'GrantInnateSorcerySpendAlternative',
   'GrantSelfRestoration',
   'GrantMaxHealingDice',
+  'GrantBlessedHealer',
   'GrantUnarmedAsMagical',
   'GrantDivineInterventionWish',
   'ExpandAuraRange',

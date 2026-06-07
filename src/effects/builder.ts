@@ -228,6 +228,7 @@ export class EffectAccumulator {
   private innateSorcerySpendAlternativeFlag: boolean = false;
   private selfRestorationFlag: boolean = false;
   private maxHealingDiceFlag: boolean = false;
+  private blessedHealerFlag: boolean = false;
   private unarmedAsMagicalFlag: boolean = false;
   private divineInterventionWishFlag: boolean = false;
   private auraRangeBonusTotal: number = 0;
@@ -956,6 +957,13 @@ export class EffectAccumulator {
   hasMaxHealingDice(): boolean {
     return this.maxHealingDiceFlag;
   }
+  // Cleric Life Domain L6 Blessed Healer via the `GrantBlessedHealer` effect.
+  markBlessedHealer(): void {
+    this.blessedHealerFlag = true;
+  }
+  hasBlessedHealer(): boolean {
+    return this.blessedHealerFlag;
+  }
   // Slice 207: marker that flags the bearer's unarmed strikes as
   // magical for resistance/immunity-piercing purposes. Set by Monk
   // L6 Empowered Strikes via `GrantUnarmedAsMagical`.
@@ -1207,6 +1215,9 @@ export const applyEffectToBuilder = (
       return;
     case 'GrantSelfRestoration':
       acc.markSelfRestoration();
+      return;
+    case 'GrantBlessedHealer':
+      acc.markBlessedHealer();
       return;
     case 'GrantMaxHealingDice':
       acc.markMaxHealingDice();

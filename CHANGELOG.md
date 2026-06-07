@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine (slice 731): Cleric Blessed Healer (Life Domain L6)**
+New flag effect `GrantBlessedHealer` (the `GrantMaxHealingDice` pattern): the cast-spell heal handler now self-heals the cleric 2 + slot level once when a slot heal lands on a creature other than the caster (cantrips/free casts excluded). EFFECT_KINDS 64→65.
+Detail: [slice-731.md](docs/changelog/slice-731.md).
+
 **Engine (slice 730): Warlock Dark One's Own Luck (Fiend Patron L6)**
 New `engine.plan.darkOnesOwnLuck(state, { warlockId })` → `{ events, d10 }`: spend a use (the `dark-ones-own-luck` resource, max CHA-mod, long-rest recharge) and roll a d10 the consumer folds into an ability check or saving throw (Hero Points shape; engine doesn't mutate the linked roll). No new event/condition.
 Detail: [slice-730.md](docs/changelog/slice-730.md).

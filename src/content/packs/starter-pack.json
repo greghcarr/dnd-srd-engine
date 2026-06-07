@@ -884,7 +884,7 @@
           {
             "id": "blessed-healer",
             "name": "Blessed Healer",
-            "effects": []
+            "effects": [{ "kind": "GrantBlessedHealer" }]
           }
         ],
         "7": [

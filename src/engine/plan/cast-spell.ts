@@ -1181,6 +1181,10 @@ const planTempHPMechanic = (
   return events;
 };
 
+// Cleric Life Domain L6 Blessed Healer: flat HP the caster regains on top
+// of the slot level when a slot heal lands on another creature.
+const BLESSED_HEALER_FLAT = 2;
+
 const planHealMechanic = (
   state: CampaignState,
   content: ResolvedContent,
@@ -1238,6 +1242,27 @@ const planHealMechanic = (
       causedByEventId: declaredEventId as ULID,
     };
     events.push(heal);
+  }
+  // Blessed Healer (Cleric Life Domain L6): casting a slot spell that
+  // restores HP to a creature other than the caster also heals the caster
+  // 2 + the slot level (once, not per target). Cantrips (slotLevel 0) and
+  // free casts (no slot spent) don't trigger it.
+  if (
+    casterEffects.hasBlessedHealer() &&
+    intent.slotLevel >= 1 &&
+    intent.useFreeCast !== true &&
+    intent.targetIds.some((t) => t !== intent.characterId)
+  ) {
+    const selfBlocked = isHealingBlocked({ state, content, targetId: intent.characterId });
+    events.push({
+      id: newEventId() as ULID,
+      at,
+      type: 'Healed',
+      targetId: intent.characterId as ULID,
+      amount: selfBlocked ? 0 : BLESSED_HEALER_FLAT + intent.slotLevel,
+      source: selfBlocked ? 'blessed-healer (blocked)' : 'blessed-healer',
+      causedByEventId: declaredEventId as ULID,
+    } satisfies HealedEvent);
   }
   return events;
 };
