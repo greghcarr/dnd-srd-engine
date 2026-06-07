@@ -196,10 +196,13 @@ engine.query.legalMoveDestinations(state, encounterId, combatantId); // -> MoveD
 engine.query.actionEconomy(state, encounterId, combatantId);          // -> ActionEconomyView | undefined
 engine.query.availableActions(state, encounterId, combatantId);       // -> AvailableAction[]  ({ action, enabled, reason? })
 engine.query.legalTargets(state, encounterId, combatantId, 'attack'); // -> TargetCandidate[]  (in reach + LoS, nearest first)
-engine.query.castableSpells(state, characterId);                      // -> CastableSpell[]  ({ spellId, minLevel, levelOptions })
+engine.query.castableSpells(state, characterId);                      // -> CastableSpell[]
+engine.query.legalSpellTargets(state, encounterId, casterId, spellId, slotLevel); // -> LegalSpellTargets
 ```
 
-`availableActions` covers `move | attack | dash | disengage | dodge`; when an action is disabled its `reason` is machine-readable (a blocking-condition id such as `'stunned'`, or `'action-used'` / `'no-target-in-range'` / `'no-movement'` / `'speed-zero'`). `legalMoveDestinations` honors terrain, occupancy, Dash, Steady-Aim (speed 0), and the Frightened "can't move closer to the source" rule; positions are in feet (pass straight to `engine.plan.move`). `castableSpells` is a scaffold (slots + level options; no per-spell range/target validation yet).
+`availableActions` covers `move | attack | dash | disengage | dodge`; when an action is disabled its `reason` is machine-readable (a blocking-condition id such as `'stunned'`, or `'action-used'` / `'no-target-in-range'` / `'no-movement'` / `'speed-zero'`). `legalMoveDestinations` honors terrain, occupancy, Dash, Steady-Aim (speed 0), and the Frightened "can't move closer to the source" rule; positions are in feet (pass straight to `engine.plan.move`).
+
+`castableSpells` (slice 713) carries content-derived metadata so a UI buckets + targets a spell without parsing its text: `castingTime` (`'action'|'bonus-action'|'reaction'|'other'`), `rangeFeet` (`number|'self'|'touch'|'unbounded'`), a discriminated `target` (`{kind:'self'}` | `{kind:'creatures', maxTargets, allow}` | `{kind:'point', shape, sizeFeet}`), `resolves` (`'attack'|'save'|'auto'|'heal'|'buff'` + `saveAbility` when `'save'`), and `concentration`, alongside `spellId`/`minLevel`/`levelOptions`. `legalSpellTargets` returns the legal targets at a slot honoring range + line of effect, discriminated to mirror the descriptor: `{kind:'self'}` | `{kind:'creatures', candidates, maxTargets}` (includes the caster for non-enemy spells) | `{kind:'points', cells}` (legal AOE placement cells). Bonus-action spells appear in `castableSpells` filtered by `castingTime === 'bonus-action'`.
 
 ## Tactical AI
 

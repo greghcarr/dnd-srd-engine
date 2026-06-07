@@ -314,6 +314,7 @@ export {
   availableActions,
   legalTargets,
   castableSpells,
+  legalSpellTargets,
 } from './query/index.js';
 // Slice 706 (A3): tactical enemy AI policy, graduated from scripts/ so
 // consumers can import it from the package.
@@ -335,6 +336,12 @@ export type {
   AffordanceActionId,
   TargetCandidate,
   CastableSpell,
+  SpellCastingTime,
+  SpellRangeFeet,
+  SpellResolves,
+  SpellTargetAllow,
+  SpellTargetDescriptor,
+  LegalSpellTargets,
   SpellFilter,
   MonsterFilter,
   ItemFilter,

@@ -323,6 +323,7 @@ import type {
   AffordanceActionId,
   TargetCandidate,
   CastableSpell,
+  LegalSpellTargets,
 } from '../query/affordances.js';
 import { HANDLER_API_VERSION } from '../handlers/index.js';
 import { assertActorCanAct } from './plan/_actor-state.js';
@@ -605,6 +606,13 @@ export interface Engine {
       action: AffordanceActionId,
     ): ReadonlyArray<TargetCandidate>;
     castableSpells(state: CampaignState, characterId: string): ReadonlyArray<CastableSpell>;
+    legalSpellTargets(
+      state: CampaignState,
+      encounterId: string,
+      casterId: string,
+      spellId: string,
+      slotLevel: number,
+    ): LegalSpellTargets;
   };
 }
 
@@ -1159,6 +1167,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     castableSpells(state, characterId) {
       return affordances.castableSpells(state, content, characterId);
+    },
+    legalSpellTargets(state, encounterId, casterId, spellId, slotLevel) {
+      return affordances.legalSpellTargets(state, content, encounterId, casterId, spellId, slotLevel);
     },
   };
 

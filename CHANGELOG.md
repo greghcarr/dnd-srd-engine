@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine (slice 713): spell affordances — enriched castableSpells + legalSpellTargets**
+`engine.query.castableSpells` entries now carry UI-driving metadata read from spell content (`castingTime`, `rangeFeet`, a discriminated `target` descriptor, `resolves` + `saveAbility`, `concentration`); new `engine.query.legalSpellTargets(state, encounterId, casterId, spellId, slotLevel)` returns the legal targets at a slot honoring range + line of effect (self / creatures+candidates / AOE points). Pure, deterministic, additive; `legalTargets` byte-identical. So the dnd-web Spells menu buckets + targets without parsing spell text.
+Detail: [slice-713.md](docs/changelog/slice-713.md).
+
 **Docs (slice 712): queue the L4-cycle follow-ups in the deferred-primitives backlog**
 Adds three rows to [docs/gaps-deferred-primitives.md](docs/gaps-deferred-primitives.md) that were recorded only in per-slice changelogs: the L4 ASI-menu feat-eligibility filter (707), the ASI "+1 to two" distinctness guard (703), and the three residual base-vs-effective ability-modifier derive sites (710). No source change.
 Detail: [slice-712.md](docs/changelog/slice-712.md).

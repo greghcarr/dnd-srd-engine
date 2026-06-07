@@ -19,13 +19,18 @@ import type { Character } from '../schemas/runtime/character.js';
 import type { Weapon } from '../schemas/content/item.js';
 import { DEFAULT_CELL_SIZE_FEET, type Door, type LocationMap } from '../schemas/runtime/location.js';
 import { reachableCells, findPath, feetToCell, cellToFeet } from '../derive/pathing.js';
-import { isInRangeFeet, hasLineOfSight, chebyshevDistanceFeet } from '../derive/terrain.js';
+import { isInRangeFeet, hasLineOfSight, chebyshevDistanceFeet, terrainAt } from '../derive/terrain.js';
 import { getEffectiveSpeed } from '../derive/speed.js';
 import { computeActionEconomyBudget } from '../derive/action-economy.js';
 import { computeAvailableSpellSlots } from '../derive/spell-slots.js';
+import type { AbilityScore } from '../schemas/primitives.js';
+import type { Spell, SpellAreaShape } from '../schemas/content/spell.js';
 // The same precondition check the planners throw on (assertActorCanAct),
 // but returning the blocking-condition id instead of throwing.
 import { findActorBlockingCondition } from '../engine/plan/_actor-state.js';
+// parseSpellRange / enforceableSpellRangeFeet: the same range parser +
+// gate-distance the cast-spell spatial gate uses.
+import { parseSpellRange, enforceableSpellRangeFeet } from '../engine/plan/_spatial-gates.js';
 
 // ── Named constants ─────────────────────────────────────────────────
 const UNARMED_REACH_FEET = 5;
@@ -331,6 +336,145 @@ export const legalTargets = (
   return candidates;
 };
 
+// ── legalSpellTargets ───────────────────────────────────────────────
+//
+// The legal targets for a specific spell at a specific slot, honoring
+// range + line of effect + the spell's target kind. Discriminated to
+// mirror the `castableSpells` target descriptor so the UI renders the
+// right picker. `slotLevel` is accepted for API symmetry + future
+// slot-scaled targeting; the pack's range/targeting don't scale by slot
+// today, so it does not change the target set yet.
+export type LegalSpellTargets =
+  | { readonly kind: 'self' }
+  | {
+      readonly kind: 'creatures';
+      readonly candidates: ReadonlyArray<TargetCandidate>;
+      readonly maxTargets: number;
+    }
+  | { readonly kind: 'points'; readonly cells: ReadonlyArray<Position> };
+
+// Living combatants within `gateFeet` (chebyshev; undefined = no limit,
+// for Self / Sight / Unlimited ranges) of the caster with line of effect.
+// Parallel to legalTargets' in-range loop but parameterized by range +
+// an includeSelf flag (beneficial spells may target the caster). Kept
+// separate so legalTargets stays byte-identical.
+const creatureCandidatesInRange = (
+  state: CampaignState,
+  encounterId: string,
+  casterId: string,
+  gateFeet: number | undefined,
+  includeSelf: boolean,
+): TargetCandidate[] => {
+  const encounter = state.encounters[encounterId];
+  if (encounter === undefined) return [];
+  const self = encounter.combatants.find((c) => c.combatantId === casterId);
+  if (self === undefined) return [];
+  const pool = encounter.combatants.filter(
+    (c) => (includeSelf || c.combatantId !== casterId) && !isDefeated(state, c.combatantId),
+  );
+
+  const locationId = state.characterLocations[casterId];
+  const map = locationId !== undefined ? state.locations[locationId]?.map : undefined;
+  if (map === undefined || self.position === undefined) {
+    return [...pool]
+      .map((c) => ({ combatantId: c.combatantId, position: c.position, distanceFeet: 0 }))
+      .sort((a, b) => (a.combatantId < b.combatantId ? -1 : a.combatantId > b.combatantId ? 1 : 0));
+  }
+  const cellSize = map.cellSizeFeet ?? DEFAULT_CELL_SIZE_FEET;
+  const doors = (state.locations[locationId!]?.doorIds ?? [])
+    .map((id) => state.doors[id])
+    .filter((d): d is Door => d !== undefined);
+  const selfCell = feetToCell(self.position, cellSize);
+
+  const candidates: TargetCandidate[] = [];
+  for (const c of pool) {
+    if (c.combatantId === casterId) {
+      candidates.push({ combatantId: casterId, position: self.position, distanceFeet: 0 });
+      continue;
+    }
+    if (c.position === undefined) continue;
+    const targetCell = feetToCell(c.position, cellSize);
+    if (gateFeet !== undefined && !isInRangeFeet(selfCell, targetCell, gateFeet, cellSize)) continue;
+    if (!hasLineOfSight(map, doors, selfCell, targetCell)) continue;
+    candidates.push({
+      combatantId: c.combatantId,
+      position: c.position,
+      distanceFeet: chebyshevDistanceFeet(selfCell, targetCell, cellSize),
+    });
+  }
+  candidates.sort(
+    (a, b) =>
+      a.distanceFeet - b.distanceFeet ||
+      (a.combatantId < b.combatantId ? -1 : a.combatantId > b.combatantId ? 1 : 0),
+  );
+  return candidates;
+};
+
+// Legal AOE placement cells: cells within `radiusFeet` (chebyshev) of the
+// caster that are in-bounds, not impassable, and have line of effect.
+// `radiusFeet` = the spell range for ranged-placed areas (Fireball 150 ft),
+// or the area size for self-origin areas (Burning Hands cone; approximate
+// — a cone needs a direction, this returns candidate aim cells). Returns
+// FEET positions sorted by (x, y).
+const aoePlacementPoints = (
+  state: CampaignState,
+  casterId: string,
+  radiusFeet: number,
+): Position[] => {
+  const encounter = state.activeEncounterId ? state.encounters[state.activeEncounterId] : undefined;
+  const self = encounter?.combatants.find((c) => c.combatantId === casterId);
+  const locationId = state.characterLocations[casterId];
+  const map = locationId !== undefined ? state.locations[locationId]?.map : undefined;
+  if (map === undefined || self?.position === undefined) return [];
+  const cellSize = map.cellSizeFeet ?? DEFAULT_CELL_SIZE_FEET;
+  const doors = (state.locations[locationId!]?.doorIds ?? [])
+    .map((id) => state.doors[id])
+    .filter((d): d is Door => d !== undefined);
+  const fromCell = feetToCell(self.position, cellSize);
+  const radiusCells = Math.ceil(radiusFeet / cellSize);
+  const points: Position[] = [];
+  for (let x = fromCell.x - radiusCells; x <= fromCell.x + radiusCells; x += 1) {
+    for (let y = fromCell.y - radiusCells; y <= fromCell.y + radiusCells; y += 1) {
+      if (x < 0 || x >= map.widthCells || y < 0 || y >= map.heightCells) continue;
+      const cell = { x, y };
+      if (chebyshevDistanceFeet(fromCell, cell, cellSize) > radiusFeet) continue;
+      if (terrainAt(map, x, y) === 'impassable') continue;
+      if (!hasLineOfSight(map, doors, fromCell, cell)) continue;
+      points.push(cellToFeet(cell, cellSize));
+    }
+  }
+  points.sort((a, b) => a.x - b.x || a.y - b.y);
+  return points;
+};
+
+export const legalSpellTargets = (
+  state: CampaignState,
+  content: ResolvedContent,
+  encounterId: string,
+  casterId: string,
+  spellId: string,
+  _slotLevel: number,
+): LegalSpellTargets => {
+  const spell = content.spells.get(spellId);
+  if (spell === undefined) return { kind: 'creatures', candidates: [], maxTargets: 0 };
+  const { resolves } = spellResolves(spell);
+  const desc = spellTarget(spell, resolves);
+
+  if (desc.kind === 'self') return { kind: 'self' };
+  if (desc.kind === 'point') {
+    const r = parseSpellRange(spell.range);
+    const radiusFeet = r.kind === 'feet' ? r.feet : desc.sizeFeet;
+    return { kind: 'points', cells: aoePlacementPoints(state, casterId, radiusFeet) };
+  }
+  const gate = enforceableSpellRangeFeet(parseSpellRange(spell.range));
+  const includeSelf = desc.allow !== 'enemies';
+  return {
+    kind: 'creatures',
+    candidates: creatureCandidatesInRange(state, encounterId, casterId, gate, includeSelf),
+    maxTargets: desc.maxTargets,
+  };
+};
+
 // ── availableActions ────────────────────────────────────────────────
 export interface AvailableAction {
   readonly action: AffordanceActionId;
@@ -396,14 +540,103 @@ export const availableActions = (
   return out;
 };
 
-// ── castableSpells (scaffold) ───────────────────────────────────────
+// ── castableSpells ──────────────────────────────────────────────────
+//
+// Each entry carries enough content-derived metadata for a UI to bucket
+// the spell into a menu (by `castingTime`) and drive targeting (`target`
+// + `rangeFeet` + `resolves`), so the UI parses no spell text.
+
+/** Where the spell goes in the action economy (parsed from `castingTime`). */
+export type SpellCastingTime = 'action' | 'bonus-action' | 'reaction' | 'other';
+/** Range: a feet number, or self / touch, or 'unbounded' (Sight / Unlimited / miles). */
+export type SpellRangeFeet = number | 'self' | 'touch' | 'unbounded';
+/** How the cast resolves — what (if any) roll the UI must drive. */
+export type SpellResolves = 'attack' | 'save' | 'auto' | 'heal' | 'buff';
+/** Who the spell may target (a UI hint; the engine doesn't hard-enforce friend/foe). */
+export type SpellTargetAllow = 'enemies' | 'allies' | 'any';
+
+export type SpellTargetDescriptor =
+  | { readonly kind: 'self' }
+  | { readonly kind: 'creatures'; readonly maxTargets: number; readonly allow: SpellTargetAllow }
+  | { readonly kind: 'point'; readonly shape: SpellAreaShape; readonly sizeFeet: number };
+
 export interface CastableSpell {
   readonly spellId: string;
   /** The spell's own level (0 = cantrip). */
   readonly minLevel: number;
   /** Slot levels usable to cast it now (cantrips → [0]); empty ⇒ not castable. */
   readonly levelOptions: ReadonlyArray<number>;
+  readonly castingTime: SpellCastingTime;
+  readonly rangeFeet: SpellRangeFeet;
+  readonly target: SpellTargetDescriptor;
+  readonly resolves: SpellResolves;
+  /** Present only when `resolves === 'save'`: the ability the target rolls. */
+  readonly saveAbility?: AbilityScore;
+  readonly concentration: boolean;
 }
+
+const parseCastingTime = (castingTime: string): SpellCastingTime => {
+  const s = castingTime.toLowerCase();
+  if (s.includes('bonus action')) return 'bonus-action';
+  if (s.includes('reaction')) return 'reaction';
+  if (s.includes('action')) return 'action';
+  return 'other';
+};
+
+const spellRangeFeet = (spell: Spell): SpellRangeFeet => {
+  const r = parseSpellRange(spell.range);
+  switch (r.kind) {
+    case 'self':
+      return 'self';
+    case 'touch':
+      return 'touch';
+    case 'feet':
+      return r.feet;
+    case 'unenforced':
+      return 'unbounded';
+  }
+};
+
+// resolves: scan the spell's mechanics in a fixed priority. A spell can
+// carry several mechanics (an attack plus a buff rider); the highest-
+// priority one names how the cast resolves for the UI.
+const spellResolves = (spell: Spell): { resolves: SpellResolves; saveAbility?: AbilityScore } => {
+  const kinds = new Set(spell.mechanicalEffects.map((m) => m.kind));
+  if (kinds.has('attack') || kinds.has('weaponAttack')) return { resolves: 'attack' };
+  const save = spell.mechanicalEffects.find((m) => m.kind === 'save');
+  if (save !== undefined) return { resolves: 'save', saveAbility: (save as { ability: AbilityScore }).ability };
+  if (kinds.has('heal') || kinds.has('temp-hp')) return { resolves: 'heal' };
+  if (kinds.has('auto-hit')) return { resolves: 'auto' };
+  if (kinds.has('buff') || kinds.has('remove-condition')) return { resolves: 'buff' };
+  // Residual (zone / summon / trap / create-item / stabilize / narrative):
+  // no player-driven attack or save roll — the UI just picks the target/point.
+  return { resolves: 'auto' };
+};
+
+const spellTarget = (spell: Spell, resolves: SpellResolves): SpellTargetDescriptor => {
+  // An authored AOE (shape + size) is always a positioned-area spell.
+  if (spell.targeting !== undefined) {
+    return { kind: 'point', shape: spell.targeting.shape, sizeFeet: spell.targeting.size };
+  }
+  if (parseSpellRange(spell.range).kind === 'self') return { kind: 'self' };
+  // Single-creature target (the common case; multi-target counts aren't
+  // encoded in content, so maxTargets defaults to 1 — refine when a
+  // target-count field lands). Beneficial spells point at allies.
+  const allow: SpellTargetAllow = resolves === 'heal' || resolves === 'buff' ? 'allies' : 'enemies';
+  return { kind: 'creatures', maxTargets: 1, allow };
+};
+
+const spellMetadata = (spell: Spell): Omit<CastableSpell, 'spellId' | 'minLevel' | 'levelOptions'> => {
+  const { resolves, saveAbility } = spellResolves(spell);
+  return {
+    castingTime: parseCastingTime(spell.castingTime),
+    rangeFeet: spellRangeFeet(spell),
+    target: spellTarget(spell, resolves),
+    resolves,
+    ...(saveAbility !== undefined ? { saveAbility } : {}),
+    concentration: spell.concentration,
+  };
+};
 
 export const castableSpells = (
   state: CampaignState,
@@ -420,21 +653,20 @@ export const castableSpells = (
     const spell = content.spells.get(spellId);
     if (spell === undefined) continue;
     const level = spell.level;
-    if (level === 0) {
-      result.push({ spellId, minLevel: 0, levelOptions: [0] });
-      continue;
-    }
     const levelOptions: number[] = [];
-    for (let slotLevel = level; slotLevel <= SPELL_LEVEL_MAX; slotLevel += 1) {
-      if ((slots.standardByLevel[slotLevel - 1] ?? 0) > 0) levelOptions.push(slotLevel);
+    if (level === 0) {
+      levelOptions.push(0);
+    } else {
+      for (let slotLevel = level; slotLevel <= SPELL_LEVEL_MAX; slotLevel += 1) {
+        if ((slots.standardByLevel[slotLevel - 1] ?? 0) > 0) levelOptions.push(slotLevel);
+      }
+      if (slots.pact !== undefined && slots.pact.count > 0 && slots.pact.level >= level) {
+        if (!levelOptions.includes(slots.pact.level)) levelOptions.push(slots.pact.level);
+      }
     }
-    if (slots.pact !== undefined && slots.pact.count > 0 && slots.pact.level >= level) {
-      if (!levelOptions.includes(slots.pact.level)) levelOptions.push(slots.pact.level);
-    }
-    if (levelOptions.length > 0) {
-      levelOptions.sort((a, b) => a - b);
-      result.push({ spellId, minLevel: level, levelOptions });
-    }
+    if (levelOptions.length === 0) continue;
+    levelOptions.sort((a, b) => a - b);
+    result.push({ spellId, minLevel: level, levelOptions, ...spellMetadata(spell) });
   }
   result.sort((a, b) => (a.spellId < b.spellId ? -1 : a.spellId > b.spellId ? 1 : 0));
   return result;
