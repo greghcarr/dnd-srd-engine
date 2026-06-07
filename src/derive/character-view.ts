@@ -3,7 +3,7 @@ import type { ItemInstance } from '../schemas/runtime/item-instance.js';
 import type { PendingChoice } from '../schemas/runtime/pending-choice.js';
 import type { ResolvedContent } from '../content/pack.js';
 import type { AbilityScore } from '../schemas/primitives.js';
-import { abilityModifier, proficiencyBonus } from './ability.js';
+import { abilityModifier, effectiveAbilityScore, proficiencyBonus } from './ability.js';
 import { computeTotalLevel } from '../schemas/runtime/character.js';
 import { computeAC, type ACResult } from './ac.js';
 import { computeSavingThrow, type SaveResult } from './save.js';
@@ -18,6 +18,13 @@ export interface DerivedCharacter {
   readonly name: string;
   readonly totalLevel: number;
   readonly proficiencyBonus: number;
+  // Effective ability scores (base + floors + IncreaseAbilityScore from
+  // the active effect stack: ASI, Ioun Stones, Belt of Dwarvenkind,
+  // OverrideAbilityScore, etc.). NOT the raw `character.abilityScores`.
+  readonly abilityScores: Readonly<Record<AbilityScore, number>>;
+  // Modifiers derived from the EFFECTIVE scores above (so a +2 ASI / item
+  // shows here, matching the saves / checks / attacks that already use
+  // the effective score).
   readonly abilityModifiers: Readonly<Record<AbilityScore, number>>;
   readonly hp: HP;
   // Sum of `AddModifier { target: 'hpMax' }` effects from the character's
@@ -53,21 +60,38 @@ export const computeDerivedCharacter = (
   input: ComputeDerivedCharacterInput,
 ): DerivedCharacter => {
   const totalLevel = computeTotalLevel(input.character);
+  // Effective scores (base + floor + IncreaseAbilityScore) so the
+  // headline scores/modifiers reflect ASI / items / overrides, matching
+  // the per-roll derivations (saves / checks / attacks) that already use
+  // effectiveAbilityScore. Pre-this-fix these were base-only, so an ASI
+  // or Ioun Stone did not show on the derived character or sheet.
+  const effects = buildEffectStack(input);
+  const abilityScores = Object.fromEntries(
+    ABILITIES.map((a) => [
+      a,
+      effectiveAbilityScore(
+        input.character.abilityScores[a],
+        effects.effectiveAbilityScoreFloor(a)?.value,
+        effects.effectiveAbilityScoreIncrease(a),
+      ),
+    ]),
+  ) as Record<AbilityScore, number>;
   const abilityMods = Object.fromEntries(
-    ABILITIES.map((a) => [a, abilityModifier(input.character.abilityScores[a])]),
+    ABILITIES.map((a) => [a, abilityModifier(abilityScores[a])]),
   ) as Record<AbilityScore, number>;
 
   const ac = computeAC(input);
   const savingThrows = Object.fromEntries(
     ABILITIES.map((a) => [a, computeSavingThrow({ ...input, ability: a })]),
   ) as Record<AbilityScore, SaveResult>;
-  const hpMaxBonus = buildEffectStack(input).modifierSum('hpMax');
+  const hpMaxBonus = effects.modifierSum('hpMax');
 
   return {
     id: input.character.id,
     name: input.character.name,
     totalLevel,
     proficiencyBonus: proficiencyBonus(totalLevel),
+    abilityScores,
     abilityModifiers: abilityMods,
     hp: input.character.hp,
     hpMaxBonus,

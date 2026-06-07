@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Fix (slice 710): derived character + AC reflect effective ability scores (not base)**
+The L4 audit found `computeDerivedCharacter.abilityModifiers` + `computeArmorAC`'s DEX used base scores, so ASI / Ioun Stones / Belt / floors didn't show in the derived character, character sheet, initiative, or light/medium/unarmored AC (saves/checks/attacks were already correct — an internal inconsistency). Both now use `effectiveAbilityScore`; `DerivedCharacter` gains an effective `abilityScores` field. Pattern-checked the rest; three minor edges (mirror-image dup AC, finesse ability-choice, a monster-only per-trait save) tracked. No event schema change.
+Detail: [slice-710.md](docs/changelog/slice-710.md).
+
 **Tests (slice 709): extend the fuzz matrix to L4 (the L4 fuzz floor)**
 Extends the fuzz matrix `LEVELS` from `[1,2,3]` to `[1,2,3,4]` — now 48 cells × 30 seeds = 1,440 battles per CI run. Each L4 fuzz character levels to 4 via `planLevelUp` + `drainPendingChoices`, exercising the slice-707 ASI choice cascade before fighting. All 1,440 complete without throwing. The L4 cycle's end-to-end runtime guard; the L4 floor audit (20/20) + this fuzz floor make L4 release-ready.
 Detail: [slice-709.md](docs/changelog/slice-709.md).

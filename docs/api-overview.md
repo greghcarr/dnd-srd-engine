@@ -68,7 +68,7 @@ Every planner returns `{ events: Event[] }` (or `{ events, ...outcome }` for the
 
 All read-only and pure. Memoized per `CampaignState.version`.
 
-- `character(state, id)` → `DerivedCharacter` (totalLevel, proficiency bonus, ability modifiers, HP, `hpMaxBonus` / `effectiveHpMax`, AC, saves, spell slots, pending choices, known languages).
+- `character(state, id)` → `DerivedCharacter` (totalLevel, proficiency bonus, **effective `abilityScores` + `abilityModifiers`** — base plus floors and `IncreaseAbilityScore` from the active effect stack: ASI, Ioun Stones, Belt of Dwarvenkind, etc. — HP, `hpMaxBonus` / `effectiveHpMax`, AC, saves, spell slots, pending choices, known languages).
 - `ac(state, id)`, `savingThrow(state, id, ability)`, `attackBonus(state, id, weaponInstanceId)`.
 - `spellSaveDC(state, id, classId)`, `spellAttackBonus(state, id, classId)`, `spellSlots(state, id)`.
 - `abilityModifier(score)`, `proficiencyBonus(level)`: pure helpers.
