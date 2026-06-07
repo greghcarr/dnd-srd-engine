@@ -7,6 +7,7 @@ import type {
   PactSlotsRegainedEvent,
   SpellCastDeclaredEvent,
   SpellSlotConsumedEvent,
+  SpellSlotsRegainedEvent,
 } from '../../schemas/events/spellcasting.js';
 import { invariant } from '../../internal/invariants.js';
 
@@ -52,6 +53,19 @@ export const applyPactSlotsRegained = (
 ): void => {
   const character = requireCharacter(state, event.characterId);
   character.pactSlotsUsed = Math.max(0, character.pactSlotsUsed - event.count);
+};
+
+// Slice 721: regain expended standard slots of a level (Druid Wild
+// Resurgence). Decrements `spellSlotsUsed[slotLevel]`, clamped at 0 so an
+// over-credit can't bank slots above max.
+export const applySpellSlotsRegained = (
+  state: Draft<CampaignState>,
+  event: SpellSlotsRegainedEvent,
+): void => {
+  const character = requireCharacter(state, event.characterId);
+  const key = String(event.slotLevel);
+  const previous = character.spellSlotsUsed[key] ?? 0;
+  character.spellSlotsUsed[key] = Math.max(0, previous - event.count);
 };
 
 // Slice 486: records that the bearer's once-per-long-rest free cast for

@@ -61,6 +61,7 @@ import {
   SpellSlotConsumedEventSchema,
   PactSlotConsumedEventSchema,
   PactSlotsRegainedEventSchema,
+  SpellSlotsRegainedEventSchema,
   FreeCastUsedEventSchema,
 } from './spellcasting.js';
 import {
@@ -259,6 +260,7 @@ export const EventSchema = z.discriminatedUnion('type', [
   SpellSlotConsumedEventSchema,
   PactSlotConsumedEventSchema,
   PactSlotsRegainedEventSchema,
+  SpellSlotsRegainedEventSchema,
   FreeCastUsedEventSchema,
   ConcentrationStartedEventSchema,
   ConcentrationBrokenEventSchema,
@@ -416,6 +418,7 @@ export const EVENT_TYPES = [
   'SpellSlotConsumed',
   'PactSlotConsumed',
   'PactSlotsRegained',
+  'SpellSlotsRegained',
   'FreeCastUsed',
   'ConcentrationStarted',
   'ConcentrationBroken',
@@ -683,6 +686,7 @@ export {
   SpellSlotConsumedEventSchema,
   PactSlotConsumedEventSchema,
   PactSlotsRegainedEventSchema,
+  SpellSlotsRegainedEventSchema,
   FreeCastUsedEventSchema,
   SpellSlotSourceSchema,
 } from './spellcasting.js';
@@ -692,6 +696,7 @@ export type {
   SpellSlotConsumedEvent,
   PactSlotConsumedEvent,
   PactSlotsRegainedEvent,
+  SpellSlotsRegainedEvent,
   FreeCastUsedEvent,
   SpellSlotSource,
 } from './spellcasting.js';

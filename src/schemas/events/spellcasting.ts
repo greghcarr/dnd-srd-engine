@@ -59,6 +59,20 @@ export const PactSlotsRegainedEventSchema = EventEnvelopeSchema.extend({
 });
 export type PactSlotsRegainedEvent = z.infer<typeof PactSlotsRegainedEventSchema>;
 
+// Slice 721: regain expended STANDARD spell slots of a given level (the
+// sibling of PactSlotsRegained for the standard slot table). Druid Wild
+// Resurgence (expend a Wild Shape use to regain a level-1 slot) is the
+// first user. Reducer decrements `spellSlotsUsed[slotLevel]` by `count`,
+// clamped at 0.
+export const SpellSlotsRegainedEventSchema = EventEnvelopeSchema.extend({
+  type: z.literal('SpellSlotsRegained'),
+  characterId: ULIDSchema,
+  slotLevel: z.number().int().min(1).max(9),
+  count: z.number().int().min(1),
+  source: z.string(),
+});
+export type SpellSlotsRegainedEvent = z.infer<typeof SpellSlotsRegainedEventSchema>;
+
 // Slice 486: emitted when a cast consumes a oncePerLongRest free cast
 // from a GrantSpell grant (Magic Initiate, Warlock Contact Patron).
 // Reducer pushes `spellId` onto the bearer's `usedFreeCastSpellIds`;

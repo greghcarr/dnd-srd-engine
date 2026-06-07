@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine (slice 721): Druid Wild Resurgence (L5)**
+New `engine.plan.wildResurgence(state, { druidId, mode })`: `slot-to-wild-shape` expends a spell slot to regain a Wild Shape use when out of uses; `wild-shape-to-slot` expends a Wild Shape use to regain a level-1 slot, once per Long Rest (gate resource). Adds a `SpellSlotsRegained` event (standard-slot sibling of `PactSlotsRegained`). Both no-action; pure.
+Detail: [slice-721.md](docs/changelog/slice-721.md).
+
 **Engine (slice 720): Cleric Sear Undead (L5)**
 `planTurnUndead` now applies Sear Undead for a level-5+ cleric: one pooled roll of max(1, WIS mod) d8s of Radiant to each Undead that fails the Turn Undead save, through the normal mitigate + fatal-intercept pipeline. Emitted before the Frightened/Incapacitated conditions (which carry endsOnDamage) so it doesn't end the turn effect, per RAW. Gated on cleric L5; sub-L5 Turn Undead byte-identical.
 Detail: [slice-720.md](docs/changelog/slice-720.md).

@@ -68,6 +68,7 @@ import {
   applyPactSlotsRegained,
   applySpellCastDeclared,
   applySpellSlotConsumed,
+  applySpellSlotsRegained,
 } from './reducers/spellcasting.js';
 import {
   applyConcentrationBroken,
@@ -340,6 +341,9 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
         break;
       case 'PactSlotsRegained':
         applyPactSlotsRegained(draft, event);
+        break;
+      case 'SpellSlotsRegained':
+        applySpellSlotsRegained(draft, event);
         break;
       case 'FreeCastUsed':
         applyFreeCastUsed(draft, event);

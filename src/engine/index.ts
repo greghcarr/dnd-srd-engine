@@ -109,6 +109,7 @@ import {
   planPreserveLife,
   planLandsAid,
   planWholenessOfBody,
+  planWildResurgence,
   planPeerlessSkill,
   planTacticalMind,
   planFrenzy,
@@ -276,6 +277,7 @@ import {
   type PreserveLifeIntent,
   type LandsAidIntent,
   type WholenessOfBodyIntent,
+  type WildResurgenceIntent,
   type PeerlessSkillIntent,
   type PeerlessSkillOutcome,
   type TacticalMindIntent,
@@ -512,6 +514,7 @@ export interface Engine {
     preserveLife(state: CampaignState, intent: Omit<PreserveLifeIntent, 'type'>): PlanResult;
     landsAid(state: CampaignState, intent: Omit<LandsAidIntent, 'type'>): PlanResult;
     wholenessOfBody(state: CampaignState, intent: Omit<WholenessOfBodyIntent, 'type'>): PlanResult;
+    wildResurgence(state: CampaignState, intent: Omit<WildResurgenceIntent, 'type'>): PlanResult;
     peerlessSkill(state: CampaignState, intent: Omit<PeerlessSkillIntent, 'type'>): PeerlessSkillOutcome;
     tacticalMind(state: CampaignState, intent: Omit<TacticalMindIntent, 'type'>): TacticalMindOutcome;
     frenzy(state: CampaignState, intent: Omit<FrenzyIntent, 'type'>): PlanResult;
@@ -999,6 +1002,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     wholenessOfBody(state, intent) {
       return { events: planWholenessOfBody(state, content, rng, { type: 'WholenessOfBody', ...intent }) };
+    },
+    wildResurgence(state, intent) {
+      return { events: planWildResurgence(state, content, { type: 'WildResurgence', ...intent }) };
     },
     peerlessSkill(state, intent) {
       return planPeerlessSkill(state, content, rng, { type: 'PeerlessSkill', ...intent });
