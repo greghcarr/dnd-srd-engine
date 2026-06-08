@@ -87,7 +87,7 @@ const issues = validateCrossReferences(content);   // returns Levenshtein-sugges
 
 Multiple packs merge with later packs winning on ID conflicts. This is how you layer "core + homebrew" or "core + setting + table-specific."
 
-For the full authoring reference (every entity type's fields, the ~30 effect primitives with examples, common patterns and pitfalls), see [authoring-content-packs.md](authoring-content-packs.md).
+For the full authoring reference (every entity type's fields, the effect primitives with examples, common patterns and pitfalls), see [authoring-content-packs.md](authoring-content-packs.md).
 
 ## Effect primitives plus an escape hatch
 

@@ -58,7 +58,7 @@ npx tsx scripts/combat-fuzz.ts --count 10 --seed 1 --level 3 --mode 2v2 --out /t
 # wrote 10 transcripts + index.md to /tmp/fuzz
 ```
 
-Flags: `--level 1..5`, `--mode 1v1|2v2`, `--vs pc|monster`, `--rest none|short|long`. See [scripts/combat-fuzz.ts](scripts/combat-fuzz.ts).
+Flags: `--level 1..20`, `--mode 1v1|2v2`, `--vs pc|monster`, `--rest none|short|long`. See [scripts/combat-fuzz.ts](scripts/combat-fuzz.ts).
 
 Then import from `src/` (or a local path alias) the same shapes the planned public API surfaced:
 
