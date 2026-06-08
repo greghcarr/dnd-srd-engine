@@ -40,6 +40,7 @@ import { characterHasCunningAction, type CunningActionMode } from '../engine/pla
 import { characterHasNimbleEscape } from '../engine/plan/nimble-escape.js';
 import type { SecondWindIntent } from '../engine/plan/second-wind.js';
 import type { RageIntent } from '../engine/plan/rage.js';
+import { RAGING_CONDITION_ID } from '../engine/plan/rage.js';
 import type { CunningActionIntent } from '../engine/plan/cunning-action.js';
 import type { PatientDefenseIntent } from '../engine/plan/patient-defense.js';
 import type { StepOfTheWindIntent } from '../engine/plan/step-of-the-wind.js';
@@ -75,6 +76,9 @@ const REASON_NO_FOCUS = 'no-focus';
 const REASON_HEAVY_ARMOR = 'heavy-armor';
 const REASON_ALREADY_DASHED = 'already-dashed';
 const REASON_ALREADY_DISENGAGED = 'already-disengaged';
+// Slice 743: Rage is entered once and persists; you don't re-enter it while
+// already raging (mirrors planRage's guard).
+const REASON_ALREADY_RAGING = 'already-raging';
 
 const DASH_MODE: CunningActionMode = 'dash';
 const DISENGAGE_MODE: CunningActionMode = 'disengage';
@@ -179,6 +183,22 @@ const heavyArmorReason = (
   return undefined;
 };
 
+// Slice 743: Rage's block reason — already raging takes precedence over the
+// Heavy-armor block (you can't re-enter Rage while it's active; spending a
+// second use is illegal). Mirrors planRage's `already raging` throw so the
+// dnd-web Bonus Actions menu greys "Rage" with this reason instead of
+// burning a Rage use.
+const rageReason = (
+  character: Character,
+  state: CampaignState,
+  content: ResolvedContent,
+): string | undefined => {
+  if (character.appliedConditions.some((c) => c.conditionId === RAGING_CONDITION_ID)) {
+    return REASON_ALREADY_RAGING;
+  }
+  return heavyArmorReason(character, state, content);
+};
+
 const REGISTRY: ReadonlyArray<BonusActionDescriptor> = [
   {
     id: 'second-wind',
@@ -194,7 +214,7 @@ const REGISTRY: ReadonlyArray<BonusActionDescriptor> = [
     target: 'self',
     owns: (c) => hasClass(c, BARBARIAN_CLASS_ID),
     resourceId: RAGE_RESOURCE,
-    extraReason: heavyArmorReason,
+    extraReason: rageReason,
     toIntent: (id) => ({ type: 'Rage', barbarianId: id }),
   },
   {

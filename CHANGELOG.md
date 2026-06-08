@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Fix (slice 743): Barbarian can't re-enter Rage while already raging**
+Bug (dnd-web duel): a raging Barbarian could take the Rage bonus action again next turn, spending another Rage use while already raging. `planRage` now throws (`is already raging`) when the `raging` condition is active, and `engine.query.bonusActions` surfaces Rage as disabled with reason `already-raging` (so the consumer greys it instead of burning a use). Scope A (stop the illegal re-rage); Rage's full duration/maintenance lifecycle (auto-end at end of turn unless maintained, 10-round cap, end on Heavy armor / Incapacitated) is deferred to its own slice (Scope B). Non-raging / non-Barbarian paths byte-identical; the fuzz rages once per battle so it's unaffected.
+Detail: [slice-743.md](docs/changelog/slice-743.md).
+
 **Tests/docs (slice 742): L7 SRD-complete floor audit + fuzz-to-L7**
 New `tests/audit/srd-l7-complete.test.ts` (22 tests) pins the L7 floor: base-class L7 features (Monk/Rogue Evasion, Reliable Talent, Feral Instinct + Instinctive Pounce, Countercharm, Blessed Strikes, Elemental Fury, Sorcery Incarnate), the six subclass L7 features, planner/effect-kind presence, a behavioral 6→7 level-up (4th-level slots; Reliable Talent), and the spell-slot milestone (full casters → 4th-level; Warlock pact → 4th). The fuzz matrix extends to L7 (`[1..7]`, 84 cells × 30 seeds = 2,520 battles). Capstone of the L7 cycle — every L7 row is now wired. gaps-class-features L7 stubs closed (reliable-talent, elemental-fury, countercharm, instinctive-pounce). No engine change.
 Detail: [slice-742.md](docs/changelog/slice-742.md).
