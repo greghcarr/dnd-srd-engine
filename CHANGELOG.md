@@ -6,6 +6,19 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+## 0.9.0-alpha.0 - 2026-06-07
+
+**Release (slice 736): bump to 0.9.0-alpha.0**
+
+Promotes the post-0.8.0 cohort (slices 727-735) to a tagged release. `package.json` + `package-lock.json` bump `0.8.0-alpha.0` → `0.9.0-alpha.0`; `SCHEMA_VERSION` stays 1 (the cohort adds no new event types — every new mechanic reuses existing events / conditions, so a 0.9.0 consumer replays a 0.8.0 log unchanged). One headline cohort:
+
+- **L6 SRD complete** (slices 727-735): every L6 row (base class + subclass) is now wired. Base classes — Fighter Ability Score Improvement (727), plus the already-present Rogue 2nd Expertise / Monk Empowered Strikes / Paladin Aura of Protection / rage·Channel-Divinity·Wild-Shape bumps / Ranger Roving. Subclasses — Barbarian Berserker Mindless Rage (728), Druid Land Natural Recovery (729), Warlock Fiend Dark One's Own Luck (730), Cleric Life Blessed Healer (731), Wizard Evoker Sculpt Spells (732), Bard Lore Magical Discoveries (733). The CI-guarded "L6 SRD complete" floor audit is 28/28 and the fuzz matrix now covers L1-L6 (72 cells × 30 seeds = 2,160 battles per run, slice 734). Slice 735 corrected a pre-existing edition drift: Monk Empowered Strikes now models the SRD 5.2.1 Force-damage choice instead of the 2014 "magical unarmed."
+
+**Breaking:** none to the type surface. **Behavior change:** Monk L6 Empowered Strikes (slice 735) — a monk's unarmed strikes are no longer magical by default; instead the monk may opt a strike into Force damage. This is a RAW-correctness fix (2014 → SRD 5.2.1); the s207 golden was rewritten accordingly. **Additive surface:** three new effect kinds (`GrantBlessedHealer`, `GrantSculptSpells`, `GrantUnarmedForceOption`), a new condition (`mindless-rage-active`), new `engine.plan.*` methods (`naturalRecovery`, `darkOnesOwnLuck`), new optional intent fields (`CastSpellIntent.sculptedTargetIds`; `unarmedStrikeAsForce` on the attack / Flurry / off-hand intents), and the College of Lore L6 cross-list spell choice — all additive and opt-in.
+
+**RNG stream:** the L6 features are gated (fire only at L6+ / on the relevant opt-in arm), and the Empowered Strikes Force option is opt-in, so default and sub-L6 paths are byte-identical (replay-equivalence + rng-capture unchanged). Goldens unchanged except the deliberately-rewritten s207. The L6 fuzz tier is new this cycle, so no prior per-seed transcript is pinned across the boundary.
+Detail: [slice-736.md](docs/changelog/slice-736.md).
+
 **Engine (slice 735): Monk Empowered Strikes re-wired to SRD 5.2.1 (L6)**
 New marker effect `GrantUnarmedForceOption`: the Monk L6 feature now models the SRD 5.2.1 Force-damage choice ("Whenever you deal damage with your Unarmed Strike, it can deal your choice of Force damage or its normal damage type") instead of the 2014 "magical unarmed" (`GrantUnarmedAsMagical`). Opt-in `unarmedStrikeAsForce` on the attack / Flurry / off-hand intents overrides an unarmed strike's damage type to Force when the bearer has the marker; inert by default. The s207 golden now shows Force sidestepping Stoneskin's B/P/S resistance. `GrantUnarmedAsMagical` stays an available primitive (no pack user). EFFECT_KINDS 66→67. Closes the slice-734 L6 drift follow-up.
 Detail: [slice-735.md](docs/changelog/slice-735.md).
@@ -41,80 +54,6 @@ Detail: [slice-728.md](docs/changelog/slice-728.md).
 **Content (slice 727): Fighter L6 Ability Score Improvement**
 The Fighter's L6 row (previously empty) gains `ability-score-improvement-6` — the same OfferChoice as L4 (ASI feat or another general feat), reusing the level-up cascade. SRD gives the Fighter extra ASIs at 6/14 beyond the every-class 4/8/12/16. Opens the L6 SRD-complete cycle. Content-only.
 Detail: [slice-727.md](docs/changelog/slice-727.md).
-
-## 0.8.0-alpha.0 - 2026-06-07
-
-**Release (slice 726): bump to 0.8.0-alpha.0**
-
-Promotes the post-0.7.0 cohort (slices 712-725) to a tagged release. `package.json` + `package-lock.json` bump `0.7.0-alpha.0` → `0.8.0-alpha.0`; `SCHEMA_VERSION` stays 1 (the new events are additive, no persisted-shape change). Two headline cohorts:
-
-- **L5 SRD complete** (slices 718-725): the marquee L5 mechanics (Extra Attack, 3rd/2nd-level slots, Uncanny Dodge, Stunning Strike, Sneak Attack 3d6) were already wired, so the cycle closed the real gaps — `RecoverResource` on a Short Rest activating Bard Font of Inspiration + Sorcerer Sorcerous Restoration (718), and the per-class L5 features: Cleric Sear Undead (720), Druid Wild Resurgence (721), Paladin Faithful Steed (722), Fighter Tactical Shift (723), Wizard Memorize Spell (724) — plus a Warlock invocation-count content fix (719). Two new additive events (`SpellSlotsRegained`, `PreparedSpellsChanged`). The CI-guarded "L5 SRD complete" floor audit is 24/24 and the fuzz matrix now covers L1-L5 (60 cells × 30 seeds = 1,800 battles per run).
-- **Interactive-play affordances + Free Duel** (slices 713-717): enriched `engine.query.castableSpells` (castingTime / rangeFeet / target descriptor / resolves / concentration / multi-target `maxTargets`) + `legalSpellTargets` (713/716); `engine.query.bonusActions` + the generic `engine.plan.useOption` executor for the duel's Bonus Actions menu (714/715); and a `runBattle({ playerClass })` Free-Duel class pin on its own isolated RNG cursor (717). Plus a docs backlog slice (712).
-
-**Breaking:** none. **Additive surface:** two new events (`SpellSlotsRegained`, `PreparedSpellsChanged`), new optional event fields (`ShortRestEnded.resourceDeltas`, `RecoverResource.limitedByResourceId`), new `engine.query.*` / `engine.plan.*` methods (`bonusActions`, `useOption`, `legalSpellTargets`, `wildResurgence`, `memorizeSpell`), and new exported types — all purely additive.
-
-**RNG stream:** the new behavior is gated (L5 features fire only at L5+ / on the relevant arm) so sub-L5 and the default paths are byte-identical (golden + replay-equivalence + rng-capture unchanged); the L5 fuzz tier is new this cycle, so no prior per-seed transcript is pinned across the boundary. The Free-Duel class pin uses an isolated RNG cursor, so the seed-driven opponent + map are byte-identical with or without it.
-Detail: [slice-726.md](docs/changelog/slice-726.md).
-
-**Tests/docs (slice 725): L5 SRD-complete floor audit + fuzz-to-L5**
-New `tests/audit/srd-l5-complete.test.ts` (24 tests) pins the L5 floor: Extra Attack (5 martial classes), 3rd/2nd-level slots, Warlock pact level 3, and the per-class L5 features (slices 718-724). The fuzz matrix extends to L5 (`[1..5]`, 60 cells × 30 seeds = 1,800 battles). The five L5 stubs in gaps-class-features are annotated closed. Capstone of the L5 cycle. No engine change.
-Detail: [slice-725.md](docs/changelog/slice-725.md).
-
-**Engine (slice 724): Wizard Memorize Spell (L5)**
-New `engine.plan.memorizeSpell(state, { wizardId, removeSpellId, addSpellId })`: swap one prepared level-1+ spell for a non-prepared spellbook (knownSpells) spell, validated per RAW. Adds a `PreparedSpellsChanged` event (the first to mutate `preparedSpells`). The engine doesn't enforce prepared-spell counts, so this is the swap mechanic (short-rest timing consumer-driven). Completes the L5 stub set.
-Detail: [slice-724.md](docs/changelog/slice-724.md).
-
-**Engine (slice 723): Fighter Tactical Shift (L5)**
-`planSecondWind` now grants half-Speed no-provoke movement when a level-5+ fighter activates Second Wind as a Bonus Action — a `Disengaged{limitedToFeet}` event (the Rogue Withdraw primitive → `noProvokeMovementUpToFeet`). Gated on L5 + the bonus-action arm; sub-L5 and out-of-encounter Second Wind byte-identical (no RNG change).
-Detail: [slice-723.md](docs/changelog/slice-723.md).
-
-**Content (slice 722): Paladin Faithful Steed (L5)**
-The Paladin L5 `faithful-steed` feature now grants `GrantSpell{ find-steed, oncePerLongRest, CHA }`: Find Steed is always prepared (castable with a 2nd-level slot) and free-castable once per long rest, reusing the effectiveSpellList + free-cast machinery. Find Steed is an already-wired summon spell. Content-only.
-Detail: [slice-722.md](docs/changelog/slice-722.md).
-
-**Engine (slice 721): Druid Wild Resurgence (L5)**
-New `engine.plan.wildResurgence(state, { druidId, mode })`: `slot-to-wild-shape` expends a spell slot to regain a Wild Shape use when out of uses; `wild-shape-to-slot` expends a Wild Shape use to regain a level-1 slot, once per Long Rest (gate resource). Adds a `SpellSlotsRegained` event (standard-slot sibling of `PactSlotsRegained`). Both no-action; pure.
-Detail: [slice-721.md](docs/changelog/slice-721.md).
-
-**Engine (slice 720): Cleric Sear Undead (L5)**
-`planTurnUndead` now applies Sear Undead for a level-5+ cleric: one pooled roll of max(1, WIS mod) d8s of Radiant to each Undead that fails the Turn Undead save, through the normal mitigate + fatal-intercept pipeline. Emitted before the Frightened/Incapacitated conditions (which carry endsOnDamage) so it doesn't end the turn effect, per RAW. Gated on cleric L5; sub-L5 Turn Undead byte-identical.
-Detail: [slice-720.md](docs/changelog/slice-720.md).
-
-**Content (slice 719): Warlock Eldritch Invocation count labels match SRD 5.2.1**
-The L5 audit found the Warlock invocations-known labels were drifted (L5 read "4 known"; SRD is 5). Corrected the whole column's `name` labels to the SRD values (L1 1, L2 3, L5 5, L7 6, L9 7, L12 8, L15 9, L18 10); ids keep their suffixes (load-bearing). Display-only — the per-tier invocation gain/replace system is still unwired (tracked in gaps-class-features). No engine change.
-Detail: [slice-719.md](docs/changelog/slice-719.md).
-
-**Engine (slice 718): wire RecoverResource on a Short Rest (L5 Font of Inspiration + Sorcerous Restoration)**
-`RecoverResource` was a no-op, so two L5 features were inert. `planShortRest` now resolves `RecoverResource{when:'shortRest'}` effects into `resourceDeltas` on the `ShortRestEnded` event and the reducer applies them: Bard Font of Inspiration regains all Bardic Inspiration on a short rest; Sorcerer Sorcerous Restoration regains floor(level/2) Sorcery Points once per long rest (new `limitedByResourceId` gate + half-level Formula; corrects the prior flat amount). Plan/commit-pure, backward-compatible `planShortRest`. First L5-SRD-complete slice.
-Detail: [slice-718.md](docs/changelog/slice-718.md).
-
-**Fuzz harness (slice 717): Free Duel class pin (`playerClass`)**
-`runBattle`'s `FuzzBattleOptions` gains `playerClass?: string` — a valid `CLASS_POOLS` classId builds team A[0] (the duel's player) as that class; unknown/unset stays random. The pin uses an isolated RNG cursor so the seed-driven opponent + tactical map are byte-identical with or without it (class is an independent axis from the seed), and A[0] levels via the same `levelUpTo` path as everyone else. Default path byte-identical; no engine API change.
-Detail: [slice-717.md](docs/changelog/slice-717.md).
-
-**Engine (slice 716): spell-targeting refinements — multi-target maxTargets**
-`castableSpells.target` + `legalSpellTargets` now report real `maxTargets` for multi-target spells, derived from the spell's own mechanics (beam-scaling cantrips like Eldritch Blast → 1/2/3/4 by character level; `auto-hit` darts like Magic Missile → 3 at slot 1, +1 per slot above), matching the cast-spell gate; `legalSpellTargets` recomputes per chosen slot. Exact AOE cone aiming was resolved as consumer scope (engine-scope.md: area cell selection is the app's spatial query). Additive; no new export.
-Detail: [slice-716.md](docs/changelog/slice-716.md).
-
-**Engine (slice 715): complete the bonus-action surface**
-`engine.plan.useOption` grows a `{ targetId, amount, weaponInstanceId }` param bag (`amount` for Lay on Hands heal, `weaponInstanceId` for Flurry of Blows) and `bonusActions` adds five options: `lay-on-hands-heal`, `flurry-of-blows`, `adrenaline-rush` (Orc), `nimble-escape-disengage` / `nimble-escape-hide` (Goblin). Frenzy was reclassified as a Rage modifier (not a bonus action) and is intentionally not enumerated. Additive; reuses the existing planners; closes the slice-714 bonus-action deferrals.
-Detail: [slice-715.md](docs/changelog/slice-715.md).
-
-**Engine (slice 714): bonus-action affordances — bonusActions + useOption**
-New `engine.query.bonusActions(state, encounterId, combatantId)` enumerates the bonus-action features a combatant owns (Second Wind, Rage, Cunning Action, Patient Defense / Step of the Wind ± Focus, Bardic Inspiration, Lay on Hands cure-poison), each flagged `enabled` with a machine-readable `reason` and a `target` kind; new `engine.plan.useOption(state, { combatantId, optionId, targetId? })` is a generic executor that maps an option id to its dedicated planner (no per-feature wiring in the UI). Pure/read-only enumeration; dispatch reuses the existing planners (one shared dispatch table) so behavior is byte-identical and dice route through the slice-704 RollProvider. So the dnd-web duel renders + performs a Bonus Actions menu without reimplementing rules.
-Detail: [slice-714.md](docs/changelog/slice-714.md).
-
-**Engine (slice 713): spell affordances — enriched castableSpells + legalSpellTargets**
-`engine.query.castableSpells` entries now carry UI-driving metadata read from spell content (`castingTime`, `rangeFeet`, a discriminated `target` descriptor, `resolves` + `saveAbility`, `concentration`); new `engine.query.legalSpellTargets(state, encounterId, casterId, spellId, slotLevel)` returns the legal targets at a slot honoring range + line of effect (self / creatures+candidates / AOE points). Pure, deterministic, additive; `legalTargets` byte-identical. So the dnd-web Spells menu buckets + targets without parsing spell text.
-Detail: [slice-713.md](docs/changelog/slice-713.md).
-
-**Docs (slice 712): queue the L4-cycle follow-ups in the deferred-primitives backlog**
-Adds three rows to [docs/gaps-deferred-primitives.md](docs/gaps-deferred-primitives.md) that were recorded only in per-slice changelogs: the L4 ASI-menu feat-eligibility filter (707), the ASI "+1 to two" distinctness guard (703), and the three residual base-vs-effective ability-modifier derive sites (710). No source change.
-Detail: [slice-712.md](docs/changelog/slice-712.md).
-
-**Release (slice 711): bump to 0.7.0-alpha.0**
-Promotes the post-0.6.0 cohort (slices 702-710) to a tagged release: L4 SRD-completeness and the interactive-play public seams, plus the audit-found effective-ability-score fix. No engine-API breaking change; `SCHEMA_VERSION` stays 1; positionless `'none'` byte-identical.
-Detail: [slice-711.md](docs/changelog/slice-711.md).
 
 ## 0.6.0-alpha.0 - 2026-06-05
 
@@ -382,4 +321,4 @@ Detail: [slice-632.md](docs/changelog/slice-632.md).
 
 ## Older releases
 
-Tagged release `0.7.0-alpha.0` lives in [docs/changelog/released-versions-0.7.0-alpha.0.md](docs/changelog/released-versions-0.7.0-alpha.0.md); `0.5.0-alpha.0` lives in [docs/changelog/released-versions-0.5.0-alpha.0.md](docs/changelog/released-versions-0.5.0-alpha.0.md); `0.4.0-alpha.0` lives in [docs/changelog/released-versions-0.4.0-alpha.0.md](docs/changelog/released-versions-0.4.0-alpha.0.md); `0.2.0-alpha.0` lives in [docs/changelog/released-versions-0.2.0-alpha.0.md](docs/changelog/released-versions-0.2.0-alpha.0.md); `0.1.0-alpha.15` lives in [docs/changelog/released-versions-alpha-15.md](docs/changelog/released-versions-alpha-15.md); `0.1.0-alpha.14` lives in [docs/changelog/released-versions-alpha-14.md](docs/changelog/released-versions-alpha-14.md); `0.1.0-alpha.6` through `0.1.0-alpha.13` live in [docs/changelog/released-versions-alpha-6-13.md](docs/changelog/released-versions-alpha-6-13.md); `0.1.0-alpha.0` through `0.1.0-alpha.5` (the pre-rename `ttrpg-engine-dnd` package, all unpublished from npm in May 2026 on IP-cleanup grounds) live in [docs/changelog/released-versions.md](docs/changelog/released-versions.md). Per-cohort slice-detail archives are indexed in [docs/changelog/README.md](docs/changelog/README.md).
+Tagged release `0.8.0-alpha.0` lives in [docs/changelog/released-versions-0.8.0-alpha.0.md](docs/changelog/released-versions-0.8.0-alpha.0.md); `0.7.0-alpha.0` lives in [docs/changelog/released-versions-0.7.0-alpha.0.md](docs/changelog/released-versions-0.7.0-alpha.0.md); `0.5.0-alpha.0` lives in [docs/changelog/released-versions-0.5.0-alpha.0.md](docs/changelog/released-versions-0.5.0-alpha.0.md); `0.4.0-alpha.0` lives in [docs/changelog/released-versions-0.4.0-alpha.0.md](docs/changelog/released-versions-0.4.0-alpha.0.md); `0.2.0-alpha.0` lives in [docs/changelog/released-versions-0.2.0-alpha.0.md](docs/changelog/released-versions-0.2.0-alpha.0.md); `0.1.0-alpha.15` lives in [docs/changelog/released-versions-alpha-15.md](docs/changelog/released-versions-alpha-15.md); `0.1.0-alpha.14` lives in [docs/changelog/released-versions-alpha-14.md](docs/changelog/released-versions-alpha-14.md); `0.1.0-alpha.6` through `0.1.0-alpha.13` live in [docs/changelog/released-versions-alpha-6-13.md](docs/changelog/released-versions-alpha-6-13.md); `0.1.0-alpha.0` through `0.1.0-alpha.5` (the pre-rename `ttrpg-engine-dnd` package, all unpublished from npm in May 2026 on IP-cleanup grounds) live in [docs/changelog/released-versions.md](docs/changelog/released-versions.md). Per-cohort slice-detail archives are indexed in [docs/changelog/README.md](docs/changelog/README.md).
