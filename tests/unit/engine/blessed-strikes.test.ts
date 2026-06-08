@@ -4,9 +4,10 @@
 // Strike, the `OnEvent` rider inside the chosen option fires +1d8
 // radiant on each weapon-attack hit, once per turn.
 //
-// Potent Spellcasting (the alternate L7 option) ships as a stub — it
-// needs an ability-modifier trigger action the engine doesn't yet
-// model — so this test only exercises Divine Strike.
+// This test exercises Divine Strike. The alternate L7 option, Potent
+// Spellcasting (+WIS to cantrip damage), was wired in slice 739 via an
+// `AddModifier { target: 'damage' }` gated on the `event.spellLevel == 0`
+// fact; its behavior is covered in slice-739-elemental-fury.test.ts.
 
 import { describe, expect, it } from 'vitest';
 import { createEngine } from '../../../src/engine/index.js';
