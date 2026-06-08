@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Tests/docs (slice 742): L7 SRD-complete floor audit + fuzz-to-L7**
+New `tests/audit/srd-l7-complete.test.ts` (22 tests) pins the L7 floor: base-class L7 features (Monk/Rogue Evasion, Reliable Talent, Feral Instinct + Instinctive Pounce, Countercharm, Blessed Strikes, Elemental Fury, Sorcery Incarnate), the six subclass L7 features, planner/effect-kind presence, a behavioral 6→7 level-up (4th-level slots; Reliable Talent), and the spell-slot milestone (full casters → 4th-level; Warlock pact → 4th). The fuzz matrix extends to L7 (`[1..7]`, 84 cells × 30 seeds = 2,520 battles). Capstone of the L7 cycle — every L7 row is now wired. gaps-class-features L7 stubs closed (reliable-talent, elemental-fury, countercharm, instinctive-pounce). No engine change.
+Detail: [slice-742.md](docs/changelog/slice-742.md).
+
 **Content (slice 741): Barbarian Instinctive Pounce (L7)**
 The Barbarian L7 `instinctive-pounce` row gains a capability marker `Custom { handlerId: 'instinctive-pounce' }`. Instinctive Pounce ("as part of entering Rage, move up to half your Speed") is positional movement, which the engine doesn't model (positions/movement are consumer scope per engine-scope.md), so the half-Speed move is consumer-applied; the marker exposes the capability. Deliberately does NOT reuse `Disengaged` (whose no-provoke semantics would over-grant — RAW Instinctive Pounce can provoke), so `planRage` stays byte-identical. No new effect kind.
 Detail: [slice-741.md](docs/changelog/slice-741.md).

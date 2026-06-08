@@ -91,7 +91,7 @@ The starter pack is intentionally a slice, not the full 2024 catalogs. This tabl
 
 #### Content triage
 
-A level-1-to-6 family-tabletop run is now well-supported end to end: every class's L1-L6 features are mechanically closed (the CI-guarded srd-l{1..6}-complete floor audits), subclasses land their L3 features and every L6 subclass feature the SRD grants, and L1-L6 is fuzzed across shapes + rests (2,160 battles/run). The 🔴 items a low-level run still notices are mostly in the content tail rather than the class chassis: spells that ship in the list but schema-only (e.g. a Wizard wanting to cast Web), subclass features at L7 and beyond, and the bulk of the MM monster catalog. Closing them is mostly JSON authoring — see the authoring guide.
+A level-1-to-7 family-tabletop run is now well-supported end to end: every class's L1-L7 features are mechanically closed (the CI-guarded srd-l{1..7}-complete floor audits), subclasses land their L3 features and every L6/L7 subclass feature the SRD grants, full casters reach 4th-level spell slots, and L1-L7 is fuzzed across shapes + rests (2,520 battles/run). The 🔴 items a low-level run still notices are mostly in the content tail rather than the class chassis: spells that ship in the list but schema-only (e.g. a Wizard wanting to cast Web), subclass features above L7, and the bulk of the MM monster catalog. Closing them is mostly JSON authoring — see the authoring guide.
 
 The 🟡 items become relevant as the campaign progresses past low levels. The ⚪ items are the long tail.
 
