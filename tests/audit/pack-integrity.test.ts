@@ -508,6 +508,13 @@ describe('pack integrity: every Custom handlerId has a backing implementation', 
     ['halfling-naturally-stealthy', 'narrative marker: Hide-with-larger-creature-obscurement rule; consumer-managed (engine has no LOS / obscurement model)'],
     // Slice 536: narrative-only Elf Trance trait.
     ['elf-trance', 'narrative marker: no-sleep + magic-cant-put-to-sleep + 4-hour Long Rest; consumer-managed (engine does not model sleep state, magical-sleep gates, or rest-wall-clock duration)'],
+    // Slice 741: Barbarian L7 Instinctive Pounce — "as part of entering Rage,
+    // move up to half your Speed." Positional movement; consumer-managed
+    // (engine has no position model). Deliberately not an engine event: reusing
+    // Disengaged would over-grant no-provoke (RAW Instinctive Pounce can
+    // provoke), so the marker exposes the capability for a position-aware
+    // consumer to apply the half-Speed move on Rage.
+    ['instinctive-pounce', 'positional marker: half-Speed move when entering Rage; consumer-managed (engine has no position model)'],
     // Slice 537/542: Human Resourceful (Heroic Inspiration on Long
     // Rest) was previously a narrative Custom marker; slice 542
     // promoted it to a real GrantHeroicInspirationOnLongRest effect
