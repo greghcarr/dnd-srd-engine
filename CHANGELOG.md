@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Infra (slice 745): fast local test lanes + local-fast / CI-full testing norm**
+The full suite is CPU-heavy (a content-pack validation tax of ~1.6s paid by nearly every test file, plus the fuzz/property/integration tiers), so running it after every edit is wasteful. New `npm run test:changed` (vitest `--changed` — only the tests affected by your edits, the tight iteration loop) and `npm run test:fast` (the suite minus the heavy fuzz-matrix / fuzz-tactical-matrix / multiclass-fuzz / property / integration tiers, one brace-glob `--exclude`). CONTRIBUTING.md + CLAUDE.md updated: iterate locally with `test:changed` / `test:fast` per slice; the full `npm test` is the push / pre-release gate (CI already runs it on every PR across Node 20/22/24). No source change. (A perf slice to attack the validation tax itself — so the full suite is faster everywhere — is the planned follow-up.)
+Detail: [slice-745.md](docs/changelog/slice-745.md).
+
 **Fix (slice 744): guard active-state re-activation across all activators (pattern fix)**
 A slice-743 pattern hunt found the same bug shape in five more activators: a Bonus-Action activator applies a persistent self "active-state" condition AND spends a limited resource, with no guard against re-activating while already active — so it could be re-activated for a double resource spend. Each planner now throws when its active condition is already present (before any spend): Innate Sorcery (`innate-sorcery-active`, use / 2 SP), Superior Defense (`superior-defense-active`, 3 Focus Points), Sacred Weapon (`sacred-weapon-active`, Channel Divinity), Frenzy (`frenzied`, Rage charge), Stonecunning (`stonecunning-active`, a use). Dragon Wings (`dragon-wings-active`, no resource) also guards for consistency. Byte-identical for the fuzz (each buff is taken at most once per battle); to re-activate, the consumer must end the prior state first (RAW).
 Detail: [slice-744.md](docs/changelog/slice-744.md).

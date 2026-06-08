@@ -223,15 +223,21 @@ Older `archive-slices-NNN-MMM.md` cohort files exist from the pre-slice-628 era 
 5. **Verify each new sub-doc also fits** the ceiling.
 6. **Add an entry to this slice's CHANGELOG** noting the split.
 
-## Pre-commit checks
+## Pre-commit / pre-push checks
 
-Run all of these before committing. Each is mandatory:
+The full suite is CPU-heavy (a content-pack validation tax paid by nearly every test file, plus the fuzz / property / integration tiers), so running it after every small edit is wasteful. Iterate fast locally; let the full run be the push / CI gate.
+
+**Per slice (local, fast):**
 
 - `npx tsc --noEmit` — vitest does not typecheck. Always run this separately.
-- `npx vitest run` — full suite. Must be green.
+- A fast test signal: `npm run test:changed` (runs only the tests affected by your edits — the tight iteration loop) and/or `npm run test:fast` (the whole suite minus the heavy fuzz / property / integration tiers) before committing the slice.
 - `npx vitest run -u` — only when adding wired conditions, items, or other content that feeds the coverage snapshot at [tests/coverage/__snapshots__/](tests/coverage/__snapshots__/). Inspect the diff to confirm only intentional additions land.
 
-If a check fails, fix the cause. Never `--no-verify` or skip.
+**Before pushing (the full gate):**
+
+- `npm test` (`npx vitest run`) — the full suite must be green. Run it before pushing a cohort and always before a release. CI also runs the full suite on every PR across Node 20/22/24, so anything that reaches `main` has had the full suite enforced regardless.
+
+If a check fails, fix the cause. Never `--no-verify` or skip. (`test:changed` treats a change to `package.json` / a config file as a global invalidation and runs everything — expected; for ordinary source/test edits it runs only the affected files.)
 
 ## Pre-push consumer verification
 
