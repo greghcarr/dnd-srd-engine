@@ -38,6 +38,12 @@ export const planSuperiorDefense = (
   const monk = state.characters[intent.monkId];
   invariant(monk !== undefined, `Character ${intent.monkId} not found`);
 
+  // Slice 744: Superior Defense is a 1-minute active state — you don't
+  // re-activate (or spend a second 3 Focus Points) while it's already active.
+  if (monk.appliedConditions.some((c) => c.conditionId === SUPERIOR_DEFENSE_CONDITION_ID)) {
+    throw new Error(`${monk.name} already has Superior Defense active`);
+  }
+
   const ki = monk.resources.find((r) => r.resourceId === KI_RESOURCE_ID);
   if (!ki || ki.current < SUPERIOR_DEFENSE_KI_COST) {
     throw new Error(

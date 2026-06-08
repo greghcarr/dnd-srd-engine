@@ -515,6 +515,12 @@ export type Effect =
   // override the weapon damage type to Force. Without the opt-in the
   // strike keeps its normal type, so the marker is inert by default.
   | { kind: 'GrantUnarmedForceOption' }
+  // Slice 738. Marker: Rogue L7 Reliable Talent — on an ability check that
+  // uses one of the bearer's skill (or tool) proficiencies, treat a d20 of
+  // 9 or lower as a 10. Read by `planAbilityCheck` via the check
+  // derivation's `hasReliableTalent` + `usesProficiency` (excludes the
+  // half-proficiency floor, which isn't a proficiency the bearer "has").
+  | { kind: 'GrantReliableTalent' }
   // Slice 221. Marker primitive that unlocks the Wish branch of
   // `planDivineIntervention`. Without the marker, the planner only
   // accepts Cleric spells of level 5 or lower; with it, the consumer
@@ -928,6 +934,9 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       kind: z.literal('GrantUnarmedForceOption'),
     }),
     z.object({
+      kind: z.literal('GrantReliableTalent'),
+    }),
+    z.object({
       kind: z.literal('GrantDivineInterventionWish'),
     }),
     z.object({
@@ -1045,6 +1054,7 @@ export const EFFECT_KINDS = [
   'GrantSculptSpells',
   'GrantUnarmedAsMagical',
   'GrantUnarmedForceOption',
+  'GrantReliableTalent',
   'GrantDivineInterventionWish',
   'ExpandAuraRange',
   'GrantAura',

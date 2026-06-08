@@ -58,14 +58,17 @@ const CONTENT = resolveContent([PACK]);
 const FLY_GROUNDED_FIXTURE = 'test-fly-grounded-fixture';
 const FIXTURE_PACK = (() => {
   const p = loadStarterPack();
-  p.conditions.push({
+  // Clone rather than mutate the loaded pack: under a shared/cached pack
+  // (slice 746) an in-place `conditions.push` would leak this fixture into
+  // every other test.
+  const fixtureCondition: (typeof p)['conditions'][number] = {
     id: FLY_GROUNDED_FIXTURE,
     name: 'Test Fixture: Fly Grounded',
     stackable: false,
     endsOn: [],
     effects: [{ kind: 'ModifySpeed', mode: 'fly', op: 'set', value: 0 }],
-  });
-  return p;
+  };
+  return { ...p, conditions: [...p.conditions, fixtureCondition] };
 })();
 const FIXTURE_CONTENT = resolveContent([FIXTURE_PACK]);
 

@@ -11,12 +11,12 @@ Two long-lived branches:
 
 1. Start a session by checking out (or creating) `dev`: `git checkout dev` (or `git checkout -b dev` if it doesn't exist yet locally).
 2. Do slice work on `dev`. One slice per commit; commit early and often.
-3. Pre-commit checks: `npx tsc --noEmit && npx vitest run`. Both must be green.
+3. Per-slice checks (local, fast): `npx tsc --noEmit` plus a fast test signal — `npm run test:changed` (only tests affected by your edits) and/or `npm run test:fast` (the suite minus the heavy fuzz/property/integration tiers). The full `npm test` (`npx vitest run`) is the **push/CI gate**, not a per-edit check (see [CONTRIBUTING.md](CONTRIBUTING.md#pre-commit--pre-push-checks)); run it before pushing a cohort and it must be green.
 4. After a slice commits cleanly, surface it to whoever is steering the session (typically the user). They decide when `dev` is ready to ship to `main`.
 5. **Integration into `main` goes through a pull request, never a local merge.** Push `dev`, open the PR with `gh pr create --base main --head dev`, let CI run on it, and merge the PR once green (the merge updates `main`). The PR is the CI gate and the review record; it exists precisely because a local `dev` -> `main` merge once shipped a broken doc link straight to a red `main` before CI could catch it (slice 438). Tag the release on `main` after the merge (see "Cutting a release").
 6. Never push, open a PR into `main`, or merge a PR without explicit instruction. The PR process changes *how* `dev` integrates into `main`, not the rule that a human authorizes it. See [CLAUDE.md](CLAUDE.md#commit-dont-push) for the full git-safety rules.
 
-**What CI runs where** (slice 442): a push to `dev` runs only the fast cross-Node test matrix (`vitest run` on Node 20 / 22 / 24, no coverage) for quick per-slice feedback. The full gate (typecheck + coverage with its 80% thresholds + build, once on Node 22) runs at the integration boundary: pull requests and pushes to `main`. So `main` is never shipped without the coverage + build gate, but routine `dev` pushes don't pay for it. Local pre-commit (`tsc --noEmit` + `vitest run`) still runs every slice, so type / test breakage is caught before the push regardless. Deep property fuzzing (`FAST_CHECK_NUM_RUNS=1000`) runs in the scheduled [nightly-fuzz workflow](.github/workflows/nightly-fuzz.yml), keeping per-push fuzz at the smoke level.
+**What CI runs where** (slice 442): a push to `dev` runs only the fast cross-Node test matrix (`vitest run` on Node 20 / 22 / 24, no coverage) for quick per-slice feedback. The full gate (typecheck + coverage with its 80% thresholds + build, once on Node 22) runs at the integration boundary: pull requests and pushes to `main`. So `main` is never shipped without the coverage + build gate, but routine `dev` pushes don't pay for it. Locally you iterate per slice with `tsc --noEmit` + `npm run test:changed` / `npm run test:fast`, and run the full `vitest run` before pushing (the same gate CI enforces), so type / test breakage is caught before the push regardless. Deep property fuzzing (`FAST_CHECK_NUM_RUNS=1000`) runs in the scheduled [nightly-fuzz workflow](.github/workflows/nightly-fuzz.yml), keeping per-push fuzz at the smoke level.
 
 ### Branch-from rules
 
@@ -47,7 +47,9 @@ git submodule update --init --recursive
 ```
 npm install            # install deps
 npm run typecheck      # tsc --noEmit
-npm test               # vitest run
+npm test               # vitest run (full suite; the push/CI gate)
+npm run test:changed   # vitest run --changed (only tests affected by your edits; local loop)
+npm run test:fast      # full suite minus the heavy fuzz/property/integration tiers (local check)
 npm run test:watch     # vitest in watch mode
 npm run test:coverage  # vitest with coverage gates
 npm run build          # vite build + .d.ts emit

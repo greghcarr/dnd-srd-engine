@@ -53,13 +53,19 @@ When you find a bug, audit gap, or inconsistency, do not fix only the surfaced i
 
 Every slice writes a per-slice file at `docs/changelog/slice-NNN.md` plus a 3-line pointer in [CHANGELOG.md](CHANGELOG.md). Other doc updates (starter-pack-gaps, status, api-overview, roadmap) trigger only when the slice touches the relevant surface. Full list + templates in [CONTRIBUTING.md](CONTRIBUTING.md#doc-updates-per-slice) and [CONTRIBUTING.md](CONTRIBUTING.md#changelog-entry-shape).
 
-### Pre-commit checks (run all three)
+### Pre-commit / pre-push checks
 
+The full suite is slow (a content-pack validation tax on nearly every file + the fuzz/property/integration tiers), so don't run it after every edit. Iterate fast locally; the full run is the push/CI gate.
+
+Per slice (local, fast):
 - `npx tsc --noEmit` — vitest does not typecheck. Always run separately.
-- `npx vitest run` — full suite. Must be green.
-- `npx vitest run -u` — only when adding wired conditions, items, or other content that feeds the coverage snapshot. Inspect the diff.
+- `npm run test:changed` (only tests affected by your edits) during iteration, and/or `npm run test:fast` (full suite minus the heavy fuzz/property/integration tiers) before committing the slice.
+- `npx vitest run -u` — only when adding wired conditions/items/etc. that feed the coverage snapshot. Inspect the diff.
 
-If a check fails, fix the cause. Never `--no-verify` or skip.
+Before pushing (the full gate):
+- `npm test` (`npx vitest run`) — full suite must be green before a push and before any release. CI also runs it on every PR (Node 20/22/24).
+
+If a check fails, fix the cause. Never `--no-verify` or skip. (See [CONTRIBUTING.md](CONTRIBUTING.md#pre-commit--pre-push-checks).)
 
 ### Sibling-consumer awareness
 

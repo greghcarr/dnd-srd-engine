@@ -30,6 +30,11 @@ export const planFrenzy = (
 ): ReadonlyArray<Event> => {
   const character = state.characters[intent.combatantId];
   if (!character) throw new Error(`Unknown character ${intent.combatantId}`);
+  // Slice 744: Frenzy is a per-rage active state — you don't re-enter it
+  // (or spend a second Rage charge) while already frenzied.
+  if (character.appliedConditions.some((c) => c.conditionId === FRENZIED_CONDITION_ID)) {
+    throw new Error(`${character.name} is already frenzied`);
+  }
   const rage = character.resources.find((r) => r.resourceId === RAGE_RESOURCE_ID);
   if (!rage || rage.current <= 0) {
     throw new Error(`${character.name} has no Rage available`);

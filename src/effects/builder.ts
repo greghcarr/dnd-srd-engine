@@ -232,6 +232,7 @@ export class EffectAccumulator {
   private sculptSpellsFlag: boolean = false;
   private unarmedAsMagicalFlag: boolean = false;
   private unarmedForceOptionFlag: boolean = false;
+  private reliableTalentFlag: boolean = false;
   private divineInterventionWishFlag: boolean = false;
   private auraRangeBonusTotal: number = 0;
   private grantedSpellEntries: Array<{
@@ -991,6 +992,14 @@ export class EffectAccumulator {
   hasUnarmedForceOption(): boolean {
     return this.unarmedForceOptionFlag;
   }
+  // Slice 738: Rogue L7 Reliable Talent via the `GrantReliableTalent`
+  // effect — treat a d20 of 9 or lower as 10 on a proficient ability check.
+  markReliableTalent(): void {
+    this.reliableTalentFlag = true;
+  }
+  hasReliableTalent(): boolean {
+    return this.reliableTalentFlag;
+  }
   // Slice 221: marker that unlocks the Wish branch of
   // planDivineIntervention. Set by Cleric L20 Greater Divine
   // Intervention via the `GrantDivineInterventionWish` effect.
@@ -1248,6 +1257,9 @@ export const applyEffectToBuilder = (
       return;
     case 'GrantUnarmedForceOption':
       acc.markUnarmedForceOption();
+      return;
+    case 'GrantReliableTalent':
+      acc.markReliableTalent();
       return;
     case 'GrantDivineInterventionWish':
       acc.markDivineInterventionWish();

@@ -74,7 +74,15 @@ const PACK = loadStarterPack();
 // Discoveries, Draconic Elemental Affinity). The two new level-up choices
 // at L6 (Fighter ASI-6, Rogue Expertise-2) are the same OfferChoice shapes
 // drainPendingChoices already resolves at L4/L1.
-const LEVELS = [1, 2, 3, 4, 5, 6] as const;
+// Slice 742: extended to L7 — every L7 row is now wired (base: Monk/Rogue
+// Evasion, Rogue Reliable Talent, Barbarian Feral Instinct + Instinctive
+// Pounce, Bard Countercharm, Cleric Blessed Strikes, Druid Elemental Fury,
+// Sorcerer Sorcery Incarnate; subclass: Champion Additional Fighting Style,
+// Oath Aura of Devotion, Hunter Defensive Tactics, Life/Draconic/Fiend L7
+// spells) and full casters reach 4th-level slots. The new L7 OfferChoices
+// (Druid Elemental Fury, etc.) are resolved by the slice-737 robust
+// drainPendingChoices (first-N + legal-set fallback).
+const LEVELS = [1, 2, 3, 4, 5, 6, 7] as const;
 const SHAPES: ReadonlyArray<{
   teamSize: 1 | 2;
   vs: FuzzVs;
@@ -92,9 +100,9 @@ const RESTS: ReadonlyArray<FuzzRest> = ['none', 'short', 'long'];
 // cells = 1,080 battles per CI run; ~10ms/battle = ~10s wall-clock.
 const SEEDS_PER_CELL = 30;
 
-describe('slice 644 / 651 / 674 / 709 / 725 / 734: fuzz matrix audit (L1-L6 across shapes + rests)', () => {
+describe('slice 644 / 651 / 674 / 709 / 725 / 734 / 742: fuzz matrix audit (L1-L7 across shapes + rests)', () => {
   it(`enumerates ${LEVELS.length * SHAPES.length * RESTS.length} matrix cells (${LEVELS.length} levels x ${SHAPES.length} shapes x ${RESTS.length} rests)`, () => {
-    expect(LEVELS.length * SHAPES.length * RESTS.length).toBe(72);
+    expect(LEVELS.length * SHAPES.length * RESTS.length).toBe(84);
   });
 
   for (const level of LEVELS) {

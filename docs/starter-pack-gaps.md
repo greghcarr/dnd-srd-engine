@@ -4,6 +4,8 @@ This doc is the **priority queue** for contributor work and a top-level summary 
 
 ## How to pick a slice (for new contributors)
 
+> **Current cadence:** engine completion is organized level-by-level. **L1-L7 are SRD-complete** (CI-guarded `srd-l{1..7}-complete` floor audits + an L1-L7 fuzz matrix); **L8 is the next level cycle** — each class's L8 features (mostly Ability Score Improvements, plus any L8 subclass feature). The per-primitive rows below remain valid for cross-cutting work picked up between level cycles.
+
 1. **Read [CONTRIBUTING.md](../CONTRIBUTING.md) first** if you haven't — slice cadence, branch flow, pre-commit Uncle Bob audit, SRD canon, doc size discipline. Those rules apply to every slice.
 2. **Skim the "Coverage at a glance" table below** for the lay of the land.
 3. **Jump to "Future engine slices"** further down for the catalog of focused primitives, each with the cohort of spells / features / items it unblocks. Rows ranked roughly by payoff.
@@ -30,8 +32,8 @@ Sibling per-category catalogs (extracted in slice 249 to keep this doc under the
 
 | Category | In pack | Rough PHB total | Notes |
 |---|---|---|---|
-| Classes | 12 / 12 | 12 | All scaffolded with 1-20 level tables. Most L2+ rows ship empty; see [gaps-class-features.md](gaps-class-features.md). |
-| Subclasses | 12 / ~50 | ~50 | One canonical L3 subclass per class. ~13 outstanding higher-tier features documented inline below. |
+| Classes | 12 / 12 | 12 | All scaffolded with 1-20 level tables; **L1-L7 are SRD-complete** (CI-guarded `srd-l{1..7}-complete` floor audits + L1-L7 fuzz matrix). L8+ rows are the next level cycle; see [gaps-class-features.md](gaps-class-features.md). |
+| Subclasses | 12 / ~50 | ~50 | One canonical subclass per class, wired through their L3/L6/L7 features (covered by the L1-L7 floor audits). Higher-tier (L10+) subclass features are the outstanding work; documented inline below. |
 | Species | 9 / ~10 | ~10 | SRD 5.2.1 complete; Aasimar is PHB-only (non-SRD). |
 | Backgrounds | 4 SRD (+ 15 in extras pack) | 16 | Starter pack ships the 4 SRD 5.2.1 backgrounds (Acolyte, Criminal, Sage, Soldier). The 15 PHB-2024 backgrounds moved to the `phb-2024-extras` pack in slice 401. |
 | Feats | 19 SRD (+ 17 in extras pack) | ~50+ | Starter pack ships the 19 SRD-derived feats (6 origin / 2 general / 4 fighting style / 7 epic boon); the SRD 5.2.1 feat catalog is complete at 17/17 (slice 703 added Ability Score Improvement). The 17 PHB-2024 feats moved to `phb-2024-extras` in slice 401. |

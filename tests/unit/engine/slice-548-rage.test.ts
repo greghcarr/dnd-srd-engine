@@ -143,15 +143,17 @@ describe('Barbarian Rage (slice 548)', () => {
     expect(events.find((e) => e.type === 'ConditionApplied')).toBeDefined();
   });
 
-  it('BA already used: rejected in encounter', () => {
+  it('re-entering Rage while already raging: rejected in encounter', () => {
     const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(7) });
     const barb = buildBarbarian();
     let campaign = seedCampaign(engine, [barb]);
     campaign = startEncounter(engine, campaign, [barb.id]);
     const first = engine.plan.rage(campaign.state, { barbarianId: barb.id }).events;
-    campaign = commit(campaign, first);
+    campaign = commit(campaign, first); // now raging + bonus action used
+    // Slice 743: you don't re-enter Rage while already raging — the
+    // already-raging guard preempts the bonus-action gate.
     expect(() => engine.plan.rage(campaign.state, { barbarianId: barb.id }))
-      .toThrow(/already used their bonus action/);
+      .toThrow(/already raging/);
   });
 
   describe('raging condition projects RAW while-active effects', () => {

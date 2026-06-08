@@ -80,6 +80,7 @@ export const planIntent = (
     MemorizeSpell: (i) => plan.memorizeSpell(state, i),
     NaturalRecovery: (i) => plan.naturalRecovery(state, i),
     PeerlessSkill: (i) => plan.peerlessSkill(state, i),
+    Countercharm: (i) => plan.countercharm(state, i),
     TacticalMind: (i) => plan.tacticalMind(state, i),
     Frenzy: (i) => plan.frenzy(state, i),
     ExhaleDragonsBreath: (i) => plan.exhaleDragonsBreath(state, i),

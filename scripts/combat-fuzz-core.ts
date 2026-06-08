@@ -28,14 +28,22 @@ export const MAX_ROUNDS = 20;
 const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8] as const;
 const SPECIES = ['human', 'elf', 'dwarf', 'halfling', 'tiefling', 'dragonborn', 'gnome', 'goliath', 'orc'] as const;
 const BACKGROUNDS = ['acolyte', 'criminal', 'sage', 'soldier'] as const;
-// Max character level the fuzz tool can build to. The engine's
-// level-up planner supports L1-L20 but the fuzz's level-up helper
-// auto-resolves only the choices needed to reach this cap (subclass
-// selection at L3 for half the classes; ASI/feat at L4 and again at
-// Fighter L6 auto-picks an ability; Rogue's second Expertise at L6 is
-// the same OfferChoice shape as L1's). Going beyond L6 would need
-// richer choice auto-resolution.
-export const FUZZ_MAX_LEVEL = 6;
+// Max character level the fuzz tool can build to. The engine's level-up
+// planner supports L1-L20, and the fuzz auto-leveler (`levelUpTo` +
+// `drainPendingChoices`) resolves every choice the planner emits on the
+// way up — subclass selection (L3), the ASI/feat cascades (L4/8/12/16/19,
+// Fighter L6/14, Rogue L10), Expertise, the wizard-scholar pick, etc. — via
+// a deterministic legal-option-set picker (first-N, byte-identical at the
+// levels that already shipped, with a bounded combination fallback for any
+// choice where first-N isn't a legal pick). Failures are loud: an
+// unresolvable choice or an under-level throws rather than silently leaving
+// the character behind. NOTE: the pack's class levelTables above ~L6 are
+// still being built out (slots + proficiency progress, but many higher
+// feature rows are sparse), so a high-level fuzz character reaches the
+// correct level / HP / spell slots while gaining few new feature *choices*
+// until that content lands; the loud guard ensures that when those choices
+// do land, any the picker can't handle surfaces immediately.
+export const FUZZ_MAX_LEVEL = 20;
 
 type AbilityScore = 'STR' | 'DEX' | 'CON' | 'INT' | 'WIS' | 'CHA';
 type Pack = ContentPack;
@@ -212,6 +220,10 @@ const CLASS_POOLS: ReadonlyArray<ClassPool> = [
     numL1Spells: 3,
   },
 ];
+
+// The class ids the fuzz can build / pin, in pool order. Exported so the
+// level-range audit can sweep "every CLASS_POOLS class" without re-listing.
+export const FUZZ_CLASS_IDS: ReadonlyArray<string> = CLASS_POOLS.map((p) => p.classId);
 
 const pickRandom = <T>(arr: ReadonlyArray<T>, r: number): T => arr[Math.floor(r * arr.length)]!;
 
@@ -803,32 +815,84 @@ const pickIntent = (
   return null;
 };
 
+// Cap on how many legal-option-set combinations the auto-resolver tries
+// per choice before giving up loudly. Comfortably above any real SRD
+// OfferChoice's option count; exists only so a pathological choice can't
+// spin forever.
+const CHOICE_CANDIDATE_CAP = 256;
+
+// Deterministic candidate selections for a pending choice, in
+// lexicographic k-combination order. The FIRST candidate is always the
+// historical "first N options" pick, so every choice that already resolved
+// at the shipped levels (≤ L6) resolves identically (byte-identical events,
+// goldens + replay-equivalence preserved). Later candidates are the
+// fallback for any future choice where the first-N set isn't a legal /
+// complete pick (e.g. a "choose two DISTINCT abilities" or "pick a spell
+// you don't already know" choice that lands with higher-level content).
+// RNG-free: same character → same candidate order → same resolution.
+const choiceSelectionCandidates = (
+  pending: { options: ReadonlyArray<{ id: string }>; oneOf?: number },
+): string[][] => {
+  const ids = pending.options.map((o) => o.id);
+  const n = Math.max(1, Math.min(pending.oneOf ?? 1, ids.length));
+  const out: string[][] = [];
+  const idx = Array.from({ length: n }, (_, i) => i);
+  while (out.length < CHOICE_CANDIDATE_CAP) {
+    out.push(idx.map((i) => ids[i]!));
+    let i = n - 1;
+    while (i >= 0 && idx[i] === ids.length - n + i) i -= 1;
+    if (i < 0) break;
+    idx[i] = (idx[i] ?? 0) + 1;
+    for (let j = i + 1; j < n; j += 1) idx[j] = (idx[j - 1] ?? 0) + 1;
+  }
+  return out;
+};
+
+// Resolve every pending choice for a character. Tries each legal candidate
+// set in turn (first-N first); throws loudly if no candidate resolves, so a
+// silently-unresolved choice can never block the next level-up unnoticed.
 const drainPendingChoices = (
   engine: ReturnType<typeof createEngine>,
   campaign: Campaign,
   characterId: string,
 ): Campaign => {
   let camp = campaign;
-  for (let safety = 0; safety < 40; safety += 1) {
+  for (let safety = 0; safety < 100; safety += 1) {
     const pending = Object.values(camp.state.pendingChoices).find((p) => p.forCharacterId === characterId && p.resolution === undefined);
     if (!pending) break;
-    const pickCount = pending.oneOf ?? 1;
-    const selected = pending.options.slice(0, pickCount).map((o) => o.id);
-    if (selected.length === 0) break;
-    try {
-      const choiceResult = engine.plan.resolveChoice(camp.state, {
-        characterId,
-        choiceId: pending.id,
-        selectedOptionIds: selected,
-      });
-      camp = commit(camp, choiceResult.events);
-    } catch {
-      break;
+    if (pending.options.length === 0) {
+      throw new Error(`fuzz auto-resolver: choice '${pending.promptKey ?? pending.id}' for ${characterId} has no options`);
+    }
+    let resolved = false;
+    for (const selectedOptionIds of choiceSelectionCandidates(pending)) {
+      try {
+        camp = commit(camp, engine.plan.resolveChoice(camp.state, {
+          characterId,
+          choiceId: pending.id,
+          selectedOptionIds,
+        }).events);
+        resolved = true;
+        break;
+      } catch {
+        // not a legal selection — try the next candidate combination
+      }
+    }
+    if (!resolved) {
+      throw new Error(
+        `fuzz auto-resolver: no legal selection for choice '${pending.promptKey ?? pending.id}' ` +
+        `(oneOf=${pending.oneOf ?? 1}, ${pending.options.length} options) for ${characterId}`,
+      );
     }
   }
   return camp;
 };
 
+// Level a character from its current level to `targetLevel`, resolving
+// every choice along the way. Loud post-conditions: throws if the character
+// doesn't actually reach the target level or if any choice is left
+// unresolved, so the caller can never be handed a silently under-leveled
+// character (the prior behavior swallowed level-up throws and left the
+// character at L1 while the caller believed it was leveled).
 const levelUpTo = (
   engine: ReturnType<typeof createEngine>,
   campaign: Campaign,
@@ -841,6 +905,15 @@ const levelUpTo = (
     const result = engine.plan.levelUp(camp.state, { characterId, classId, hpStrategy: 'average' });
     camp = commit(camp, result.events);
     camp = drainPendingChoices(engine, camp, characterId);
+  }
+  const ch = camp.state.characters[characterId];
+  const reached = ch ? ch.classes.reduce((sum, c) => sum + c.level, 0) : 0;
+  if (reached !== targetLevel) {
+    throw new Error(`fuzz levelUpTo: ${characterId} (${classId}) reached L${reached}, expected L${targetLevel}`);
+  }
+  const dangling = Object.values(camp.state.pendingChoices).filter((p) => p.forCharacterId === characterId && p.resolution === undefined).length;
+  if (dangling > 0) {
+    throw new Error(`fuzz levelUpTo: ${characterId} (${classId}) has ${dangling} unresolved choice(s) at L${targetLevel}`);
   }
   return camp;
 };
@@ -972,7 +1045,11 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
 
   if (level > 1) {
     for (const pc of [...teamA, ...teamB]) {
-      try { campaign = levelUpTo(engine, campaign, pc.character.id, pc.build.classId, level); } catch { /* keep at current level */ }
+      // Monsters (vs='monster' team B) use their fixed statblock, not class
+      // levels — skip them. Class PCs level via the shared path; any failure
+      // now propagates (loud) instead of silently leaving the PC at L1.
+      if (pc.character.statblockId !== undefined) continue;
+      campaign = levelUpTo(engine, campaign, pc.character.id, pc.build.classId, level);
     }
   }
 

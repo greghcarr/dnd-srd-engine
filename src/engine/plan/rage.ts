@@ -10,7 +10,7 @@ import type { ULID } from '../ids-utils.js';
 
 const BARBARIAN_CLASS_ID = 'barbarian';
 const RAGE_RESOURCE_ID = 'rage';
-const RAGING_CONDITION_ID = 'raging';
+export const RAGING_CONDITION_ID = 'raging';
 // Path of the Berserker L6 Mindless Rage: immune to Charmed/Frightened
 // while raging, and entering Rage ends those conditions if present.
 const BERSERKER_SUBCLASS_ID = 'path-of-the-berserker';
@@ -67,6 +67,16 @@ export const planRage = (
   const barbClass = barbarian.classes.find((c) => c.classId === BARBARIAN_CLASS_ID);
   if (!barbClass) {
     throw new Error(`${barbarian.name} does not have Rage (Barbarian L1 feature)`);
+  }
+
+  // Slice 743: Rage is entered once and persists — you don't re-enter it (or
+  // spend a second Rage use) while already raging. RAW: Rage lasts until the
+  // end of your next turn, extended each round by attacking / forcing a save
+  // / a Bonus Action. Re-entering is legal only after Rage ends. (Modeling
+  // the auto-end / maintenance lifecycle is the deferred Scope B follow-up;
+  // this guard alone stops the illegal back-to-back re-rage.)
+  if (barbarian.appliedConditions.some((c) => c.conditionId === RAGING_CONDITION_ID)) {
+    throw new Error(`${barbarian.name} is already raging`);
   }
 
   const resource = barbarian.resources.find((r) => r.resourceId === RAGE_RESOURCE_ID);

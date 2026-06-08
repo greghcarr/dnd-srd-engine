@@ -481,6 +481,10 @@ const planAttackMechanic = (
     // adds CHA-mod to Eldritch Blast damage rolls only). Predicate uses
     // `eq event.spellId '<spell-id>'`.
     ['event.spellId', spell.id],
+    // Slice 739: spell level fact (0 = cantrip). Canonical user: Druid L7 /
+    // Cleric L7 Potent Spellcasting (+spellcasting-ability modifier to
+    // cantrip damage), gated `eq event.spellLevel 0`.
+    ['event.spellLevel', spell.level],
   ]);
   const damageModifierBonus = casterEffects.modifierSum('damage', damageFacts);
   const events: Event[] = [];
@@ -945,6 +949,8 @@ const planSaveMechanic = (
       ['event.spellSchool', spell.school],
       // Slice 510: per-spell damage rider parallel to the attack path.
       ['event.spellId', spell.id],
+      // Slice 739: spell level fact (0 = cantrip) for Potent Spellcasting.
+      ['event.spellLevel', spell.level],
     ]);
     saveDamageModifierBonus = casterEffects.modifierSum('damage', damageFacts);
     const { rolls: baseRolls, modifier } = rollDamage(mechanic.damageDice, bonusDice, rng, false);

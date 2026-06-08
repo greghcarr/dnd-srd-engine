@@ -33,6 +33,12 @@ export const planSacredWeapon = (
   const paladin = state.characters[intent.paladinId];
   if (!paladin) throw new Error(`Unknown paladin ${intent.paladinId}`);
 
+  // Slice 744: Sacred Weapon is an active state — you don't re-activate
+  // (or spend a second Channel Divinity) while it's already active.
+  if (paladin.appliedConditions.some((c) => c.conditionId === SACRED_WEAPON_CONDITION_ID)) {
+    throw new Error(`${paladin.name} already has Sacred Weapon active`);
+  }
+
   const resource = paladin.resources.find((r) => r.resourceId === CHANNEL_DIVINITY_RESOURCE_ID);
   if (!resource || resource.current <= 0) {
     throw new Error(`${paladin.name} has no Channel Divinity available`);

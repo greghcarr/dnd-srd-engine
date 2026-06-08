@@ -208,6 +208,21 @@ const CHECKS: ReadonlyArray<CountCheck> = [
     pattern: /(\d+) wired primitives plus the `Custom` escape hatch\*\* \((\d+) `EFFECT_KINDS` entries total/,
     expected: [GT.primitives, GT.effectKinds],
   },
+  // Slice 747: pin the two prose citations that drifted (api-overview to
+  // "53 kinds (52 primitives)", architecture to "52 primitives") because
+  // they were the only EFFECT_KINDS mentions not yet guarded.
+  {
+    file: 'docs/architecture.md',
+    label: 'currently N primitives plus the Custom escape hatch (design principles)',
+    pattern: /currently (\d+) primitives plus the `Custom` escape hatch/,
+    expected: [GT.primitives],
+  },
+  {
+    file: 'docs/api-overview.md',
+    label: 'effect primitives (N kinds (M primitives + the Custom escape hatch))',
+    pattern: /(\d+) kinds \((\d+) primitives \+ the `Custom` escape hatch\)/,
+    expected: [GT.effectKinds, GT.primitives],
+  },
   // Slice 631: spell wired-vs-total percentage + split, derived from
   // gaps-spells.md (which is itself audit-pinned to the pack).
   {
