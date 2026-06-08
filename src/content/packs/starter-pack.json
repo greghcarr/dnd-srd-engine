@@ -324,7 +324,7 @@
           ],
           "columns": {}
         },
-        "6": { "proficiencyBonus": 3, "features": [], "columns": {} },
+        "6": { "proficiencyBonus": 3, "features": [{ "id": "ability-score-improvement-6", "name": "Ability Score Improvement", "effects": [{ "kind": "OfferChoice", "choiceId": "ability-score-improvement-6", "prompt": "Gain the Ability Score Improvement feat or another feat you qualify for.", "oneOf": 1, "when": "onAcquire", "options": [{ "id": "ability-score-improvement", "label": "Ability Score Improvement", "effects": [{ "kind": "GrantFeat", "featId": "ability-score-improvement" }] }, { "id": "grappler", "label": "Grappler", "effects": [{ "kind": "GrantFeat", "featId": "grappler" }] }] }] }], "columns": {} },
         "7": { "proficiencyBonus": 3, "features": [], "columns": {} },
         "8": { "proficiencyBonus": 3, "features": [], "columns": {} },
         "9": { "proficiencyBonus": 4, "features": [{ "id": "indomitable", "name": "Indomitable", "effects": [{ "kind": "GrantResource", "resourceId": "indomitable", "max": 1, "recharge": "longRest" }] }, { "id": "tactical-master", "name": "Tactical Master", "effects": [] }], "columns": {} },
@@ -682,7 +682,7 @@
         "3": { "proficiencyBonus": 2, "features": [{ "id": "deflect-attacks", "name": "Deflect Attacks", "effects": [] }], "columns": {} },
         "4": { "proficiencyBonus": 2, "features": [{ "id": "slow-fall", "name": "Slow Fall", "effects": [{ "kind": "Custom", "handlerId": "slow-fall" }] }, { "id": "ability-score-improvement-4", "name": "Ability Score Improvement", "effects": [{ "kind": "OfferChoice", "choiceId": "ability-score-improvement-4", "prompt": "Gain the Ability Score Improvement feat or another feat you qualify for.", "oneOf": 1, "when": "onAcquire", "options": [{ "id": "ability-score-improvement", "label": "Ability Score Improvement", "effects": [{ "kind": "GrantFeat", "featId": "ability-score-improvement" }] }, { "id": "grappler", "label": "Grappler", "effects": [{ "kind": "GrantFeat", "featId": "grappler" }] }] }] }], "columns": {} },
         "5": { "proficiencyBonus": 3, "features": [{ "id": "extra-attack-monk", "name": "Extra Attack", "effects": [{ "kind": "ModifyActionEconomy", "op": "extraAttack", "count": 1 }] }, { "id": "stunning-strike", "name": "Stunning Strike", "effects": [{ "kind": "Custom", "handlerId": "stunning-strike" }] }, { "id": "martial-arts-die-d8", "name": "Martial Arts (d8)", "effects": [] }], "columns": {} },
-        "6": { "proficiencyBonus": 3, "features": [{ "id": "empowered-strikes", "name": "Empowered Strikes", "effects": [{ "kind": "GrantUnarmedAsMagical" }] }], "columns": {} },
+        "6": { "proficiencyBonus": 3, "features": [{ "id": "empowered-strikes", "name": "Empowered Strikes", "effects": [{ "kind": "GrantUnarmedForceOption" }] }], "columns": {} },
         "7": { "proficiencyBonus": 3, "features": [{ "id": "evasion-monk", "name": "Evasion", "effects": [{ "kind": "GrantEvasion" }] }], "columns": {} },
         "8": { "proficiencyBonus": 3, "features": [], "columns": {} },
         "9": { "proficiencyBonus": 4, "features": [{ "id": "acrobatic-movement", "name": "Acrobatic Movement", "effects": [] }], "columns": {} },
@@ -827,6 +827,41 @@
             "effects": [{ "kind": "Custom", "handlerId": "cutting-words" }]
           }
         ],
+        "6": [
+          {
+            "id": "magical-discoveries",
+            "name": "Magical Discoveries",
+            "effects": [
+              {
+                "kind": "OfferChoice",
+                "choiceId": "magical-discoveries",
+                "prompt": "Learn two spells from the Cleric, Druid, or Wizard spell list (a cantrip or a spell of level 1-3). They are always prepared and count as Bard spells for you.",
+                "oneOf": 2,
+                "when": "onAcquire",
+                "options": [
+                  { "id": "sacred-flame", "label": "Sacred Flame (Cleric cantrip)", "effects": [{ "kind": "GrantSpell", "spellId": "sacred-flame", "preparation": "always-prepared" }] },
+                  { "id": "fire-bolt", "label": "Fire Bolt (Wizard cantrip)", "effects": [{ "kind": "GrantSpell", "spellId": "fire-bolt", "preparation": "always-prepared" }] },
+                  { "id": "produce-flame", "label": "Produce Flame (Druid cantrip)", "effects": [{ "kind": "GrantSpell", "spellId": "produce-flame", "preparation": "always-prepared" }] },
+                  { "id": "guidance", "label": "Guidance (Cleric/Druid cantrip)", "effects": [{ "kind": "GrantSpell", "spellId": "guidance", "preparation": "always-prepared" }] },
+                  { "id": "guiding-bolt", "label": "Guiding Bolt (Cleric 1)", "effects": [{ "kind": "GrantSpell", "spellId": "guiding-bolt", "preparation": "always-prepared" }] },
+                  { "id": "inflict-wounds", "label": "Inflict Wounds (Cleric 1)", "effects": [{ "kind": "GrantSpell", "spellId": "inflict-wounds", "preparation": "always-prepared" }] },
+                  { "id": "magic-missile", "label": "Magic Missile (Wizard 1)", "effects": [{ "kind": "GrantSpell", "spellId": "magic-missile", "preparation": "always-prepared" }] },
+                  { "id": "chromatic-orb", "label": "Chromatic Orb (Wizard 1)", "effects": [{ "kind": "GrantSpell", "spellId": "chromatic-orb", "preparation": "always-prepared" }] },
+                  { "id": "entangle", "label": "Entangle (Druid 1)", "effects": [{ "kind": "GrantSpell", "spellId": "entangle", "preparation": "always-prepared" }] },
+                  { "id": "spiritual-weapon", "label": "Spiritual Weapon (Cleric 2)", "effects": [{ "kind": "GrantSpell", "spellId": "spiritual-weapon", "preparation": "always-prepared" }] },
+                  { "id": "scorching-ray", "label": "Scorching Ray (Wizard 2)", "effects": [{ "kind": "GrantSpell", "spellId": "scorching-ray", "preparation": "always-prepared" }] },
+                  { "id": "moonbeam", "label": "Moonbeam (Druid 2)", "effects": [{ "kind": "GrantSpell", "spellId": "moonbeam", "preparation": "always-prepared" }] },
+                  { "id": "flaming-sphere", "label": "Flaming Sphere (Druid/Wizard 2)", "effects": [{ "kind": "GrantSpell", "spellId": "flaming-sphere", "preparation": "always-prepared" }] },
+                  { "id": "fireball", "label": "Fireball (Wizard 3)", "effects": [{ "kind": "GrantSpell", "spellId": "fireball", "preparation": "always-prepared" }] },
+                  { "id": "spirit-guardians", "label": "Spirit Guardians (Cleric 3)", "effects": [{ "kind": "GrantSpell", "spellId": "spirit-guardians", "preparation": "always-prepared" }] },
+                  { "id": "call-lightning", "label": "Call Lightning (Druid 3)", "effects": [{ "kind": "GrantSpell", "spellId": "call-lightning", "preparation": "always-prepared" }] },
+                  { "id": "counterspell", "label": "Counterspell (Wizard 3)", "effects": [{ "kind": "GrantSpell", "spellId": "counterspell", "preparation": "always-prepared" }] },
+                  { "id": "revivify", "label": "Revivify (Cleric 3)", "effects": [{ "kind": "GrantSpell", "spellId": "revivify", "preparation": "always-prepared" }] }
+                ]
+              }
+            ]
+          }
+        ],
         "14": [
           {
             "id": "peerless-skill",
@@ -884,7 +919,7 @@
           {
             "id": "blessed-healer",
             "name": "Blessed Healer",
-            "effects": []
+            "effects": [{ "kind": "GrantBlessedHealer" }]
           }
         ],
         "7": [
@@ -1600,7 +1635,7 @@
           {
             "id": "sculpt-spells",
             "name": "Sculpt Spells",
-            "effects": []
+            "effects": [{ "kind": "GrantSculptSpells" }]
           }
         ],
         "10": [
@@ -9933,6 +9968,10 @@
       { "kind": "AddModifier", "target": "damage", "value": 2, "condition": { "kind": "eq", "path": "event.damageAbility", "value": "STR" } },
       { "kind": "SetAdvantage", "on": { "kind": "check", "ability": "STR" }, "mode": "advantage" },
       { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "STR" }, "mode": "advantage" }
+    ] },
+    { "id": "mindless-rage-active", "name": "Mindless Rage", "description": "Path of the Berserker L6 Mindless Rage: while raging, the Barbarian is immune to the Charmed and Frightened conditions (SRD 5.2.1). Applied by planRage alongside `raging` when the barbarian has the Berserker subclass at level 6+; consumer-managed lifecycle (same `endsOn: longRest` as `raging`).", "stackable": false, "endsOn": [{ "kind": "longRest" }], "effects": [
+      { "kind": "GrantConditionImmunity", "conditionId": "charmed" },
+      { "kind": "GrantConditionImmunity", "conditionId": "frightened" }
     ] },
     {
       "id": "longstrider-active",

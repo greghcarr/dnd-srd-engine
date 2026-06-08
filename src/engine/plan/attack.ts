@@ -349,6 +349,12 @@ export interface AttackIntent {
   // planWeaponAttackMechanic resolves the caster's spellcasting ability
   // and passes it here.
   readonly abilityOverride?: 'STR' | 'DEX' | 'CON' | 'INT' | 'WIS' | 'CHA';
+  // Slice 735: Monk L6 Empowered Strikes (SRD 5.2.1). Opt-in per unarmed
+  // strike — when true and the weapon is `unarmed-strike` and the attacker
+  // bears `GrantUnarmedForceOption`, the strike's damage type becomes Force
+  // ("it can deal your choice of Force damage or its normal damage type").
+  // Inert otherwise (no feature / not unarmed / flag unset → normal type).
+  readonly unarmedStrikeAsForce?: boolean;
 }
 
 const chooseDamageAbility = (
@@ -457,9 +463,14 @@ export interface ResolveAttackInput {
   readonly chargedAtTarget?: boolean;
   // Slice 494: see AttackIntent.abilityOverride doc comment above.
   readonly abilityOverride?: 'STR' | 'DEX' | 'CON' | 'INT' | 'WIS' | 'CHA';
+  // Slice 735: see AttackIntent.unarmedStrikeAsForce doc comment above.
+  readonly unarmedStrikeAsForce?: boolean;
 }
 
 const CUNNING_STRIKE_LEVEL = 5;
+// Slice 735: the synthetic unarmed-strike weapon definition id (mirrors
+// the same constant in flurry-of-blows.ts / the magicality derive).
+const UNARMED_STRIKE_DEF_ID = 'unarmed-strike';
 const IMPROVED_CUNNING_STRIKE_LEVEL = 11;
 // Slice 467: feat id read by resolveAttack to gate the per-attack reroll.
 // The savage-attacker feat in the pack carries an empty effects array
@@ -1256,11 +1267,22 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
   // enchantment like Frost Brand / Flame Tongue).
   const enchantment = resolveEnchantment(weaponInstance, content);
   const enchantmentDamageBonus = enchantment?.damageBonus ?? 0;
+  // Slice 735: Monk L6 Empowered Strikes — the bearer may deal Force
+  // damage with an unarmed strike. Opt-in (intent.unarmedStrikeAsForce),
+  // gated on the `GrantUnarmedForceOption` marker + an unarmed-strike
+  // weapon; takes precedence over the printed/enchanted type (the explicit
+  // player choice wins). Inert by default, so non-opted strikes are
+  // byte-identical.
+  const empoweredStrikesForce =
+    input.unarmedStrikeAsForce === true
+    && weaponDef.id === UNARMED_STRIKE_DEF_ID
+    && attackerEffects.hasUnarmedForceOption();
   // Slice 501: a Shillelagh-style weapon buff can override the damage type
   // (Shillelagh's "can be Force damage" choice), taking precedence over an
   // enchantment's type and the weapon's printed type.
   const effectiveDamageType =
-    weaponInstance.temporaryBuff?.damageTypeOverride
+    (empoweredStrikesForce ? 'force' : undefined)
+    ?? weaponInstance.temporaryBuff?.damageTypeOverride
     ?? enchantment?.weaponDamageType
     ?? weaponDef.damageType;
   // Slice 117: consume the effect stack's 'damage' modifier sum.
@@ -1817,6 +1839,7 @@ export const planAttack = (
     ...(intent.useGiantAncestryHillsTumble === true ? { useGiantAncestryHillsTumble: true } : {}),
     ...(intent.chargedAtTarget === true ? { chargedAtTarget: true } : {}),
     ...(intent.abilityOverride !== undefined ? { abilityOverride: intent.abilityOverride } : {}),
+    ...(intent.unarmedStrikeAsForce === true ? { unarmedStrikeAsForce: true } : {}),
     at,
   });
   // If we fired a Loading weapon, append a WeaponLoaded event so the

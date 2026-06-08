@@ -149,6 +149,13 @@ export interface CastSpellIntent {
   // ConcentrationStarted event. Throws if a zone-mechanic spell is
   // cast without this field set.
   readonly targetPosition?: { readonly x: number; readonly y: number };
+  // Slice 732: Wizard Evoker L6 Sculpt Spells. Names the creatures the
+  // caster excludes from an Evocation save spell — each auto-succeeds on
+  // the save and takes no damage (modeled as full exclusion). Honored
+  // only when the caster bears `GrantSculptSpells` and the spell's school
+  // is Evocation; the count is capped at 1 + the slot level. Each id must
+  // be among `targetIds`.
+  readonly sculptedTargetIds?: ReadonlyArray<string>;
   readonly at?: string;
 }
 
@@ -844,6 +851,9 @@ interface SaveMechanicOutcome {
   readonly conditionsApplied: AppliedConditionRef[];
 }
 
+// Evoker Sculpt Spells excludes "1 plus the spell's level" creatures.
+const SCULPT_BASE_TARGETS = 1;
+
 const planSaveMechanic = (
   state: CampaignState,
   content: ResolvedContent,
@@ -874,6 +884,37 @@ const planSaveMechanic = (
   const casterHasPotentCantrip =
     spell.level === CANTRIP_LEVEL &&
     buildEffectStack({ character, content, itemInstances: state.itemInstances, pendingChoices: state.pendingChoices }).hasPotentCantrip();
+  // Evoker L6 Sculpt Spells: the caster may exclude named creatures from an
+  // Evocation save spell. Validated once here (intent-revealing throws);
+  // each excluded target is then skipped in the per-target loop, so it
+  // gets no save event, no damage, and no condition — the observable form
+  // of "auto-succeed and take no damage".
+  const sculptedSet = new Set<string>(intent.sculptedTargetIds ?? []);
+  if (sculptedSet.size > 0) {
+    const casterCanSculpt = buildEffectStack({
+      character,
+      content,
+      itemInstances: state.itemInstances,
+      pendingChoices: state.pendingChoices,
+    }).hasSculptSpells();
+    if (!casterCanSculpt) {
+      throw new Error(`${intent.characterId} cannot sculpt spells`);
+    }
+    if (spell.school !== 'evocation') {
+      throw new Error(`Sculpt Spells applies only to Evocation spells, not ${spell.id} (${spell.school})`);
+    }
+    const maxSculpted = SCULPT_BASE_TARGETS + intent.slotLevel;
+    if (sculptedSet.size > maxSculpted) {
+      throw new Error(
+        `Sculpt Spells can exclude at most ${maxSculpted} creature(s) for ${spell.id}; received ${sculptedSet.size}`,
+      );
+    }
+    for (const id of sculptedSet) {
+      if (!intent.targetIds.includes(id)) {
+        throw new Error(`Sculpt Spells target ${id} is not among the spell's targets`);
+      }
+    }
+  }
   const events: Event[] = [];
   const conditionsApplied: AppliedConditionRef[] = [];
 
@@ -923,6 +964,10 @@ const planSaveMechanic = (
   for (const targetId of intent.targetIds) {
     const target = state.characters[targetId];
     if (!target) continue;
+    // Slice 732: a Sculpt Spells-excluded creature auto-succeeds and takes
+    // no damage — modeled as full exclusion (no save, no damage, no
+    // condition) for that target.
+    if (sculptedSet.has(targetId)) continue;
     // Slice 500: type-gated save (Animal Friendship targets Beasts only).
     // A target whose creature type doesn't match is skipped — no save,
     // no condition.
@@ -1181,6 +1226,10 @@ const planTempHPMechanic = (
   return events;
 };
 
+// Cleric Life Domain L6 Blessed Healer: flat HP the caster regains on top
+// of the slot level when a slot heal lands on another creature.
+const BLESSED_HEALER_FLAT = 2;
+
 const planHealMechanic = (
   state: CampaignState,
   content: ResolvedContent,
@@ -1238,6 +1287,27 @@ const planHealMechanic = (
       causedByEventId: declaredEventId as ULID,
     };
     events.push(heal);
+  }
+  // Blessed Healer (Cleric Life Domain L6): casting a slot spell that
+  // restores HP to a creature other than the caster also heals the caster
+  // 2 + the slot level (once, not per target). Cantrips (slotLevel 0) and
+  // free casts (no slot spent) don't trigger it.
+  if (
+    casterEffects.hasBlessedHealer() &&
+    intent.slotLevel >= 1 &&
+    intent.useFreeCast !== true &&
+    intent.targetIds.some((t) => t !== intent.characterId)
+  ) {
+    const selfBlocked = isHealingBlocked({ state, content, targetId: intent.characterId });
+    events.push({
+      id: newEventId() as ULID,
+      at,
+      type: 'Healed',
+      targetId: intent.characterId as ULID,
+      amount: selfBlocked ? 0 : BLESSED_HEALER_FLAT + intent.slotLevel,
+      source: selfBlocked ? 'blessed-healer (blocked)' : 'blessed-healer',
+      causedByEventId: declaredEventId as ULID,
+    } satisfies HealedEvent);
   }
   return events;
 };

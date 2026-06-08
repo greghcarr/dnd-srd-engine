@@ -35,8 +35,15 @@ export interface OffHandAttackIntent {
   readonly attackerId: string;
   readonly targetId: string;
   readonly weaponInstanceId: string;
+  // Slice 735: Monk L6 Empowered Strikes — opt a bonus-action unarmed
+  // strike into Force damage (gated on `GrantUnarmedForceOption` + an
+  // unarmed-strike weapon). Inert without the feature.
+  readonly unarmedStrikeAsForce?: boolean;
   readonly at?: string;
 }
+
+// Slice 735: the synthetic unarmed-strike weapon definition id.
+const UNARMED_STRIKE_DEF_ID = 'unarmed-strike';
 
 const findActiveEncounter = (
   state: CampaignState,
@@ -268,11 +275,19 @@ export const planOffHandAttack = (
   for (let i = 0; i < totalRolls; i++) {
     damageRolls.push(rollDie(parsed.die, rng));
   }
+  // Slice 735: Empowered Strikes Force option on a bonus-action unarmed
+  // strike (opt-in + marker + unarmed-strike weapon). Inert by default.
+  const effectiveDamageType =
+    intent.unarmedStrikeAsForce === true
+    && weaponDef.id === UNARMED_STRIKE_DEF_ID
+    && attackerEffects.hasUnarmedForceOption()
+      ? 'force'
+      : weaponDef.damageType;
   const damageRollPayload: DamageRoll = {
     expression: damageExpression,
     rolls: damageRolls,
     modifier: offHandModifier + parsed.modifier,
-    type: weaponDef.damageType,
+    type: effectiveDamageType,
   };
   const damageRolled: DamageRolledEvent = {
     id: newEventId() as ULID,
@@ -290,7 +305,7 @@ export const planOffHandAttack = (
     character: target,
     itemInstances: state.itemInstances,
     content,
-    rawComponents: [{ amount: Math.max(0, damageTotal), type: weaponDef.damageType }],
+    rawComponents: [{ amount: Math.max(0, damageTotal), type: effectiveDamageType }],
     characters: state.characters,
     sourceIsMagical: isMagicWeaponAttack(weaponInstance, weaponDef, attackerEffects.hasUnarmedAsMagical()),
   });

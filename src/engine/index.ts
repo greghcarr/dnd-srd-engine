@@ -111,6 +111,8 @@ import {
   planWholenessOfBody,
   planWildResurgence,
   planMemorizeSpell,
+  planNaturalRecovery,
+  planDarkOnesOwnLuck,
   planPeerlessSkill,
   planTacticalMind,
   planFrenzy,
@@ -280,6 +282,9 @@ import {
   type WholenessOfBodyIntent,
   type WildResurgenceIntent,
   type MemorizeSpellIntent,
+  type NaturalRecoveryIntent,
+  type DarkOnesOwnLuckIntent,
+  type DarkOnesOwnLuckOutcome,
   type PeerlessSkillIntent,
   type PeerlessSkillOutcome,
   type TacticalMindIntent,
@@ -518,6 +523,8 @@ export interface Engine {
     wholenessOfBody(state: CampaignState, intent: Omit<WholenessOfBodyIntent, 'type'>): PlanResult;
     wildResurgence(state: CampaignState, intent: Omit<WildResurgenceIntent, 'type'>): PlanResult;
     memorizeSpell(state: CampaignState, intent: Omit<MemorizeSpellIntent, 'type'>): PlanResult;
+    naturalRecovery(state: CampaignState, intent: Omit<NaturalRecoveryIntent, 'type'>): PlanResult;
+    darkOnesOwnLuck(state: CampaignState, intent: Omit<DarkOnesOwnLuckIntent, 'type'>): DarkOnesOwnLuckOutcome;
     peerlessSkill(state: CampaignState, intent: Omit<PeerlessSkillIntent, 'type'>): PeerlessSkillOutcome;
     tacticalMind(state: CampaignState, intent: Omit<TacticalMindIntent, 'type'>): TacticalMindOutcome;
     frenzy(state: CampaignState, intent: Omit<FrenzyIntent, 'type'>): PlanResult;
@@ -1011,6 +1018,12 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     memorizeSpell(state, intent) {
       return { events: planMemorizeSpell(state, content, { type: 'MemorizeSpell', ...intent }) };
+    },
+    naturalRecovery(state, intent) {
+      return { events: planNaturalRecovery(state, content, { type: 'NaturalRecovery', ...intent }) };
+    },
+    darkOnesOwnLuck(state, intent) {
+      return planDarkOnesOwnLuck(state, content, rng, { type: 'DarkOnesOwnLuck', ...intent });
     },
     peerlessSkill(state, intent) {
       return planPeerlessSkill(state, content, rng, { type: 'PeerlessSkill', ...intent });

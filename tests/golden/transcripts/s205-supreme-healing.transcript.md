@@ -9,3 +9,5 @@
 Slot consumed: 1st-level.
 
 **Roan** healed 23 from cure-wounds. (HP 12 -> 35)
+
+**Solace** healed 3 from blessed-healer.

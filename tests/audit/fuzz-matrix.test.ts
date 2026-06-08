@@ -66,7 +66,15 @@ const PACK = loadStarterPack();
 // Restoration, Sear Undead, Wild Resurgence, Faithful Steed, Tactical
 // Shift, Memorize Spell). No new level-up choices at L5, so
 // drainPendingChoices reaches L5 unchanged.
-const LEVELS = [1, 2, 3, 4, 5] as const;
+// Slice 734: extended to L6 — every L6 row is now wired (base: Fighter
+// ASI, Rogue 2nd Expertise, Monk Empowered Strikes, Paladin Aura of
+// Protection, more rage/Channel Divinity/Wild Shape uses, Ranger Roving;
+// subclass: Berserker Mindless Rage, Life Blessed Healer, Land Natural
+// Recovery, Fiend Dark One's Own Luck, Evoker Sculpt Spells, Lore Magical
+// Discoveries, Draconic Elemental Affinity). The two new level-up choices
+// at L6 (Fighter ASI-6, Rogue Expertise-2) are the same OfferChoice shapes
+// drainPendingChoices already resolves at L4/L1.
+const LEVELS = [1, 2, 3, 4, 5, 6] as const;
 const SHAPES: ReadonlyArray<{
   teamSize: 1 | 2;
   vs: FuzzVs;
@@ -84,9 +92,9 @@ const RESTS: ReadonlyArray<FuzzRest> = ['none', 'short', 'long'];
 // cells = 1,080 battles per CI run; ~10ms/battle = ~10s wall-clock.
 const SEEDS_PER_CELL = 30;
 
-describe('slice 644 / 651 / 674 / 709 / 725: fuzz matrix audit (L1-L5 across shapes + rests)', () => {
+describe('slice 644 / 651 / 674 / 709 / 725 / 734: fuzz matrix audit (L1-L6 across shapes + rests)', () => {
   it(`enumerates ${LEVELS.length * SHAPES.length * RESTS.length} matrix cells (${LEVELS.length} levels x ${SHAPES.length} shapes x ${RESTS.length} rests)`, () => {
-    expect(LEVELS.length * SHAPES.length * RESTS.length).toBe(60);
+    expect(LEVELS.length * SHAPES.length * RESTS.length).toBe(72);
   });
 
   for (const level of LEVELS) {

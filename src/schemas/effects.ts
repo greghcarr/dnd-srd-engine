@@ -483,14 +483,38 @@ export type Effect =
   // Flat modifiers (CHA mod, Disciple of Life boost) compose
   // unchanged on top.
   | { kind: 'GrantMaxHealingDice' }
+  // Slice 731. Marker: Cleric Life Domain L6 Blessed Healer — casting a
+  // slot spell that heals another creature also heals the caster (2 +
+  // slot level). Read by the cast-spell heal handler.
+  | { kind: 'GrantBlessedHealer' }
+  // Slice 732. Marker: Wizard Evoker L6 Sculpt Spells — when casting an
+  // Evocation spell, the caster may exclude up to (1 + slot level)
+  // creatures it can see; they auto-succeed on the save and take no
+  // damage. Read by `planSaveMechanic` from the caster's effect stack;
+  // the excluded targets are named in `intent.sculptedTargetIds`.
+  | { kind: 'GrantSculptSpells' }
   // Slice 207. Marker primitive: the bearer's unarmed strikes count
   // as magical attacks for the purposes of overcoming Resistance and
-  // Immunity to nonmagical damage. RAW Monk L6 Empowered Strikes.
-  // `isMagicWeaponAttack` in src/derive/magicality.ts consults this
-  // when the weapon's id is `unarmed-strike`. Doesn't change the
-  // damage dice or the attack roll, just the `sourceIsMagical` flag
-  // passed to `mitigateDamage`.
+  // Immunity to nonmagical damage. This is the 2014 "Ki-Empowered
+  // Strikes" shape; slice 735 moved the SRD 5.2.1 Monk L6 Empowered
+  // Strikes off this marker onto `GrantUnarmedForceOption` (the 2024
+  // feature is the Force-damage choice, not magical unarmed). Kept as a
+  // generic, available primitive (e.g. for magic items / monster traits
+  // that grant magical unarmed). `isMagicWeaponAttack` in
+  // src/derive/magicality.ts consults this when the weapon's id is
+  // `unarmed-strike`. Doesn't change the damage dice or the attack roll,
+  // just the `sourceIsMagical` flag passed to `mitigateDamage`.
   | { kind: 'GrantUnarmedAsMagical' }
+  // Slice 735. Marker primitive: the bearer may, per unarmed strike,
+  // deal Force damage instead of the strike's normal type. RAW SRD 5.2.1
+  // Monk L6 Empowered Strikes ("Whenever you deal damage with your
+  // Unarmed Strike, it can deal your choice of Force damage or its normal
+  // damage type"). Opt-in at attack time: the attack/flurry/off-hand
+  // planners read this from the attacker's effect stack and, when the
+  // intent sets `unarmedStrikeAsForce` and the weapon is `unarmed-strike`,
+  // override the weapon damage type to Force. Without the opt-in the
+  // strike keeps its normal type, so the marker is inert by default.
+  | { kind: 'GrantUnarmedForceOption' }
   // Slice 221. Marker primitive that unlocks the Wish branch of
   // `planDivineIntervention`. Without the marker, the planner only
   // accepts Cleric spells of level 5 or lower; with it, the consumer
@@ -892,7 +916,16 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       kind: z.literal('GrantMaxHealingDice'),
     }),
     z.object({
+      kind: z.literal('GrantBlessedHealer'),
+    }),
+    z.object({
+      kind: z.literal('GrantSculptSpells'),
+    }),
+    z.object({
       kind: z.literal('GrantUnarmedAsMagical'),
+    }),
+    z.object({
+      kind: z.literal('GrantUnarmedForceOption'),
     }),
     z.object({
       kind: z.literal('GrantDivineInterventionWish'),
@@ -1008,7 +1041,10 @@ export const EFFECT_KINDS = [
   'GrantInnateSorcerySpendAlternative',
   'GrantSelfRestoration',
   'GrantMaxHealingDice',
+  'GrantBlessedHealer',
+  'GrantSculptSpells',
   'GrantUnarmedAsMagical',
+  'GrantUnarmedForceOption',
   'GrantDivineInterventionWish',
   'ExpandAuraRange',
   'GrantAura',
