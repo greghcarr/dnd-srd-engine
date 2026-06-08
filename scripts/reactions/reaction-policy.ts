@@ -47,7 +47,7 @@ const dominantPhysicalType = (
   return best?.type;
 };
 
-const reactionAvailable = (
+export const reactionAvailable = (
   state: CampaignState,
   encounterId: string,
   reactorId: string,

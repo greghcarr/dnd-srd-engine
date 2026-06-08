@@ -59,3 +59,44 @@ describe('golden: auto reactions (slice 749)', () => {
     }
   });
 });
+
+// Slice 750: the pre-damage reaction window (Shield + Cutting Words).
+describe('golden: pre-damage reactions (slice 750)', () => {
+  it('Shield prevents a hit on a deterministic anchor (seed 6, L5, 2v2 PC): no damage to the caster on the shielded swing', () => {
+    const r = runBattle({ seed: 6, pack: STARTER, level: 5, teamSize: 2, vs: 'pc', reactions: 'auto' });
+    const events = r.campaign.events;
+    expect(JSON.stringify(replay(events))).toBe(JSON.stringify(r.campaign.state));
+    let preventedAndClean = 0;
+    for (let i = 0; i < events.length; i += 1) {
+      const e = events[i]!;
+      if (e.type !== 'ShieldCast' || (e as { preventedHit?: boolean }).preventedHit !== true) continue;
+      const casterId = (e as { casterId: string }).casterId;
+      const atkIdx = events.findIndex((x) => x.id === (e as { triggeringAttackEventId: string }).triggeringAttackEventId);
+      const damaged = events
+        .slice(atkIdx + 1, i)
+        .some((x) => x.type === 'DamageApplied' && (x as { targetId: string }).targetId === casterId);
+      if (!damaged) preventedAndClean += 1;
+    }
+    expect(preventedAndClean, 'anchor produced no clean Shield prevention').toBeGreaterThan(0);
+  });
+
+  it('Cutting Words fires on a deterministic anchor (seed 7, L3, 2v2 PC): a reaction paired with a Bardic Inspiration spend', () => {
+    const events = runBattle({ seed: 7, pack: STARTER, level: 3, teamSize: 2, vs: 'pc', reactions: 'auto' })
+      .campaign.events;
+    let fired = 0;
+    for (let i = 0; i < events.length - 1; i += 1) {
+      const a = events[i]!;
+      const b = events[i + 1]!;
+      if (
+        a.type === 'ActionEconomyConsumed'
+        && (a as { kind?: string }).kind === 'reaction'
+        && b.type === 'ResourceSpent'
+        && (b as { resourceId?: string }).resourceId === 'bardic-inspiration'
+        && (a as { combatantId: string }).combatantId === (b as { characterId: string }).characterId
+      ) {
+        fired += 1;
+      }
+    }
+    expect(fired, 'anchor produced no Cutting Words').toBeGreaterThan(0);
+  });
+});

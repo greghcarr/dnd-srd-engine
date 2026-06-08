@@ -9,6 +9,8 @@ import {
   hasUncannyDodge,
   hasDeflectAttacks,
   hasStonesEndurance,
+  shouldShield,
+  shouldCuttingWords,
   type IncomingDamage,
 } from '../../../src/ai/reactions.js';
 import { REACTION_MIN_DAMAGE } from '../../../src/ai/reaction-constants.js';
@@ -89,5 +91,41 @@ describe('pickDamageReaction (slice 749)', () => {
 
   it('a reactor with no qualifying feature takes nothing', () => {
     expect(pickDamageReaction(withClass('fighter', 7), physicalHit)).toBeNull();
+  });
+});
+
+describe('shouldShield (slice 750)', () => {
+  const wizardWithShield = (): Character => withClass('wizard', 5, { preparedSpells: ['shield'] });
+
+  it('fires when the caster has Shield prepared and +5 would convert the hit to a miss', () => {
+    expect(shouldShield(wizardWithShield(), 16, 14)).toBe(true); // 16 < 14+5
+  });
+
+  it('declines when +5 AC would not prevent the hit (slot not wasted)', () => {
+    expect(shouldShield(wizardWithShield(), 20, 14)).toBe(false); // 20 >= 19
+  });
+
+  it('declines without the spell prepared, or for a non-Shield-casting class', () => {
+    expect(shouldShield(withClass('wizard', 5), 16, 14)).toBe(false); // not prepared
+    expect(shouldShield(withClass('fighter', 5, { preparedSpells: ['shield'] }), 16, 14)).toBe(false);
+  });
+});
+
+describe('shouldCuttingWords (slice 750)', () => {
+  const bardWithBI = (level: number): Character =>
+    withClass('bard', level, { resources: [{ resourceId: 'bardic-inspiration', current: 1, max: 1 }] });
+
+  it('fires when the attack hit and a max BI die could drop it below AC', () => {
+    expect(shouldCuttingWords(bardWithBI(3), 15, 14)).toBe(true); // d6: 15-6=9 < 14
+  });
+
+  it('declines when even a max BI die cannot reach below AC', () => {
+    expect(shouldCuttingWords(bardWithBI(3), 25, 14)).toBe(false); // 25-6=19 >= 14
+  });
+
+  it('declines on a miss, with no Bardic Inspiration, or for a non-Bard', () => {
+    expect(shouldCuttingWords(bardWithBI(3), 12, 14)).toBe(false); // 12 < 14 (missed already)
+    expect(shouldCuttingWords(withClass('bard', 3), 15, 14)).toBe(false); // no BI die
+    expect(shouldCuttingWords(withClass('fighter', 3, { resources: [{ resourceId: 'bardic-inspiration', current: 1, max: 1 }] }), 15, 14)).toBe(false);
   });
 });

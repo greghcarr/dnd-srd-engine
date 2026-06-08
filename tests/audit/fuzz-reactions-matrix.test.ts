@@ -51,3 +51,35 @@ describe('fuzz reactions matrix (slice 749)', () => {
     expect(deflectAttacks, 'no Deflect Attacks fired across the whole matrix').toBeGreaterThan(0);
   });
 });
+
+// Slice 750: the pre-damage reaction window. Shield (a Wizard/Sorcerer
+// defender) is the clean prevent-the-trigger case — it emits a ShieldCast
+// with preventedHit, and the driver drops the damage chain. 2v2-PC seeds
+// reliably field a Shield-casting defender.
+const SHIELD_SEEDS = Array.from({ length: 12 }, (_, i) => i + 1);
+
+describe('fuzz pre-damage reaction window (slice 750)', () => {
+  it('Shield fires and genuinely prevents the hit (no damage to the caster on the shielded swing), replaying equivalently', () => {
+    let prevented = 0;
+    for (const seed of SHIELD_SEEDS) {
+      const r = runBattle({ seed, pack: STARTER, level: 5, teamSize: 2, vs: 'pc', reactions: 'auto' });
+      const events = r.campaign.events;
+      expect(JSON.stringify(replay(events)), `seed=${seed} replay mismatch`).toBe(
+        JSON.stringify(r.campaign.state),
+      );
+      for (let i = 0; i < events.length; i += 1) {
+        const e = events[i]!;
+        if (e.type !== 'ShieldCast' || (e as { preventedHit?: boolean }).preventedHit !== true) continue;
+        prevented += 1;
+        const casterId = (e as { casterId: string }).casterId;
+        const atkIdx = events.findIndex((x) => x.id === (e as { triggeringAttackEventId: string }).triggeringAttackEventId);
+        for (let j = atkIdx + 1; j < i; j += 1) {
+          const x = events[j]!;
+          const damagedCaster = x.type === 'DamageApplied' && (x as { targetId: string }).targetId === casterId;
+          expect(damagedCaster, `seed=${seed} Shield preventedHit but caster took damage on the swing`).toBe(false);
+        }
+      }
+    }
+    expect(prevented, 'no Shield prevention fired across the shield seeds').toBeGreaterThan(0);
+  });
+});

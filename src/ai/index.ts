@@ -25,6 +25,8 @@ export {
   hasUncannyDodge,
   hasDeflectAttacks,
   hasStonesEndurance,
+  shouldShield,
+  shouldCuttingWords,
   type DamageReaction,
   type IncomingDamage,
   type PhysicalDamageType,

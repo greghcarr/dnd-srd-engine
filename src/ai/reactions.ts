@@ -16,6 +16,10 @@
 
 import type { Character } from '../schemas/runtime/character.js';
 import {
+  bardicInspirationDieFor,
+  BARDIC_INSPIRATION_RESOURCE_ID,
+} from '../engine/plan/cutting-words.js';
+import {
   ROGUE_CLASS_ID,
   MONK_CLASS_ID,
   UNCANNY_DODGE_ROGUE_LEVEL,
@@ -23,6 +27,10 @@ import {
   GOLIATH_SPECIES_ID,
   GIANT_ANCESTRY_RESOURCE_ID,
   REACTION_MIN_DAMAGE,
+  SHIELD_SPELL_ID,
+  SHIELD_AC_BONUS,
+  SHIELD_CASTER_CLASS_IDS,
+  BARD_CLASS_ID,
 } from './reaction-constants.js';
 
 export type PhysicalDamageType = 'bludgeoning' | 'piercing' | 'slashing';
@@ -81,4 +89,43 @@ export const pickDamageReaction = (
   }
   if (hasStonesEndurance(reactor)) return { kind: 'stonesEndurance' };
   return null;
+};
+
+// Pre-damage (prevent-the-trigger) reactions on the attack-roll window
+// (slice 750). These decide whether a reactor should spend a reaction to
+// turn a hit into a miss; the engine planner enforces the hard gates
+// (slot / Bardic Inspiration die / reaction economy), so these are the
+// "is it worth it" filter — class eligibility + would-it-actually-prevent.
+
+// A defender should cast Shield when it's a Wizard/Sorcerer with the spell
+// prepared AND the +5 AC would convert the hit into a miss (so the slot
+// isn't wasted on an attack that lands anyway). Slot + reaction
+// availability are enforced by planShield.
+export const shouldShield = (
+  defender: Character,
+  attackTotal: number,
+  targetAC: number,
+): boolean => {
+  const classId = defender.classes[0]?.classId;
+  if (classId === undefined || !SHIELD_CASTER_CLASS_IDS.includes(classId)) return false;
+  if (!defender.preparedSpells.includes(SHIELD_SPELL_ID)) return false;
+  return attackTotal < targetAC + SHIELD_AC_BONUS;
+};
+
+// A Bard should use Cutting Words when the attack hit AND a maximum
+// Bardic Inspiration die reduction could drop the attacker's total below
+// the target's AC (i.e. there's a real chance to convert the hit to a
+// miss). The BI resource + reaction economy are enforced by planCuttingWords.
+export const shouldCuttingWords = (
+  bard: Character,
+  attackTotal: number,
+  targetAC: number,
+): boolean => {
+  const bardClass = bard.classes.find((c) => c.classId === BARD_CLASS_ID);
+  if (bardClass === undefined) return false;
+  if (!bard.resources.some((r) => r.resourceId === BARDIC_INSPIRATION_RESOURCE_ID && r.current > 0)) {
+    return false;
+  }
+  if (attackTotal < targetAC) return false;
+  return attackTotal - bardicInspirationDieFor(bardClass.level) < targetAC;
 };

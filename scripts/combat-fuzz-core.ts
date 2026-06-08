@@ -17,13 +17,14 @@ import {
   type ContentPack,
 } from '../src/index.js';
 import { commit, type Campaign } from '../src/engine/commit.js';
-import { performIntent } from '../src/engine/conveniences.js';
+import { performIntent, planIntent } from '../src/engine/conveniences.js';
 import type { ItemInstance } from '../src/schemas/runtime/item-instance.js';
 import type { Event } from '../src/schemas/events/index.js';
 import { resolveContent } from '../src/content/pack.js';
 import { emitTacticalSetup } from './tactical/setup.js';
 import { makeTacticalMovePolicy } from './tactical/move-policy.js';
 import { makeAutoReactionPolicy } from './reactions/reaction-policy.js';
+import { resolveAttackWithReactions } from './reactions/pre-damage-policy.js';
 
 export const MAX_ROUNDS = 20;
 const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8] as const;
@@ -1224,6 +1225,23 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
             characterId: intent.characterId as string,
           });
           campaign = commit(campaign, events);
+        } else if (reactions === 'auto' && intent.type === 'Attack') {
+          // Slice 750: two-phase attack — plan (uncommitted), run the
+          // pre-damage reaction window (Shield / Cutting Words), then commit
+          // the full attack or, if a reaction prevented the hit, the attack
+          // minus its damage chain. 'none' keeps the single-phase commit.
+          const planned = planIntent(engine.plan, campaign.state, intent).events;
+          const targetId = intent.targetId as string;
+          const defenderTeam = (teamAIds.has(targetId) ? teamA : teamB).map(
+            (pc) => pc.character.id,
+          );
+          campaign = resolveAttackWithReactions({
+            engine,
+            campaign,
+            encounterId: enc.encounterId,
+            attackEvents: planned,
+            defenderTeam,
+          });
         } else {
           campaign = performIntent(engine, campaign, intent);
         }

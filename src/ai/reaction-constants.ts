@@ -24,3 +24,12 @@ export const REACTION_MIN_DAMAGE = 5;
 
 // Deflect Attacks only applies to Bludgeoning / Piercing / Slashing.
 export const PHYSICAL_DAMAGE_TYPES = ['bludgeoning', 'piercing', 'slashing'] as const;
+
+// Pre-damage (prevent-the-trigger) reactions, slice 750. Shield (the spell)
+// is +5 AC against the triggering attack; the classes that prepare it in
+// the starter pack are Wizard and Sorcerer. Cutting Words reduces the
+// attacker's roll for a Bard.
+export const SHIELD_SPELL_ID = 'shield';
+export const SHIELD_AC_BONUS = 5;
+export const SHIELD_CASTER_CLASS_IDS: readonly string[] = ['wizard', 'sorcerer'];
+export const BARD_CLASS_ID = 'bard';
