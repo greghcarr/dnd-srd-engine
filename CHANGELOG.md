@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Tests/docs (slice 734): L6 SRD-complete floor audit + fuzz-to-L6**
+New `tests/audit/srd-l6-complete.test.ts` (28 tests) pins the L6 floor: base-class L6 features (Fighter ASI, Rogue 2nd Expertise, Monk Empowered Strikes, Paladin Aura of Protection, more rage/Channel-Divinity/Wild-Shape uses, Ranger Roving), the eight subclass L6 features (slices 728-733 + 204/357), planner/effect-kind presence, a behavioral 5→6 level-up, and the spell-slot floor. The fuzz matrix extends to L6 (`[1..6]`, 72 cells × 30 seeds = 2,160 battles); `FUZZ_MAX_LEVEL` 5→6. Capstone of the L6 cycle — every L6 row is now wired. **Known drift (tracked):** Monk Empowered Strikes carries 2014 "magical unarmed" semantics (`GrantUnarmedAsMagical`); the SRD 5.2.1 Force-damage-type choice is the one open L6 correctness follow-up. No engine change.
+Detail: [slice-734.md](docs/changelog/slice-734.md).
+
 **Content (slice 733): Bard College of Lore Magical Discoveries (L6)**
 The previously-absent College of Lore L6 row gains `magical-discoveries`: an `OfferChoice` (oneOf 2, onAcquire) whose 18 curated options each grant a Cleric/Druid/Wizard spell (cantrip–level 3) `always-prepared` — the cross-list learn shape from Pact of the Tome (slice 517). Granted spells are treated as known by the cast path, so a chosen Wizard spell (e.g. Fireball) casts as a Bard spell with the bard's CHA + slots. No new engine primitive; the replace-on-level-up arm stays consumer-driven.
 Detail: [slice-733.md](docs/changelog/slice-733.md).

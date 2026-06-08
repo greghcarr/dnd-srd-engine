@@ -31,10 +31,11 @@ const BACKGROUNDS = ['acolyte', 'criminal', 'sage', 'soldier'] as const;
 // Max character level the fuzz tool can build to. The engine's
 // level-up planner supports L1-L20 but the fuzz's level-up helper
 // auto-resolves only the choices needed to reach this cap (subclass
-// selection at L3 for half the classes; ASI/feat at L4 auto-picks an
-// ability; no further choices L2-L5). Going beyond L5 would need
+// selection at L3 for half the classes; ASI/feat at L4 and again at
+// Fighter L6 auto-picks an ability; Rogue's second Expertise at L6 is
+// the same OfferChoice shape as L1's). Going beyond L6 would need
 // richer choice auto-resolution.
-export const FUZZ_MAX_LEVEL = 5;
+export const FUZZ_MAX_LEVEL = 6;
 
 type AbilityScore = 'STR' | 'DEX' | 'CON' | 'INT' | 'WIS' | 'CHA';
 type Pack = ContentPack;

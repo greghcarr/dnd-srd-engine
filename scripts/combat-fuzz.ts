@@ -5,7 +5,7 @@
 // slot, action-economy edge cases, etc.).
 //
 // Run: npx tsx scripts/combat-fuzz.ts [--count N] [--seed S] [--out DIR]
-//                                     [--level 1..5] [--mode 1v1|2v2]
+//                                     [--level 1..6] [--mode 1v1|2v2]
 //                                     [--vs pc|monster]
 //                                     [--rest none|short|long]
 //
