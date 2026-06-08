@@ -51,7 +51,7 @@ apply() is RNG-free: OK
 
 That single command builds two L3 fighters, runs an encounter, resolves one weapon attack, and proves the event log replays byte-for-byte. The other examples (`examples/00-quickstart/`, `examples/01-character-sheet/`, `examples/03-save-and-load/`) cover sheet derivation and save/load. Each is a single 20-80 line file — read them inline if you prefer reading to running.
 
-**Want to watch random battles?** The combat-fuzz CLI generates seeded markdown transcripts of L1-L6 PCs (and optionally monsters) fighting each other. Useful for seeing the engine exercise itself across hundreds of class/species/spell interactions:
+**Want to watch random battles?** The combat-fuzz CLI generates seeded markdown transcripts of L1-L20 PCs (and optionally monsters) fighting each other. Useful for seeing the engine exercise itself across hundreds of class/species/spell interactions:
 
 ```sh
 npx tsx scripts/combat-fuzz.ts --count 10 --seed 1 --level 3 --mode 2v2 --out /tmp/fuzz

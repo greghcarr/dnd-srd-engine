@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Fuzz harness (slice 737): build every class to any level 1-20**
+`FUZZ_MAX_LEVEL` 6 → 20, and the fuzz auto-leveler now fails loud: `drainPendingChoices` resolves each choice via a deterministic legal-option-set picker (first-N first — byte-identical at the shipped levels — then a bounded combination fallback) and throws if none is legal; `levelUpTo` throws if the character doesn't reach the target level or leaves a dangling choice; `runBattle` no longer swallows a level-up failure (and skips statblock monsters). So `runBattle({ level })` reliably builds every `CLASS_POOLS` class and its opponent to any level 1-20 (correct HP / proficiency / spell slots) for the dnd-web 1-20 picker, instead of silently leaving a character at L1. New `tests/integration/combat-fuzz-level-range.test.ts` sweeps every class L2-20 (player + opponent) + an L20 combat-validity spot-check. L1-6 builds are byte-identical (goldens + fuzz matrix unchanged). NOTE: pack feature rows above ~L6 are still sparse, so high-level fuzz characters are correctly-leveled but under-featured until that content lands.
+Detail: [slice-737.md](docs/changelog/slice-737.md).
+
 ## 0.9.0-alpha.0 - 2026-06-07
 
 **Release (slice 736): bump to 0.9.0-alpha.0**
