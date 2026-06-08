@@ -35,8 +35,9 @@ import { createEngine } from '../../../src/engine/index.js';
 import { seededRNG } from '../../../src/rng/seeded.js';
 import { buildEffectStack } from '../../../src/derive/effect-stack.js';
 import type { CharacterCreatedEvent } from '../../../src/schemas/events/progression.js';
-import type { ConditionAppliedEvent } from '../../../src/schemas/events/combat.js';
+import type { ConditionAppliedEvent, ConditionRemovedEvent } from '../../../src/schemas/events/combat.js';
 import type { ResourceSpentEvent } from '../../../src/schemas/events/resources.js';
+import type { ULID } from '../../../src/engine/ids-utils.js';
 import { eventId, isoTimestamp } from '../../fixtures/index.js';
 
 const PACK = loadStarterPack();
@@ -210,10 +211,17 @@ describe('Dwarf Stonecunning (slice 540)', () => {
     ]);
     const enc = startSoloEncounter(engine, camp, [dwarf.id]);
     camp = enc.campaign;
-    // Exhaust both PB +2 uses by advancing turn + recasting
+    // Exhaust both PB +2 uses. Slice 744: you can't re-activate while
+    // Stonecunning is still active, so each prior use must end first (the
+    // 10-minute duration is consumer-managed) before the next activation.
+    const endStonecunning = (c: Campaign): Campaign => commit(c, [
+      { id: eventId(), at: isoTimestamp(), type: 'ConditionRemoved', targetId: dwarf.id as ULID, conditionId: 'stonecunning-active' } satisfies ConditionRemovedEvent,
+    ]);
     camp = commit(camp, engine.plan.stonecunning(camp.state, { dwarfId: dwarf.id, onStoneSurface: true }).events);
+    camp = endStonecunning(camp);
     camp = commit(camp, engine.plan.advanceTurn(camp.state, { encounterId: enc.encounterId }).events);
     camp = commit(camp, engine.plan.stonecunning(camp.state, { dwarfId: dwarf.id, onStoneSurface: true }).events);
+    camp = endStonecunning(camp);
     camp = commit(camp, engine.plan.advanceTurn(camp.state, { encounterId: enc.encounterId }).events);
     // Third attempt: no uses left
     expect(() =>

@@ -48,6 +48,14 @@ export const planDragonWings = (
     );
   }
 
+  // Slice 744: Dragon Wings is a toggle (sprout / dismiss) — you don't
+  // re-sprout (burning another Bonus Action) while the wings are already
+  // out. No resource is spent, but re-activating while active is a no-op
+  // the planner should reject for consistency with the other activators.
+  if (sorcerer.appliedConditions.some((c) => c.conditionId === DRAGON_WINGS_CONDITION_ID)) {
+    throw new Error(`${sorcerer.name} already has Dragon Wings active`);
+  }
+
   const at = intent.at ?? nowIso();
   const events: Event[] = [];
 

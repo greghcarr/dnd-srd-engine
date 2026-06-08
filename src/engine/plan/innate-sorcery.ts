@@ -57,6 +57,12 @@ export const planInnateSorcery = (
   const character = state.characters[intent.characterId];
   invariant(character !== undefined, `Character ${intent.characterId} not found`);
 
+  // Slice 744: Innate Sorcery is a 1-minute active state — you don't
+  // re-activate (or spend a second use / 2 SP) while it's already active.
+  if (character.appliedConditions.some((c) => c.conditionId === INNATE_SORCERY_ACTIVE_CONDITION_ID)) {
+    throw new Error(`${character.name} already has Innate Sorcery active`);
+  }
+
   const at = intent.at ?? nowIso();
   const events: Event[] = [];
 

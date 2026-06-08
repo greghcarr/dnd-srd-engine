@@ -53,6 +53,11 @@ export const planStonecunning = (
   if (dwarf.speciesId !== DWARF_SPECIES_ID) {
     throw new Error(`${dwarf.name} does not have Stonecunning (Dwarf species only)`);
   }
+  // Slice 744: Stonecunning's Tremorsense is a 10-minute active state — you
+  // don't re-activate (or spend a second use) while it's already active.
+  if (dwarf.appliedConditions.some((c) => c.conditionId === STONECUNNING_CONDITION)) {
+    throw new Error(`${dwarf.name} already has Stonecunning active`);
+  }
   if (intent.onStoneSurface !== true) {
     throw new Error(
       `${dwarf.name} must be on or touching a stone surface to use Stonecunning`,

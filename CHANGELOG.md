@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Fix (slice 744): guard active-state re-activation across all activators (pattern fix)**
+A slice-743 pattern hunt found the same bug shape in five more activators: a Bonus-Action activator applies a persistent self "active-state" condition AND spends a limited resource, with no guard against re-activating while already active — so it could be re-activated for a double resource spend. Each planner now throws when its active condition is already present (before any spend): Innate Sorcery (`innate-sorcery-active`, use / 2 SP), Superior Defense (`superior-defense-active`, 3 Focus Points), Sacred Weapon (`sacred-weapon-active`, Channel Divinity), Frenzy (`frenzied`, Rage charge), Stonecunning (`stonecunning-active`, a use). Dragon Wings (`dragon-wings-active`, no resource) also guards for consistency. Byte-identical for the fuzz (each buff is taken at most once per battle); to re-activate, the consumer must end the prior state first (RAW).
+Detail: [slice-744.md](docs/changelog/slice-744.md).
+
 **Fix (slice 743): Barbarian can't re-enter Rage while already raging**
 Bug (dnd-web duel): a raging Barbarian could take the Rage bonus action again next turn, spending another Rage use while already raging. `planRage` now throws (`is already raging`) when the `raging` condition is active, and `engine.query.bonusActions` surfaces Rage as disabled with reason `already-raging` (so the consumer greys it instead of burning a use). Scope A (stop the illegal re-rage); Rage's full duration/maintenance lifecycle (auto-end at end of turn unless maintained, 10-round cap, end on Heavy armor / Incapacitated) is deferred to its own slice (Scope B). Non-raging / non-Barbarian paths byte-identical; the fuzz rages once per battle so it's unaffected.
 Detail: [slice-743.md](docs/changelog/slice-743.md).
