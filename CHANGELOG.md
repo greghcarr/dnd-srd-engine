@@ -4,6 +4,12 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the live file below carries only a compact pointer per slice (one headline + one-sentence summary) so the file stays bounded regardless of project age. Convention adopted in slice 628.
 
+## Unreleased
+
+**Driver/infra (slice 749): deterministic reaction layer for the combat-fuzz driver**
+A per-action reaction-policy seam in `runBattle` (mirroring the tactical-movement seam) fires damage-mitigation reactions off the events each action produces, so the dnd-web replay viewer can show them. Opt-in via a new `reactions: 'auto'` option (default `'none'` is byte-identical to the pre-slice path — existing goldens/fuzz/replay unchanged). Ships the cohort that composes correctly post-hoc (their planner emits a compensating `Healed`): Uncanny Dodge (Rogue L5), Deflect Attacks (Monk L3), Stone's Endurance (Goliath, wired but dormant until the fuzz builder grants Goliath ancestry). Pure decision logic lives in `src/ai/reactions.ts` (barrel-exported, like the tactical policy); engine glue in `scripts/reactions/reaction-policy.ts`. No new engine primitive / event / effect kind. The prevent-the-trigger reactions (Shield, Cutting Words, Counterspell, Countercharm) need a pre-damage reaction window in the attack/cast pipeline and are a documented follow-up; under `'auto'` the cosmetic inline Shield is disabled. dnd-web opts in from its own session.
+Detail: [slice-749.md](docs/changelog/slice-749.md).
+
 ## 0.10.0-alpha.0 - 2026-06-08
 
 **Release (slice 748): bump to 0.10.0-alpha.0**

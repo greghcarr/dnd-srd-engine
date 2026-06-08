@@ -23,6 +23,7 @@ import type { Event } from '../src/schemas/events/index.js';
 import { resolveContent } from '../src/content/pack.js';
 import { emitTacticalSetup } from './tactical/setup.js';
 import { makeTacticalMovePolicy } from './tactical/move-policy.js';
+import { makeAutoReactionPolicy } from './reactions/reaction-policy.js';
 
 export const MAX_ROUNDS = 20;
 const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8] as const;
@@ -56,6 +57,14 @@ export type FuzzVs = 'pc' | 'monster';
 // the move-policy seam (NO_MOVE for 'none'). dnd-web replays the
 // resulting CombatantMoved events.
 export type FuzzMovement = 'none' | 'tactical';
+
+// Slice 749: 'none' (default) fires only the legacy inline reactions
+// (Shield), byte-identical to the pre-slice path; 'auto' runs the
+// reaction-policy seam that fires damage-mitigation reactions (Uncanny
+// Dodge / Deflect Attacks / Stone's Endurance) off the events each action
+// produces, and disables the cosmetic inline Shield. dnd-web replays the
+// resulting reaction events.
+export type FuzzReactions = 'none' | 'auto';
 
 // Per-class build spec: which ability gets the 15, which weapon /
 // armor / cantrips / L1 spells were drawn from the pool for THIS
@@ -934,6 +943,9 @@ export interface FuzzBattleOptions {
   /** Slice 693: 'none' (default) is byte-identical to the legacy path;
    *  'tactical' spreads combatants on a generated arena and moves them. */
   readonly movement?: FuzzMovement;
+  /** Slice 749: 'none' (default) is byte-identical to the legacy path;
+   *  'auto' fires damage-mitigation reactions via the reaction-policy seam. */
+  readonly reactions?: FuzzReactions;
 }
 
 export interface FuzzBattleResult {
@@ -975,6 +987,26 @@ export type MovePolicy = (ctx: MovePolicyContext) => Campaign;
 
 const NO_MOVE: MovePolicy = (ctx) => ctx.campaign;
 
+// Reaction-policy seam (slice 749). After each committed action the turn
+// loop calls `reactionPolicy` with the events that action produced.
+// NO_REACTIONS (the 'none' default) returns the campaign unchanged →
+// byte-identical log; 'auto' swaps in the auto-reaction policy. Same
+// injected-policy shape as MovePolicy so byte-identity is robust against
+// future turn-loop edits.
+export interface ReactionPolicyContext {
+  readonly engine: Engine;
+  readonly pack: Pack;
+  readonly campaign: Campaign;
+  readonly encounterId: string;
+  /** The events the just-committed action appended to the log. */
+  readonly producedEvents: ReadonlyArray<Event>;
+  readonly combatants: Record<string, Combatant>;
+}
+
+export type ReactionPolicy = (ctx: ReactionPolicyContext) => Campaign;
+
+const NO_REACTIONS: ReactionPolicy = (ctx) => ctx.campaign;
+
 export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
   const seed = opts.seed;
   const pack = opts.pack;
@@ -983,6 +1015,7 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
   const teamSize = opts.teamSize ?? 1;
   const vs: FuzzVs = opts.vs ?? 'pc';
   const movement: FuzzMovement = opts.movement ?? 'none';
+  const reactions: FuzzReactions = opts.reactions ?? 'none';
 
   const engine = createEngine({ contentPacks: [pack], rng: seededRNG(seed) });
   let cursor = seed * 13 + 7;
@@ -1115,6 +1148,12 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
   const movePolicy: MovePolicy = movement === 'tactical'
     ? makeTacticalMovePolicy({ content: resolveContent([pack]) })
     : NO_MOVE;
+  // Slice 749: 'auto' fires damage-mitigation reactions; 'none' is the
+  // identity policy → byte-identical log. The engine planners carry their
+  // own resolved content, so the policy needs no content dependency.
+  const reactionPolicy: ReactionPolicy = reactions === 'auto'
+    ? makeAutoReactionPolicy()
+    : NO_REACTIONS;
 
   let rounds = 1;
   let winner: string | null = null;
@@ -1169,6 +1208,9 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
         .map((pc) => combatants[pc.character.id]!);
       const intent = pickIntent(campaign.state, active, opponent, allies);
       if (intent === null) break;
+      // Slice 749: snapshot the log length so the reaction policy (below)
+      // sees exactly the events this action produced.
+      const before = campaign.events.length;
       try {
         if (intent.type === 'ConsumeItem') {
           const { events } = engine.plan.consumeItem(campaign.state, {
@@ -1188,22 +1230,29 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
       } catch {
         break;
       }
-      const tail = campaign.events.slice(-12);
-      const hitOnDefender = [...tail].reverse().find((e): e is Event & { type: 'AttackRolled'; hit: boolean; targetId: string; total: number; targetAC: number; id: string } =>
-        e.type === 'AttackRolled' && (e as { targetId: string }).targetId === opponent.built.character.id && (e as { hit: boolean }).hit === true);
-      if (hitOnDefender !== undefined && tryShieldReaction(engine, campaign, opponent, hitOnDefender)) {
-        const { events: shieldEvents } = engine.plan.shield(campaign.state, {
-          casterId: opponent.built.character.id,
-          triggeringAttackEventId: hitOnDefender.id,
-          triggeringAttackTotal: hitOnDefender.total,
-          originalAC: hitOnDefender.targetAC,
-          slotLevel: 1,
-        });
-        try {
-          campaign = commit(campaign, [...shieldEvents]);
-        } catch {
-          // Shield post-hit may collide with already-applied damage
-          // events; in that case skip silently.
+      // Legacy inline Shield reaction (defender). Disabled under
+      // reactions:'auto', where the reaction-policy seam owns reactions
+      // (Shield is a prevent-the-trigger reaction deferred to the
+      // pre-damage-window follow-up). In 'none' it fires exactly as
+      // before, keeping the default path byte-identical.
+      if (reactions !== 'auto') {
+        const tail = campaign.events.slice(-12);
+        const hitOnDefender = [...tail].reverse().find((e): e is Event & { type: 'AttackRolled'; hit: boolean; targetId: string; total: number; targetAC: number; id: string } =>
+          e.type === 'AttackRolled' && (e as { targetId: string }).targetId === opponent.built.character.id && (e as { hit: boolean }).hit === true);
+        if (hitOnDefender !== undefined && tryShieldReaction(engine, campaign, opponent, hitOnDefender)) {
+          const { events: shieldEvents } = engine.plan.shield(campaign.state, {
+            casterId: opponent.built.character.id,
+            triggeringAttackEventId: hitOnDefender.id,
+            triggeringAttackTotal: hitOnDefender.total,
+            originalAC: hitOnDefender.targetAC,
+            slotLevel: 1,
+          });
+          try {
+            campaign = commit(campaign, [...shieldEvents]);
+          } catch {
+            // Shield post-hit may collide with already-applied damage
+            // events; in that case skip silently.
+          }
         }
       }
       actions += 1;
@@ -1258,6 +1307,18 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
           }
         }
       }
+      // Slice 749: fire damage-mitigation reactions on the events this
+      // action produced. NO_REACTIONS ('none', default) is the identity
+      // policy → byte-identical log. Runs after the mastery handling so
+      // its tail-scan reads the unperturbed attack events.
+      campaign = reactionPolicy({
+        engine,
+        pack,
+        campaign,
+        encounterId: enc.encounterId,
+        producedEvents: campaign.events.slice(before),
+        combatants,
+      });
       const t = teamWiped();
       if (t !== null) {
         winner = t === 'A' ? teamA[0]!.character.id : teamB[0]!.character.id;
