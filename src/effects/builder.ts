@@ -231,6 +231,7 @@ export class EffectAccumulator {
   private blessedHealerFlag: boolean = false;
   private sculptSpellsFlag: boolean = false;
   private unarmedAsMagicalFlag: boolean = false;
+  private unarmedForceOptionFlag: boolean = false;
   private divineInterventionWishFlag: boolean = false;
   private auraRangeBonusTotal: number = 0;
   private grantedSpellEntries: Array<{
@@ -973,13 +974,22 @@ export class EffectAccumulator {
     return this.sculptSpellsFlag;
   }
   // Slice 207: marker that flags the bearer's unarmed strikes as
-  // magical for resistance/immunity-piercing purposes. Set by Monk
-  // L6 Empowered Strikes via `GrantUnarmedAsMagical`.
+  // magical for resistance/immunity-piercing purposes (2014 shape;
+  // see the effect-schema comment). Set via `GrantUnarmedAsMagical`.
   markUnarmedAsMagical(): void {
     this.unarmedAsMagicalFlag = true;
   }
   hasUnarmedAsMagical(): boolean {
     return this.unarmedAsMagicalFlag;
+  }
+  // Slice 735: Monk L6 Empowered Strikes (SRD 5.2.1) via the
+  // `GrantUnarmedForceOption` effect — the bearer may deal Force damage
+  // with an unarmed strike (opt-in at attack time).
+  markUnarmedForceOption(): void {
+    this.unarmedForceOptionFlag = true;
+  }
+  hasUnarmedForceOption(): boolean {
+    return this.unarmedForceOptionFlag;
   }
   // Slice 221: marker that unlocks the Wish branch of
   // planDivineIntervention. Set by Cleric L20 Greater Divine
@@ -1235,6 +1245,9 @@ export const applyEffectToBuilder = (
       return;
     case 'GrantUnarmedAsMagical':
       acc.markUnarmedAsMagical();
+      return;
+    case 'GrantUnarmedForceOption':
+      acc.markUnarmedForceOption();
       return;
     case 'GrantDivineInterventionWish':
       acc.markDivineInterventionWish();

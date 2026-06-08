@@ -6,8 +6,12 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine (slice 735): Monk Empowered Strikes re-wired to SRD 5.2.1 (L6)**
+New marker effect `GrantUnarmedForceOption`: the Monk L6 feature now models the SRD 5.2.1 Force-damage choice ("Whenever you deal damage with your Unarmed Strike, it can deal your choice of Force damage or its normal damage type") instead of the 2014 "magical unarmed" (`GrantUnarmedAsMagical`). Opt-in `unarmedStrikeAsForce` on the attack / Flurry / off-hand intents overrides an unarmed strike's damage type to Force when the bearer has the marker; inert by default. The s207 golden now shows Force sidestepping Stoneskin's B/P/S resistance. `GrantUnarmedAsMagical` stays an available primitive (no pack user). EFFECT_KINDS 66→67. Closes the slice-734 L6 drift follow-up.
+Detail: [slice-735.md](docs/changelog/slice-735.md).
+
 **Tests/docs (slice 734): L6 SRD-complete floor audit + fuzz-to-L6**
-New `tests/audit/srd-l6-complete.test.ts` (28 tests) pins the L6 floor: base-class L6 features (Fighter ASI, Rogue 2nd Expertise, Monk Empowered Strikes, Paladin Aura of Protection, more rage/Channel-Divinity/Wild-Shape uses, Ranger Roving), the eight subclass L6 features (slices 728-733 + 204/357), planner/effect-kind presence, a behavioral 5→6 level-up, and the spell-slot floor. The fuzz matrix extends to L6 (`[1..6]`, 72 cells × 30 seeds = 2,160 battles); `FUZZ_MAX_LEVEL` 5→6. Capstone of the L6 cycle — every L6 row is now wired. **Known drift (tracked):** Monk Empowered Strikes carries 2014 "magical unarmed" semantics (`GrantUnarmedAsMagical`); the SRD 5.2.1 Force-damage-type choice is the one open L6 correctness follow-up. No engine change.
+New `tests/audit/srd-l6-complete.test.ts` (28 tests) pins the L6 floor: base-class L6 features (Fighter ASI, Rogue 2nd Expertise, Monk Empowered Strikes, Paladin Aura of Protection, more rage/Channel-Divinity/Wild-Shape uses, Ranger Roving), the eight subclass L6 features (slices 728-733 + 204/357), planner/effect-kind presence, a behavioral 5→6 level-up, and the spell-slot floor. The fuzz matrix extends to L6 (`[1..6]`, 72 cells × 30 seeds = 2,160 battles); `FUZZ_MAX_LEVEL` 5→6. Capstone of the L6 cycle — every L6 row is now wired. ~~**Known drift (tracked):** Monk Empowered Strikes carries 2014 "magical unarmed" semantics (`GrantUnarmedAsMagical`); the SRD 5.2.1 Force-damage-type choice is the one open L6 correctness follow-up.~~ **Closed by slice 735.** No engine change.
 Detail: [slice-734.md](docs/changelog/slice-734.md).
 
 **Content (slice 733): Bard College of Lore Magical Discoveries (L6)**

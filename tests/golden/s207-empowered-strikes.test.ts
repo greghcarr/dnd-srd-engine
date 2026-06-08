@@ -1,16 +1,18 @@
-// Golden scenario: Monk L6 Empowered Strikes (slice 207).
+// Golden scenario: Monk L6 Empowered Strikes (slice 207; re-wired to SRD
+// 5.2.1 in slice 735).
 //
-// RAW: "Your Unarmed Strikes count as magical for the purposes of
-// overcoming Resistance and Immunity to nonmagical damage."
+// RAW (SRD 5.2.1): "Whenever you deal damage with your Unarmed Strike, it
+// can deal your choice of Force damage or its normal damage type."
 //
 // Sequence:
 //   1. Monk L6 (Kai) faces a Stoneskinned target (Warded). Stoneskin
-//      grants resistance to nonmagical B/P/S damage.
-//   2. Kai punches Warded with an unarmed strike. The `GrantUnarmedAsMagical`
-//      marker on Empowered Strikes flips `isMagicWeaponAttack` to true,
-//      so `sourceIsMagical: true` flows into `mitigateDamage`, and the
-//      Stoneskin nonmagical-qualified resistance doesn't apply.
-//   3. The DamageApplied event's component carries no `mitigation` flag.
+//      grants resistance to nonmagical Bludgeoning/Piercing/Slashing.
+//   2. Kai punches Warded, choosing Force damage (`unarmedStrikeAsForce`,
+//      enabled by the `GrantUnarmedForceOption` marker). The strike's
+//      damage type becomes Force, which Stoneskin's B/P/S-only resistance
+//      doesn't cover.
+//   3. The DamageApplied component is Force and carries no `mitigation`
+//      flag — choosing Force sidestepped the resistance.
 
 import { describe, expect, it } from 'vitest';
 import { createEngine } from '../../src/engine/index.js';
@@ -66,7 +68,7 @@ const buildWardedTarget = (): Character =>
   });
 
 describe('golden: Monk L6 Empowered Strikes', () => {
-  it("unarmed strike against Stoneskinned target bypasses nonmagical resistance", async () => {
+  it("choosing Force damage on an unarmed strike sidesteps Stoneskin's B/P/S resistance", async () => {
     for (let seed = 1; seed < 80; seed += 1) {
       const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(seed + 5000) });
       const strike = ItemInstanceSchema.parse({ id: newItemInstanceId(), definitionId: 'unarmed-strike' }) as ItemInstance;
@@ -91,6 +93,7 @@ describe('golden: Monk L6 Empowered Strikes', () => {
         attackerId: kai.id,
         targetId: warded.id,
         weaponInstanceId: strike.id,
+        unarmedStrikeAsForce: true,
       });
       const rolled = attack.events.find((e): e is AttackRolledEvent => e.type === 'AttackRolled');
       if (rolled?.hit !== true) continue;
@@ -99,6 +102,7 @@ describe('golden: Monk L6 Empowered Strikes', () => {
       const damage = attack.events.find(
         (e): e is DamageAppliedEvent => e.type === 'DamageApplied' && e.targetId === warded.id,
       )!;
+      expect(damage.components[0]!.type).toBe('force');
       expect(damage.components[0]!.mitigation).toBeUndefined();
 
       const replayed = replay(campaign.events);
@@ -108,7 +112,7 @@ describe('golden: Monk L6 Empowered Strikes', () => {
 
       await expect(
         formatTranscript(campaign.events, CONTENT, {
-          title: 'Empowered Strikes (Monk L6): unarmed strike pierces nonmagical resistance',
+          title: 'Empowered Strikes (Monk L6): Force-damage choice sidesteps Stoneskin',
         }),
       ).toMatchFileSnapshot('./transcripts/s207-empowered-strikes.transcript.md');
       return;

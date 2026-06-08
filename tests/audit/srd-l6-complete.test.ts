@@ -77,16 +77,13 @@ describe('slice 734: SRD L6 completeness audit', () => {
       expect(f, "rogue L6 missing 'expertise-rogue-2'").toBeDefined();
       expect(hasEffect(f, 'OfferChoice')).toBe(true);
     });
-    // Empowered Strikes is wired, but to the 2014 "Ki-Empowered Strikes"
-    // semantics (GrantUnarmedAsMagical: unarmed strikes count as magical).
-    // SRD 5.2.1 is the Force-damage-type choice ("it can deal your choice of
-    // Force damage or its normal damage type"). Re-wiring to 2024 is the one
-    // tracked L6 correctness follow-up (see gaps-class-features.md); the
-    // floor only pins that the row is wired, not the (drifted) semantics.
-    it('Monk L6 Empowered Strikes is wired', () => {
+    // Slice 735: Empowered Strikes is wired to SRD 5.2.1 semantics — the
+    // optional Force-damage-type choice (GrantUnarmedForceOption), not the
+    // 2014 "magical unarmed" marker.
+    it('Monk L6 grants Empowered Strikes (GrantUnarmedForceOption, SRD 5.2.1 Force option)', () => {
       const f = findFeature('monk', '6', 'empowered-strikes');
       expect(f, "monk L6 missing 'empowered-strikes'").toBeDefined();
-      expect((f?.effects ?? []).length, 'empowered-strikes carries no effect').toBeGreaterThan(0);
+      expect(hasEffect(f, 'GrantUnarmedForceOption')).toBe(true);
     });
     it('Paladin L6 grants Aura of Protection (GrantAura)', () => {
       const f = findFeature('paladin', '6', 'aura-of-protection');
@@ -137,7 +134,7 @@ describe('slice 734: SRD L6 completeness audit', () => {
         expect(typeof plan[exportName], `${exportName} not exported from src/engine/plan`).toBe('function');
       });
     }
-    for (const kind of ['GrantSculptSpells', 'GrantBlessedHealer', 'GrantUnarmedAsMagical']) {
+    for (const kind of ['GrantSculptSpells', 'GrantBlessedHealer', 'GrantUnarmedForceOption']) {
       it(`${kind} is a registered effect kind`, () => {
         expect((EFFECT_KINDS as ReadonlyArray<string>).includes(kind)).toBe(true);
       });
@@ -145,11 +142,11 @@ describe('slice 734: SRD L6 completeness audit', () => {
   });
 
   describe('Section 4: behavioral — leveling 5→6 grants Empowered Strikes', () => {
-    const unarmedMagical = (character: Character): boolean =>
-      buildEffectStack({ character, content: CONTENT, itemInstances: {}, pendingChoices: {} }).hasUnarmedAsMagical();
+    const forceOption = (character: Character): boolean =>
+      buildEffectStack({ character, content: CONTENT, itemInstances: {}, pendingChoices: {} }).hasUnarmedForceOption();
 
-    it("a Monk's unarmed strikes become magical only at L6", () => {
-      expect(unarmedMagical(buildPC('monk', 5, { classes: [{ classId: 'monk', level: 5, hitDiceRemaining: 5, subclassId: 'warrior-of-the-open-hand' }] }))).toBe(false);
+    it("a Monk gains the unarmed Force-damage option only at L6", () => {
+      expect(forceOption(buildPC('monk', 5, { classes: [{ classId: 'monk', level: 5, hitDiceRemaining: 5, subclassId: 'warrior-of-the-open-hand' }] }))).toBe(false);
       const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(1) });
       const monk = buildPC('monk', 5, { classes: [{ classId: 'monk', level: 5, hitDiceRemaining: 5, subclassId: 'warrior-of-the-open-hand' }] });
       let campaign = engine.createCampaign({ name: 'l6-empowered-strikes' });
@@ -161,7 +158,7 @@ describe('slice 734: SRD L6 completeness audit', () => {
       }).events);
       const leveled = campaign.state.characters[monk.id]!;
       expect(leveled.classes[0]!.level).toBe(6);
-      expect(unarmedMagical(leveled)).toBe(true);
+      expect(forceOption(leveled)).toBe(true);
     });
   });
 

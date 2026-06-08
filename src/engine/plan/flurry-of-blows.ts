@@ -37,6 +37,10 @@ export interface FlurryOfBlowsIntent {
   // technique on every hit of this Flurry (the common case). Omit for a
   // plain Flurry.
   readonly openHandTechnique?: OpenHandTechnique;
+  // Slice 735: Monk L6 Empowered Strikes — opt the Flurry's unarmed strikes
+  // into Force damage (gated on `GrantUnarmedForceOption`). Applied to every
+  // strike of this Flurry; inert without the feature.
+  readonly unarmedStrikeAsForce?: boolean;
   readonly at?: string;
 }
 
@@ -130,6 +134,7 @@ export const planFlurryOfBlows = (
       attackerId: intent.monkId,
       targetId: intent.targetId,
       weaponInstanceId: intent.weaponInstanceId,
+      ...(intent.unarmedStrikeAsForce === true ? { unarmedStrikeAsForce: true } : {}),
       at,
     });
     events.push(...resolution);

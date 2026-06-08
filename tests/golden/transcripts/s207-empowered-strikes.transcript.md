@@ -1,4 +1,4 @@
-# Empowered Strikes (Monk L6): unarmed strike pierces nonmagical resistance
+# Empowered Strikes (Monk L6): Force-damage choice sidesteps Stoneskin
 
 Item acquired: Unarmed Strike.
 
@@ -10,6 +10,6 @@ Item acquired: Unarmed Strike.
 
 **Kai** attacks **Warded**: d20(14) + 7 = 21 vs AC 9 -> hit.
 
-Damage rolled: 1d8=[3]+4 bludgeoning.
+Damage rolled: 1d8=[3]+4 force.
 
-**Warded** takes 7 damage from **Kai** (7 bludgeoning). (HP 50 -> 43)
+**Warded** takes 7 damage from **Kai** (7 force). (HP 50 -> 43)
