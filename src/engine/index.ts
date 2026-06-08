@@ -114,6 +114,7 @@ import {
   planNaturalRecovery,
   planDarkOnesOwnLuck,
   planPeerlessSkill,
+  planCountercharm,
   planTacticalMind,
   planFrenzy,
   planExhaleDragonsBreath,
@@ -287,6 +288,8 @@ import {
   type DarkOnesOwnLuckOutcome,
   type PeerlessSkillIntent,
   type PeerlessSkillOutcome,
+  type CountercharmIntent,
+  type CountercharmOutcome,
   type TacticalMindIntent,
   type TacticalMindOutcome,
   type FrenzyIntent,
@@ -526,6 +529,7 @@ export interface Engine {
     naturalRecovery(state: CampaignState, intent: Omit<NaturalRecoveryIntent, 'type'>): PlanResult;
     darkOnesOwnLuck(state: CampaignState, intent: Omit<DarkOnesOwnLuckIntent, 'type'>): DarkOnesOwnLuckOutcome;
     peerlessSkill(state: CampaignState, intent: Omit<PeerlessSkillIntent, 'type'>): PeerlessSkillOutcome;
+    countercharm(state: CampaignState, intent: Omit<CountercharmIntent, 'type'>): CountercharmOutcome;
     tacticalMind(state: CampaignState, intent: Omit<TacticalMindIntent, 'type'>): TacticalMindOutcome;
     frenzy(state: CampaignState, intent: Omit<FrenzyIntent, 'type'>): PlanResult;
     exhaleDragonsBreath(state: CampaignState, intent: Omit<ExhaleDragonsBreathIntent, 'type'>): PlanResult;
@@ -1027,6 +1031,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     peerlessSkill(state, intent) {
       return planPeerlessSkill(state, content, rng, { type: 'PeerlessSkill', ...intent });
+    },
+    countercharm(state, intent) {
+      return planCountercharm(state, content, rng, { type: 'Countercharm', ...intent });
     },
     tacticalMind(state, intent) {
       return planTacticalMind(state, content, rng, { type: 'TacticalMind', ...intent });

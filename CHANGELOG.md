@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine (slice 740): Bard Countercharm (L7)**
+New `engine.plan.countercharm(state, { bardId, targetId, ability, dc, saveBonus })` → `{ events, d20, total, success }`: a free Reaction that rerolls a failed Charmed/Frightened save (the bard or an ally) with Advantage — rolls 2d20 take-max + the original bonus, emits the rerolled `SaveRolled`, and reports whether it now meets the DC (the Peerless Skill / Hero Points outcome shape). The 30-ft range, self-or-ally choice, Reaction economy, and removing the already-applied condition on success are consumer-managed. Gated on Bard L7; pack marker `Custom { handlerId: 'countercharm' }`. No new effect kind.
+Detail: [slice-740.md](docs/changelog/slice-740.md).
+
 **Engine (slice 739): Druid Elemental Fury (L7) + Cleric Potent Spellcasting closure**
 The Druid L7 row gains `elemental-fury`: an `OfferChoice` between Potent Spellcasting (add WIS to Druid cantrip damage) and Primal Strike (once per turn, a weapon/Wild Shape hit deals +1d8 of a chosen element — offered as four element variants). No new effect kind: Potent Spellcasting is an `AddModifier { target: 'damage', value: WIS }` gated on a new `event.spellLevel == 0` (cantrip) fact added to the cast-spell damage-modifier facts (attack + save paths); Primal Strike reuses the Divine Strike `OnEvent` rider shape. The same `event.spellLevel` fact closes the previously-stubbed Cleric Blessed Strikes Potent Spellcasting arm (pattern-check). Additive (the new fact is inert for existing predicates), so existing casts are byte-identical.
 Detail: [slice-739.md](docs/changelog/slice-739.md).
