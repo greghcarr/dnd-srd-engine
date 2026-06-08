@@ -30,6 +30,14 @@ export interface AbilityCheckResult {
   // this exposes the flag to planAbilityCheck so the d20 + modifiers
   // are bypassed and the check emits as a forced failure.
   readonly hasAutoFail: boolean;
+  // Slice 738: Rogue L7 Reliable Talent marker (from the bearer's effect
+  // stack). When true AND `usesProficiency` is true, planAbilityCheck
+  // treats a d20 of 9 or lower as a 10.
+  readonly hasReliableTalent: boolean;
+  // True when an explicit skill (or tool) proficiency contributed to this
+  // check (proficient / expertise) — NOT the half-proficiency floor, which
+  // RAW doesn't count as a proficiency you "have". Gates Reliable Talent.
+  readonly usesProficiency: boolean;
 }
 
 export interface ComputeAbilityCheckInput {
@@ -211,6 +219,8 @@ export const computeAbilityCheck = (input: ComputeAbilityCheckInput): AbilityChe
     // existing slice 265 merge above already handles this for adv +
     // disadv; we mirror it here for autoFail.
     hasAutoFail: adv.autoFail,
+    hasReliableTalent: effects.hasReliableTalent(),
+    usesProficiency: proficiencyApplied,
   };
 };
 

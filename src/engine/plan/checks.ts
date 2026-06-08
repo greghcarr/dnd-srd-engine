@@ -21,6 +21,9 @@ import type { ULID } from '../ids-utils.js';
 import { collectEffectsFromCharacter } from '../../derive/effect-stack.js';
 import type { Effect } from '../../schemas/effects.js';
 
+// Slice 738: Rogue Reliable Talent treats a d20 of 9 or lower as a 10.
+const RELIABLE_TALENT_FLOOR = 10;
+
 const rollWithAdvantage = (
   rng: RNG,
   advantage: CheckAdvantage,
@@ -265,6 +268,19 @@ export const planAbilityCheck = (
     rolls.push(reroll);
     d20 = reroll;
   }
+  // Slice 738: Rogue L7 Reliable Talent — on a check that uses one of the
+  // bearer's skill/tool proficiencies, treat a d20 of 9 or lower as a 10.
+  // Applied after the Halfling Luck reroll so the (possibly rerolled) chosen
+  // die is the one floored. The `d20: rolls` array still shows the actual
+  // die; the floor surfaces in `total` + a breakdown marker.
+  const reliableTalentApplies =
+    derivation.hasReliableTalent && derivation.usesProficiency && d20 < RELIABLE_TALENT_FLOOR;
+  if (reliableTalentApplies) {
+    d20 = RELIABLE_TALENT_FLOOR;
+  }
+  const reliableTalentBreakdown = reliableTalentApplies
+    ? [{ source: 'reliable-talent', value: 0 }]
+    : [];
   const total = d20 + derivation.total;
   const at = intent.at ?? nowIso();
   // Slice 580: RAW auto-fail (Deafened auto-fails ability checks
@@ -290,7 +306,7 @@ export const planAbilityCheck = (
     used,
     bonus: derivation.total,
     total,
-    breakdown: [...derivation.breakdown, ...autoFailBreakdown],
+    breakdown: [...derivation.breakdown, ...autoFailBreakdown, ...reliableTalentBreakdown],
   };
   // Slice 577: "Next ability check" one-shot consume — mirror of
   // consumeOnAttack at the AbilityCheckRolled site. The bearer's
