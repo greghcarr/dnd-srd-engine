@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Perf (slice 746): ~4.3× faster test suite — cache the validated pack + `isolate: false`**
+The suite's dominant cost was `loadStarterPack()` zod-validating the whole pack (~1.6s) once per test file (~570×). `loadStarterPack` now caches the validated pack and deep-freezes it (it's immutable canonical content), and vitest runs with `isolate: false` so each worker reuses its module graph across files — validating the pack ~once per worker instead of once per file. Full suite: **~611s → ~143s** (the "collect" phase 2953s → 58s summed), all 578 files / 4490 tests green. One test that mutated the shared pack in place (`effective-non-walk-speed`) was fixed to clone; the deep-freeze guards against future mutators (any in-place mutation now throws). **Consumer note:** `loadStarterPack()` now returns a shared, frozen instance — correct for immutable content (and faster for consumers), but a consumer that mutated the pack would now throw. Behavior of the engine itself is unchanged (ids are random/golden-normalized; no shared mutable module state).
+Detail: [slice-746.md](docs/changelog/slice-746.md).
+
 **Infra (slice 745): fast local test lanes + local-fast / CI-full testing norm**
 The full suite is CPU-heavy (a content-pack validation tax of ~1.6s paid by nearly every test file, plus the fuzz/property/integration tiers), so running it after every edit is wasteful. New `npm run test:changed` (vitest `--changed` — only the tests affected by your edits, the tight iteration loop) and `npm run test:fast` (the suite minus the heavy fuzz-matrix / fuzz-tactical-matrix / multiclass-fuzz / property / integration tiers, one brace-glob `--exclude`). CONTRIBUTING.md + CLAUDE.md updated: iterate locally with `test:changed` / `test:fast` per slice; the full `npm test` is the push / pre-release gate (CI already runs it on every PR across Node 20/22/24). No source change. (A perf slice to attack the validation tax itself — so the full suite is faster everywhere — is the planned follow-up.)
 Detail: [slice-745.md](docs/changelog/slice-745.md).

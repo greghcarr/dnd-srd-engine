@@ -16,6 +16,14 @@ export default defineConfig({
     globals: false,
     environment: 'node',
     include: ['tests/**/*.test.ts'],
+    // Slice 746: reuse each worker's module graph across test files instead
+    // of re-executing every file in a fresh registry. This lets the cached,
+    // deep-frozen starter pack (src/content/packs/starter.ts) be validated
+    // once per worker rather than ~570 times (once per file) — the dominant
+    // cost of the suite. The engine is pure / event-sourced with no shared
+    // mutable module state, and ids are random (ulid) and golden-normalized,
+    // so cross-file isolation isn't relied upon.
+    isolate: false,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'json-summary'],
