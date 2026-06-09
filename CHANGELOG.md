@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Feat (slice 768): bonus-action registry — Cloud's Jaunt + Conjure Pact Weapon**
+Wires the remaining bonus-action deferrals. `BonusActionParams` (+ `useOption`'s `UseOptionOptions`) gains `to?: Position` and `weaponDefinitionId?: string`; the descriptor gains a `requires` list (`bonusActionIntent` throws on a missing one). Cloud's Jaunt (`target:'none'`, `requires:['to']`): `owns` = the resolved Cloud's Jaunt Giant Ancestry, `resourceId: giant-ancestry`. Conjure Pact Weapon (`requires:['weaponDefinitionId']`): `owns` = `buildEffectStack(...).hasPactBlade()`. Both already dispatched, so `useOption` routes them unchanged. Paladin's Smite needs no entry — `divine-smite` is already a Bonus Action spell in `castableSpells` (the post-hit Paladin's Smite *feature* is a rider); Metamagic stays excluded (spell-cast modifier).
+Detail: [slice-768.md](docs/changelog/slice-768.md).
+
 **Feat (slice 767): reaction affordances — Deflect Attacks + Countercharm (cross-event correlation)**
 Completes the reaction layer. `reactionsForTrigger` gains an optional `recentEvents` param (the consumer's log slice) for cross-event correlation — additive, every other reaction ignores it. Deflect Attacks (damage trigger, Monk L3): correlates when the reactor is the damaged target with deflectable physical damage, scanning `recentEvents` for the triggering `AttackRolled`. Countercharm (new `condition-applied` trigger → `ConditionApplied`, Bard L7): correlates a Charmed/Frightened `ConditionApplied`, scanning `recentEvents` for the preceding failed `SaveRolled` to fill the reroll's DC/ability/bonus (30 ft consumer-managed; the consumer removes the condition on a successful reroll). Both verified by dispatch. The reaction-affordance layer is now complete (9 reactions across 5 trigger kinds).
 Detail: [slice-767.md](docs/changelog/slice-767.md).

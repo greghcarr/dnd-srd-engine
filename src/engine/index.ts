@@ -411,6 +411,10 @@ export interface UseOptionOptions {
   readonly amount?: number;
   /** Unarmed-strike item instance for strike options (Flurry of Blows). */
   readonly weaponInstanceId?: string;
+  /** Destination cell for a teleport option (Cloud's Jaunt). */
+  readonly to?: { readonly x: number; readonly y: number };
+  /** Weapon-definition id for a conjuration option (Conjure Pact Weapon). */
+  readonly weaponDefinitionId?: string;
 }
 
 /** Slice 764: argument to `engine.plan.useActionOption` (an `actionOptions` id). */
@@ -838,6 +842,8 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
         targetId: opts.targetId,
         amount: opts.amount,
         weaponInstanceId: opts.weaponInstanceId,
+        to: opts.to,
+        weaponDefinitionId: opts.weaponDefinitionId,
       });
       return planIntent(planNs, state, intent);
     },

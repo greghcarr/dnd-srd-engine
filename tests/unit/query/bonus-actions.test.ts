@@ -9,7 +9,7 @@ import { seededRNG } from '../../../src/rng/seeded.js';
 import { commit, type Campaign } from '../../../src/engine/commit.js';
 import { loadStarterPack } from '../../../src/content/packs/starter.js';
 import { CharacterSchema, type Character } from '../../../src/schemas/runtime/character.js';
-import { newCharacterId, newAppliedConditionId } from '../../../src/ids.js';
+import { newCharacterId, newAppliedConditionId, newChoiceId } from '../../../src/ids.js';
 import { SuppliedRollProvider } from '../../../src/rng/roll-provider.js';
 import { eventId, isoTimestamp, makeItemInstance } from '../../fixtures/index.js';
 import type { CharacterCreatedEvent } from '../../../src/schemas/events/progression.js';
@@ -18,6 +18,7 @@ import type {
 } from '../../../src/schemas/events/encounter.js';
 import type { ActionEconomyConsumedEvent } from '../../../src/schemas/events/action-economy.js';
 import type { ConditionAppliedEvent, HealedEvent } from '../../../src/schemas/events/combat.js';
+import type { ChoiceRequiredEvent, ChoiceResolvedEvent } from '../../../src/schemas/events/level-up.js';
 import type { ULID } from '../../../src/engine/ids-utils.js';
 
 const PACK = loadStarterPack();
@@ -767,5 +768,93 @@ describe('slice 762: Innate Sorcery + Off-Hand Attack', () => {
       { id: eventId(), at: isoTimestamp(), type: 'ItemAcquired', instance: sword },
     ]);
     expect(byId(s, ftr.id)['off-hand-attack']).toBeUndefined();
+  });
+});
+
+// Slice 768: the remaining bonus-action deferrals — Cloud's Jaunt (positional
+// teleport, owns via the resolved ancestry) and Conjure Pact Weapon (owns via
+// the Pact of the Blade invocation).
+const seedAncestry = (characterId: string, selected: string): [ChoiceRequiredEvent, ChoiceResolvedEvent] => {
+  const choiceId = newChoiceId();
+  return [
+    {
+      id: eventId(), at: isoTimestamp(), type: 'ChoiceRequired', choiceId, characterId: characterId as ULID,
+      promptKey: 'goliath-giant-ancestry', prompt: 'Choose a Giant Ancestry.',
+      options: [{ id: 'clouds-jaunt', label: "Cloud's Jaunt", effects: [] }, { id: 'stones-endurance', label: "Stone's Endurance", effects: [] }],
+      oneOf: 1,
+    } as unknown as ChoiceRequiredEvent,
+    { id: eventId(), at: isoTimestamp(), type: 'ChoiceResolved', choiceId, characterId: characterId as ULID, selectedOptionIds: [selected] } as unknown as ChoiceResolvedEvent,
+  ];
+};
+
+const goliath = (): Character =>
+  base({
+    speciesId: 'goliath',
+    classes: [{ classId: 'fighter', level: 1, hitDiceRemaining: 1 }],
+    resources: [{ resourceId: 'giant-ancestry', current: 2, max: 2 }],
+  });
+
+describe("slice 768: Cloud's Jaunt", () => {
+  // Positioned, started encounter with the Goliath active at (0,0).
+  const setupGoliath = (ancestry: string | null) => {
+    const g = goliath();
+    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(1) });
+    let campaign: Campaign = engine.createCampaign({ name: 'cj' });
+    campaign = commit(campaign, [
+      { id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: g } satisfies CharacterCreatedEvent,
+      ...(ancestry !== null ? seedAncestry(g.id, ancestry) : []),
+    ]);
+    const enc = engine.plan.createEncounter(campaign.state, { name: 'arena', combatants: [{ characterId: g.id, position: { x: 0, y: 0 } }] });
+    campaign = commit(campaign, enc.events);
+    campaign = commit(campaign, engine.plan.rollInitiative(campaign.state, { encounterId: enc.encounterId }).events);
+    campaign = commit(campaign, engine.plan.startEncounter(campaign.state, { encounterId: enc.encounterId }).events);
+    campaign = commit(campaign, engine.plan.beginFirstTurn(campaign.state, { encounterId: enc.encounterId }).events);
+    return { engine, campaign, encounterId: enc.encounterId, goliath: g };
+  };
+
+  it('offered to a Goliath who chose Cloud\'s Jaunt; useOption teleports', () => {
+    const s = setupGoliath('clouds-jaunt');
+    const opts = Object.fromEntries(s.engine.query.bonusActions(s.campaign.state, s.encounterId, s.goliath.id).map((o) => [o.id, o]));
+    expect(opts['clouds-jaunt']).toMatchObject({ target: 'none', enabled: true });
+    const events = s.engine.plan.useOption(s.campaign.state, { combatantId: s.goliath.id, optionId: 'clouds-jaunt', to: { x: 10, y: 0 } }).events;
+    expect(events.some((e) => e.type === 'CombatantMoved')).toBe(true);
+  });
+
+  it('NOT offered to a Goliath who did not resolve the ancestry', () => {
+    const s = setupGoliath(null);
+    expect(s.engine.query.bonusActions(s.campaign.state, s.encounterId, s.goliath.id).find((o) => o.id === 'clouds-jaunt')).toBeUndefined();
+  });
+
+  it('useOption throws without a destination', () => {
+    const s = setupGoliath('clouds-jaunt');
+    expect(() => s.engine.plan.useOption(s.campaign.state, { combatantId: s.goliath.id, optionId: 'clouds-jaunt' })).toThrow(/requires a to/);
+  });
+});
+
+describe('slice 768: Conjure Pact Weapon', () => {
+  const warlock = (pactBlade: boolean): Character =>
+    base({
+      classes: [{ classId: 'warlock', level: 3, hitDiceRemaining: 3 }],
+      featsTaken: pactBlade ? ['pact-of-the-blade'] : [],
+    });
+
+  it('offered to a Pact of the Blade warlock; useOption conjures', () => {
+    const w = warlock(true);
+    const s = setup([w], w.id);
+    expect(Object.fromEntries(s.engine.query.bonusActions(s.campaign.state, s.encounterId, w.id).map((o) => [o.id, o]))['conjure-pact-weapon'])
+      .toMatchObject({ target: 'none', enabled: true });
+    expect(() => s.engine.plan.useOption(s.campaign.state, { combatantId: w.id, optionId: 'conjure-pact-weapon', weaponDefinitionId: 'longsword' })).not.toThrow();
+  });
+
+  it('NOT offered to a warlock without the invocation', () => {
+    const w = warlock(false);
+    const s = setup([w], w.id);
+    expect(s.engine.query.bonusActions(s.campaign.state, s.encounterId, w.id).find((o) => o.id === 'conjure-pact-weapon')).toBeUndefined();
+  });
+
+  it('useOption throws without a weaponDefinitionId', () => {
+    const w = warlock(true);
+    const s = setup([w], w.id);
+    expect(() => s.engine.plan.useOption(s.campaign.state, { combatantId: w.id, optionId: 'conjure-pact-weapon' })).toThrow(/requires a weaponDefinitionId/);
   });
 });

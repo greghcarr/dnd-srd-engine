@@ -53,6 +53,10 @@ import type { NimbleEscapeIntent } from '../engine/plan/nimble-escape.js';
 import type { FlurryOfBlowsIntent } from '../engine/plan/flurry-of-blows.js';
 import type { InnateSorceryIntent } from '../engine/plan/innate-sorcery.js';
 import type { OffHandAttackIntent } from '../engine/plan/offhand-attack.js';
+import type { CloudsJauntIntent } from '../engine/plan/clouds-jaunt.js';
+import type { ConjurePactWeaponIntent } from '../engine/plan/conjure-pact-weapon.js';
+import { findGoliathAncestryChoice, GIANT_ANCESTRY_RESOURCE_ID } from '../engine/plan/_giant-ancestry.js';
+import { buildEffectStack } from '../derive/effect-stack.js';
 
 // ── Named constants ─────────────────────────────────────────────────
 const FIGHTER_CLASS_ID = 'fighter';
@@ -73,6 +77,7 @@ const ADRENALINE_RUSH_RESOURCE = 'adrenaline-rush';
 const INNATE_SORCERY_RESOURCE = 'innate-sorcery';
 const INNATE_SORCERY_ACTIVE_CONDITION = 'innate-sorcery-active';
 const WEAPON_LIGHT_PROPERTY = 'light';
+const CLOUDS_JAUNT_ANCESTRY = 'clouds-jaunt';
 const LAY_ON_HANDS_CURE_POISON_COST = 5; // matches CURE_POISON_COST in lay-on-hands.ts
 const HEAVY_ARMOR_CATEGORY = 'heavy';
 
@@ -157,17 +162,23 @@ export type BonusActionIntent =
   | NimbleEscapeIntent
   | FlurryOfBlowsIntent
   | InnateSorceryIntent
-  | OffHandAttackIntent;
+  | OffHandAttackIntent
+  | CloudsJauntIntent
+  | ConjurePactWeaponIntent;
 
 /**
  * Per-option parameters for `bonusActionIntent` / `engine.plan.useOption`.
  * `targetId` for creature-target options; `amount` for metered heals (Lay on
- * Hands); `weaponInstanceId` for strike options (Flurry of Blows).
+ * Hands); `weaponInstanceId` for strike options (Flurry of Blows); `to` for a
+ * teleport (Cloud's Jaunt); `weaponDefinitionId` for a conjuration (Conjure
+ * Pact Weapon).
  */
 export interface BonusActionParams {
   readonly targetId?: string;
   readonly amount?: number;
   readonly weaponInstanceId?: string;
+  readonly to?: Position;
+  readonly weaponDefinitionId?: string;
 }
 
 // ── Registry ────────────────────────────────────────────────────────
@@ -201,6 +212,12 @@ interface BonusActionDescriptor {
   readonly requiresAmount?: boolean;
   /** Requires `params.weaponInstanceId` (a strike, e.g. Flurry of Blows). */
   readonly requiresWeapon?: boolean;
+  /**
+   * Other required params, checked by `bonusActionIntent` (a missing one
+   * throws): `to` for a teleport (Cloud's Jaunt), `weaponDefinitionId` for a
+   * conjuration (Conjure Pact Weapon).
+   */
+  readonly requires?: ReadonlyArray<keyof BonusActionParams>;
   /**
    * Targeting rules for a `target: 'creature'` option, consumed by
    * `bonusActionTargets`. Every creature-target descriptor MUST set this
@@ -289,6 +306,16 @@ const wieldsLightWeapon = (
   }
   return false;
 };
+
+// Slice 768: Conjure Pact Weapon is owned via the Pact of the Blade invocation
+// (the gate planConjurePactWeapon enforces).
+const hasPactBlade = (character: Character, state: CampaignState, content: ResolvedContent): boolean =>
+  buildEffectStack({
+    character,
+    content,
+    itemInstances: state.itemInstances,
+    pendingChoices: state.pendingChoices,
+  }).hasPactBlade();
 
 const REGISTRY: ReadonlyArray<BonusActionDescriptor> = [
   {
@@ -479,6 +506,27 @@ const REGISTRY: ReadonlyArray<BonusActionDescriptor> = [
     owns: characterHasNimbleEscape,
     toIntent: (id) => ({ type: 'NimbleEscape', goblinId: id, mode: 'hide' }),
   },
+  {
+    id: 'clouds-jaunt',
+    label: "Cloud's Jaunt",
+    target: 'none',
+    // Planner-faithful: the resolved Cloud's Jaunt Giant Ancestry. The
+    // giant-ancestry resource gate + active-turn gate are the standard cascade.
+    owns: (c, state) => findGoliathAncestryChoice(c, state) === CLOUDS_JAUNT_ANCESTRY,
+    resourceId: GIANT_ANCESTRY_RESOURCE_ID,
+    // A teleport: the consumer supplies the destination cell (no creature target).
+    requires: ['to'],
+    toIntent: (id, params) => ({ type: 'CloudsJaunt', goliathId: id, to: params.to as Position }),
+  },
+  {
+    id: 'conjure-pact-weapon',
+    label: 'Conjure Pact Weapon',
+    target: 'none',
+    owns: hasPactBlade,
+    // The consumer picks which Simple/Martial Melee weapon to conjure.
+    requires: ['weaponDefinitionId'],
+    toIntent: (id, params) => ({ type: 'ConjurePactWeapon', characterId: id, weaponDefinitionId: params.weaponDefinitionId as string }),
+  },
 ];
 
 // ── bonusActions (enumeration) ──────────────────────────────────────
@@ -632,6 +680,9 @@ export const bonusActionIntent = (
   }
   if (d.requiresWeapon === true && params.weaponInstanceId === undefined) {
     throw new Error(`Bonus-action option '${optionId}' requires a weaponInstanceId`);
+  }
+  for (const key of d.requires ?? []) {
+    if (params[key] === undefined) throw new Error(`Bonus-action option '${optionId}' requires a ${key}`);
   }
   return d.toIntent(combatantId, params);
 };
