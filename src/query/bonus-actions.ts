@@ -462,7 +462,14 @@ export const bonusActions = (
 
   const ctx: ReasonContext = {
     blocker: findActorBlockingCondition(character),
-    isActiveTurn: encounter.combatants[encounter.activeIndex]?.combatantId === combatantId,
+    // Gate on the encounter being active: a 'planning' encounter has
+    // activeIndex defaulting to 0 and no activeEncounterId, so without this
+    // check combatant 0 would look "active" and the encounter-only options
+    // (Cunning Action, Flurry, …) would show enabled — but their planners
+    // throw "only in an active encounter" (they read state.activeEncounterId).
+    isActiveTurn:
+      encounter.status === 'active' &&
+      encounter.combatants[encounter.activeIndex]?.combatantId === combatantId,
     bonusActionUsed: self.turnUsage.bonusActionUsed,
     dashed: self.turnUsage.dashed,
     disengaged: self.turnUsage.disengaged,

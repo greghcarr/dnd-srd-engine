@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Fix (slice 761): bonusActions gates on the encounter being active**
+`isActiveTurn` didn't check `encounter.status`, so in a created-but-not-started ('planning') encounter — `activeIndex` 0, no `activeEncounterId` — combatant 0 looked "active" and the encounter-only options (Cunning Action, Flurry, etc.) showed enabled, but their planners throw "only in an active encounter." Now requires `status === 'active'`. Verified with a planner cross-check. Query-side only.
+Detail: [slice-761.md](docs/changelog/slice-761.md).
+
 **Fix (slice 760): legalMoveDestinations honors the prone stand-up surcharge**
 `remainingMovementFeet` (feeding `legalMoveDestinations` + the `availableActions` move gate) ignored Prone, returning the full speed budget — but `planMove` charges a `floor(speed/2)` stand-up surcharge on a prone move, so the query offered destinations the planner would reject. Now subtracts the surcharge (effective travel = `maxThisTurn - feetMoved - standUpCost`), matching the planner. Verified with a planner cross-check (prone speed-30 mover reaches 15 ft, not 20). Query-side only.
 Detail: [slice-760.md](docs/changelog/slice-760.md).

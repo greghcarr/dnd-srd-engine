@@ -671,3 +671,28 @@ describe('slice 756: every creature-target option enumerates targets (no silent 
     }
   });
 });
+
+// Slice 761: encounter-only options must not show enabled before the
+// encounter starts (a 'planning' encounter has activeIndex 0 + no
+// activeEncounterId, so the planner would throw "only in an active encounter").
+describe('slice 761: bonus actions in a not-started (planning) encounter', () => {
+  it('encounter-only options are disabled (not-your-turn) before the encounter starts; planner agrees', () => {
+    const r = rogue();
+    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(1) });
+    let campaign: Campaign = engine.createCampaign({ name: 'planning' });
+    campaign = commit(campaign, [
+      { id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: r } satisfies CharacterCreatedEvent,
+    ]);
+    const enc = engine.plan.createEncounter(campaign.state, { combatantIds: [r.id] });
+    campaign = commit(campaign, enc.events); // status 'planning' — deliberately NOT started
+    expect(campaign.state.activeEncounterId).toBeUndefined();
+    const opts = Object.fromEntries(
+      engine.query.bonusActions(campaign.state, enc.encounterId, r.id).map((o) => [o.id, o]),
+    );
+    expect(opts['cunning-action-dash']).toMatchObject({ enabled: false, reason: 'not-your-turn' });
+    // Cross-check: the planner rejects it (Cunning Action needs an active encounter).
+    expect(() =>
+      engine.plan.useOption(campaign.state, { combatantId: r.id, optionId: 'cunning-action-dash' }),
+    ).toThrow();
+  });
+});
