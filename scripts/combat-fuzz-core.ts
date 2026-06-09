@@ -1264,11 +1264,12 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
           });
           campaign = commit(campaign, events);
         } else if (reactions === 'auto' && intent.type === 'Attack') {
-          // Slice 750: two-phase attack — plan (uncommitted), run the
-          // pre-damage reaction window (Shield / Cutting Words), then commit
-          // the full attack or, if a reaction prevented the hit, the attack
-          // minus its damage chain. 'none' keeps the single-phase commit.
-          const planned = planIntent(engine.plan, campaign.state, intent).events;
+          // Slice 750/755: two-phase attack via the engine attackRoll /
+          // attackDamage API. The resolver plans the roll (uncommitted), runs
+          // the pre-damage reaction window (Shield / Protection / Cutting
+          // Words), then commits the full attack or, if a reaction prevented
+          // the hit, the roll without ever rolling damage. 'none' keeps the
+          // single-phase commit.
           const targetId = intent.targetId as string;
           const defenderTeam = (teamAIds.has(targetId) ? teamA : teamB).map(
             (pc) => pc.character.id,
@@ -1277,7 +1278,11 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
             engine,
             campaign,
             encounterId: enc.encounterId,
-            attackEvents: planned,
+            attackIntent: {
+              attackerId: intent.attackerId as string,
+              targetId,
+              weaponInstanceId: intent.weaponInstanceId as string,
+            },
             defenderTeam,
             isTactical: movement === 'tactical',
           });

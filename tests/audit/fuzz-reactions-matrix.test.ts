@@ -54,8 +54,9 @@ describe('fuzz reactions matrix (slice 749)', () => {
 
 // Slice 750: the pre-damage reaction window. Shield (a Wizard/Sorcerer
 // defender) is the clean prevent-the-trigger case — it emits a ShieldCast
-// with preventedHit, and the driver drops the damage chain. 2v2-PC seeds
-// reliably field a Shield-casting defender.
+// with preventedHit, and (slice 755) the driver commits the roll without
+// ever calling engine.plan.attackDamage. 2v2-PC seeds reliably field a
+// Shield-casting defender.
 const SHIELD_SEEDS = Array.from({ length: 12 }, (_, i) => i + 1);
 
 describe('fuzz pre-damage reaction window (slice 750)', () => {
@@ -77,6 +78,35 @@ describe('fuzz pre-damage reaction window (slice 750)', () => {
           const x = events[j]!;
           const damagedCaster = x.type === 'DamageApplied' && (x as { targetId: string }).targetId === casterId;
           expect(damagedCaster, `seed=${seed} Shield preventedHit but caster took damage on the swing`).toBe(false);
+        }
+      }
+    }
+    expect(prevented, 'no Shield prevention fired across the shield seeds').toBeGreaterThan(0);
+  });
+});
+
+// Slice 755: the pre-damage window is re-wired onto the engine two-phase
+// attack API (engine.plan.attackRoll -> reaction window -> attackDamage). The
+// slice-750 guarantee was "no damage APPLIED to the prevented target"; the
+// stronger slice-755 guarantee is that the damage is never ROLLED at all —
+// the resolver never calls attackDamage for a prevented hit, so no DamageRolled
+// (and no discarded damage rng / on-hit riders) for the prevented swing.
+describe('fuzz two-phase pre-damage re-wire (slice 755)', () => {
+  it('a Shield-prevented swing rolls no damage at all (the damage phase is skipped, not sliced)', () => {
+    let prevented = 0;
+    for (const seed of SHIELD_SEEDS) {
+      const events = runBattle({ seed, pack: STARTER, level: 5, teamSize: 2, vs: 'pc', reactions: 'auto' })
+        .campaign.events;
+      for (let i = 0; i < events.length; i += 1) {
+        const e = events[i]!;
+        if (e.type !== 'ShieldCast' || (e as { preventedHit?: boolean }).preventedHit !== true) continue;
+        prevented += 1;
+        const atkIdx = events.findIndex((x) => x.id === (e as { triggeringAttackEventId: string }).triggeringAttackEventId);
+        for (let j = atkIdx + 1; j < i; j += 1) {
+          expect(
+            events[j]!.type === 'DamageRolled',
+            `seed=${seed} Shield preventedHit but the swing still rolled damage (two-phase re-wire should skip attackDamage)`,
+          ).toBe(false);
         }
       }
     }
