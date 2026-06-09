@@ -61,9 +61,41 @@ export {
 // combatant use right now?") + the option-id → intent dispatch builder.
 export {
   bonusActions,
+  bonusActionTargets,
   bonusActionIntent,
   type BonusActionOption,
+  type BonusActionTarget,
   type BonusActionTargetKind,
   type BonusActionIntent,
   type BonusActionParams,
 } from './bonus-actions.js';
+// Slice 763: reaction affordances — discovery + trigger correlation.
+export {
+  availableReactions,
+  reactionsForTrigger,
+  type ReactionOption,
+  type ReactionTriggerKind,
+  type ReactionIntent,
+  type CorrelatedReaction,
+} from './reactions.js';
+// Slice 764/771: general 2024 action affordances (registry-driven discovery
+// + target enumeration).
+export {
+  actionOptions,
+  actionTargets,
+  actionIntent,
+  type ActionOption,
+  type ActionTarget,
+  type ActionOptionTargetKind,
+  type ActionIntent,
+  type ActionParams,
+} from './action-options.js';
+// Slice 774: post-hit affordances — options contextual on a just-landed attack
+// (Paladin's Smite). Discovery + slot-picker + intent builder.
+export {
+  postHitOptions,
+  postHitIntent,
+  type PostHitOption,
+  type PostHitIntent,
+  type PostHitParams,
+} from './post-hit.js';

@@ -88,6 +88,9 @@ export const planIntent = (
     Metamagic: (i) => plan.metamagic(state, i),
     WildCompanion: (i) => plan.wildCompanion(state, i),
     OffHandAttack: (i) => plan.offHandAttack(state, i),
+    // Slice 762: Innate Sorcery is a `bonusActions` menu option now, so
+    // useOption routes it through planIntent (was direct-invoke only).
+    InnateSorcery: (i) => plan.innateSorcery(state, i),
     Multiattack: (i) => plan.multiattack(state, i),
     Falling: (i) => plan.falling(state, i),
     Grapple: (i) => plan.grapple(state, i),

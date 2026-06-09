@@ -4,329 +4,126 @@ Notable changes to this project. The format follows [Keep a Changelog](https://k
 
 Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the live file below carries only a compact pointer per slice (one headline + one-sentence summary) so the file stays bounded regardless of project age. Convention adopted in slice 628.
 
-## 0.10.0-alpha.0 - 2026-06-08
+## Unreleased
 
-**Release (slice 748): bump to 0.10.0-alpha.0**
+## 0.11.0-alpha.0 - 2026-06-09
 
-Promotes the post-0.9.0 cohort (slices 737-747) to a tagged release. `package.json` + `package-lock.json` bump `0.9.0-alpha.0` → `0.10.0-alpha.0`; `SCHEMA_VERSION` stays 1 (the cohort adds no new event types — Countercharm reuses `SaveRolled`, the L7 features reuse existing events / conditions / `Custom` markers, so a 0.10.0 consumer replays a 0.9.0 log unchanged). Three headline strands:
+**Release (slice 777): bump to 0.11.0-alpha.0**
+Promotes the post-0.10.0 cohort (slices 749-776) to a tagged release. `package.json` `0.10.0-alpha.0` → `0.11.0-alpha.0` — a minor pre-1.0 bump, since the cycle adds new public exports (the two-phase attack API and the completed affordance/query layer). `SCHEMA_VERSION` stays 1 (no persisted-shape change). Net over 0.10.0: a first-class two-phase attack API (`attackRoll` / `attackDamage`) with the combat-fuzz reaction window re-wired onto it so prevented hits never roll damage (749-755); the affordance / intent-query layer completed through L7 — reaction discovery + trigger correlation, general + class-feature action options, the bonus-action registry, post-hit Paladin's Smite, and creature-target enumeration, each verified planner-faithful (756-774); an `encounter-view` `hp.maxBonus` fix (770); the [L7 SRD-completion audit worklist](docs/l7-completion-audit.md) (775); and cross-platform / Windows fresh-agent hardening (776). No breaking change; `'none'` combat-fuzz transcripts byte-identical. Also evicts the stale inline `0.6.0-alpha.0` orphan (left behind by the 0.7-0.10 releases) to its archive.
+Detail: [slice-777.md](docs/changelog/slice-777.md).
 
-- **L7 SRD complete** (slices 738-742): every L7 row (base class + subclass) is now wired. Rogue Reliable Talent (738; new `GrantReliableTalent` marker — a proficient ability check floors a d20 of 9-or-lower to 10), Druid Elemental Fury + the Cleric Potent Spellcasting closure (739; cantrip-damage WIS rider via a new `event.spellLevel == 0` fact), Bard Countercharm (740; new `engine.plan.countercharm` — a Reaction rerolling a failed Charmed/Frightened save with Advantage), Barbarian Instinctive Pounce (741; a positional `Custom` capability marker). Slice 742 pins the CI-guarded "L7 SRD complete" floor audit (22 tests) and extends the fuzz matrix to L1-L7 (84 cells × 30 seeds = 2,520 battles per run). `EFFECT_KINDS` 67 → 68.
-- **Fuzz harness builds every class to L1-20** (slice 737): `FUZZ_MAX_LEVEL` 6 → 20 with a fail-loud auto-leveler (deterministic legal-choice resolver + dangling-choice guards), so `runBattle({ level })` reliably builds every class and its opponent to any level 1-20 for the dnd-web picker. L1-6 builds stay byte-identical.
-- **Rage / active-state correctness + test workflow** (slices 743-747): a Barbarian can no longer re-enter Rage while already raging (743), and a pattern hunt extended the same already-active guard to five more activators — Innate Sorcery, Superior Defense, Sacred Weapon, Frenzy, Stonecunning (plus Dragon Wings for consistency) (744). Fast local test lanes + a local-fast / CI-full testing norm (745) and a ~4.3× faster suite (746; cache + deep-freeze the validated pack, `isolate: false`). A full docs freshness sweep closed the cohort (747).
+**Infra (slice 776): cross-platform / fresh-agent hardening (Windows readiness)**
+A fresh-agent audit ahead of moving the dev session to Windows fixed three macOS-only onboarding assumptions: new `.gitattributes` forces `*.sh` + `.githooks/**` to LF (a CRLF checkout would break the pre-push hook's bash shebang under git-bash); `prepare` moved from an inline `git config ... 2>/dev/null || true` (POSIX-isms that misbehave under cmd.exe) to a shell-agnostic `node scripts/setup-hooks.mjs`; `test:fast`'s `--exclude` glob switched single → double quotes (cmd.exe passes single quotes literally, silently disabling the heavy-tier exclusion). No engine change.
+Detail: [slice-776.md](docs/changelog/slice-776.md).
 
-**Breaking:** none to the type surface. **Behavior change:** the active-state activators (Rage et al.) now throw on re-activation while already active (RAW-correctness; each buff is taken at most once per battle, so the fuzz is byte-identical). **Additive surface:** one new effect kind (`GrantReliableTalent`), one new `engine.plan.*` method (`countercharm`), two new `Custom` handler ids (`countercharm`, `instinctive-pounce`), a new `event.spellLevel` cast fact (inert for existing predicates), and the check-derivation's `hasReliableTalent` / `usesProficiency` fields — all additive.
+**Docs (slice 775): L7 SRD-completion audit — master worklist**
+New [docs/l7-completion-audit.md](docs/l7-completion-audit.md): the finite, severity-tagged list of what stands between today's engine and "a consumer like dnd-web runs a full L1-7 SRD game with zero expert-visible divergences, including input handling + targeting." Compiled from a 7-agent parallel audit (SRD canon + code + tests + gaps catalogs): ~95 findings across 9 areas (edition drift, spell mechanics L0-4, targeting/AoE seam, core combat, build validation, base equipment, monster runtime, exploration pillar, consumer duties), each tagged `BLOCKER`/`DIVERGENCE`/`QUIRK` + owner (engine/seam/consumer/docs) + fix size + file evidence. Four edition-drift headliners canon-verified (long rest restores all HD not half; Sleep/Color Spray are saves not 2014 HP-pool; 2014 Small-creature Heavy rule removed in 2024). No code change; linked from CLAUDE.md.
+Detail: [slice-775.md](docs/changelog/slice-775.md).
 
-**RNG stream:** the L7 features are gated (fire only at L7+ / on the relevant arm) so default and sub-L7 paths are byte-identical (goldens + replay-equivalence + rng-capture unchanged); the L7 fuzz tier is new this cycle. The perf change (frozen pack + `isolate: false`) is test-harness-only and doesn't touch engine RNG (ids are random / golden-normalized; no shared mutable module state). **Consumer note:** `loadStarterPack()` now returns a shared, deep-frozen instance — correct and faster for immutable content, but a consumer that mutated the pack in place would now throw (clone first).
-Detail: [slice-748.md](docs/changelog/slice-748.md).
+**Feat (slice 774): post-hit affordances — Paladin's Smite (the last deferred affordance)**
+New `src/query/post-hit.ts`: `engine.query.postHitOptions(state, encounterId, attackEvent)` enumerates options contextual on a just-committed `AttackRolled` (through L7, only Paladin's Smite — a Bonus Action riding the paladin's own melee hit, discoverable from neither `bonusActions` (no triggering attack in scope) nor `castableSpells` (it's the L2 feature, not the Divine Smite spell)). Returns `[]` unless the attack is a melee hit by a paladin; otherwise the single option carries the spell-slot picker (`slotLevels`, 1-5) and an `enabled`/`reason` reflecting the Bonus Action economy (`not-your-turn` off an Opportunity Attack, `bonus-action-used`, `no-uses`). `postHitIntent(optionId, attackEvent, { slotLevel, targetIsUndeadOrFiend? })` builds the `PaladinsSmiteIntent`; the consumer runs it via `engine.plan.paladinsSmite` (deliberately not in the dispatch). RAW-correct gate (stricter than the lenient `planPaladinsSmite`), verified planner-faithful by dispatch. Completes the affordance program — no deferred affordances remain.
+Detail: [slice-774.md](docs/changelog/slice-774.md).
 
-**Docs (slice 747): freshness sweep for the 737-746 cohort**
-A thorough docs pass (parallel audit of the headline, API, gaps, and architecture/dev docs) reconciled prose with the current state — L1-L7 SRD-complete, fuzz-to-L20, the new plan methods, and the test-workflow/perf changes. Fixes: README fuzz-CLI `--level 1..5`→`1..20`; api-overview EFFECT_KINDS `53→68` and the five newer planners added (`naturalRecovery`, `darkOnesOwnLuck`, `countercharm`, `memorizeSpell`, `wildResurgence`); architecture `52→67` and concepts dropped a stale `~30`; starter-pack-gaps now states L1-L7 complete + L8 as the next level cycle; gaps-deferred-primitives gained the Rage duration/maintenance ("Scope B") and Barbarian Instinctive Pounce positional-movement deferrals; DEVELOPMENT.md + AGENTS.md adopt the local-fast / push-full testing norm (+ `test:changed`/`test:fast` in the command list). The two prose EFFECT_KINDS citations that had drifted (api-overview, architecture) are now pinned in the doc-counts CI guard so they can't drift again. status.md / roadmap / trustworthiness-roadmap / getting-started / determinism / engine-scope / authoring-content-packs were audited and already current. Docs-only.
-Detail: [slice-747.md](docs/changelog/slice-747.md).
+**Feat (slice 773): bonus-action class features — Sacred Weapon + Intimidating Presence**
+Extends `bonusActions` with the two deferred class-feature bonus actions. Sacred Weapon (Devotion paladin, `target:'self'`, channel-divinity, `already-active` guard — RAW-gated on the Oath, correctly stricter than `planSacredWeapon`'s lenient paladin-only check). Intimidating Presence (Berserker barbarian L14, `target:'none'`, `requires` targetIds). `BonusActionParams`/`UseOptionOptions` gain `targetIds`. Both already dispatched; verified planner-faithful via `useOption`. Completes the deferred class-feature affordances (only the post-hit Paladin's Smite *feature* remains).
+Detail: [slice-773.md](docs/changelog/slice-773.md).
 
-**Perf (slice 746): ~4.3× faster test suite — cache the validated pack + `isolate: false`**
-The suite's dominant cost was `loadStarterPack()` zod-validating the whole pack (~1.6s) once per test file (~570×). `loadStarterPack` now caches the validated pack and deep-freezes it (it's immutable canonical content), and vitest runs with `isolate: false` so each worker reuses its module graph across files — validating the pack ~once per worker instead of once per file. Full suite: **~611s → ~143s** (the "collect" phase 2953s → 58s summed), all 578 files / 4490 tests green. One test that mutated the shared pack in place (`effective-non-walk-speed`) was fixed to clone; the deep-freeze guards against future mutators (any in-place mutation now throws). **Consumer note:** `loadStarterPack()` now returns a shared, frozen instance — correct for immutable content (and faster for consumers), but a consumer that mutated the pack would now throw. Behavior of the engine itself is unchanged (ids are random/golden-normalized; no shared mutable module state).
-Detail: [slice-746.md](docs/changelog/slice-746.md).
+**Feat (slice 772): more class-feature actions — Dragonborn Breath + Preserve Life**
+Extends `actionOptions` with the remaining deferred action-cost feature actions. Dragonborn Breath (`owns` = species dragonborn, `dragonborn-breath-weapon` resource, `requires` targetIds + damageType + areaShape — the PC `planDragonbornBreath`, not the monster breath). Preserve Life (Life Domain Cleric L3 Channel Divinity, `owns` = cleric `subclassId === 'life-domain'`, `requires` allocations). `ActionParams`/`UseActionOptionOptions` gain `damageType`/`areaShape`/`allocations`. Both already dispatched; verified planner-faithful via `useActionOption`.
+Detail: [slice-772.md](docs/changelog/slice-772.md).
 
-**Infra (slice 745): fast local test lanes + local-fast / CI-full testing norm**
-The full suite is CPU-heavy (a content-pack validation tax of ~1.6s paid by nearly every test file, plus the fuzz/property/integration tiers), so running it after every edit is wasteful. New `npm run test:changed` (vitest `--changed` — only the tests affected by your edits, the tight iteration loop) and `npm run test:fast` (the suite minus the heavy fuzz-matrix / fuzz-tactical-matrix / multiclass-fuzz / property / integration tiers, one brace-glob `--exclude`). CONTRIBUTING.md + CLAUDE.md updated: iterate locally with `test:changed` / `test:fast` per slice; the full `npm test` is the push / pre-release gate (CI already runs it on every PR across Node 20/22/24). No source change. (A perf slice to attack the validation tax itself — so the full suite is faster everywhere — is the planned follow-up.)
-Detail: [slice-745.md](docs/changelog/slice-745.md).
+**Feat (slice 771): actionTargets query — target enumeration for creature-target actions**
+The `bonusActionTargets` sibling for the Action menu. New `engine.query.actionTargets(state, encounterId, combatantId, optionId)` → `{ combatantId, position? }[]` for Grapple / Shove (5 ft) / Help (no range filter — consumer-managed) / Divine Spark (30 ft, self + the dying for heal mode). The shared enumerator was factored into `src/query/_targeting.ts` (`creatureTargetsInReach`, `CreatureTargeting` with optional `rangeFeet`); `bonusActionTargets` refactored to delegate to it (behavior unchanged). Additive query surface.
+Detail: [slice-771.md](docs/changelog/slice-771.md).
 
-**Fix (slice 744): guard active-state re-activation across all activators (pattern fix)**
-A slice-743 pattern hunt found the same bug shape in five more activators: a Bonus-Action activator applies a persistent self "active-state" condition AND spends a limited resource, with no guard against re-activating while already active — so it could be re-activated for a double resource spend. Each planner now throws when its active condition is already present (before any spend): Innate Sorcery (`innate-sorcery-active`, use / 2 SP), Superior Defense (`superior-defense-active`, 3 Focus Points), Sacred Weapon (`sacred-weapon-active`, Channel Divinity), Frenzy (`frenzied`, Rage charge), Stonecunning (`stonecunning-active`, a use). Dragon Wings (`dragon-wings-active`, no resource) also guards for consistency. Byte-identical for the fuzz (each buff is taken at most once per battle); to re-activate, the consumer must end the prior state first (RAW).
-Detail: [slice-744.md](docs/changelog/slice-744.md).
+**Fix (slice 770): encounter-view surfaces hp.maxBonus**
+The last unfixed finding from the affordance-correctness sweep. `buildEncounterView`'s `CombatantView.hp` reported `{ current, max, temp }` from the raw `hp.max`, omitting `hp.maxBonus` — so a combatant under a max-HP buff (Aid) showed the unbuffed maximum and a tracker couldn't reconcile `current > max`. `hp` now carries `maxBonus` (displayed max = `max + maxBonus`). Additive read-model field.
+Detail: [slice-770.md](docs/changelog/slice-770.md).
 
-**Fix (slice 743): Barbarian can't re-enter Rage while already raging**
-Bug (dnd-web duel): a raging Barbarian could take the Rage bonus action again next turn, spending another Rage use while already raging. `planRage` now throws (`is already raging`) when the `raging` condition is active, and `engine.query.bonusActions` surfaces Rage as disabled with reason `already-raging` (so the consumer greys it instead of burning a use). Scope A (stop the illegal re-rage); Rage's full duration/maintenance lifecycle (auto-end at end of turn unless maintained, 10-round cap, end on Heavy armor / Incapacitated) is deferred to its own slice (Scope B). Non-raging / non-Barbarian paths byte-identical; the fuzz rages once per battle so it's unaffected.
-Detail: [slice-743.md](docs/changelog/slice-743.md).
+**Feat (slice 769): action affordances — class-feature actions (Action Surge / Divine Spark / Turn Undead)**
+Completes the deferred affordance program. `actionOptions` grows the `bonusActions` shape — per-descriptor `owns` + `resourceId` (`no-uses` gate) + `costsAction` — and `ActionParams`/`UseActionOptionOptions` gain `targetIds`. Action Surge (Fighter, `action-surge`, `costsAction:false` → stays enabled after the action is used, matching its "grants an extra action" economy); Divine Spark (Cleric Channel Divinity, creature + `mode`); Turn Undead (Channel Divinity, `targetIds`). All already dispatched, so `useActionOption` routes them unchanged. Each verified planner-faithful by dispatch. Also evicted the 0.3.0-alpha.0 release narrative to [released-versions-0.3.0-alpha.0.md](docs/changelog/released-versions-0.3.0-alpha.0.md) (doc-size discipline; CHANGELOG ~60 KB → ~25 KB).
+Detail: [slice-769.md](docs/changelog/slice-769.md).
 
-**Tests/docs (slice 742): L7 SRD-complete floor audit + fuzz-to-L7**
-New `tests/audit/srd-l7-complete.test.ts` (22 tests) pins the L7 floor: base-class L7 features (Monk/Rogue Evasion, Reliable Talent, Feral Instinct + Instinctive Pounce, Countercharm, Blessed Strikes, Elemental Fury, Sorcery Incarnate), the six subclass L7 features, planner/effect-kind presence, a behavioral 6→7 level-up (4th-level slots; Reliable Talent), and the spell-slot milestone (full casters → 4th-level; Warlock pact → 4th). The fuzz matrix extends to L7 (`[1..7]`, 84 cells × 30 seeds = 2,520 battles). Capstone of the L7 cycle — every L7 row is now wired. gaps-class-features L7 stubs closed (reliable-talent, elemental-fury, countercharm, instinctive-pounce). No engine change.
-Detail: [slice-742.md](docs/changelog/slice-742.md).
+**Feat (slice 768): bonus-action registry — Cloud's Jaunt + Conjure Pact Weapon**
+Wires the remaining bonus-action deferrals. `BonusActionParams` (+ `useOption`'s `UseOptionOptions`) gains `to?: Position` and `weaponDefinitionId?: string`; the descriptor gains a `requires` list (`bonusActionIntent` throws on a missing one). Cloud's Jaunt (`target:'none'`, `requires:['to']`): `owns` = the resolved Cloud's Jaunt Giant Ancestry, `resourceId: giant-ancestry`. Conjure Pact Weapon (`requires:['weaponDefinitionId']`): `owns` = `buildEffectStack(...).hasPactBlade()`. Both already dispatched, so `useOption` routes them unchanged. Paladin's Smite needs no entry — `divine-smite` is already a Bonus Action spell in `castableSpells` (the post-hit Paladin's Smite *feature* is a rider); Metamagic stays excluded (spell-cast modifier).
+Detail: [slice-768.md](docs/changelog/slice-768.md).
 
-**Content (slice 741): Barbarian Instinctive Pounce (L7)**
-The Barbarian L7 `instinctive-pounce` row gains a capability marker `Custom { handlerId: 'instinctive-pounce' }`. Instinctive Pounce ("as part of entering Rage, move up to half your Speed") is positional movement, which the engine doesn't model (positions/movement are consumer scope per engine-scope.md), so the half-Speed move is consumer-applied; the marker exposes the capability. Deliberately does NOT reuse `Disengaged` (whose no-provoke semantics would over-grant — RAW Instinctive Pounce can provoke), so `planRage` stays byte-identical. No new effect kind.
-Detail: [slice-741.md](docs/changelog/slice-741.md).
+**Feat (slice 767): reaction affordances — Deflect Attacks + Countercharm (cross-event correlation)**
+Completes the reaction layer. `reactionsForTrigger` gains an optional `recentEvents` param (the consumer's log slice) for cross-event correlation — additive, every other reaction ignores it. Deflect Attacks (damage trigger, Monk L3): correlates when the reactor is the damaged target with deflectable physical damage, scanning `recentEvents` for the triggering `AttackRolled`. Countercharm (new `condition-applied` trigger → `ConditionApplied`, Bard L7): correlates a Charmed/Frightened `ConditionApplied`, scanning `recentEvents` for the preceding failed `SaveRolled` to fill the reroll's DC/ability/bonus (30 ft consumer-managed; the consumer removes the condition on a successful reroll). Both verified by dispatch. The reaction-affordance layer is now complete (9 reactions across 5 trigger kinds).
+Detail: [slice-767.md](docs/changelog/slice-767.md).
 
-**Engine (slice 740): Bard Countercharm (L7)**
-New `engine.plan.countercharm(state, { bardId, targetId, ability, dc, saveBonus })` → `{ events, d20, total, success }`: a free Reaction that rerolls a failed Charmed/Frightened save (the bard or an ally) with Advantage — rolls 2d20 take-max + the original bonus, emits the rerolled `SaveRolled`, and reports whether it now meets the DC (the Peerless Skill / Hero Points outcome shape). The 30-ft range, self-or-ally choice, Reaction economy, and removing the already-applied condition on success are consumer-managed. Gated on Bard L7; pack marker `Custom { handlerId: 'countercharm' }`. No new effect kind.
-Detail: [slice-740.md](docs/changelog/slice-740.md).
+**Feat (slice 766): reaction affordances — Opportunity Attack (leaves-reach trigger)**
+Wires the last positionally-triggered deferred reaction. New `ReactionTriggerKind` `'leaves-reach'` → `CombatantMoved`. OA's `owns` = the reactor wields a main-hand melee weapon; correlate fires when the mover (≠ reactor) was within the reactor's melee reach at `fromPosition` and beyond it at `toPosition` (chebyshev; 5 ft, +5 for a `reach` weapon), the reactor isn't the active combatant. `planOpportunityAttack` uses `resolveAttack` directly (no range gate), so an attack on a creature that just left reach is accepted — planner-faithful. Verified by dispatching the intent.
+Detail: [slice-766.md](docs/changelog/slice-766.md).
 
-**Engine (slice 739): Druid Elemental Fury (L7) + Cleric Potent Spellcasting closure**
-The Druid L7 row gains `elemental-fury`: an `OfferChoice` between Potent Spellcasting (add WIS to Druid cantrip damage) and Primal Strike (once per turn, a weapon/Wild Shape hit deals +1d8 of a chosen element — offered as four element variants). No new effect kind: Potent Spellcasting is an `AddModifier { target: 'damage', value: WIS }` gated on a new `event.spellLevel == 0` (cantrip) fact added to the cast-spell damage-modifier facts (attack + save paths); Primal Strike reuses the Divine Strike `OnEvent` rider shape. The same `event.spellLevel` fact closes the previously-stubbed Cleric Blessed Strikes Potent Spellcasting arm (pattern-check). Additive (the new fact is inert for existing predicates), so existing casts are byte-identical.
-Detail: [slice-739.md](docs/changelog/slice-739.md).
+**Feat (slice 765): reaction affordances — Stone's Endurance + Protection**
+Wires two reactions slice 763 deferred, now planner-faithful. Stone's Endurance: `owns` gates on the RESOLVED Giant Ancestry (`findGoliathAncestryChoice === 'stones-endurance'`), not just species + resource — so a Goliath who didn't pick it is no longer wrongly offered it (damage trigger). Protection: `owns` = shield + `hasProtectionFightingStyle` (the effect stack), correlated from an `AttackRolled` on an ally within 5 ft (chebyshev; positionless → not offered) → `{ protectorId, attackerId, triggeringAttackEventId }`. Registry `owns`/`correlate` widened to receive state/content/encounterId. Each correlated intent verified against its planner. Still deferred: Deflect Attacks + Countercharm (cross-event context) and Opportunity Attack (positional move trigger).
+Detail: [slice-765.md](docs/changelog/slice-765.md).
 
-**Engine (slice 738): Rogue Reliable Talent (L7)**
-New marker effect `GrantReliableTalent`: on an ability check that uses one of the rogue's skill (or tool) proficiencies, `planAbilityCheck` now treats a d20 of 9 or lower as a 10. Gated on a real proficiency contributing (proficient / expertise — the half-proficiency floor doesn't count, per RAW); surfaced via the check derivation's `hasReliableTalent` + `usesProficiency`. The d20 array still shows the actual die; the floor lands in `total` + a `reliable-talent` breakdown marker. Opens the L7 SRD-complete cycle. EFFECT_KINDS 67→68.
-Detail: [slice-738.md](docs/changelog/slice-738.md).
+**Feat (slice 764): general action affordances (G2) — registry-driven `actionOptions`**
+Closes the last completeness gap: `availableActions` was hardcoded to the 5 core combat intents, so the general SRD 2024 actions were drivable but undiscoverable. New `engine.query.actionOptions(state, encounterId, combatantId)` → `{ id, label, target, enabled, reason? }[]` enumerating Search / Study / Influence / Utilize / Hide / Grapple / Shove / Help / Ready (the registry-driven sibling of `availableActions`), plus `actionIntent(optionId, combatantId, params)` (id → intent builder) and `engine.plan.useActionOption(state, { combatantId, optionId, ...params })` (the `useOption` sibling — builds + routes via `planIntent`). All gate uniformly on `not-your-turn` / `action-used` / blocking conditions. Deferred: class-feature actions (Action Surge's inverted economy; Turn Undead / Divine Spark resource + multi-target). Additive query surface.
+Detail: [slice-764.md](docs/changelog/slice-764.md).
 
-**Fuzz harness (slice 737): build every class to any level 1-20**
-`FUZZ_MAX_LEVEL` 6 → 20, and the fuzz auto-leveler now fails loud: `drainPendingChoices` resolves each choice via a deterministic legal-option-set picker (first-N first — byte-identical at the shipped levels — then a bounded combination fallback) and throws if none is legal; `levelUpTo` throws if the character doesn't reach the target level or leaves a dangling choice; `runBattle` no longer swallows a level-up failure (and skips statblock monsters). So `runBattle({ level })` reliably builds every `CLASS_POOLS` class and its opponent to any level 1-20 (correct HP / proficiency / spell slots) for the dnd-web 1-20 picker, instead of silently leaving a character at L1. New `tests/integration/combat-fuzz-level-range.test.ts` sweeps every class L2-20 (player + opponent) + an L20 combat-validity spot-check. L1-6 builds are byte-identical (goldens + fuzz matrix unchanged). NOTE: pack feature rows above ~L6 are still sparse, so high-level fuzz characters are correctly-leveled but under-featured until that content lands.
-Detail: [slice-737.md](docs/changelog/slice-737.md).
+**Feat (slice 763): reaction affordances (G1) — discovery + trigger correlation**
+Closes the biggest affordance gap: the reaction category was undiscoverable from `engine.query.*`. New `availableReactions(state, encounterId, combatantId)` → `{ id, label, trigger, enabled, reason? }[]` (owned reactions + their trigger kind, disabled when a condition blocks or the reaction is spent), and `reactionsForTrigger(state, encounterId, reactorId, triggerEvent)` → `{ id, label, intent }[]` (the correlation helper: given an `AttackRolled`/`DamageApplied`/`SpellCastDeclared`, ready-to-commit typed intents with params pre-filled; the consumer dispatches by `intent.type` to the matching planner). Wired + planner-faithful (verified by dispatching every correlated intent to its planner): Shield, Cutting Words, Uncanny Dodge, Counterspell. Deferred (framework-ready; need more than a single event + class check): Stone's Endurance (resolved ancestry), Protection (positional + style), Countercharm (charm/frighten context absent from SaveRolled), Deflect Attacks (attack linkage), Opportunity Attack (positional). Additive query surface.
+Detail: [slice-763.md](docs/changelog/slice-763.md).
 
-## 0.6.0-alpha.0 - 2026-06-05
+**Feat (slice 762): bonus-action registry — Innate Sorcery + Off-Hand Attack**
+Adds the two cleanly-fitting bonus-action features the completeness sweep found missing from `bonusActions` (drivable but undiscoverable). Innate Sorcery (Sorcerer self-buff, spends `innate-sorcery`, disabled `already-active` while active) + Off-Hand Attack (two-weapon, creature target, available when wielding a `light` weapon — so the descriptor's `owns` was widened to `(character, state, content)` to read equipped gear). `InnateSorcery` added to the `planIntent` dispatch (useOption routes it) and removed from the planner-wiring allowlist; `OffHandAttack` was already dispatched. Deferred (need param-bag extensions): Paladin's Smite (slot + triggering attack), Conjure Pact Weapon (weapon-definition choice), Clouds Jaunt (destination); Metamagic excluded (a spell-cast modifier, not a menu action).
+Detail: [slice-762.md](docs/changelog/slice-762.md).
 
-**Release (slice 701): bump to 0.6.0-alpha.0**
+**Fix (slice 761): bonusActions gates on the encounter being active**
+`isActiveTurn` didn't check `encounter.status`, so in a created-but-not-started ('planning') encounter — `activeIndex` 0, no `activeEncounterId` — combatant 0 looked "active" and the encounter-only options (Cunning Action, Flurry, etc.) showed enabled, but their planners throw "only in an active encounter." Now requires `status === 'active'`. Verified with a planner cross-check. Query-side only.
+Detail: [slice-761.md](docs/changelog/slice-761.md).
 
-Promotes the post-0.5.0 cohort (slices 697-700) to a tagged release. `package.json` bumps `0.5.0-alpha.0` → `0.6.0-alpha.0`; `package-lock.json` updated to match. `SCHEMA_VERSION` stays 1 (no persisted-shape changes). Net effect over 0.5.0: positioned Push now lands on a legal cell (an engine correctness fix), tactical arenas are richer (irregular rock borders, `difficult` + `water` terrain, occasional fenced pens), and the `normalizeEvents` determinism oracle handles compound ids — while the tactical movement policy itself is unchanged from 0.5.0 (the slice-697 convergence push was reverted in slice 699, so battles still accept draws).
+**Fix (slice 760): legalMoveDestinations honors the prone stand-up surcharge**
+`remainingMovementFeet` (feeding `legalMoveDestinations` + the `availableActions` move gate) ignored Prone, returning the full speed budget — but `planMove` charges a `floor(speed/2)` stand-up surcharge on a prone move, so the query offered destinations the planner would reject. Now subtracts the surcharge (effective travel = `maxThisTurn - feetMoved - standUpCost`), matching the planner. Verified with a planner cross-check (prone speed-30 mover reaches 15 ft, not 20). Query-side only.
+Detail: [slice-760.md](docs/changelog/slice-760.md).
 
-**Breaking:** none. No engine `src/` public surface changed; `pushDestination` is an internal derive helper (not in the public barrel). `docs/breaking-changes-queued.md` was empty at cut time.
+**Fix (slice 759): spell-target affordance fidelity — Spare the Dying + AOE encounterId**
+Two `legalSpellTargets` bugs from the correctness sweep. (1) The slice-757 dying-target fix was incomplete: it keyed on `resolves === 'heal'`, but a `stabilize` spell resolves as `'auto'`, so Spare the Dying returned zero legal targets — even though its only valid target is a 0-HP creature (the planner requires `hp.current === 0`). `includeDefeated` now also covers `stabilize` mechanics. (2) `aoePlacementPoints` read `state.activeEncounterId` instead of the `encounterId` argument, so AOE placement cells were empty for any non-active / not-yet-started encounter; now threads `encounterId`. Query-side only.
+Detail: [slice-759.md](docs/changelog/slice-759.md).
 
-**RNG stream:** `'none'` (positionless) battles are byte-identical (fuzz-matrix + replay-equivalence pass unchanged). Tactical per-seed transcripts differ from 0.5.0 (the Push fix changes positioned shove destinations; the arena generator changed), but tactical mode is new this release cycle and behind the `movement: 'tactical'` option, so no consumer pins a tactical transcript across the boundary.
+**Fix (slice 758): attack affordance fidelity — ranged long range + Extra Attack**
+Two affordance-layer bugs (found by the correctness sweep) where `engine.query.*` disagreed with the attack planner. (1) `weaponRangeFeet` capped ranged reach at `rangeNormal`; the planner allows out to `rangeLong` (attack with Disadvantage), so `legalTargets` omitted legal long-range targets and `availableActions` wrongly said `no-target-in-range`. Now uses `rangeLong ?? rangeNormal`. (2) `availableActions` disabled `attack` the instant the action was used; the planner allows further attacks while `attacksMadeThisTurn < maxAttacksPerAction`, so a Fighter mid-Extra-Attack was shown attack-disabled. Now mirrors `planActionEconomyForAttack` (Dash/Disengage/Dodge keep the once-per-action gate). Query-side only; planner + event shapes unchanged.
+Detail: [slice-758.md](docs/changelog/slice-758.md).
 
-**Feat (slice 700): richer tactical arenas (irregular rock border, terrain types, fenced pens)**
-Rewrites `generateArenaMap`: an irregular per-seed rock border (smooth edge random walks, so the playable shape varies by seed), fewer hard obstacles (impassable cover 0.18 → 0.07) plus passable `difficult` + `water` terrain, and an occasional fenced pen (an impassable ring with a guaranteed non-corner side gate, so it always has a real entrance) on the larger map. Dims enlarged a little (duel 18×13, squad 22×16). Connectivity stays structural via a protected spawn-to-spawn corridor (no border/fence/pillar can disconnect A↔B); deterministic; `'none'` unaffected (tactical-only). Verified over seeds 1-100: 0 connectivity failures, fences ~15% of seeds, every pen interior reachable from a spawn, draw rate unchanged (3.8%), 0 illegal moves. CHANGELOG note: this slice also evicted the 0.4.0-alpha.0 release narrative to [released-versions-0.4.0-alpha.0.md](docs/changelog/released-versions-0.4.0-alpha.0.md) (doc-size discipline).
-Detail: [slice-700.md](docs/changelog/slice-700.md).
+**Fix (slice 757): healing spells can target a dying ally (`legalSpellTargets`) — pattern-fix**
+The pattern-check sibling of slice 756: `legalSpellTargets` routed every creature-target spell through a helper that excluded all 0-HP combatants, so a downed ally was wrongly omitted from a healing spell's legal targets (reviving a dying creature is the primary use of Healing Word / Cure Wounds). `creatureCandidatesInRange` gains an `includeDefeated` flag; `legalSpellTargets` passes `resolves === 'heal'`. Offensive / buff spells unchanged (still exclude the defeated). New test: Healing Word includes a 0-HP creature; Fire Bolt still excludes it.
+Detail: [slice-757.md](docs/changelog/slice-757.md).
 
-**Revert (slice 699): restore the slice-695 kiting tactical policy (accept draws again)**
-Undoes the slice-697 convergence push: `planTacticalMove` goes back to the slice-695 flee/kite/close cascade, so tactical battles stalemate to draws again (≈4% over seeds 1-40 × {1v1,2v2}; seed 42 1v1 draws at the round cap), as at the 0.5.0 release — per request, forcing convergence wasn't wanted. **Kept** as orthogonal correctness improvements: slice 698 (Push lands on a legal cell) and the slice-697 `normalizeEvents` compound-ulid oracle fix. `policy.ts` / `constants.ts` / `move-policy.ts` + their unit tests restored to slice-695; the slice-697 convergence assertion removed (the slice-698 move-legality guard stays). `'none'` byte-identical; no API change.
-Detail: [slice-699.md](docs/changelog/slice-699.md).
+**Engine (slice 756): bonus-action affordances — metered amount + creature targets**
+Read-only additions so a consumer can drive amount / target selection for `engine.plan.useOption` (the dnd-web Bonus Actions menu). `BonusActionOption` gains `requiresAmount` (mirrors the descriptor flag) + `maxAmount?` (the spendable pool, e.g. the paladin's Lay on Hands points; overheal clamping stays engine-side). New `engine.query.bonusActionTargets(state, encounterId, combatantId, optionId)` → `{ combatantId, position? }[]` lists an option's legal targets honoring its reach + self / defeated rules (Lay on Hands = touch incl. a dying ally; Bardic = 60 ft excl. self; Flurry = reach), via a new per-descriptor `targeting` spec on all four creature-target options (pattern-check: no silent empty picker). Range is chebyshev on positions (positionless → no range filter). Additive query surface; `useOption` dispatch + event shapes byte-identical.
+Detail: [slice-756.md](docs/changelog/slice-756.md).
 
-**Fix (slice 698): Push forced-movement lands on a legal cell, not an off-grid vector**
-The weapon-mastery Push (and, by pattern-check, Open Hand Push) computed the shove destination by adding a *cell count* to a *feet* coordinate with no map validation, so a target could be shoved off-grid onto cover or off the map (seeds 19, 29 at 2v2). Slice 697's convergence surfaced it (melee Push hits now land). New pure `pushDestination` helper (`src/derive/pathing.ts`) steps the shove cell-by-cell and stops against the first out-of-bounds / impassable / occupied / closed-door cell, returning a grid-aligned position; both Push planners now use it. Verified: 0 illegal `CombatantMoved`/final positions across seeds 1-40 × {1v1,2v2} (matrix assertion added). Corrects positioned Push for every consumer, not just the fuzz. `'none'` byte-identical (positionless → Push emits no move); no API change.
-Detail: [slice-698.md](docs/changelog/slice-698.md).
+**Driver/infra (slice 755): re-wire the combat-fuzz pre-damage reactions to the two-phase attack API**
+Re-wires the slice-750/753 pre-damage reaction window onto the slice-754 engine seam: the resolver takes the attack intent and runs `engine.plan.attackRoll` → reaction cascade (Shield / Protection / Cutting Words) → `engine.plan.attackDamage`, so a prevented hit is committed from the roll alone and the damage phase is **never planned** (no discarded damage dice / on-hit riders / RNG, replacing `dropDamageChain` slicing). `engine.plan.attackDamage` is called at most once, only when the hit stands. `'none'` is untouched (byte-identical); `'auto'` shifts only where a reaction prevents a hit (intended; still deterministic + replay-equivalent, existing anchors still fire). New matrix guard: a Shield-prevented swing rolls no `DamageRolled` at all; the Protection resolver test reworked to drive a real two-phase attack.
+Detail: [slice-755.md](docs/changelog/slice-755.md).
 
-**Fix (slice 697): tactical movement converges instead of stalemating** — **Reverted by slice 699.**
-The round-leashed `planTacticalMove` convergence model is no longer in the tree (the user opted to accept draws). Its `normalizeEvents` compound-ulid oracle fix was kept. Original detail (for the record): [slice-697.md](docs/changelog/slice-697.md).
+**Engine (slice 754): two-phase attack API (`attackRoll` / `attackDamage`)**
+Splits `resolveAttack` into a roll phase (action-economy prelude + range/LoS/loading gates + the d20 attack roll, emitting `AttackRolled`) and a damage phase (the damage chain for a hit that stands), exposed as `engine.plan.attackRoll(state, intent)` → `{ events, roll }` and `engine.plan.attackDamage(roll)` → `{ events }`. A consumer opens a reaction window between them (RAW: `AttackRolled.hit` is decided in phase 1; a reaction may then prevent the damage), and the damage dice / on-hit riders are never rolled for a prevented hit. `engine.plan.attack` (bundled) composes the two byte-identically — the entire existing golden/fuzz/replay net stays green unchanged, plus a new composition golden pins `attackRoll ++ attackDamage === attack`. Both sub-planners are allowlisted in the planner-wiring audit (consumer-orchestrated, not their own intent). Also evicted the 0.10.0-alpha.0 release narrative to [released-versions-0.10.0-alpha.0.md](docs/changelog/released-versions-0.10.0-alpha.0.md) (doc-size discipline).
+Detail: [slice-754.md](docs/changelog/slice-754.md).
 
-**Release (slice 696): bump to 0.5.0-alpha.0**
-Promotes the post-0.4.0 cohort (slices 689-695) to a tagged release: cross-repo sibling-consumer infra (689-692) + tactical movement support for the combat fuzz (693-695). No engine-API breaking change; `'none'` byte-identical; `SCHEMA_VERSION` stays 1.
-Detail: [slice-696.md](docs/changelog/slice-696.md).
-
-## 0.3.0-alpha.0 - 2026-06-05
-
-**Release (slice 687): bump to 0.3.0-alpha.0**
-
-Promotes the strict-RAW completeness cohort (slices 633-682, 50 slices) to a tagged release. The minor pre-1.0 bump (per [VERSIONING.md](VERSIONING.md)'s escape hatch) marks this cycle's chapter status — **the engine is strict-RAW-complete for L1, L2, and L3**: every documented "engine *could* enforce" arm is closed; engine-scope-excluded arms (positions, plane, scene) stay consumer-managed by design. `package.json` bumps `0.2.0-alpha.0` → `0.3.0-alpha.0`; `package-lock.json` updated to match. `SCHEMA_VERSION` stays 1: no breaking persisted-shape changes in this cycle.
-
-This release intentionally excludes the spatial combat support cycle (slices 683-685) and the in-repo web demo retirement (slice 686). Those land in 0.4.0-alpha.0 immediately above.
-
-### Highlights
-
-- **Strict-RAW completeness for L1+L2+L3 (slices 677-682).** The slice-660 deferral catalog ("engine *could* enforce but doesn't") is now closed. New marker-effect primitives `HalvesStrengthWeaponDamage` (slice 678; enfeebled now actually halves STR-based weapon damage), `GrantDeathSaveAdvantage` (slice 679; closes Beacon of Hope's death-save arm), and Slow's full enforcement triplet — no-reactions + action-OR-bonus (slice 680), max-one-attack cap (slice 681), and the V/S spellcasting d20 fizzle gate (slice 682). `recurring-save` metadata (slice 677) handles end-of-turn save-to-end arms for Shining Smite, Ray of Enfeeblement, and Slow uniformly. `EFFECT_KINDS` grew from 61 entries to 64 (63 primitives + Custom).
-- **L2 + L3 RAW-completeness closures (slices 633-664).** The L2 punch-list audit (slice 633) gated five planners: Tactical Mind (Fighter L2, slice 634), Divine Spark (Cleric L2, slice 635), Uncanny Metabolism (Monk L2, slice 636), Magical Cunning (Warlock L2, slice 637), and the eldritch-invocation catalog fix (slice 638). L3 floor audit (slice 645) closed L3 planners Steady Aim (Rogue L3, slice 646), Fast Hands (Thief L3, slice 647), and Deflect Attacks (Monk L3 reduction arm slice 648, counter arm slice 658, damage-pipeline auto-integration slice 664). Long-rest OfferChoice replay (slice 660; closes Circle of the Land land swap) plus its supersession primitive (slice 661). New `GrantAbilitySubstitution` effect (slice 662) and always-enforce mode (slice 663) generalize Primal Knowledge (slice 659) into a reusable shape.
-- **Spell-mechanics fills (slices 665-672).** Non-damage zone primitive lands Zone of Truth, Tiny Hut, Wind Wall (slice 665). On-hit rider via castSpell wires Shining Smite + Ray of Enfeeblement (slice 666). Phantasmal Force via existing recurring rider (slice 667). Levitate (slice 668). Dragon's Breath as on-action rider (slice 669). Slow as composite area condition (slice 670). Beacon of Hope composite buff (slice 671). Blink's per-turn ethereal toggle (slice 672) — L3 spell wiring 100% wired-or-narrative.
-- **Schema + ergonomics (slices 654, 657, 675).** Subclass-selection cascade (slice 654; OfferChoice fires on subclass-grant level, slot pre-allocated by slice 31 spellcasting). New `partialShortFullLong` recharge primitive (slice 657; Channel Divinity, Lay on Hands, etc.). `seedResourcesFromContent` helper (slice 675; closes the slice-660 documented deferral around per-rest recharge ergonomics).
-- **Audit + fuzz expansion (slices 633, 639-645, 649-651, 653, 655-656, 673-676).** L2 + L3 RAW floor audits, fuzz matrix extended to L3 (slice 651, widened to 30 seeds/cell post-cycle in slice 674), L1+L2 multiclass build audit (slice 656), L1+L1+L1 triple multiclass audit (slice 673; all 220 distinct triples), and the multiclass-fuzz floor (slice 676; 50 random L1+L1 builds). Pack-integrity allowlist sync (slice 676) for 8 marker conditions added in the cycle.
-
-### Breaking changes
-
-None. The cycle is fully additive: new effect primitives, new optional fields on existing events, new planners, new conditions, new content. No removed or renamed public exports; no shipped event shape contracted; no schema migration required.
-
-### RNG-stream changes (per-seed reproducibility shifts)
-
-Per [docs/determinism.md](docs/determinism.md), per-seed RNG reproducibility is version-sensitive. The following slice in this cycle changed RNG consumption patterns:
-
-- Slice 682: Slow's V/S spellcasting fizzle gate rolls an extra d20 before the spell resolves whenever a slowed caster casts a V or S spell. A transcript from `combat-fuzz --seed N` generated on `0.2.0-alpha.0` will NOT byte-match the same command on `0.3.0-alpha.0` if any cast in the transcript went through this code path. Consumers depending on cross-version per-seed reproducibility should snapshot the resulting `CampaignState` alongside the seed.
-
-### Cycle inventory
-
-Per-slice detail for slices 633-687 lives in `docs/changelog/slice-NNN.md` files (the slice-628 convention). The pointer list below indexes the cycle.
-
-**Engine (slice 682): Slow's spellcasting V/S d20 fizzle gate**
-**Sixth and final slice of the strict-RAW completeness cycle (677-682).** New `SpellCastFizzledEvent` (no-op reducer, transcript-only marker). `planCastSpell` rolls a d20 before SpellCastDeclared when the caster has `slowed-by-spell-active` AND the spell has V or S components; on ≤ 10 emits SpellCastDeclared + SpellCastFizzled + ActionEconomyConsumed and returns early (slot preserved per RAW). 3 new tests. Snapshot regen for `enfeebled` (now wired via slice 678's HalvesStrengthWeaponDamage). **Engine is now strict-RAW-complete for L1, L2, L3** — every documented "engine *could* enforce" arm is closed; engine-scope-excluded arms (positions, plane, scene) stay consumer-managed by design.
-Detail: [slice-682.md](docs/changelog/slice-682.md).
-
-**Engine (slice 681): Slow's max-one-attack cap**
-Reducer-side gate in `applyActionEconomyConsumed` `case 'attack'`: slowed combatant whose `attacksMadeThisTurn >= 1` throws. Reuses slice 680's `isSlowedBySpell` helper. Extra Attack and other multi-attack features are capped at 1 for the duration. 2 new tests; non-slowed baseline preserved.
-Detail: [slice-681.md](docs/changelog/slice-681.md).
-
-**Engine (slice 680): Slow's no-reactions + action-OR-bonus restrictions**
-Reducer-side gate in `applyActionEconomyConsumed`: checks the combatant for `slowed-by-spell-active` and enforces (a) reactions blocked, (b) action-OR-bonus mutual exclusion. Hardcoded condition id (single RAW user). Single-file change; 5 new tests; non-slowed baseline unchanged.
-Detail: [slice-680.md](docs/changelog/slice-680.md).
-
-**Engine + content (slice 679): `GrantDeathSaveAdvantage` (Beacon of Hope arm)**
-Closes the Beacon of Hope death-save advantage arm (pre-679 consumer-managed). New marker effect (63 primitives total); EffectAccumulator gains mark/has methods; `planDeathSaveAtTurnStart` consults the bearer's effect stack and rolls 2d20 (max) when set. Halfling Luck reroll-on-nat-1 composes on top. `beacon-of-hope-active` projects the marker. 3 new tests.
-Detail: [slice-679.md](docs/changelog/slice-679.md).
-
-**Engine + content (slice 678): `HalvesStrengthWeaponDamage` primitive (enfeebled enforcement)**
-New marker effect (62 primitives total). `EffectAccumulator` gains `mark`/`has` methods; `planAttack` halves the base weapon damage when the attacker carries the flag AND `damageAbility === 'STR'`. Riders (smite/sneak/on-hit dice) pass through unhalved per the RAW "weapon's damage line" reading. `enfeebled` condition projects the marker. 3 new tests including same-seed greatsword (halved) and rapier (unaffected, finesse → DEX) comparisons.
-Detail: [slice-678.md](docs/changelog/slice-678.md).
-
-**Content (slice 677): recurring-save spell-ends arms (Shining Smite, Ray of Enfeeblement, Slow)**
-**First slice of the strict-RAW completeness cycle (677-682).** Zero engine code. Three conditions gain `recurringSave` metadata so `planTickRecurringSave` handles their end-of-turn save-to-end arms uniformly with Hold Person's pre-existing wiring: `shining-smite-target-illuminated` + `enfeebled` use `{CON, turnEnd, removeCondition}`; `slowed-by-spell-active` uses `{WIS, turnEnd, removeCondition}`. DC resolved from caster's spell DC via the AppliedCondition's `sourceCharacterId`. Phantasmal Force NOT included (RAW arm is an Investigation check, not a save). 6 new tests.
-Detail: [slice-677.md](docs/changelog/slice-677.md).
-
-**Tests (slice 676): multiclass fuzz audit + pack-integrity allowlist sync**
-**Sixteenth and final slice of the post-L3-RAW completeness push.** Closes the slice-644 deferred "multiclass fuzz support" follow-up. New `tests/audit/multiclass-fuzz.test.ts`: 50 seeds of random L1+L1 distinct-class characters; each builds + derives with `ac.total > 0` without throwing. Pack-integrity `EFFECT_LESS_OK` allowlist extended with 8 marker conditions added in slices 667/669/672 (phantasmal-force-active, 5 dragons-breath variants, blink-active, blink-ethereal-active) with documented rationale. **The 16-slice cycle is closed: L1+L2+L3 spell wiring 100% wired-or-narrative, all slice-660 RAW gaps closed, multiclass + fuzz + recharge ergonomics covered. Ready to tag.**
-Detail: [slice-676.md](docs/changelog/slice-676.md).
-
-**Engine (slice 675): `seedResourcesFromContent` helper**
-Closes the slice-660 documented deferral. New helper `seedResourcesFromContent(character, content): Character` walks the character's effect stack for `GrantResource` effects and auto-populates `character.resources` with proper `max` (formula-evaluated) and `recharge` (incl. slice-657's `partialShortFullLong` primitive). Highest-`max` wins per resourceId; idempotent for pre-existing entries; pure transform. Opt-in helper alongside createPC (signature stable). 5 new tests. Resolves the manual "consumer must hand-author Channel Divinity's `partialShortFullLong` recharge" drift trap.
-Detail: [slice-675.md](docs/changelog/slice-675.md).
-
-**Tests (slice 674): L3 fuzz floor (widen seed coverage post-L3-cycle)**
-Slice 651 added L3 to the fuzz matrix (LEVELS = [1,2,3]); slice 674 widens SEEDS_PER_CELL 20 → 30 post the 8 spell-wiring slices (665-672) + L3 RAW closures (661-664) that grew the L3 event surface. 36 cells × 30 seeds = 1,080 battles per CI run; ~13s wall-clock. Header history updated; describe title widened from "slice 644: (L1+L2)" to "slice 644 / 651 / 674: (L1+L2+L3)".
-Detail: [slice-674.md](docs/changelog/slice-674.md).
-
-**Tests (slice 673): L3 triple-class multiclass audit (L1+L1+L1, C(12,3) = 220)**
-Sibling of slices 642 (L1+L1 pairs, 66) and 656 (L1+L2 ordered pairs, 132). Audits all 220 distinct L1+L1+L1 triples: each builds via `CharacterSchema.parse`, commits CharacterCreated, and derives via `engine.derive.character` without throwing. All-14 ability scores clear every RAW multiclass prerequisite. 221 tests (220 triples + 1 enumeration). ~3s wall-clock. First of the 4 audit/polish slices in this cycle.
-Detail: [slice-673.md](docs/changelog/slice-673.md).
-
-**Engine + content (slice 672): Blink (cross-plane per-turn ethereal toggle)**
-Closes the final L3 deferred spell — **L3 spells are now 100% wired-or-narrative.** Buff applies `blink-active` marker; new planner `planBlinkTurnEnd` rolls d20 at the end of each of the bearer's turns and applies `blink-ethereal-active` on 11+. Plane semantics + 10-ft re-emergence + duration cleanup are consumer-managed (engine has no positions or plane model). 4 new tests. L3 wired 31 → 32 (0 deferred); aggregate 208/339 → 209/339; conditions 155 → 157. **L1+L2+L3 spell wiring is now 100% wired-or-narrative.**
-Detail: [slice-672.md](docs/changelog/slice-672.md).
-
-**Content (slice 671): Beacon of Hope (composite-buff condition)**
-Closes 1 deferred L3 spell, zero engine change. Buff applies `beacon-of-hope-active` to each target. Condition projects `SetAdvantage on save:WIS` + `GrantMaxHealingDice` (existing primitive — each healing spell hits max). Death-save advantage arm deferred (needs threading effect stack through `planDeathSaveAtTurnStart`). 3 new tests. L3 wired 30 → 31 (1 deferred); aggregate 207/339 → 208/339; conditions 154 → 155.
-Detail: [slice-671.md](docs/changelog/slice-671.md).
-
-**Content (slice 670): Slow (composite area condition)**
-Closes 1 deferred L3 spell. Zero engine change. Slow: `save WIS -> slowed-by-spell-active`. New composite condition projects walk *0.5 / AC -2 / DEX-saves -2 — the load-bearing combat arms. Remaining RAW arms (no reactions / one-action-or-bonus / max-one-attack / spellcasting 50% gate) stay consumer-managed reads of the condition. Auto-cleared on concentration drop. 3 new tests. L3 wired 29 → 30 (2 deferred); aggregate 206/339 → 207/339; conditions 153 → 154.
-Detail: [slice-670.md](docs/changelog/slice-670.md).
-
-**Engine + content (slice 669): Dragon's Breath (on-action rider via dedicated planner)**
-Closes the final L2 deferred spell — **L2 is now 100% wired-or-narrative.** Buff mechanic with `casterChoosesVariant` over 5 damage types applies a marker (`dragons-breath-<type>-active`) on the touched ally. New planner `planExhaleDragonsBreath({ characterId, damageType, targetIds })`: enforces the marker, derives slot level from the caster's concentration EffectInstance (3d6 + 1d6/slot above 2), computes the caster's spell save DC, rolls DEX save for each target (full damage on fail, half on success) with full mitigation + concentration-on-damage. Wired into performIntent dispatch + planner-wiring audit. 5 new conditions, 4 new tests. L2 wired 41 → 42 (0 deferred); aggregate 205/339 → 206/339; conditions 148 → 153.
-Detail: [slice-669.md](docs/changelog/slice-669.md).
-
-**Content (slice 668): Levitate (flight/hover via buff + levitating-active)**
-Closes 1 deferred L2 spell, zero engine change. The `ModifySpeed fly` primitive (used by Fly + Dragon Wings) + the existing `buff` mechanic deliver the full RAW shape. Levitate gets the buff mechanic; new `levitating-active` condition projects `ModifySpeed fly 20` so the effective speed stack reflects RAW. Horizontal-block + 20-ft-up/down move-action are consumer-managed (engine has no positions). 4 new tests. L2 wired 40 → 41 (1 deferred); aggregate 204/339 → 205/339; conditions 147 → 148.
-Detail: [slice-668.md](docs/changelog/slice-668.md).
-
-**Content (slice 667): Phantasmal Force via existing recurring-rider primitive**
-Closes 1 deferred L2 spell with zero engine change. The existing `recurring` mechanic schema comment explicitly cited Phantasmal Force as a canonical user; the engine had the primitive, the spell just needed authoring. Composition: `save INT -> phantasmal-force-active on fail` + `recurring damage 1d6 psychic` (consumer drives `planTickRecurring` on the target's turn). New `phantasmal-force-active` marker condition (auto-cleared on concentration drop via slice-110 sweep). Disbelieve-on-INT-investigation arm + "damage applies if phantasm could damage" arm stay consumer-driven (the engine doesn't model phantasm semantics). 4 new tests. L2 wired 39 → 40 (2 deferred). Aggregate 203/339 → 204/339; conditions 146 → 147.
-Detail: [slice-667.md](docs/changelog/slice-667.md).
-
-**Engine + content (slice 666): on-hit rider via castSpell (shining-smite, ray-of-enfeeblement)**
-Second spell-wiring primitive of the post-L3-RAW push; closes 2 deferred L2 spells. New `conditionOnHit?: string` on the attack mechanic (plus `damageDice` now optional) — Ray of Enfeeblement: ranged spell attack with `conditionOnHit: 'enfeebled'`, no damage emitted; concentration drop sweeps the condition off the target via `sourceEffectInstanceId`. Shining Smite: existing buff + OnEvent infrastructure (zero engine change for this one) — `shining-smite-active` carries two consume-on-trigger OnEvent riders (+2d6 radiant on first melee hit + apply target debuff `shining-smite-target-illuminated` for advantage-to-attackers). 3 new conditions, 6 new tests; L2 spell wiring 37 → 39 (3 deferred). Aggregate 201/339 → 203/339 wired; conditions 143 → 146. Save-ends arms for both spells stay consumer-driven (no recurring-save mechanic today).
-Detail: [slice-666.md](docs/changelog/slice-666.md).
-
-**Engine + content (slice 665): non-damage area zone primitive (zone-of-truth, tiny-hut, wind-wall)**
-First spell-wiring primitive of the post-L3-RAW push; closes 3 deferred L2/L3 spells with one event. New `SpellEffectStarted` event + `applySpellEffectStarted` reducer (sibling of ConcentrationStarted for non-concentration spells; creates an `EffectInstance` with `requiresConcentration: false` and does NOT claim the caster's concentration slot). Cleanup re-uses `ConcentrationBroken` (cleanup helper is type-agnostic) so `planExpireSpellDurations` works for both. planCastSpell extracts zone-payload computation as a single source of truth + adds an `else if (hasZoneMechanic)` branch for non-concentration zones. zone-of-truth + tiny-hut get `[{kind:'zone'}]` mechanic; wind-wall gets `targeting: { shape: 'line', size: 50 }` + the zone mechanic. L2 spell wiring 36 → 37 wired (5 deferred); L3 27 → 29 wired (3 deferred). 5 new tests; aggregate 198/339 → 201/339 wired across README / status / getting-started / starter-pack-gaps; doc-counts audit green.
-Detail: [slice-665.md](docs/changelog/slice-665.md).
-
-**Engine (slice 664): Deflect Attacks damage-pipeline auto-integration**
-Closes the slice-660 deferral. `planDeflectAttacks` now emits a `Healed { amount: min(reduction, incomingDamage), source: 'deflect-attacks' }` after the marker event so the engine restores the deflected damage automatically — consumers no longer manually subtract reduction from the pending DamageApplied. New `appliedReduction` field on `DeflectAttacksOutcome`. `applyHealed`'s maxHP clamp + wasUnconscious branch handle over-heal cap + transient-0-HP edge cases for free. 6 new tests; slice-648 9 tests still green. **All three slice-660 RAW behavior gaps now closed.**
-Detail: [slice-664.md](docs/changelog/slice-664.md).
-
-**Engine (slice 663): always-enforce ability substitutions**
-Closes the slice-660 "always-enforce mode for ability substitutions" deferral. `planAbilityCheck` now always validates `(ability, skill)`: accept iff the ability matches `SKILL_ABILITY[skill]` (the RAW default) OR a `GrantAbilitySubstitution` on the bearer's effect stack covers the combo and its `activeWhileConditionId` (if set) is satisfied. Otherwise throw. The `useAbilitySubstitution: boolean` field is retained as a no-op for back-compat (substitution is checked implicitly now). Pre-663 permissive behavior (any ability for any skill) is gone. 6 new tests + slice-659/662 tests updated. Full suite green (no other engine call site relied on permissive combos).
-Detail: [slice-663.md](docs/changelog/slice-663.md).
-
-**Engine + content (slice 662): generic `GrantAbilitySubstitution` Effect primitive**
-Closes the slice-660 "generic primitive" deferral (and the original slice-659 follow-up). New effect kind `GrantAbilitySubstitution { ability, skills, activeWhileConditionId? }`. The slice-659 hardcoded Primal Knowledge gate (5 constants + multi-branch check) is replaced with an effect-stack walk + generic match. Primal Knowledge content ships the new effect; future ability-substitution features are content-only additions. Behavior preserved; error messages shifted to a generic shape (slice 659 tests updated). EFFECT_KINDS count 61 → 62 (61 primitives + `Custom`); doc-counts updated across README / status / concepts / authoring-content-packs.
-Detail: [slice-662.md](docs/changelog/slice-662.md).
-
-**Engine + content (slice 661): OfferChoice `lifecycle: 'supersede'` (land-swap supersession)**
-Closes the slice-660 documented deferral. New optional `lifecycle?: 'accumulate' | 'supersede'` on `OfferChoiceEffect`, threaded through `ChoiceRequiredEvent` + `PendingChoice` + `collectResolvedChoiceEffects`. When `'supersede'`, the derive layer drops all but the latest resolved PendingChoice per promptKey (replay-honest: prior resolutions stay in state). Default `'accumulate'` preserves slice-618 behavior for every existing OfferChoice. Circle of the Land Spells ships `lifecycle: 'supersede'` so a druid who long-rests with Arid then Polar has only Polar's spells prepared, per RAW. First slice of the post-L3-RAW push (~16-slice plan to close L1+L2+L3 deferrals before release tag).
-Detail: [slice-661.md](docs/changelog/slice-661.md).
-
-**Engine + content (slice 660): `offerLongRestChoices` (Circle of the Land land swap)**
-**Eighth and final slice of the L3 RAW-completeness push.** New planner `engine.plan.offerLongRestChoices` — sibling of slice-618's `offerCharacterChoices` for onLongRest OfferChoices. Dedupes against unresolved PendingChoices; lets resolved ones re-fire on subsequent long rests (RAW: "each long rest = new pick"). Circle of the Land Spells content flipped from `when: 'onAcquire'` → `when: 'onLongRest'`. Land-swap supersession (clearing the prior land's grants when a new land is picked) documented as deferred. **Land-swap supersession closed by slice 661.**
-Detail: [slice-660.md](docs/changelog/slice-660.md).
-
-**Engine (slice 659): Primal Knowledge ability-substitution gate**
-RAW Barbarian L3 second arm: "while raging, may use STR for Acrobatics / Intimidation / Perception / Stealth / Survival." Slice 649 wired the first arm (OfferChoice for the extra skill prof); this slice wires the second via a new opt-in `useAbilitySubstitution: boolean` on `AbilityCheckIntent`. When set, planner enforces 4 gates (Barbarian L3+, raging, ability=STR, skill in 5-skill set); throws on failure. Default unset preserves permissive back-compat.
-Detail: [slice-659.md](docs/changelog/slice-659.md).
-
-**Engine (slice 658): Deflect Attacks counter arm**
-Closes the slice-648 deferred counter arm. New optional `counterTargetId` on `DeflectAttacksIntent`; when supplied + reduction zeros incoming damage + monk has ≥1 ki, the planner spends 1 ki, rolls a DEX save against the counter target (DC = 8 + WIS + PB), and on failure deals 2 × Martial Arts die + DEX damage of the same type as the incoming attack. Range constraints (5 ft / 60 ft Total Cover) consumer-supplied. 5 new tests; back-compat with slice-648 reduction-only behavior preserved.
-Detail: [slice-658.md](docs/changelog/slice-658.md).
-
-**Engine + content + schema (slice 657): `partialShortFullLong` recharge primitive**
-Discovered during authoring: pre-657 short-rest reducer didn't honor the `recharge` field at all — every `recharge: 'shortRest'` was silently long-rest-only. Slice 657 fixes both gaps in one: new `'partialShortFullLong'` enum value, new optional `ResourceState.recharge` field (default undefined preserves pre-657 behavior), and `applyShortRestEnded` now honors cadences (`'shortRest'` = full restore, `'partialShortFullLong'` = +1 capped). 8 Channel Divinity + Wild Shape content grants updated. Audit pins in L2 + L3 floors updated to match.
-Detail: [slice-657.md](docs/changelog/slice-657.md).
-
-**Tests (slice 656): L1+L2 multiclass build audit**
-Sibling of slice 642's L1+L1 audit. Covers total-level-3 multiclass: one class at L1 + a different class at L2. Ordered pairs (Fighter1+Wizard2 ≠ Fighter2+Wizard1): 12 × 11 = 132 pairs. All 132 build + derive cleanly in ~345ms. Triple-class L1+L1+L1 (C(12,3) = 220) deferred to future hardening.
-Detail: [slice-656.md](docs/changelog/slice-656.md).
-
-**Tests (slice 655): L3 floor Section 7 — subclass L3 spell-list RAW pin**
-Pins each of the 4 fixed-list L3 subclass spell features (Life Domain Spells, Devotion Spells, Fiend Spells, Draconic Spells) against SRD 5.2.1. Verifies: (1) the exact array of granted spell ids matches RAW, (2) every GrantSpell uses `preparation: 'always-prepared'`, (3) every granted spellId exists in the pack's spells catalog. All 4 match RAW exactly. Druid Circle of the Land Spells uses an OfferChoice and is pinned separately by slice 653's Section 6.
-Detail: [slice-655.md](docs/changelog/slice-655.md).
-
-**Engine + schema (slice 654): subclass-selection cascade**
-Closes the second L3 RAW-completeness gap. planLevelUp at `newClassLevel === cls.subclassLevel` now emits a subclass-selection ChoiceRequired with the available subclasses as options + a `subclassChoiceForClassId` marker. planResolveChoice detects the marker and emits a new `SubclassChosen` event; the reducer assigns `enrollment.subclassId`. End-to-end cascade: Druid L2→L3 picks Circle of the Land, then re-invoking `offerCharacterChoices` surfaces the nested Circle Cantrip + Land Type choices. Old characters built with subclassId already set are unaffected (guard short-circuits the cascade).
-Detail: [slice-654.md](docs/changelog/slice-654.md).
-
-**Tests (slice 653): L3 floor Section 6 — OfferChoice cascade verification**
-Verifies the 3 L3 OfferChoices wired in slices 649/652 actually fire via `engine.plan.offerCharacterChoices` for a fresh L3 character: Barbarian Primal Knowledge (6 skill options), Druid Circle of the Land Cantrip (11 cantrip options), Druid Circle of the Land Spells (4 SRD lands). All 3 pass — the cascade is sound. First slice of the L3 RAW-completeness push (8-slice plan after the user requested it).
-Detail: [slice-653.md](docs/changelog/slice-653.md).
-
-**Content (slice 652): Druid Circle of the Land Spells (L3 tier)**
-Closes the last L3 content stub. SRD 5.2.1 ships 4 lands (Arid / Polar / Temperate / Tropical) — not 2014's 8. OfferChoice over 4 land options at L3, each granting 3 always-prepared spells (Arid: Blur / Burning Hands / Fire Bolt; Polar: Fog Cloud / Hold Person / Ray of Frost; Temperate: Misty Step / Shocking Grasp / Sleep; Tropical: Acid Splash / Ray of Sickness / Web). L5/L7/L9 tier expansions deferred to those tiers. **L3 punch list is now fully closed for content + planners.** Ready to tag `v0.4.0-alpha.0` ("L3 SRD complete").
-Detail: [slice-652.md](docs/changelog/slice-652.md).
-
-**Tests (slice 651): L3 fuzz matrix extension**
-Extends slice 644's fuzz matrix from `LEVELS = [1, 2]` to `[1, 2, 3]`. New cell count: 3 × 4 × 3 = **36 cells × 20 seeds = 720 battles** per CI run, ~7.3s wall-clock. L3 cells exercise everything the L3 cycle introduced (Steady Aim / Fast Hands / Deflect Attacks planners, Paladin Channel Divinity, scaled-to-3 resources, plus L3 subclass features composing with them). All 720 complete without throwing.
-Detail: [slice-651.md](docs/changelog/slice-651.md).
-
-**Tests (slice 650): L3 floor Section 5 — resource scaffolding pin**
-Mirrors slice 639/640's L2 resource pin pattern but for the four resources that scale to / come online at L3: Barbarian rage (max=3, longRest), Paladin channel-divinity (max=2, shortRest), Sorcerer sorcery-points (max=3 via formula, longRest), Monk ki (max=3 via formula, shortRest). Sorcerer + Monk formulas evaluate via `evaluateFormula` with a synthesized L3 `FormulaContext`. First of the L3 hardening cycle (mirror of L2's 639-644).
-Detail: [slice-650.md](docs/changelog/slice-650.md).
-
-**Content + audit (slice 649): L3 stub sweep (3 of 4)**
-Flips two content stubs from slice 645's Section 4: Barbarian Primal Knowledge ships an OfferChoice over the 6 L1 Barbarian skills (`oneOf: 1`); Druid Circle of the Land Cantrip ships an OfferChoice over the 11 Druid cantrips. Reclassifies Hunter's Lore as intentionally narrative (RAW reveals immunity info; no shown-information primitive). Section 4 reorganized into three groups (planner-wired-intentional, narrative, still-unwired). Only Circle of the Land Spells remains as a still-unwired content stub.
-Detail: [slice-649.md](docs/changelog/slice-649.md).
-
-**Engine + schema (slice 648): Monk L3 Deflect Attacks planner (reduction arm)**
-Reaction-style planner returning `DeflectAttacksOutcome { reduction, remainingDamage }` (mirrors `cuttingWords` / `shield` shape). Gates on Monk L3+, B/P/S damage, reaction-available. Reduction = 1d10 + DEX + monk level. Counter arm (Focus Point + DEX save + 2× Martial Arts die counter damage) and damage-pipeline auto-integration deferred. **Closes the last L3 planner xfail; all three L3 planner xfails are now wired (slices 646-648).** L3 punch list reduces to 4 non-planner content stubs + L3 hardening cycle.
-Detail: [slice-648.md](docs/changelog/slice-648.md).
-
-**Engine + schema (slice 647): Rogue Thief L3 Fast Hands planner**
-BA dispatcher: gates on Rogue L3+ Thief, emits `ActionEconomyConsumed { bonusAction } + FastHandsActivated { mode }` where mode is `'sleightOfHand' | 'utilize' | 'useMagicItem'`. Consumer chains to `planAbilityCheck` / `planUtilize` / `planUseItem` per mode. Marker-only event avoids double-action-consumption from inline composition. Closes the second L3 planner xfail; 1 remaining (planDeflectAttacks).
-Detail: [slice-647.md](docs/changelog/slice-647.md).
-
-**Engine + schema (slice 646): Rogue L3 Steady Aim planner**
-Two-arm self-effect using the per-turn flag pattern (mirrors Reckless Attack from slice 461): `steadyAimActive` consumed by next attack roll (new `SteadyAimActivated` + `SteadyAimConsumed` events); `speedZeroUntilEndOfTurn` consulted by `planMove` and cleared at next `TurnStarted`. Attack-side advantage applied in `resolveAttack` alongside the existing advantage sources. Closes the first L3 planner xfail; 2 remaining.
-Detail: [slice-646.md](docs/changelog/slice-646.md).
-
-**Tests (slice 645): CI-guarded "L3 SRD complete" floor audit**
-Companion to slice 619 (L1) and slice 633 (L2). 32-test audit across 4 sections: per-class L3 features (4 classes have named L3 features; 8 have only subclass selection), per-subclass L3 features (12 canonical subclasses), planner presence (5 wired + 3 xfail: Steady Aim, Fast Hands, Deflect Attacks), and 7 content-stub pins. Defines the L3 punch list before any planner work lands. Opens the L3 cycle.
-Detail: [slice-645.md](docs/changelog/slice-645.md).
-
-**Tests (slice 644): fuzz matrix audit (L1 + L2 across shapes + rests)**
-Supersedes slice 643's single-cell L2 fuzz floor. New matrix: 2 levels × 4 combat shapes (1v1 PC, 2v2 PC, 1v1 monster, 2v2 monster) × 3 rest cadences (none / short / long) × 20 seeds = **480 battles per CI run, ~5 sec wall-clock**. Closes the "no L1 fuzz coverage in CI at all" gap noted post-slice-643 (the L1 cycle's bug-finding fuzz never became a permanent guard until now).
-Detail: [slice-644.md](docs/changelog/slice-644.md).
-
-**Tests (slice 643): L2 fuzz floor**
-Drives the existing combat-fuzz harness at L2: 20 seeded 1v1 PC-vs-PC battles, each runs to HP=0 or MAX_ROUNDS=20 without throwing. **Closes the L2-complete gate** — the L2 floor now covers feature presence, planner export, resource max + recharge, spell wiring floor, multiclass build cleanliness, AND end-to-end engine behavior. v0.3.0-alpha.0 ("L2 SRD complete") is unblocked. Total CI overhead: ~200ms.
-Detail: [slice-643.md](docs/changelog/slice-643.md).
-
-**Tests (slice 642): multiclass L1+L1 build audit**
-Adds 67 tests (one per unordered class pair, plus enumeration sanity): each builds an L1+L1 character with all-14 stats, commits CharacterCreated, and confirms `engine.derive.character` returns a sheet without throwing. Closes the multiclass-at-total-level-2 gap the single-class L2 floor didn't cover. Fourth of five L2 hardening slices.
-Detail: [slice-642.md](docs/changelog/slice-642.md).
-
-**Tests (slice 641): per-level spell wiring floor enforcement**
-Extends `gaps-spells-counts.test.ts` with a `MIN_WIRED_PER_LEVEL` ratchet: each level's wired count must stay at or above its slice-641 snapshot (L2 floor = 36). Lowering requires bumping the floor in the same slice; raising is silently allowed. Test count grows 23 → 33 (one new `it()` per level). First "ratchet" audit in the repo; pattern is reusable for any "this count can only go up" invariant.
-Detail: [slice-641.md](docs/changelog/slice-641.md).
-
-**Tests (slice 640): L2 floor Section 3 recharge-cadence pin**
-Extends Section 3 with a recharge-field pin per resource (action-surge=shortRest, channel-divinity=shortRest, wild-shape=shortRest, ki=shortRest, sorcery-points=longRest). Documents two pre-existing partial-recharge RAW deviations (Channel Divinity, Wild Shape — engine binary model is over-permissive) inline so a future partial-recharge engine primitive can flip both atomically. Audit-only; no content or engine change.
-Detail: [slice-640.md](docs/changelog/slice-640.md).
-
-**Tests (slice 639): L2 floor Section 3 hardening (resource max-value pin)**
-Promotes Section 3 from "GrantResource exists" to "GrantResource exists AND its L2 max evaluates to the RAW value." Pins Action Surge=1, Channel Divinity=2, Wild Shape=2, Ki=2, Sorcery Points=2 — the formula-driven Monk / Sorcerer maxes evaluate via `evaluateFormula` with a synthesized L2 context. First of five L2 hardening slices on the road to a defensible 0.3.0-alpha.0 tag.
-Detail: [slice-639.md](docs/changelog/slice-639.md).
-
-**Tests (slice 638): correct L2 floor's invocation-catalog audit query**
-The final L2 xfail turned out to be an audit-authoring bug, not a content gap: the slice-633 audit queried `pack.eldritchInvocations` (nonexistent key), but invocations ship as `feats` with `category: 'invocation'` and the pack already has 16 of them. Corrected the query, flipped `it.fails` → `it`. **L2 floor is now 32/32 plain `it` — `0.3.0-alpha.0` ("L2 SRD complete") is unblocked.**
-Detail: [slice-638.md](docs/changelog/slice-638.md).
-
-**Engine + content + event schema (slice 637): Warlock L2 Magical Cunning planner**
-Adds the new `PactSlotsRegained { count, source }` event (first mid-rest pact-slot-refund primitive) + reducer + transcript line; planner consumes the per-long-rest `magical-cunning` gate and emits a regain of `min(ceil(maxPactSlots/2), pactSlotsUsed)`. Closes the fourth L2 punch-list xfail; only the Eldritch Invocations catalog remains.
-Detail: [slice-637.md](docs/changelog/slice-637.md).
-
-**Engine + content + tests (slice 636): Monk L2 Uncanny Metabolism planner**
-Adds `GrantResource { uncanny-metabolism, max 1, longRest }` to the L2 Monk feature (was `effects: []`); planner consumes the once-per-long-rest gate, emits `ResourceRestored { ki, 'all' }` to refund Focus Points, and `Healed { monkLevel + martial-arts die }`. First mid-encounter consumer of `ResourceRestored { amount: 'all' }`. Closes the third L2 punch-list xfail (2 remaining).
-Detail: [slice-636.md](docs/changelog/slice-636.md).
-
-**Engine + tests (slice 635): Cleric L2 Channel Divinity Divine Spark planner**
-Sibling of Turn Undead (L2 CD) and Land's Aid (heal-or-damage save-for-half). Spends one CD use; heal mode emits Healed for NdN + WIS HP, damage mode rolls CON save for full / half necrotic-or-radiant damage. Dice scale 1d8 / 2d8 / 3d8 / 4d8 at cleric L2 / 7 / 13 / 18. Closes the second of slice 633's L2 punch-list xfails (3 remaining).
-Detail: [slice-635.md](docs/changelog/slice-635.md).
-
-**Engine + tests (slice 634): Fighter L2 Tactical Mind planner**
-Self-targeted mirror of slice 358's Peerless Skill: spend a Second Wind use to roll 1d10 and boost a failed ability check; use refunded if the boost still fails. Closes the first of slice 633's five L2 punch-list xfails (4 remaining).
-Detail: [slice-634.md](docs/changelog/slice-634.md).
-
-**Tests (slice 633): CI-guarded "L2 SRD complete" floor audit**
-Defines the L2-complete exit criteria via 32-test audit (27 pass + 5 xfail) modelled on slice 619's L1 floor; the five xfails (planTacticalMind, planDivineSpark, planUncannyMetabolism, planMagicalCunning, eldritch-invocation catalog) form the punch list for the 0.3.0-alpha.0 release.
-Detail: [slice-633.md](docs/changelog/slice-633.md).
-
-**Release (slice 632): bump to 0.2.0-alpha.0**
-Promotes the post-alpha.15 cohort (~160 slices) to a tagged release; fixes one EFFECT_KINDS drift surfaced by `release:doc-review` and adds four pinned CHECKs for the front-door primitive citations so the next vocabulary bump trips CI in the same slice.
-Detail: [slice-632.md](docs/changelog/slice-632.md).
-
+**Driver/infra (slice 753): Protection reaction (positional, pre-damage attack window)**
+Completes the reaction layer (damage 749 / attack 750 / cast 751 / save 752 / positional 753): a shield-bearing ally within 5 ft of an attacked creature imposes disadvantage on the attack roll, re-deciding the hit. Extends the slice-750 pre-damage window with an `isTactical` flag + a `chebyshevDistance ≤ 5` adjacency check on combatant positions, recomputing the hit via a new pure `disadvantageFlipsHit` and dropping the damage chain on a flip; engages only under `movement:'tactical'` + `reactions:'auto'`, composing the existing `planProtection`. No pack/AI change, so it won't fire in random fuzz (documented); a constructed test is the correctness gate and a tactical+auto matrix block proves replay-equivalence. Only the engine two-phase attack API remains deferred.
+Detail: [slice-753.md](docs/changelog/slice-753.md).
+
+**Driver/infra (slice 752): save reaction window (Countercharm) + charm-person in the fuzz AI**
+Completes the combat-fuzz reaction set with the save window: a Bard L7 on a charmed/frightened creature's team rerolls the failed save with Advantage and, on success, removes the condition (post-commit, like the damage-mitigation reactions). Because the fuzz never produced a charm/frighten save, the AI also learns to cast charm-person under `reactions:'auto'` (gated, so `'none'` stays byte-identical) so the window can occur. Pure `hasCountercharm` + the resolver branch (correlates the failed `SaveRolled` for DC/ability/bonus, finds the Bard, emits `ConditionRemoved` on success); team ids threaded into `ReactionPolicyContext`. Rare in practice (~1% of L7 2v2 PC battles need bards on both sides + a landed charm), so a constructed unit test is the stable correctness gate and a golden anchor (seeds 112/206/275/281/391) shows it firing in real fuzz. Protection deferred.
+Detail: [slice-752.md](docs/changelog/slice-752.md).
+
+**Driver/infra (slice 751): spell-cast reaction window (Counterspell)**
+Adds the spell-cast window to the combat-fuzz reaction layer: under `reactions:'auto'`, an enemy Wizard/Sorcerer Counterspells a leveled cast (CON-save outcome), and the countered spell's effects are omitted. RAW-faithful prepared (Counterspell added to arcane builds only under `'auto'` at L5+, so `'none'` stays byte-identical); `originalSpellLevel:0` avoids double slot consumption. Pure `shouldCounterspell` + resolver `scripts/reactions/pre-cast-policy.ts`. Countercharm / Protection deferred.
+Detail: [slice-751.md](docs/changelog/slice-751.md).
+
+**Driver/infra (slice 750): attack pre-damage reaction window (Shield + Cutting Words)**
+Opens a window between the attack roll and the damage so prevent-the-trigger reactions genuinely cancel a hit. Driver-side two-phase flow under `reactions:'auto'` (plan uncommitted → Shield/Cutting-Words cascade → commit the full attack or, when prevented, the attack minus its damage chain); composes the existing `planShield`/`planCuttingWords` planners. `'none'` byte-identical.
+Detail: [slice-750.md](docs/changelog/slice-750.md).
+
+**Driver/infra (slice 749): deterministic reaction layer for the combat-fuzz driver**
+A per-action reaction-policy seam in `runBattle` (mirroring the tactical-movement seam) fires damage-mitigation reactions (Uncanny Dodge, Deflect Attacks, Stone's Endurance — they emit a compensating `Healed`) off the events each action produces, so dnd-web can show them. Opt-in via a new `reactions:'auto'` option (default `'none'` byte-identical). Pure decision logic in `src/ai/reactions.ts`; glue in `scripts/reactions/reaction-policy.ts`. No new engine primitive / event / effect kind.
+Detail: [slice-749.md](docs/changelog/slice-749.md).
 
 ## Older releases
 
-Tagged release `0.9.0-alpha.0` lives in [docs/changelog/released-versions-0.9.0-alpha.0.md](docs/changelog/released-versions-0.9.0-alpha.0.md); `0.8.0-alpha.0` lives in [docs/changelog/released-versions-0.8.0-alpha.0.md](docs/changelog/released-versions-0.8.0-alpha.0.md); `0.7.0-alpha.0` lives in [docs/changelog/released-versions-0.7.0-alpha.0.md](docs/changelog/released-versions-0.7.0-alpha.0.md); `0.5.0-alpha.0` lives in [docs/changelog/released-versions-0.5.0-alpha.0.md](docs/changelog/released-versions-0.5.0-alpha.0.md); `0.4.0-alpha.0` lives in [docs/changelog/released-versions-0.4.0-alpha.0.md](docs/changelog/released-versions-0.4.0-alpha.0.md); `0.2.0-alpha.0` lives in [docs/changelog/released-versions-0.2.0-alpha.0.md](docs/changelog/released-versions-0.2.0-alpha.0.md); `0.1.0-alpha.15` lives in [docs/changelog/released-versions-alpha-15.md](docs/changelog/released-versions-alpha-15.md); `0.1.0-alpha.14` lives in [docs/changelog/released-versions-alpha-14.md](docs/changelog/released-versions-alpha-14.md); `0.1.0-alpha.6` through `0.1.0-alpha.13` live in [docs/changelog/released-versions-alpha-6-13.md](docs/changelog/released-versions-alpha-6-13.md); `0.1.0-alpha.0` through `0.1.0-alpha.5` (the pre-rename `ttrpg-engine-dnd` package, all unpublished from npm in May 2026 on IP-cleanup grounds) live in [docs/changelog/released-versions.md](docs/changelog/released-versions.md). Per-cohort slice-detail archives are indexed in [docs/changelog/README.md](docs/changelog/README.md).
+Tagged release `0.10.0-alpha.0` lives in [docs/changelog/released-versions-0.10.0-alpha.0.md](docs/changelog/released-versions-0.10.0-alpha.0.md); `0.9.0-alpha.0` lives in [docs/changelog/released-versions-0.9.0-alpha.0.md](docs/changelog/released-versions-0.9.0-alpha.0.md); `0.8.0-alpha.0` lives in [docs/changelog/released-versions-0.8.0-alpha.0.md](docs/changelog/released-versions-0.8.0-alpha.0.md); `0.7.0-alpha.0` lives in [docs/changelog/released-versions-0.7.0-alpha.0.md](docs/changelog/released-versions-0.7.0-alpha.0.md); `0.6.0-alpha.0` lives in [docs/changelog/released-versions-0.6.0-alpha.0.md](docs/changelog/released-versions-0.6.0-alpha.0.md); `0.5.0-alpha.0` lives in [docs/changelog/released-versions-0.5.0-alpha.0.md](docs/changelog/released-versions-0.5.0-alpha.0.md); `0.4.0-alpha.0` lives in [docs/changelog/released-versions-0.4.0-alpha.0.md](docs/changelog/released-versions-0.4.0-alpha.0.md); `0.3.0-alpha.0` lives in [docs/changelog/released-versions-0.3.0-alpha.0.md](docs/changelog/released-versions-0.3.0-alpha.0.md); `0.2.0-alpha.0` lives in [docs/changelog/released-versions-0.2.0-alpha.0.md](docs/changelog/released-versions-0.2.0-alpha.0.md); `0.1.0-alpha.15` lives in [docs/changelog/released-versions-alpha-15.md](docs/changelog/released-versions-alpha-15.md); `0.1.0-alpha.14` lives in [docs/changelog/released-versions-alpha-14.md](docs/changelog/released-versions-alpha-14.md); `0.1.0-alpha.6` through `0.1.0-alpha.13` live in [docs/changelog/released-versions-alpha-6-13.md](docs/changelog/released-versions-alpha-6-13.md); `0.1.0-alpha.0` through `0.1.0-alpha.5` (the pre-rename `ttrpg-engine-dnd` package, all unpublished from npm in May 2026 on IP-cleanup grounds) live in [docs/changelog/released-versions.md](docs/changelog/released-versions.md). Per-cohort slice-detail archives are indexed in [docs/changelog/README.md](docs/changelog/README.md).

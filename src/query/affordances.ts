@@ -103,7 +103,12 @@ const resolvePositioned = (
   };
 };
 
-// Feet of movement still available this turn (0 if Steady-Aim-zeroed).
+// Feet of travel still available this turn (0 if Steady-Aim-zeroed). When the
+// combatant is Prone, the move planner charges a stand-up surcharge of half
+// speed (floor) on top of the travel distance, so the EFFECTIVE travel budget
+// is `remaining - standUpCost` (matches planMove's `distance + standUpCost <=
+// remaining` gate). Returning the raw budget would offer destinations a prone
+// combatant can't actually reach.
 const remainingMovementFeet = (
   state: CampaignState,
   content: ResolvedContent,
@@ -118,7 +123,9 @@ const remainingMovementFeet = (
     pendingChoices: state.pendingChoices,
   });
   const maxThisTurn = turnUsage.dashed ? speed * 2 : speed;
-  return Math.max(0, maxThisTurn - turnUsage.feetMovedThisTurn);
+  const isProne = character.appliedConditions.some((c) => c.conditionId === 'prone');
+  const standUpCost = isProne ? Math.floor(speed / 2) : 0;
+  return Math.max(0, maxThisTurn - turnUsage.feetMovedThisTurn - standUpCost);
 };
 
 // The fear source's position when the combatant is Frightened by a
@@ -256,7 +263,11 @@ export interface TargetCandidate {
 }
 
 // The attacker's effective weapon reach/range in feet, from the
-// main-hand weapon (unarmed = 5 ft melee).
+// main-hand weapon (unarmed = 5 ft melee). For ranged weapons this is the
+// LONG range — an attack to long range is legal (with Disadvantage), and the
+// attack planner's range gate caps at `rangeLong ?? rangeNormal`
+// (assertWeaponInRange). Using normal range here would omit legal long-range
+// targets the planner accepts.
 const weaponRangeFeet = (
   state: CampaignState,
   content: ResolvedContent,
@@ -268,7 +279,7 @@ const weaponRangeFeet = (
   if (def === undefined || def.itemKind !== 'weapon') return UNARMED_REACH_FEET;
   const weapon = def as Weapon;
   if (weapon.attackKind === 'ranged') {
-    return weapon.rangeNormal ?? RANGED_FALLBACK_RANGE_FEET;
+    return weapon.rangeLong ?? weapon.rangeNormal ?? RANGED_FALLBACK_RANGE_FEET;
   }
   return weapon.properties.includes('reach')
     ? MELEE_REACH_FEET + REACH_PROPERTY_BONUS_FEET
@@ -357,24 +368,29 @@ export type LegalSpellTargets =
     }
   | { readonly kind: 'points'; readonly cells: ReadonlyArray<Position> };
 
-// Living combatants within `gateFeet` (chebyshev; undefined = no limit,
-// for Self / Sight / Unlimited ranges) of the caster with line of effect.
-// Parallel to legalTargets' in-range loop but parameterized by range +
-// an includeSelf flag (beneficial spells may target the caster). Kept
-// separate so legalTargets stays byte-identical.
+// Combatants within `gateFeet` (chebyshev; undefined = no limit, for Self /
+// Sight / Unlimited ranges) of the caster with line of effect. Parallel to
+// legalTargets' in-range loop but parameterized by range + an includeSelf
+// flag (beneficial spells may target the caster) + an includeDefeated flag.
+// Defeated (0-HP) creatures are excluded by default, but a healing spell can
+// target a dying ally (its primary combat use), so `includeDefeated` keeps
+// them in. Kept separate so legalTargets stays byte-identical.
 const creatureCandidatesInRange = (
   state: CampaignState,
   encounterId: string,
   casterId: string,
   gateFeet: number | undefined,
   includeSelf: boolean,
+  includeDefeated: boolean,
 ): TargetCandidate[] => {
   const encounter = state.encounters[encounterId];
   if (encounter === undefined) return [];
   const self = encounter.combatants.find((c) => c.combatantId === casterId);
   if (self === undefined) return [];
   const pool = encounter.combatants.filter(
-    (c) => (includeSelf || c.combatantId !== casterId) && !isDefeated(state, c.combatantId),
+    (c) =>
+      (includeSelf || c.combatantId !== casterId) &&
+      (includeDefeated || !isDefeated(state, c.combatantId)),
   );
 
   const locationId = state.characterLocations[casterId];
@@ -429,10 +445,11 @@ const creatureCandidatesInRange = (
 // specific cone direction (that geometry lives in the consumer).
 const aoePlacementPoints = (
   state: CampaignState,
+  encounterId: string,
   casterId: string,
   radiusFeet: number,
 ): Position[] => {
-  const encounter = state.activeEncounterId ? state.encounters[state.activeEncounterId] : undefined;
+  const encounter = state.encounters[encounterId];
   const self = encounter?.combatants.find((c) => c.combatantId === casterId);
   const locationId = state.characterLocations[casterId];
   const map = locationId !== undefined ? state.locations[locationId]?.map : undefined;
@@ -479,13 +496,20 @@ export const legalSpellTargets = (
   if (desc.kind === 'point') {
     const r = parseSpellRange(spell.range);
     const radiusFeet = r.kind === 'feet' ? r.feet : desc.sizeFeet;
-    return { kind: 'points', cells: aoePlacementPoints(state, casterId, radiusFeet) };
+    return { kind: 'points', cells: aoePlacementPoints(state, encounterId, casterId, radiusFeet) };
   }
   const gate = enforceableSpellRangeFeet(parseSpellRange(spell.range));
   const includeSelf = desc.allow !== 'enemies';
+  // A spell that helps a downed (0-HP) creature must keep it in the legal
+  // targets — otherwise the target picker is empty for exactly the cast that
+  // matters. Two cases: a heal/temp-hp spell (Healing Word / Cure Wounds
+  // reviving a dying ally), and a `stabilize` spell (Spare the Dying), whose
+  // ONLY valid target is a 0-HP creature (the planner requires hp.current === 0).
+  const includeDefeated =
+    resolves === 'heal' || spell.mechanicalEffects.some((m) => m.kind === 'stabilize');
   return {
     kind: 'creatures',
-    candidates: creatureCandidatesInRange(state, encounterId, casterId, gate, includeSelf),
+    candidates: creatureCandidatesInRange(state, encounterId, casterId, gate, includeSelf, includeDefeated),
     maxTargets,
   };
 };
@@ -536,18 +560,46 @@ export const availableActions = (
     );
   }
 
+  // Attack uses the multiattack-aware budget (Extra Attack lets a Fighter
+  // attack again after the action is spent), so it can't be gated on
+  // `actionUsed` alone like the once-per-action intents below.
+  const budget = computeActionEconomyBudget({
+    character,
+    itemInstances: state.itemInstances,
+    content,
+    pendingChoices: state.pendingChoices,
+    characters: state.characters,
+  });
+
   // Action-cost intents.
   for (const action of ACTION_INTENTS) {
     if (blocker !== undefined) {
       out.push({ action, enabled: false, reason: blocker });
       continue;
     }
-    if (u.actionUsed) {
-      out.push({ action, enabled: false, reason: 'action-used' });
+    if (action === 'attack') {
+      // Mirror planActionEconomyForAttack: blocked only when the action was
+      // spent on a non-attack (actionUsed with no attacks yet) or the
+      // per-action attack budget is exhausted — NOT merely because the
+      // action is used (a second attack within Extra Attack is legal).
+      if (
+        (u.actionUsed && u.attacksMadeThisTurn === 0) ||
+        u.attacksMadeThisTurn >= budget.maxAttacksPerAction
+      ) {
+        out.push({ action, enabled: false, reason: 'action-used' });
+        continue;
+      }
+      if (legalTargets(state, content, encounterId, combatantId, 'attack').length === 0) {
+        out.push({ action, enabled: false, reason: 'no-target-in-range' });
+        continue;
+      }
+      out.push({ action, enabled: true });
       continue;
     }
-    if (action === 'attack' && legalTargets(state, content, encounterId, combatantId, 'attack').length === 0) {
-      out.push({ action, enabled: false, reason: 'no-target-in-range' });
+    // Dash / Disengage / Dodge — once per action (Action Surge resets
+    // `actionUsed`, so a surged second action re-enables these naturally).
+    if (u.actionUsed) {
+      out.push({ action, enabled: false, reason: 'action-used' });
       continue;
     }
     out.push({ action, enabled: true });

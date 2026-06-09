@@ -1,6 +1,6 @@
 {
   "name": "dnd-srd-engine",
-  "version": "0.10.0-alpha.0",
+  "version": "0.11.0-alpha.0",
   "private": true,
   "description": "Standalone, event-sourced TypeScript domain engine for D&D 5.5e (2024 rules). Schema-only content model with effect-primitive vocabulary and code-handler escape hatch.",
   "type": "module",
@@ -32,13 +32,13 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
+    "prepare": "node scripts/setup-hooks.mjs",
     "build": "vite build && tsc --emitDeclarationOnly --project tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:changed": "vitest run --changed",
-    "test:fast": "vitest run --exclude '{tests/property/**,tests/integration/**,**/fuzz-matrix.test.ts,**/fuzz-tactical-matrix.test.ts,**/multiclass-fuzz.test.ts}'",
+    "test:fast": "vitest run --exclude \"{tests/property/**,tests/integration/**,**/fuzz-matrix.test.ts,**/fuzz-tactical-matrix.test.ts,**/multiclass-fuzz.test.ts}\"",
     "test:coverage": "vitest run --coverage",
     "ci": "npm run typecheck && npm run test:coverage && npm run build",
     "release:doc-counts": "node scripts/sync-doc-counts.mjs",

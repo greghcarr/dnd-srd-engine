@@ -254,3 +254,94 @@ describe('slice 716: multi-target maxTargets', () => {
     expect(atThree.maxTargets).toBe(5);
   });
 });
+
+// Slice 757 (pattern-fix): a healing spell can target a DYING (0-HP) creature
+// — reviving a downed ally is its primary combat use. legalSpellTargets used
+// to filter every 0-HP creature out (the same heal-targets-the-dying bug
+// slice 756 fixed for the bonus-action target query). A non-heal spell still
+// excludes the dying.
+describe('slice 757: healing spells can target a downed (0-HP) creature', () => {
+  // Bring a combatant to exactly 0 HP (dying, not massively-dead).
+  const downToZero = (s: Setup, id: string): Campaign =>
+    commit(s.campaign, [
+      {
+        id: eventId(),
+        at: isoTimestamp(),
+        type: 'DamageApplied',
+        targetId: id as ULID,
+        components: [{ amount: 24, type: 'force' }], // buildFoe has 24 max HP
+      },
+    ] as Event[]);
+
+  it('Healing Word (heal) includes a 0-HP creature in range', () => {
+    const s = setup({ x: 10, y: 0 }); // foe within Healing Word's 60 ft
+    s.campaign = downToZero(s, s.foeId);
+    expect(s.campaign.state.characters[s.foeId]!.hp.current).toBe(0);
+    const r = s.engine.query.legalSpellTargets(s.campaign.state, s.encounterId, s.casterId, 'healing-word', 1);
+    if (r.kind !== 'creatures') throw new Error('expected creatures');
+    expect(r.candidates.map((c) => c.combatantId)).toContain(s.foeId);
+  });
+
+  it('an offensive spell (Fire Bolt) still excludes the 0-HP creature', () => {
+    const s = setup({ x: 10, y: 0 });
+    s.campaign = downToZero(s, s.foeId);
+    const r = s.engine.query.legalSpellTargets(s.campaign.state, s.encounterId, s.casterId, 'fire-bolt', 0);
+    if (r.kind !== 'creatures') throw new Error('expected creatures');
+    expect(r.candidates.map((c) => c.combatantId)).not.toContain(s.foeId);
+  });
+});
+
+// Slice 759: completes the dying-target fix for `stabilize` spells, and
+// fixes the AOE-placement helper to honor the passed encounterId.
+describe('slice 759: spell-target fidelity', () => {
+  const downToZero = (campaign: Campaign, id: string): Campaign =>
+    commit(campaign, [
+      {
+        id: eventId(),
+        at: isoTimestamp(),
+        type: 'DamageApplied',
+        targetId: id as ULID,
+        components: [{ amount: 24, type: 'force' }],
+      },
+    ] as Event[]);
+
+  it('Spare the Dying (stabilize) targets a 0-HP creature — the planner requires exactly that', () => {
+    // Foe within Spare the Dying's 15 ft. `stabilize` resolves as `auto`, not
+    // `heal`, so before this fix the dying target was filtered out entirely.
+    const s = setup({ x: 10, y: 0 });
+    s.campaign = downToZero(s.campaign, s.foeId);
+    const r = s.engine.query.legalSpellTargets(s.campaign.state, s.encounterId, s.casterId, 'spare-the-dying', 0);
+    if (r.kind !== 'creatures') throw new Error('expected creatures');
+    expect(r.candidates.map((c) => c.combatantId)).toContain(s.foeId);
+  });
+
+  it('AOE placement honors the passed encounterId (works on a not-yet-started encounter)', () => {
+    // Build a positioned but NOT-started encounter, so state.activeEncounterId
+    // stays undefined. aoePlacementPoints must read the encounterId argument,
+    // not the active encounter — else it returns zero placement cells.
+    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(1) });
+    const caster = buildWizard();
+    const foe = buildFoe('Foe');
+    let campaign: Campaign = engine.createCampaign({ name: 'aoe-preopen' });
+    const locationId = newLocationId();
+    campaign = commit(campaign, [
+      { id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: caster } satisfies CharacterCreatedEvent,
+      { id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: foe } satisfies CharacterCreatedEvent,
+      openMap(locationId),
+      { id: eventId(), at: isoTimestamp(), type: 'CharacterLocationChanged', characterId: caster.id as ULID, toLocationId: locationId as ULID } satisfies CharacterLocationChangedEvent,
+      { id: eventId(), at: isoTimestamp(), type: 'CharacterLocationChanged', characterId: foe.id as ULID, toLocationId: locationId as ULID } satisfies CharacterLocationChangedEvent,
+    ]);
+    const created = engine.plan.createEncounter(campaign.state, {
+      combatants: [
+        { characterId: caster.id, position: { x: 0, y: 0 } },
+        { characterId: foe.id, position: { x: 10, y: 0 } },
+      ],
+    });
+    campaign = commit(campaign, created.events); // deliberately NOT started
+    expect(campaign.state.activeEncounterId).toBeUndefined();
+    const r = engine.query.legalSpellTargets(campaign.state, created.encounterId, caster.id, 'fireball', 3);
+    expect(r.kind).toBe('points');
+    if (r.kind !== 'points') return;
+    expect(r.cells.length, 'AOE placement returned no cells (encounterId not threaded?)').toBeGreaterThan(0);
+  });
+});

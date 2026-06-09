@@ -30,7 +30,12 @@ export interface CombatantView {
   readonly initiative: number;
   /** True for the combatant whose turn it is (only while the encounter is active). */
   readonly isActive: boolean;
-  readonly hp: { readonly current: number; readonly max: number; readonly temp: number };
+  /**
+   * `max` is the base maximum; `maxBonus` is any buff to it (Aid, Aspect of
+   * the Beast, …), so the displayed maximum is `max + maxBonus` (a buffed
+   * `current` can exceed `max` alone). `temp` is separate temporary HP.
+   */
+  readonly hp: { readonly current: number; readonly max: number; readonly maxBonus: number; readonly temp: number };
   readonly ac: number;
   readonly exhaustion: number;
   readonly conditions: ReadonlyArray<CombatantConditionView>;
@@ -78,7 +83,7 @@ export const buildEncounterView = (
       name: character.name,
       initiative: combatant.initiative,
       isActive: active && index === encounter.activeIndex,
-      hp: { current: character.hp.current, max: character.hp.max, temp: character.hp.temp },
+      hp: { current: character.hp.current, max: character.hp.max, maxBonus: character.hp.maxBonus, temp: character.hp.temp },
       ac: ac.total,
       exhaustion: character.exhaustion,
       conditions: character.appliedConditions.map((c) => ({

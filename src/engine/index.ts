@@ -25,6 +25,9 @@ import {
   planShortRest,
   planLongRest,
   planAttack,
+  planAttackRoll,
+  planAttackDamage,
+  type AttackRollHandle,
   planCleave,
   planCreateEncounter,
   planPlaceCombatant,
@@ -337,8 +340,22 @@ import type {
   CastableSpell,
   LegalSpellTargets,
 } from '../query/affordances.js';
-import { bonusActions as queryBonusActions, bonusActionIntent } from '../query/bonus-actions.js';
-import type { BonusActionOption } from '../query/bonus-actions.js';
+import {
+  bonusActions as queryBonusActions,
+  bonusActionTargets as queryBonusActionTargets,
+  bonusActionIntent,
+} from '../query/bonus-actions.js';
+import {
+  availableReactions as queryAvailableReactions,
+  reactionsForTrigger as queryReactionsForTrigger,
+} from '../query/reactions.js';
+import type { ReactionOption, CorrelatedReaction } from '../query/reactions.js';
+import { actionOptions as queryActionOptions, actionTargets as queryActionTargets, actionIntent as buildActionIntent } from '../query/action-options.js';
+import type { ActionOption, ActionTarget } from '../query/action-options.js';
+import { postHitOptions as queryPostHitOptions } from '../query/post-hit.js';
+import type { PostHitOption } from '../query/post-hit.js';
+import type { AttackRolledEvent } from '../schemas/events/attack.js';
+import type { BonusActionOption, BonusActionTarget } from '../query/bonus-actions.js';
 import { HANDLER_API_VERSION } from '../handlers/index.js';
 import { assertActorCanAct } from './plan/_actor-state.js';
 import { assertReactionAvailable, economyConsumedIfEncountered } from './plan/reactive-spells.js';
@@ -375,6 +392,18 @@ export interface PlanResult {
   readonly events: ReadonlyArray<Event>;
 }
 
+/**
+ * Slice 754: result of `engine.plan.attackRoll` — the roll-phase events to
+ * commit plus an opaque handle to resume the damage phase with
+ * `engine.plan.attackDamage`. `roll.hit` tells a consumer whether a damage
+ * phase exists; a reaction window may decide to prevent it (commit only
+ * `events`) or let it stand (commit `events` then `attackDamage(roll).events`).
+ */
+export interface AttackRollPlanResult {
+  readonly events: ReadonlyArray<Event>;
+  readonly roll: AttackRollHandle;
+}
+
 /** Slice 714/715: argument to `engine.plan.useOption` (a `bonusActions` option id). */
 export interface UseOptionOptions {
   readonly combatantId: string;
@@ -385,6 +414,36 @@ export interface UseOptionOptions {
   readonly amount?: number;
   /** Unarmed-strike item instance for strike options (Flurry of Blows). */
   readonly weaponInstanceId?: string;
+  /** Destination cell for a teleport option (Cloud's Jaunt). */
+  readonly to?: { readonly x: number; readonly y: number };
+  /** Weapon-definition id for a conjuration option (Conjure Pact Weapon). */
+  readonly weaponDefinitionId?: string;
+  /** Multiple creatures for a multi-target option (Intimidating Presence). */
+  readonly targetIds?: ReadonlyArray<string>;
+}
+
+/** Slice 764: argument to `engine.plan.useActionOption` (an `actionOptions` id). */
+export interface UseActionOptionOptions {
+  readonly combatantId: string;
+  readonly optionId: string;
+  /** Target creature for creature-target actions (Grapple / Shove / Help / Divine Spark). */
+  readonly targetId?: string;
+  /** Multiple creatures for an AoE action (Turn Undead / Dragonborn Breath). */
+  readonly targetIds?: ReadonlyArray<string>;
+  /** Dragonborn Breath: damage type (Draconic Ancestry) + area shape ('cone'|'line'). */
+  readonly damageType?: string;
+  readonly areaShape?: string;
+  /** Preserve Life: the heal-pool distribution among Bloodied allies. */
+  readonly allocations?: ReadonlyArray<{ readonly targetId: string; readonly amount: number }>;
+  /** Shove ('prone'|'push') / Help ('attack'|'check') / Divine Spark ('heal'|'damage'). */
+  readonly mode?: string;
+  /** Ready's trigger description. */
+  readonly trigger?: string;
+  /** Pass-throughs for the check-style actions (Search / Study / Influence / Utilize / Hide). */
+  readonly skill?: string;
+  readonly dc?: number;
+  readonly ability?: string;
+  readonly targetAbility?: string;
 }
 
 export interface Engine {
@@ -423,10 +482,34 @@ export interface Engine {
     // an unknown id or a missing required target; dice route through the
     // active RollProvider (it delegates to the same planners as every action).
     useOption(state: CampaignState, opts: UseOptionOptions): PlanResult;
+    /**
+     * Slice 764: generic executor for an `query.actionOptions` id (the general
+     * 2024 actions). Maps the id (+ params) to its planner and returns that
+     * planner's PlanResult — the sibling of `useOption` for the Action menu.
+     * Throws on an unknown id or a missing required param.
+     */
+    useActionOption(state: CampaignState, opts: UseActionOptionOptions): PlanResult;
     shortRest(state: CampaignState, intent: { participantIds: ReadonlyArray<string>; at?: string }): PlanResult;
     longRest(state: CampaignState, intent: { participantIds: ReadonlyArray<string>; at?: string }): PlanResult;
     rest(state: CampaignState, intent: RestIntent): PlanResult;
     attack(state: CampaignState, intent: Omit<AttackIntent, 'type'>): PlanResult;
+    /**
+     * Slice 754: phase 1 of a two-phase attack — the action-economy prelude,
+     * range / line-of-sight / loading gates, and the attack roll. Returns the
+     * roll-phase events to commit plus an opaque `roll` handle (`roll.hit`
+     * surfaces whether the swing connected). A consumer opens a reaction window
+     * here, then either commits only these events (a reaction prevented the
+     * hit) or follows with `attackDamage(roll)`. `attack` = `attackRoll` then
+     * `attackDamage` composed, byte-identical to the bundled form.
+     */
+    attackRoll(state: CampaignState, intent: Omit<AttackIntent, 'type'>): AttackRollPlanResult;
+    /**
+     * Slice 754: phase 2 of a two-phase attack — the damage chain for a hit
+     * that stands. Pass the `roll` handle from `attackRoll`. If the roll missed
+     * (or a consumer chooses to prevent the hit and never calls this), the
+     * damage dice and on-hit riders are never rolled.
+     */
+    attackDamage(roll: AttackRollHandle): PlanResult;
     cleave(state: CampaignState, intent: Omit<CleaveIntent, 'type'>): PlanResult;
     opportunityAttack(state: CampaignState, intent: Omit<OpportunityAttackIntent, 'type'>): PlanResult;
     createEncounter(
@@ -656,6 +739,90 @@ export interface Engine {
       encounterId: string,
       combatantId: string,
     ): ReadonlyArray<BonusActionOption>;
+    /**
+     * Slice 756: the legal targets for a creature-target bonus-action option
+     * (e.g. Lay on Hands heal — self + creatures within touch), honoring the
+     * option's reach + self / defeated rules. Returns [] for a non-creature
+     * option or an unknown id.
+     */
+    bonusActionTargets(
+      state: CampaignState,
+      encounterId: string,
+      combatantId: string,
+      optionId: string,
+    ): ReadonlyArray<BonusActionTarget>;
+    /**
+     * Slice 763: the reactions a combatant owns, each flagged enabled/disabled
+     * (a blocking condition or the reaction already spent this round) with the
+     * trigger kind it responds to. Discovery for a UI; pair with
+     * `reactionsForTrigger` to get ready-to-commit intents for a specific event.
+     */
+    availableReactions(
+      state: CampaignState,
+      encounterId: string,
+      combatantId: string,
+    ): ReadonlyArray<ReactionOption>;
+    /**
+     * Slice 763: the correlation helper — given a trigger event (an
+     * AttackRolled / DamageApplied / SpellCastDeclared), the reactions the
+     * combatant can take in response, with params pre-filled from the event.
+     * Dispatch each by `intent.type` to the matching typed planner
+     * (engine.plan.shield / cuttingWords / uncannyDodge / stonesEndurance /
+     * counterspell) to get the outcome and commit the events.
+     */
+    reactionsForTrigger(
+      state: CampaignState,
+      encounterId: string,
+      reactorId: string,
+      triggerEvent: Event,
+      /**
+       * Optional recent committed events (a log slice) for cross-event
+       * correlation: Deflect Attacks needs the triggering AttackRolled and
+       * Countercharm the preceding failed SaveRolled. Omit it and those two
+       * don't correlate; every other reaction reads only the trigger event.
+       */
+      recentEvents?: ReadonlyArray<Event>,
+    ): ReadonlyArray<CorrelatedReaction>;
+    /**
+     * Slice 764: the general SRD 2024 actions (Search, Study, Influence,
+     * Utilize, Hide, Grapple, Shove, Help, Ready) a combatant can take —
+     * the registry-driven sibling of `availableActions` (the 5 core combat
+     * intents). Each `{ id, label, target, enabled, reason? }`. Build the
+     * chosen one with `actionIntent(optionId, combatantId, params)` and run it
+     * through `performIntent`.
+     */
+    actionOptions(
+      state: CampaignState,
+      encounterId: string,
+      combatantId: string,
+    ): ReadonlyArray<ActionOption>;
+    /**
+     * Slice 771: the legal targets for a creature-target action option
+     * (Grapple / Shove / Help / Divine Spark) — the `bonusActionTargets`
+     * sibling for the Action menu. Returns [] for a non-creature option.
+     */
+    actionTargets(
+      state: CampaignState,
+      encounterId: string,
+      combatantId: string,
+      optionId: string,
+    ): ReadonlyArray<ActionTarget>;
+    /**
+     * Slice 774: the post-hit options contextual on a just-committed AttackRolled
+     * — through L7, Paladin's Smite (a Bonus Action riding the paladin's own
+     * melee hit). Discoverable from neither `bonusActions` (no triggering attack
+     * in scope) nor `castableSpells` (it's the L2 FEATURE, not the Divine Smite
+     * spell). Returns [] unless the attack is a melee hit by a paladin; otherwise
+     * the single option carries the spell-slot picker (`slotLevels`) and an
+     * `enabled`/`reason` reflecting the Bonus Action economy + slot availability.
+     * Build the intent with `postHitIntent(optionId, attackEvent, { slotLevel })`
+     * and run it through `engine.plan.paladinsSmite`.
+     */
+    postHitOptions(
+      state: CampaignState,
+      encounterId: string,
+      attackEvent: AttackRolledEvent,
+    ): ReadonlyArray<PostHitOption>;
   };
 }
 
@@ -714,8 +881,15 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
         targetId: opts.targetId,
         amount: opts.amount,
         weaponInstanceId: opts.weaponInstanceId,
+        to: opts.to,
+        weaponDefinitionId: opts.weaponDefinitionId,
+        targetIds: opts.targetIds,
       });
       return planIntent(planNs, state, intent);
+    },
+    useActionOption(state, opts) {
+      const { combatantId, optionId, ...params } = opts;
+      return planIntent(planNs, state, buildActionIntent(optionId, combatantId, params as Parameters<typeof buildActionIntent>[2]));
     },
     shortRest(state, intent) {
       return { events: planShortRest(state, content, { type: 'ShortRest', ...intent }) };
@@ -729,6 +903,12 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     attack(state, intent) {
       return { events: planAttack(state, content, rng, { type: 'Attack', ...intent }) };
+    },
+    attackRoll(state, intent) {
+      return planAttackRoll(state, content, rng, { type: 'Attack', ...intent });
+    },
+    attackDamage(roll) {
+      return planAttackDamage(roll);
     },
     cleave(state, intent) {
       return { events: planCleave(state, content, rng, { type: 'Cleave', ...intent }) };
@@ -1239,6 +1419,24 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     bonusActions(state, encounterId, combatantId) {
       return queryBonusActions(state, content, encounterId, combatantId);
+    },
+    bonusActionTargets(state, encounterId, combatantId, optionId) {
+      return queryBonusActionTargets(state, encounterId, combatantId, optionId);
+    },
+    availableReactions(state, encounterId, combatantId) {
+      return queryAvailableReactions(state, content, encounterId, combatantId);
+    },
+    reactionsForTrigger(state, encounterId, reactorId, triggerEvent, recentEvents) {
+      return queryReactionsForTrigger(state, content, encounterId, reactorId, triggerEvent, recentEvents);
+    },
+    actionOptions(state, encounterId, combatantId) {
+      return queryActionOptions(state, content, encounterId, combatantId);
+    },
+    actionTargets(state, encounterId, combatantId, optionId) {
+      return queryActionTargets(state, encounterId, combatantId, optionId);
+    },
+    postHitOptions(state, encounterId, attackEvent) {
+      return queryPostHitOptions(state, content, encounterId, attackEvent);
     },
   };
 

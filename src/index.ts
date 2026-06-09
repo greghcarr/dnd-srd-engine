@@ -316,7 +316,15 @@ export {
   castableSpells,
   legalSpellTargets,
   bonusActions,
+  bonusActionTargets,
   bonusActionIntent,
+  availableReactions,
+  reactionsForTrigger,
+  actionOptions,
+  actionTargets,
+  actionIntent,
+  postHitOptions,
+  postHitIntent,
 } from './query/index.js';
 // Slice 706 (A3): tactical enemy AI policy, graduated from scripts/ so
 // consumers can import it from the package.
@@ -345,9 +353,22 @@ export type {
   SpellTargetDescriptor,
   LegalSpellTargets,
   BonusActionOption,
+  BonusActionTarget,
   BonusActionTargetKind,
   BonusActionIntent,
   BonusActionParams,
+  ReactionOption,
+  ReactionTriggerKind,
+  ReactionIntent,
+  CorrelatedReaction,
+  ActionOption,
+  ActionTarget,
+  ActionOptionTargetKind,
+  ActionIntent,
+  ActionParams,
+  PostHitOption,
+  PostHitIntent,
+  PostHitParams,
   SpellFilter,
   MonsterFilter,
   ItemFilter,
@@ -445,11 +466,13 @@ export { commit } from './engine/commit.js';
 export { undo, redo } from './engine/undo-redo.js';
 export { performIntent, serializeCampaign, loadCampaign, createPC } from './engine/conveniences.js';
 export type { CreatePCOptions, SerializedCampaign } from './engine/conveniences.js';
-export type { Engine, Campaign, CreateEngineOptions, CampaignInit, PlanResult, UseOptionOptions } from './engine/index.js';
+export type { Engine, Campaign, CreateEngineOptions, CampaignInit, PlanResult, AttackRollPlanResult, UseOptionOptions, UseActionOptionOptions } from './engine/index.js';
 export {
   planShortRest,
   planLongRest,
   planAttack,
+  planAttackRoll,
+  planAttackDamage,
   planOpportunityAttack,
   planCreateEncounter,
   planRollInitiative,
@@ -478,6 +501,7 @@ export type {
   LongRestIntent,
   RestIntent,
   AttackIntent,
+  AttackRollHandle,
   CleaveIntent,
   OpportunityAttackIntent,
   CreateEncounterIntent,

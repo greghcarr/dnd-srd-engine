@@ -11,6 +11,7 @@ Most of what used to live here moved into general docs in slice 629. Read those 
 | Engine scope (what the engine tracks vs what the consumer tracks: positions, line of sight, light, narrative choices) | [docs/engine-scope.md](docs/engine-scope.md) | Reference when you're unsure whether a fact belongs in the engine or in a consumer's intent. |
 | User-facing pitch + roadmap + status | [README.md](README.md), [docs/status.md](docs/status.md), [docs/roadmap.md](docs/roadmap.md) | Skim once per session. |
 | Priority queue for next slices | [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md) | Pick from "Future engine slices" or "Deferred primitives backlog." |
+| L7 SRD-completion worklist | [docs/l7-completion-audit.md](docs/l7-completion-audit.md) | The finite, severity-tagged list of L1-7 divergences (engine + consumer-seam) to close before "zero expert-visible divergences" holds. |
 | Per-shape slice checklist | [docs/slice-template.md](docs/slice-template.md) | New planner vs new content vs new derivation. |
 
 ## Fresh-session quickstart

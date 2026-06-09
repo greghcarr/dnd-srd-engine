@@ -188,6 +188,27 @@ describe('slice 705: affordance queries (engine.query.*)', () => {
       expect(dests.some((d) => d.position.x === 10 && d.position.y === 0)).toBe(false);
     });
 
+    it('slice 760: a prone combatant\'s reachable set accounts for the stand-up surcharge', () => {
+      // Speed 30, stand-up surcharge floor(30/2)=15 → effective travel 15 ft.
+      const prone = buildFighter('Prone', [], {
+        appliedConditions: [{ id: newAppliedConditionId(), conditionId: 'prone' }],
+      });
+      const foe = buildFighter('Foe');
+      const s = setupCombat([prone, foe], buildOpenMap, [{ x: 0, y: 0 }, { x: 35, y: 35 }]);
+      const dests = s.engine.query.legalMoveDestinations(s.campaign.state, s.encounterId, prone.id);
+      for (const d of dests) expect(d.costFeet).toBeLessThanOrEqual(15);
+      expect(dests.some((d) => d.position.x === 15 && d.position.y === 0)).toBe(true);
+      expect(dests.some((d) => d.position.x === 20 && d.position.y === 0)).toBe(false);
+      // Cross-check the planner: it accepts the 15 ft move (15+15=30) and
+      // rejects 20 ft (20+15=35 > 30).
+      expect(() =>
+        s.engine.plan.move(s.campaign.state, { combatantId: prone.id, to: { x: 15, y: 0 } }),
+      ).not.toThrow();
+      expect(() =>
+        s.engine.plan.move(s.campaign.state, { combatantId: prone.id, to: { x: 20, y: 0 } }),
+      ).toThrow();
+    });
+
     it('honors Frightened: no destination moves closer to the fear source', () => {
       const foe = buildFighter('Scary');
       const moverId = newCharacterId();
@@ -295,6 +316,63 @@ describe('slice 705: affordance queries (engine.query.*)', () => {
       const foe = buildFighter('Foe');
       const s = setupCombat([pc, foe], buildOpenMap, [{ x: 0, y: 0 }, { x: 5, y: 0 }]);
       expect(s.engine.query.legalTargets(s.campaign.state, s.encounterId, pc.id, 'dodge')).toEqual([]);
+    });
+  });
+
+  // Slice 758: affordance fidelity to the attack planner.
+  describe('slice 758: attack affordance fidelity', () => {
+    it('legalTargets includes a foe beyond normal range but within long range (ranged weapon)', () => {
+      // Sling: normal 30 ft, long 120 ft. A foe at 35 ft is a legal attack
+      // (with Disadvantage) the planner accepts; the query must not omit it.
+      const sling = makeItemInstance('sling');
+      const slinger = buildFighter('Slinger', [sling.id]);
+      const foe = buildFighter('Far', [], { hp: { current: 12, max: 12, temp: 0, maxBonus: 0 } });
+      const s = setupCombat([slinger, foe], buildOpenMap, [{ x: 0, y: 0 }, { x: 35, y: 0 }], [sling]);
+      const ids = s.engine.query
+        .legalTargets(s.campaign.state, s.encounterId, slinger.id, 'attack')
+        .map((t) => t.combatantId);
+      expect(ids).toContain(foe.id);
+      // And the action surfaces as available (not no-target-in-range).
+      const attack = s.engine.query.availableActions(s.campaign.state, s.encounterId, slinger.id)
+        .find((a) => a.action === 'attack')!;
+      expect(attack.enabled).toBe(true);
+    });
+
+    it('attack stays enabled mid-Extra-Attack (action used, attacks remaining)', () => {
+      const sword = makeItemInstance('longsword');
+      const fighter = buildFighter('Striker', [sword.id], {
+        classes: [{ classId: 'fighter', level: 5, hitDiceRemaining: 5 }],
+      });
+      const foe = buildFighter('Foe', [], { hp: { current: 40, max: 40, temp: 0, maxBonus: 0 } });
+      const s = setupCombat([fighter, foe], buildOpenMap, [{ x: 0, y: 0 }, { x: 5, y: 0 }], [sword]);
+      // Spend the Attack action on the first of two attacks (Extra Attack, L5).
+      s.campaign = commit(
+        s.campaign,
+        s.engine.plan.attack(s.campaign.state, { attackerId: fighter.id, targetId: foe.id, weaponInstanceId: sword.id }).events,
+      );
+      const ae = s.engine.query.actionEconomy(s.campaign.state, s.encounterId, fighter.id)!;
+      expect(ae.attacks).toMatchObject({ perAction: 2, madeThisTurn: 1, remaining: 1 });
+      const attack = s.engine.query.availableActions(s.campaign.state, s.encounterId, fighter.id)
+        .find((a) => a.action === 'attack')!;
+      expect(attack.enabled, 'attack should remain enabled with an Extra Attack left').toBe(true);
+      // The once-per-action intents are now spent (the action was used).
+      const dash = s.engine.query.availableActions(s.campaign.state, s.encounterId, fighter.id)
+        .find((a) => a.action === 'dash')!;
+      expect(dash).toMatchObject({ enabled: false, reason: 'action-used' });
+    });
+
+    it('attack disabled (action-used) once the full attack budget is spent', () => {
+      const sword = makeItemInstance('longsword');
+      const fighter = buildFighter('Striker', [sword.id]); // L1 → 1 attack
+      const foe = buildFighter('Foe', [], { hp: { current: 40, max: 40, temp: 0, maxBonus: 0 } });
+      const s = setupCombat([fighter, foe], buildOpenMap, [{ x: 0, y: 0 }, { x: 5, y: 0 }], [sword]);
+      s.campaign = commit(
+        s.campaign,
+        s.engine.plan.attack(s.campaign.state, { attackerId: fighter.id, targetId: foe.id, weaponInstanceId: sword.id }).events,
+      );
+      const attack = s.engine.query.availableActions(s.campaign.state, s.encounterId, fighter.id)
+        .find((a) => a.action === 'attack')!;
+      expect(attack).toMatchObject({ enabled: false, reason: 'action-used' });
     });
   });
 

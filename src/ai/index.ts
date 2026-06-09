@@ -15,3 +15,22 @@ export {
   type TacticalMove,
   type TacticalMoveInput,
 } from './tactical-policy.js';
+
+// Auto-reaction policy decision logic (slice 749). Pure predicates a
+// consumer can use to surface / drive damage-mitigation reactions
+// (Uncanny Dodge, Deflect Attacks, Stone's Endurance). The constants in
+// ./reaction-constants.ts are internal tunables, not re-exported.
+export {
+  pickDamageReaction,
+  hasUncannyDodge,
+  hasDeflectAttacks,
+  hasStonesEndurance,
+  shouldShield,
+  shouldCuttingWords,
+  shouldCounterspell,
+  hasCountercharm,
+  disadvantageFlipsHit,
+  type DamageReaction,
+  type IncomingDamage,
+  type PhysicalDamageType,
+} from './reactions.js';

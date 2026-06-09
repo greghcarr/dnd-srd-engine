@@ -17,12 +17,21 @@ import {
   type ContentPack,
 } from '../src/index.js';
 import { commit, type Campaign } from '../src/engine/commit.js';
-import { performIntent } from '../src/engine/conveniences.js';
+import { performIntent, planIntent } from '../src/engine/conveniences.js';
 import type { ItemInstance } from '../src/schemas/runtime/item-instance.js';
 import type { Event } from '../src/schemas/events/index.js';
 import { resolveContent } from '../src/content/pack.js';
 import { emitTacticalSetup } from './tactical/setup.js';
 import { makeTacticalMovePolicy } from './tactical/move-policy.js';
+import { makeAutoReactionPolicy } from './reactions/reaction-policy.js';
+import { resolveAttackWithReactions } from './reactions/pre-damage-policy.js';
+import { resolveCastWithCounterspell } from './reactions/pre-cast-policy.js';
+import { COUNTERSPELL_SPELL_ID } from '../src/ai/reaction-constants.js';
+
+// Slice 751: the level at which a full caster has 3rd-level slots and can
+// thus cast Counterspell. Below this, the reaction can't fire, so the
+// RAW-faithful prepared injection is skipped.
+const COUNTERSPELL_MIN_LEVEL = 5;
 
 export const MAX_ROUNDS = 20;
 const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8] as const;
@@ -56,6 +65,14 @@ export type FuzzVs = 'pc' | 'monster';
 // the move-policy seam (NO_MOVE for 'none'). dnd-web replays the
 // resulting CombatantMoved events.
 export type FuzzMovement = 'none' | 'tactical';
+
+// Slice 749: 'none' (default) fires only the legacy inline reactions
+// (Shield), byte-identical to the pre-slice path; 'auto' runs the
+// reaction-policy seam that fires damage-mitigation reactions (Uncanny
+// Dodge / Deflect Attacks / Stone's Endurance) off the events each action
+// produces, and disables the cosmetic inline Shield. dnd-web replays the
+// resulting reaction events.
+export type FuzzReactions = 'none' | 'auto';
 
 // Per-class build spec: which ability gets the 15, which weapon /
 // armor / cantrips / L1 spells were drawn from the pool for THIS
@@ -443,6 +460,12 @@ const buildL1 = (
   // back to the random pick. All downstream draws come from the chosen
   // pool, so they're deterministic for a given (rng stream, forcedClassId).
   forcedClassId?: string,
+  // Slice 751: under reactions:'auto' at L5+, a Wizard/Sorcerer prepares
+  // Counterspell so the spell-cast reaction window is RAW-faithful (the
+  // reaction gates on preparedSpells.includes('counterspell')). Default
+  // false keeps the 'none' / sub-L5 build (and its CharacterCreated
+  // snapshot) byte-identical.
+  includeCounterspell = false,
 ): BuiltCharacter => {
   const drawnPool = pickRandom(CLASS_POOLS, rngFloat());
   const pool =
@@ -524,6 +547,11 @@ const buildL1 = (
     identifiedByCharacterIds: [],
   };
 
+  const counterspellPrep =
+    includeCounterspell && (build.classId === 'wizard' || build.classId === 'sorcerer')
+      ? [COUNTERSPELL_SPELL_ID]
+      : [];
+
   const character = CharacterSchema.parse({
     id: newCharacterId(),
     name,
@@ -544,8 +572,8 @@ const buildL1 = (
       ...(shieldInstance ? { shield: shieldInstance.id } : {}),
       attuned: [],
     },
-    knownSpells: [...build.cantrips, ...build.l1Spells],
-    preparedSpells: [...build.cantrips, ...build.l1Spells],
+    knownSpells: [...build.cantrips, ...build.l1Spells, ...counterspellPrep],
+    preparedSpells: [...build.cantrips, ...build.l1Spells, ...counterspellPrep],
     resources: [...(build.resources ?? []), ...speciesGrantedResources(pack, speciesId)],
     weaponMasteries: MASTERY_CLASSES.has(build.classId) ? [build.weaponId] : [],
   });
@@ -567,6 +595,10 @@ const pickIntent = (
   active: Combatant,
   opponent: Combatant,
   allies: ReadonlyArray<Combatant> = [],
+  // Slice 752: under reactions:'auto', a Bard casts charm-person to open a
+  // Countercharm window. Default false keeps the AI (and 'none' battles)
+  // byte-identical.
+  enableCharmPerson = false,
 ): { readonly type: string } & Record<string, unknown> | null => {
   const c = state.characters[active.built.character.id]!;
   const oppId = opponent.built.character.id;
@@ -681,6 +713,10 @@ const pickIntent = (
     if (classId === 'paladin') {
       // Paladin's BA branch above already handles Divine Favor; the
       // Action slot stays available for an attack.
+    } else if (enableCharmPerson && classId === 'bard' && c.preparedSpells.includes('charm-person') && hasUnusedL1Slot(c)) {
+      // Slice 752: open a Countercharm window. Only under 'auto' (the flag),
+      // so 'none' battles keep their prior bard action choice.
+      return { type: 'CastSpell', characterId: c.id, spellId: 'charm-person', slotLevel: 1, targetIds: [oppId] };
     } else if ((classId === 'cleric' || classId === 'bard') && c.preparedSpells.includes('bless') && hasUnusedL1Slot(c) && notConcentrating) {
       return { type: 'CastSpell', characterId: c.id, spellId: 'bless', slotLevel: 1, targetIds: [c.id] };
     } else if ((classId === 'wizard' || classId === 'sorcerer') && c.preparedSpells.includes('mage-armor') && hasUnusedL1Slot(c)) {
@@ -934,6 +970,9 @@ export interface FuzzBattleOptions {
   /** Slice 693: 'none' (default) is byte-identical to the legacy path;
    *  'tactical' spreads combatants on a generated arena and moves them. */
   readonly movement?: FuzzMovement;
+  /** Slice 749: 'none' (default) is byte-identical to the legacy path;
+   *  'auto' fires damage-mitigation reactions via the reaction-policy seam. */
+  readonly reactions?: FuzzReactions;
 }
 
 export interface FuzzBattleResult {
@@ -975,6 +1014,31 @@ export type MovePolicy = (ctx: MovePolicyContext) => Campaign;
 
 const NO_MOVE: MovePolicy = (ctx) => ctx.campaign;
 
+// Reaction-policy seam (slice 749). After each committed action the turn
+// loop calls `reactionPolicy` with the events that action produced.
+// NO_REACTIONS (the 'none' default) returns the campaign unchanged →
+// byte-identical log; 'auto' swaps in the auto-reaction policy. Same
+// injected-policy shape as MovePolicy so byte-identity is robust against
+// future turn-loop edits.
+export interface ReactionPolicyContext {
+  readonly engine: Engine;
+  readonly pack: Pack;
+  readonly campaign: Campaign;
+  readonly encounterId: string;
+  /** The events the just-committed action appended to the log. */
+  readonly producedEvents: ReadonlyArray<Event>;
+  readonly combatants: Record<string, Combatant>;
+  /** Slice 752: the two teams' character ids, so a reaction can find an
+   *  ally of an affected creature (Countercharm: a Bard on the charmed
+   *  creature's team rerolls its save). */
+  readonly teamACharacterIds: ReadonlyArray<string>;
+  readonly teamBCharacterIds: ReadonlyArray<string>;
+}
+
+export type ReactionPolicy = (ctx: ReactionPolicyContext) => Campaign;
+
+const NO_REACTIONS: ReactionPolicy = (ctx) => ctx.campaign;
+
 export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
   const seed = opts.seed;
   const pack = opts.pack;
@@ -983,6 +1047,7 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
   const teamSize = opts.teamSize ?? 1;
   const vs: FuzzVs = opts.vs ?? 'pc';
   const movement: FuzzMovement = opts.movement ?? 'none';
+  const reactions: FuzzReactions = opts.reactions ?? 'none';
 
   const engine = createEngine({ contentPacks: [pack], rng: seededRNG(seed) });
   let cursor = seed * 13 + 7;
@@ -1014,15 +1079,19 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
     pinCursor = (pinCursor * 9301 + 49297) % 233280;
     return pinCursor / 233280;
   };
+  // Slice 751: arcane casters prepare Counterspell only under 'auto' at
+  // L5+ (when they have 3rd-level slots), so the 'none' / sub-L5 builds —
+  // and their CharacterCreated snapshots — stay byte-identical.
+  const includeCounterspell = reactions === 'auto' && level >= COUNTERSPELL_MIN_LEVEL;
   const teamA: BuiltCharacter[] = teamNames('Aria').map((n, i) => {
-    const built = buildL1(n, rngFloat, pack); // always consume the shared draws
+    const built = buildL1(n, rngFloat, pack, undefined, includeCounterspell); // always consume the shared draws
     return i === 0 && pinnedClass !== undefined
-      ? buildL1(n, pinRngFloat, pack, pinnedClass) // isolated rebuild as the pinned class
+      ? buildL1(n, pinRngFloat, pack, pinnedClass, includeCounterspell) // isolated rebuild as the pinned class
       : built;
   });
   const teamB: BuiltCharacter[] = vs === 'monster'
     ? teamNames('Beast').map((n) => buildMonster(n, pack, rngFloat))
-    : teamNames('Bran').map((n) => buildL1(n, rngFloat, pack));
+    : teamNames('Bran').map((n) => buildL1(n, rngFloat, pack, undefined, includeCounterspell));
 
   const now = (offsetSec = 0): string => new Date(Date.UTC(2026, 0, 1, 0, 0, offsetSec)).toISOString();
   let eventCounter = 0;
@@ -1115,6 +1184,15 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
   const movePolicy: MovePolicy = movement === 'tactical'
     ? makeTacticalMovePolicy({ content: resolveContent([pack]) })
     : NO_MOVE;
+  // Slice 749: 'auto' fires damage-mitigation reactions; 'none' is the
+  // identity policy → byte-identical log. The engine planners carry their
+  // own resolved content, so the policy needs no content dependency.
+  const reactionPolicy: ReactionPolicy = reactions === 'auto'
+    ? makeAutoReactionPolicy()
+    : NO_REACTIONS;
+  // Slice 751: the counterspell resolver needs resolved content (for the
+  // 3rd-level-slot check). Resolve once, only in 'auto'.
+  const reactionContent = reactions === 'auto' ? resolveContent([pack]) : undefined;
 
   let rounds = 1;
   let winner: string | null = null;
@@ -1167,8 +1245,11 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
         .filter((pc) => pc.character.id !== active.built.character.id
           && campaign.state.characters[pc.character.id]!.hp.current > 0)
         .map((pc) => combatants[pc.character.id]!);
-      const intent = pickIntent(campaign.state, active, opponent, allies);
+      const intent = pickIntent(campaign.state, active, opponent, allies, reactions === 'auto');
       if (intent === null) break;
+      // Slice 749: snapshot the log length so the reaction policy (below)
+      // sees exactly the events this action produced.
+      const before = campaign.events.length;
       try {
         if (intent.type === 'ConsumeItem') {
           const { events } = engine.plan.consumeItem(campaign.state, {
@@ -1182,28 +1263,76 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
             characterId: intent.characterId as string,
           });
           campaign = commit(campaign, events);
+        } else if (reactions === 'auto' && intent.type === 'Attack') {
+          // Slice 750/755: two-phase attack via the engine attackRoll /
+          // attackDamage API. The resolver plans the roll (uncommitted), runs
+          // the pre-damage reaction window (Shield / Protection / Cutting
+          // Words), then commits the full attack or, if a reaction prevented
+          // the hit, the roll without ever rolling damage. 'none' keeps the
+          // single-phase commit.
+          const targetId = intent.targetId as string;
+          const defenderTeam = (teamAIds.has(targetId) ? teamA : teamB).map(
+            (pc) => pc.character.id,
+          );
+          campaign = resolveAttackWithReactions({
+            engine,
+            campaign,
+            encounterId: enc.encounterId,
+            attackIntent: {
+              attackerId: intent.attackerId as string,
+              targetId,
+              weaponInstanceId: intent.weaponInstanceId as string,
+            },
+            defenderTeam,
+            isTactical: movement === 'tactical',
+          });
+        } else if (reactions === 'auto' && intent.type === 'CastSpell') {
+          // Slice 751: two-phase cast — plan (uncommitted), run the
+          // spell-cast reaction window (Counterspell), then commit the full
+          // spell or, if countered, the spell's declaration minus its
+          // effects. 'none' keeps the single-phase commit.
+          const planned = planIntent(engine.plan, campaign.state, intent).events;
+          const casterId = intent.characterId as string;
+          const opposingTeam = (teamAIds.has(casterId) ? teamB : teamA).map(
+            (pc) => pc.character.id,
+          );
+          campaign = resolveCastWithCounterspell({
+            engine,
+            content: reactionContent!,
+            campaign,
+            encounterId: enc.encounterId,
+            spellEvents: planned,
+            opposingTeam,
+          });
         } else {
           campaign = performIntent(engine, campaign, intent);
         }
       } catch {
         break;
       }
-      const tail = campaign.events.slice(-12);
-      const hitOnDefender = [...tail].reverse().find((e): e is Event & { type: 'AttackRolled'; hit: boolean; targetId: string; total: number; targetAC: number; id: string } =>
-        e.type === 'AttackRolled' && (e as { targetId: string }).targetId === opponent.built.character.id && (e as { hit: boolean }).hit === true);
-      if (hitOnDefender !== undefined && tryShieldReaction(engine, campaign, opponent, hitOnDefender)) {
-        const { events: shieldEvents } = engine.plan.shield(campaign.state, {
-          casterId: opponent.built.character.id,
-          triggeringAttackEventId: hitOnDefender.id,
-          triggeringAttackTotal: hitOnDefender.total,
-          originalAC: hitOnDefender.targetAC,
-          slotLevel: 1,
-        });
-        try {
-          campaign = commit(campaign, [...shieldEvents]);
-        } catch {
-          // Shield post-hit may collide with already-applied damage
-          // events; in that case skip silently.
+      // Legacy inline Shield reaction (defender). Disabled under
+      // reactions:'auto', where the reaction-policy seam owns reactions
+      // (Shield is a prevent-the-trigger reaction deferred to the
+      // pre-damage-window follow-up). In 'none' it fires exactly as
+      // before, keeping the default path byte-identical.
+      if (reactions !== 'auto') {
+        const tail = campaign.events.slice(-12);
+        const hitOnDefender = [...tail].reverse().find((e): e is Event & { type: 'AttackRolled'; hit: boolean; targetId: string; total: number; targetAC: number; id: string } =>
+          e.type === 'AttackRolled' && (e as { targetId: string }).targetId === opponent.built.character.id && (e as { hit: boolean }).hit === true);
+        if (hitOnDefender !== undefined && tryShieldReaction(engine, campaign, opponent, hitOnDefender)) {
+          const { events: shieldEvents } = engine.plan.shield(campaign.state, {
+            casterId: opponent.built.character.id,
+            triggeringAttackEventId: hitOnDefender.id,
+            triggeringAttackTotal: hitOnDefender.total,
+            originalAC: hitOnDefender.targetAC,
+            slotLevel: 1,
+          });
+          try {
+            campaign = commit(campaign, [...shieldEvents]);
+          } catch {
+            // Shield post-hit may collide with already-applied damage
+            // events; in that case skip silently.
+          }
         }
       }
       actions += 1;
@@ -1258,6 +1387,20 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
           }
         }
       }
+      // Slice 749: fire damage-mitigation reactions on the events this
+      // action produced. NO_REACTIONS ('none', default) is the identity
+      // policy → byte-identical log. Runs after the mastery handling so
+      // its tail-scan reads the unperturbed attack events.
+      campaign = reactionPolicy({
+        engine,
+        pack,
+        campaign,
+        encounterId: enc.encounterId,
+        producedEvents: campaign.events.slice(before),
+        combatants,
+        teamACharacterIds: teamA.map((pc) => pc.character.id),
+        teamBCharacterIds: teamB.map((pc) => pc.character.id),
+      });
       const t = teamWiped();
       if (t !== null) {
         winner = t === 'A' ? teamA[0]!.character.id : teamB[0]!.character.id;

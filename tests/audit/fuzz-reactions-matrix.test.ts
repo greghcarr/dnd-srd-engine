@@ -1,0 +1,167 @@
+// Slice 749: a small reactions matrix under the fuzz/replay audit. The
+// positionless fuzz-matrix proves default battles complete + replay; this
+// runs the reaction-policy code paths (reactions:'auto') through the same
+// audit so a rule violation in a reacting battle surfaces as a throw or a
+// replay divergence, and a positive-presence aggregate proves the
+// damage-mitigation reactions actually fire (not silently degraded by the
+// backstop catch).
+
+import { describe, expect, it } from 'vitest';
+import { loadStarterPack } from '../../src/starter-pack.js';
+import { runBattle, type FuzzVs } from '../../scripts/combat-fuzz-core.js';
+import { replay } from '../../src/engine/replay.js';
+
+const STARTER = loadStarterPack();
+// Level 7: Rogue (Uncanny Dodge, L5) and Monk (Deflect Attacks, L3) both
+// have their reactions. Seeds chosen to span Uncanny-Dodge and
+// Deflect-Attacks firing across the configs.
+const LEVEL = 7;
+const SEEDS = [1, 2, 7, 10, 12, 14, 16];
+const CONFIGS: Array<{ teamSize: number; vs: FuzzVs }> = [
+  { teamSize: 1, vs: 'pc' },
+  { teamSize: 2, vs: 'pc' },
+  { teamSize: 2, vs: 'monster' },
+];
+
+describe('fuzz reactions matrix (slice 749)', () => {
+  it('every reacting battle completes, advances rounds, and replays equivalently', () => {
+    for (const { teamSize, vs } of CONFIGS) {
+      for (const seed of SEEDS) {
+        const label = `seed=${seed} teamSize=${teamSize} vs=${vs}`;
+        const r = runBattle({ seed, pack: STARTER, level: LEVEL, teamSize, vs, reactions: 'auto' });
+        expect(r.rounds, `${label} advanced no rounds`).toBeGreaterThan(0);
+        expect(JSON.stringify(replay(r.campaign.events)), `${label} replay mismatch`).toBe(
+          JSON.stringify(r.campaign.state),
+        );
+      }
+    }
+  });
+
+  it('positive presence: the matrix actually fires Uncanny Dodge and Deflect Attacks', () => {
+    let uncannyDodge = 0;
+    let deflectAttacks = 0;
+    for (const { teamSize, vs } of CONFIGS) {
+      for (const seed of SEEDS) {
+        const r = runBattle({ seed, pack: STARTER, level: LEVEL, teamSize, vs, reactions: 'auto' });
+        uncannyDodge += r.campaign.events.filter((e) => e.type === 'UncannyDodgeUsed').length;
+        deflectAttacks += r.campaign.events.filter((e) => e.type === 'DeflectAttacksUsed').length;
+      }
+    }
+    expect(uncannyDodge, 'no Uncanny Dodge fired across the whole matrix').toBeGreaterThan(0);
+    expect(deflectAttacks, 'no Deflect Attacks fired across the whole matrix').toBeGreaterThan(0);
+  });
+});
+
+// Slice 750: the pre-damage reaction window. Shield (a Wizard/Sorcerer
+// defender) is the clean prevent-the-trigger case — it emits a ShieldCast
+// with preventedHit, and (slice 755) the driver commits the roll without
+// ever calling engine.plan.attackDamage. 2v2-PC seeds reliably field a
+// Shield-casting defender.
+const SHIELD_SEEDS = Array.from({ length: 12 }, (_, i) => i + 1);
+
+describe('fuzz pre-damage reaction window (slice 750)', () => {
+  it('Shield fires and genuinely prevents the hit (no damage to the caster on the shielded swing), replaying equivalently', () => {
+    let prevented = 0;
+    for (const seed of SHIELD_SEEDS) {
+      const r = runBattle({ seed, pack: STARTER, level: 5, teamSize: 2, vs: 'pc', reactions: 'auto' });
+      const events = r.campaign.events;
+      expect(JSON.stringify(replay(events)), `seed=${seed} replay mismatch`).toBe(
+        JSON.stringify(r.campaign.state),
+      );
+      for (let i = 0; i < events.length; i += 1) {
+        const e = events[i]!;
+        if (e.type !== 'ShieldCast' || (e as { preventedHit?: boolean }).preventedHit !== true) continue;
+        prevented += 1;
+        const casterId = (e as { casterId: string }).casterId;
+        const atkIdx = events.findIndex((x) => x.id === (e as { triggeringAttackEventId: string }).triggeringAttackEventId);
+        for (let j = atkIdx + 1; j < i; j += 1) {
+          const x = events[j]!;
+          const damagedCaster = x.type === 'DamageApplied' && (x as { targetId: string }).targetId === casterId;
+          expect(damagedCaster, `seed=${seed} Shield preventedHit but caster took damage on the swing`).toBe(false);
+        }
+      }
+    }
+    expect(prevented, 'no Shield prevention fired across the shield seeds').toBeGreaterThan(0);
+  });
+});
+
+// Slice 755: the pre-damage window is re-wired onto the engine two-phase
+// attack API (engine.plan.attackRoll -> reaction window -> attackDamage). The
+// slice-750 guarantee was "no damage APPLIED to the prevented target"; the
+// stronger slice-755 guarantee is that the damage is never ROLLED at all —
+// the resolver never calls attackDamage for a prevented hit, so no DamageRolled
+// (and no discarded damage rng / on-hit riders) for the prevented swing.
+describe('fuzz two-phase pre-damage re-wire (slice 755)', () => {
+  it('a Shield-prevented swing rolls no damage at all (the damage phase is skipped, not sliced)', () => {
+    let prevented = 0;
+    for (const seed of SHIELD_SEEDS) {
+      const events = runBattle({ seed, pack: STARTER, level: 5, teamSize: 2, vs: 'pc', reactions: 'auto' })
+        .campaign.events;
+      for (let i = 0; i < events.length; i += 1) {
+        const e = events[i]!;
+        if (e.type !== 'ShieldCast' || (e as { preventedHit?: boolean }).preventedHit !== true) continue;
+        prevented += 1;
+        const atkIdx = events.findIndex((x) => x.id === (e as { triggeringAttackEventId: string }).triggeringAttackEventId);
+        for (let j = atkIdx + 1; j < i; j += 1) {
+          expect(
+            events[j]!.type === 'DamageRolled',
+            `seed=${seed} Shield preventedHit but the swing still rolled damage (two-phase re-wire should skip attackDamage)`,
+          ).toBe(false);
+        }
+      }
+    }
+    expect(prevented, 'no Shield prevention fired across the shield seeds').toBeGreaterThan(0);
+  });
+});
+
+// Slice 753: Protection (the positional reaction) only engages in tactical
+// mode. It rarely fires in random fuzz (it needs a shield-bearing ally with
+// the Protection fighting style adjacent to an attacked ally — the fuzz
+// grants no fighting styles), so this just proves the Protection adjacency
+// scan doesn't break tactical+auto battles: they complete and replay
+// equivalently. The constructed protection-resolver test is the correctness
+// gate.
+describe('fuzz tactical + reactions matrix (slice 753)', () => {
+  it('tactical + reactions:auto battles complete and replay equivalently', () => {
+    for (const seed of [1, 2, 5, 10, 14]) {
+      for (const teamSize of [1, 2]) {
+        const r = runBattle({ seed, pack: STARTER, level: 7, teamSize, vs: 'pc', movement: 'tactical', reactions: 'auto' });
+        expect(r.rounds, `seed=${seed} ts=${teamSize} advanced no rounds`).toBeGreaterThan(0);
+        expect(JSON.stringify(replay(r.campaign.events)), `seed=${seed} ts=${teamSize} replay mismatch`).toBe(
+          JSON.stringify(r.campaign.state),
+        );
+      }
+    }
+  });
+});
+
+// Slice 751: the spell-cast reaction window. A counter-caster (Wizard/
+// Sorcerer with Counterspell prepared under 'auto' + a 3rd-level slot)
+// counters a leveled spell, omitting its effects. L5 2v2-PC seeds field
+// arcane casters on both sides.
+const COUNTER_SEEDS = Array.from({ length: 20 }, (_, i) => i + 1);
+
+describe('fuzz spell-cast reaction window (slice 751)', () => {
+  it('Counterspell fires, omits the countered spell\'s effects (no damage between the cast and the counter), and replays equivalently', () => {
+    let countered = 0;
+    for (const seed of COUNTER_SEEDS) {
+      const r = runBattle({ seed, pack: STARTER, level: 5, teamSize: 2, vs: 'pc', reactions: 'auto' });
+      const events = r.campaign.events;
+      expect(JSON.stringify(replay(events)), `seed=${seed} replay mismatch`).toBe(
+        JSON.stringify(r.campaign.state),
+      );
+      for (let i = 0; i < events.length; i += 1) {
+        const e = events[i]!;
+        if (e.type !== 'SpellCountered') continue;
+        countered += 1;
+        const declIdx = events.findIndex((x) => x.id === (e as { originalSpellEventId: string }).originalSpellEventId);
+        for (let j = declIdx + 1; j < i; j += 1) {
+          const t = events[j]!.type;
+          const leaked = t === 'DamageRolled' || t === 'DamageApplied';
+          expect(leaked, `seed=${seed} countered spell leaked damage before the counter`).toBe(false);
+        }
+      }
+    }
+    expect(countered, 'no Counterspell fired across the counter seeds').toBeGreaterThan(0);
+  });
+});

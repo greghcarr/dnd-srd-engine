@@ -9,7 +9,7 @@ import { seededRNG } from '../../../src/rng/seeded.js';
 import { commit, type Campaign } from '../../../src/engine/commit.js';
 import { loadStarterPack } from '../../../src/content/packs/starter.js';
 import { CharacterSchema, type Character } from '../../../src/schemas/runtime/character.js';
-import { newCharacterId, newAppliedConditionId } from '../../../src/ids.js';
+import { newCharacterId, newAppliedConditionId, newChoiceId } from '../../../src/ids.js';
 import { SuppliedRollProvider } from '../../../src/rng/roll-provider.js';
 import { eventId, isoTimestamp, makeItemInstance } from '../../fixtures/index.js';
 import type { CharacterCreatedEvent } from '../../../src/schemas/events/progression.js';
@@ -18,6 +18,7 @@ import type {
 } from '../../../src/schemas/events/encounter.js';
 import type { ActionEconomyConsumedEvent } from '../../../src/schemas/events/action-economy.js';
 import type { ConditionAppliedEvent, HealedEvent } from '../../../src/schemas/events/combat.js';
+import type { ChoiceRequiredEvent, ChoiceResolvedEvent } from '../../../src/schemas/events/level-up.js';
 import type { ULID } from '../../../src/engine/ids-utils.js';
 
 const PACK = loadStarterPack();
@@ -62,6 +63,11 @@ const paladin = (pool = 5): Character =>
   });
 const wizard = (): Character =>
   base({ classes: [{ classId: 'wizard', level: 3, hitDiceRemaining: 3 }] });
+const sorcerer = (innate = 1): Character =>
+  base({
+    classes: [{ classId: 'sorcerer', level: 1, hitDiceRemaining: 1 }],
+    resources: [{ resourceId: 'innate-sorcery', current: innate, max: 2 }],
+  });
 const orc = (rush = 2): Character =>
   base({
     speciesId: 'orc',
@@ -168,6 +174,7 @@ describe('slice 714: bonusActions enumeration', () => {
       label: 'Second Wind',
       target: 'self',
       enabled: true,
+      requiresAmount: false,
     });
   });
 
@@ -447,5 +454,474 @@ describe('slice 715: extended bonus-action surface', () => {
         targetId: target.id,
       }),
     ).toThrow(/requires a weaponInstanceId/);
+  });
+});
+
+// ── Slice 756: metered-amount + target affordances ──────────────────
+
+// A positioned encounter (combatants carry feet positions) with `activeId`
+// winning initiative — for the bonusActionTargets range tests.
+const setupPositioned = (
+  placed: ReadonlyArray<{ char: Character; pos: { x: number; y: number } }>,
+  activeId: string,
+): Setup => {
+  const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(1) });
+  let campaign: Campaign = engine.createCampaign({ name: 'ba-pos' });
+  campaign = commit(
+    campaign,
+    placed.map(
+      (p) =>
+        ({ id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: p.char }) satisfies CharacterCreatedEvent,
+    ),
+  );
+  const enc = engine.plan.createEncounter(campaign.state, {
+    name: 'arena',
+    combatants: placed.map((p) => ({ characterId: p.char.id, position: p.pos })),
+  });
+  campaign = commit(campaign, enc.events);
+  campaign = commit(campaign, [
+    {
+      id: eventId(),
+      at: isoTimestamp(),
+      type: 'InitiativeRolled',
+      encounterId: enc.encounterId as ULID,
+      rolls: placed.map((p) => ({
+        combatantId: p.char.id as ULID,
+        d20: p.char.id === activeId ? 20 : 5,
+        modifier: 0,
+        total: p.char.id === activeId ? 20 : 5,
+      })),
+    } satisfies InitiativeRolledEvent,
+  ]);
+  campaign = commit(campaign, engine.plan.startEncounter(campaign.state, { encounterId: enc.encounterId }).events);
+  campaign = commit(campaign, engine.plan.beginFirstTurn(campaign.state, { encounterId: enc.encounterId }).events);
+  return { engine, campaign, encounterId: enc.encounterId };
+};
+
+const downedWizard = (): Character => base({ classes: [{ classId: 'wizard', level: 3, hitDiceRemaining: 3 }], hp: { current: 0, max: 24, temp: 0, maxBonus: 0 } });
+
+describe('slice 756: requiresAmount + maxAmount', () => {
+  it('Lay on Hands heal: requiresAmount true, maxAmount = the current pool', () => {
+    const p = paladin(5);
+    const s = setup([p], p.id);
+    expect(byId(s, p.id)['lay-on-hands-heal']).toMatchObject({ requiresAmount: true, maxAmount: 5 });
+  });
+
+  it('maxAmount tracks the pool (a partially-spent paladin offers less)', () => {
+    const p = paladin(3);
+    const s = setup([p], p.id);
+    expect(byId(s, p.id)['lay-on-hands-heal']?.maxAmount).toBe(3);
+  });
+
+  it('non-metered options report requiresAmount false and carry no maxAmount', () => {
+    const p = paladin(5);
+    const s = setup([p], p.id);
+    const opts = byId(s, p.id);
+    for (const id of ['lay-on-hands-cure-poison']) {
+      expect(opts[id]).toMatchObject({ requiresAmount: false });
+      expect(opts[id]).not.toHaveProperty('maxAmount');
+    }
+    const f = fighter();
+    const fs = setup([f], f.id);
+    expect(byId(fs, f.id)['second-wind']).not.toHaveProperty('maxAmount');
+  });
+});
+
+describe('slice 756: bonusActionTargets', () => {
+  it('Lay on Hands heal: self + creatures within touch (incl. a dying ally), excludes the far creature', () => {
+    const p = paladin(5);
+    const adjacent = wizard();
+    const dying = downedWizard();
+    const far = wizard();
+    const s = setupPositioned(
+      [
+        { char: p, pos: { x: 0, y: 0 } },
+        { char: adjacent, pos: { x: 5, y: 0 } },
+        { char: dying, pos: { x: 0, y: 5 } },
+        { char: far, pos: { x: 100, y: 0 } },
+      ],
+      p.id,
+    );
+    const ids = s.engine.query
+      .bonusActionTargets(s.campaign.state, s.encounterId, p.id, 'lay-on-hands-heal')
+      .map((t) => t.combatantId);
+    expect(ids).toContain(p.id); // self
+    expect(ids).toContain(adjacent.id);
+    expect(ids).toContain(dying.id); // a 0-HP ally is the primary heal target
+    expect(ids).not.toContain(far.id);
+  });
+
+  it('targets carry the combatant position when placed', () => {
+    const p = paladin(5);
+    const ally = wizard();
+    const s = setupPositioned(
+      [{ char: p, pos: { x: 0, y: 0 } }, { char: ally, pos: { x: 5, y: 0 } }],
+      p.id,
+    );
+    const target = s.engine.query
+      .bonusActionTargets(s.campaign.state, s.encounterId, p.id, 'lay-on-hands-heal')
+      .find((t) => t.combatantId === ally.id);
+    expect(target?.position).toEqual({ x: 5, y: 0 });
+  });
+
+  it('Cure Poison honors touch range (excludes the far creature)', () => {
+    const p = paladin(5);
+    const adjacent = wizard();
+    const far = wizard();
+    const s = setupPositioned(
+      [
+        { char: p, pos: { x: 0, y: 0 } },
+        { char: adjacent, pos: { x: 5, y: 0 } },
+        { char: far, pos: { x: 50, y: 0 } },
+      ],
+      p.id,
+    );
+    const ids = s.engine.query
+      .bonusActionTargets(s.campaign.state, s.encounterId, p.id, 'lay-on-hands-cure-poison')
+      .map((t) => t.combatantId);
+    expect(ids).toContain(adjacent.id);
+    expect(ids).not.toContain(far.id);
+  });
+
+  it('Bardic Inspiration: within 60 ft, excludes self and the dying', () => {
+    const b = bard();
+    const inRange = wizard();
+    const dying = downedWizard();
+    const far = wizard();
+    const s = setupPositioned(
+      [
+        { char: b, pos: { x: 0, y: 0 } },
+        { char: inRange, pos: { x: 30, y: 0 } },
+        { char: dying, pos: { x: 5, y: 0 } },
+        { char: far, pos: { x: 100, y: 0 } },
+      ],
+      b.id,
+    );
+    const ids = s.engine.query
+      .bonusActionTargets(s.campaign.state, s.encounterId, b.id, 'bardic-inspiration')
+      .map((t) => t.combatantId);
+    expect(ids).toContain(inRange.id);
+    expect(ids).not.toContain(b.id); // RAW: a creature other than yourself
+    expect(ids).not.toContain(dying.id); // a downed creature can't use the die
+    expect(ids).not.toContain(far.id); // out of 60 ft
+  });
+
+  it('Flurry of Blows: reach 5 ft, never the monk itself', () => {
+    const m = monk(2);
+    const adjacent = wizard();
+    const far = wizard();
+    const s = setupPositioned(
+      [
+        { char: m, pos: { x: 0, y: 0 } },
+        { char: adjacent, pos: { x: 5, y: 0 } },
+        { char: far, pos: { x: 50, y: 0 } },
+      ],
+      m.id,
+    );
+    const ids = s.engine.query
+      .bonusActionTargets(s.campaign.state, s.encounterId, m.id, 'flurry-of-blows')
+      .map((t) => t.combatantId);
+    expect(ids).toEqual([adjacent.id]);
+  });
+
+  it('positionless encounter: no range filter (honors self / defeated only)', () => {
+    const p = paladin(5);
+    const ally = wizard();
+    const s = setup([p, ally], p.id); // setup() places no positions
+    const ids = s.engine.query
+      .bonusActionTargets(s.campaign.state, s.encounterId, p.id, 'lay-on-hands-heal')
+      .map((t) => t.combatantId);
+    expect(ids).toEqual([p.id, ally.id].sort());
+  });
+
+  it('returns [] for a non-creature option and for an unknown id', () => {
+    const f = fighter();
+    const s = setup([f], f.id);
+    expect(s.engine.query.bonusActionTargets(s.campaign.state, s.encounterId, f.id, 'second-wind')).toEqual([]);
+    expect(s.engine.query.bonusActionTargets(s.campaign.state, s.encounterId, f.id, 'no-such-option')).toEqual([]);
+  });
+});
+
+// Pattern-lock (slice 756): every creature-target option MUST expose a target
+// query, or the consumer gets an empty picker (the Lay-on-Hands bug class).
+// bonusActionTargets returns [] for a creature option with no targeting spec,
+// so assert each one yields a target in a setup where one is legal.
+describe('slice 756: every creature-target option enumerates targets (no silent empty picker)', () => {
+  it('each target:creature option returns at least one candidate when one is legal', () => {
+    // A paladin/bard/monk multiclass owns all four creature-target options;
+    // an adjacent ally is a legal target for every one.
+    const actor = base({
+      classes: [
+        { classId: 'paladin', level: 1, hitDiceRemaining: 1 },
+        { classId: 'bard', level: 3, hitDiceRemaining: 3 },
+        { classId: 'monk', level: 3, hitDiceRemaining: 3 },
+      ],
+      resources: [
+        { resourceId: 'lay-on-hands', current: 5, max: 5 },
+        { resourceId: 'bardic-inspiration', current: 3, max: 3 },
+        { resourceId: 'ki', current: 3, max: 3 },
+      ],
+    });
+    const ally = wizard();
+    const s = setupPositioned(
+      [{ char: actor, pos: { x: 0, y: 0 } }, { char: ally, pos: { x: 5, y: 0 } }],
+      actor.id,
+    );
+    const creatureOptions = s.engine.query
+      .bonusActions(s.campaign.state, s.encounterId, actor.id)
+      .filter((o) => o.target === 'creature');
+    expect(creatureOptions.length).toBeGreaterThan(0);
+    for (const o of creatureOptions) {
+      const targets = s.engine.query.bonusActionTargets(s.campaign.state, s.encounterId, actor.id, o.id);
+      expect(targets.length, `${o.id} returned no targets (missing targeting spec?)`).toBeGreaterThan(0);
+    }
+  });
+});
+
+// Slice 761: encounter-only options must not show enabled before the
+// encounter starts (a 'planning' encounter has activeIndex 0 + no
+// activeEncounterId, so the planner would throw "only in an active encounter").
+describe('slice 761: bonus actions in a not-started (planning) encounter', () => {
+  it('encounter-only options are disabled (not-your-turn) before the encounter starts; planner agrees', () => {
+    const r = rogue();
+    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(1) });
+    let campaign: Campaign = engine.createCampaign({ name: 'planning' });
+    campaign = commit(campaign, [
+      { id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: r } satisfies CharacterCreatedEvent,
+    ]);
+    const enc = engine.plan.createEncounter(campaign.state, { combatantIds: [r.id] });
+    campaign = commit(campaign, enc.events); // status 'planning' — deliberately NOT started
+    expect(campaign.state.activeEncounterId).toBeUndefined();
+    const opts = Object.fromEntries(
+      engine.query.bonusActions(campaign.state, enc.encounterId, r.id).map((o) => [o.id, o]),
+    );
+    expect(opts['cunning-action-dash']).toMatchObject({ enabled: false, reason: 'not-your-turn' });
+    // Cross-check: the planner rejects it (Cunning Action needs an active encounter).
+    expect(() =>
+      engine.plan.useOption(campaign.state, { combatantId: r.id, optionId: 'cunning-action-dash' }),
+    ).toThrow();
+  });
+});
+
+// Slice 762: two more bonus-action features in the registry — Innate Sorcery
+// (Sorcerer self-buff) and Off-Hand Attack (two-weapon, equip-gated).
+describe('slice 762: Innate Sorcery + Off-Hand Attack', () => {
+  it('Sorcerer: Innate Sorcery (self) enabled, and useOption activates it', () => {
+    const sorc = sorcerer();
+    const s = setup([sorc], sorc.id);
+    expect(byId(s, sorc.id)['innate-sorcery']).toMatchObject({
+      target: 'self',
+      enabled: true,
+      requiresAmount: false,
+    });
+    const events = s.engine.plan
+      .useOption(s.campaign.state, { combatantId: sorc.id, optionId: 'innate-sorcery' })
+      .events;
+    expect(
+      events.some((e) => e.type === 'ConditionApplied' && (e as { conditionId?: string }).conditionId === 'innate-sorcery-active'),
+    ).toBe(true);
+  });
+
+  it('Innate Sorcery is disabled (already-active) while the condition is present', () => {
+    const sorc = base({
+      classes: [{ classId: 'sorcerer', level: 1, hitDiceRemaining: 1 }],
+      resources: [{ resourceId: 'innate-sorcery', current: 1, max: 2 }],
+      appliedConditions: [{ id: newAppliedConditionId(), conditionId: 'innate-sorcery-active' }],
+    });
+    const s = setup([sorc], sorc.id);
+    expect(byId(s, sorc.id)['innate-sorcery']).toMatchObject({ enabled: false, reason: 'already-active' });
+  });
+
+  it('Off-Hand Attack appears only when wielding a light weapon; useOption strikes', () => {
+    const dagger = makeItemInstance('dagger'); // light
+    const ftr = base({
+      classes: [{ classId: 'fighter', level: 1, hitDiceRemaining: 1 }],
+      inventory: [dagger.id],
+      equipped: { mainHand: dagger.id, attuned: [] },
+    });
+    const foe = wizard();
+    const s = setup([ftr, foe], ftr.id);
+    s.campaign = commit(s.campaign, [
+      { id: eventId(), at: isoTimestamp(), type: 'ItemAcquired', instance: dagger },
+    ]);
+    expect(byId(s, ftr.id)['off-hand-attack']).toMatchObject({ target: 'creature', enabled: true });
+    const events = s.engine.plan
+      .useOption(s.campaign.state, {
+        combatantId: ftr.id,
+        optionId: 'off-hand-attack',
+        targetId: foe.id,
+        weaponInstanceId: dagger.id,
+      })
+      .events;
+    expect(events.some((e) => e.type === 'AttackRolled')).toBe(true);
+  });
+
+  it('Off-Hand Attack is absent without a light weapon (longsword only)', () => {
+    const sword = makeItemInstance('longsword'); // not light
+    const ftr = base({
+      classes: [{ classId: 'fighter', level: 1, hitDiceRemaining: 1 }],
+      inventory: [sword.id],
+      equipped: { mainHand: sword.id, attuned: [] },
+    });
+    const s = setup([ftr], ftr.id);
+    s.campaign = commit(s.campaign, [
+      { id: eventId(), at: isoTimestamp(), type: 'ItemAcquired', instance: sword },
+    ]);
+    expect(byId(s, ftr.id)['off-hand-attack']).toBeUndefined();
+  });
+});
+
+// Slice 768: the remaining bonus-action deferrals — Cloud's Jaunt (positional
+// teleport, owns via the resolved ancestry) and Conjure Pact Weapon (owns via
+// the Pact of the Blade invocation).
+const seedAncestry = (characterId: string, selected: string): [ChoiceRequiredEvent, ChoiceResolvedEvent] => {
+  const choiceId = newChoiceId();
+  return [
+    {
+      id: eventId(), at: isoTimestamp(), type: 'ChoiceRequired', choiceId, characterId: characterId as ULID,
+      promptKey: 'goliath-giant-ancestry', prompt: 'Choose a Giant Ancestry.',
+      options: [{ id: 'clouds-jaunt', label: "Cloud's Jaunt", effects: [] }, { id: 'stones-endurance', label: "Stone's Endurance", effects: [] }],
+      oneOf: 1,
+    } as unknown as ChoiceRequiredEvent,
+    { id: eventId(), at: isoTimestamp(), type: 'ChoiceResolved', choiceId, characterId: characterId as ULID, selectedOptionIds: [selected] } as unknown as ChoiceResolvedEvent,
+  ];
+};
+
+const goliath = (): Character =>
+  base({
+    speciesId: 'goliath',
+    classes: [{ classId: 'fighter', level: 1, hitDiceRemaining: 1 }],
+    resources: [{ resourceId: 'giant-ancestry', current: 2, max: 2 }],
+  });
+
+describe("slice 768: Cloud's Jaunt", () => {
+  // Positioned, started encounter with the Goliath active at (0,0).
+  const setupGoliath = (ancestry: string | null) => {
+    const g = goliath();
+    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(1) });
+    let campaign: Campaign = engine.createCampaign({ name: 'cj' });
+    campaign = commit(campaign, [
+      { id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: g } satisfies CharacterCreatedEvent,
+      ...(ancestry !== null ? seedAncestry(g.id, ancestry) : []),
+    ]);
+    const enc = engine.plan.createEncounter(campaign.state, { name: 'arena', combatants: [{ characterId: g.id, position: { x: 0, y: 0 } }] });
+    campaign = commit(campaign, enc.events);
+    campaign = commit(campaign, engine.plan.rollInitiative(campaign.state, { encounterId: enc.encounterId }).events);
+    campaign = commit(campaign, engine.plan.startEncounter(campaign.state, { encounterId: enc.encounterId }).events);
+    campaign = commit(campaign, engine.plan.beginFirstTurn(campaign.state, { encounterId: enc.encounterId }).events);
+    return { engine, campaign, encounterId: enc.encounterId, goliath: g };
+  };
+
+  it('offered to a Goliath who chose Cloud\'s Jaunt; useOption teleports', () => {
+    const s = setupGoliath('clouds-jaunt');
+    const opts = Object.fromEntries(s.engine.query.bonusActions(s.campaign.state, s.encounterId, s.goliath.id).map((o) => [o.id, o]));
+    expect(opts['clouds-jaunt']).toMatchObject({ target: 'none', enabled: true });
+    const events = s.engine.plan.useOption(s.campaign.state, { combatantId: s.goliath.id, optionId: 'clouds-jaunt', to: { x: 10, y: 0 } }).events;
+    expect(events.some((e) => e.type === 'CombatantMoved')).toBe(true);
+  });
+
+  it('NOT offered to a Goliath who did not resolve the ancestry', () => {
+    const s = setupGoliath(null);
+    expect(s.engine.query.bonusActions(s.campaign.state, s.encounterId, s.goliath.id).find((o) => o.id === 'clouds-jaunt')).toBeUndefined();
+  });
+
+  it('useOption throws without a destination', () => {
+    const s = setupGoliath('clouds-jaunt');
+    expect(() => s.engine.plan.useOption(s.campaign.state, { combatantId: s.goliath.id, optionId: 'clouds-jaunt' })).toThrow(/requires a to/);
+  });
+});
+
+describe('slice 768: Conjure Pact Weapon', () => {
+  const warlock = (pactBlade: boolean): Character =>
+    base({
+      classes: [{ classId: 'warlock', level: 3, hitDiceRemaining: 3 }],
+      featsTaken: pactBlade ? ['pact-of-the-blade'] : [],
+    });
+
+  it('offered to a Pact of the Blade warlock; useOption conjures', () => {
+    const w = warlock(true);
+    const s = setup([w], w.id);
+    expect(Object.fromEntries(s.engine.query.bonusActions(s.campaign.state, s.encounterId, w.id).map((o) => [o.id, o]))['conjure-pact-weapon'])
+      .toMatchObject({ target: 'none', enabled: true });
+    expect(() => s.engine.plan.useOption(s.campaign.state, { combatantId: w.id, optionId: 'conjure-pact-weapon', weaponDefinitionId: 'longsword' })).not.toThrow();
+  });
+
+  it('NOT offered to a warlock without the invocation', () => {
+    const w = warlock(false);
+    const s = setup([w], w.id);
+    expect(s.engine.query.bonusActions(s.campaign.state, s.encounterId, w.id).find((o) => o.id === 'conjure-pact-weapon')).toBeUndefined();
+  });
+
+  it('useOption throws without a weaponDefinitionId', () => {
+    const w = warlock(true);
+    const s = setup([w], w.id);
+    expect(() => s.engine.plan.useOption(s.campaign.state, { combatantId: w.id, optionId: 'conjure-pact-weapon' })).toThrow(/requires a weaponDefinitionId/);
+  });
+});
+
+// Slice 773: bonus-action class features — Sacred Weapon (Devotion paladin
+// Channel Divinity) + Intimidating Presence (Berserker barbarian L14).
+const devotionPaladin = (cd = 2): Character =>
+  base({
+    classes: [{ classId: 'paladin', level: 3, hitDiceRemaining: 3, subclassId: 'oath-of-devotion' }],
+    resources: [{ resourceId: 'channel-divinity', current: cd, max: 2 }],
+  });
+const berserker = (level = 14): Character =>
+  base({
+    classes: [{ classId: 'barbarian', level, hitDiceRemaining: level, subclassId: 'path-of-the-berserker' }],
+    resources: [{ resourceId: 'rage', current: 4, max: 4 }],
+  });
+
+describe('slice 773: Sacred Weapon', () => {
+  it('offered to a Devotion paladin; useOption activates it', () => {
+    const p = devotionPaladin();
+    const s = setup([p], p.id);
+    expect(byId(s, p.id)['sacred-weapon']).toMatchObject({ target: 'self', enabled: true });
+    const events = s.engine.plan.useOption(s.campaign.state, { combatantId: p.id, optionId: 'sacred-weapon' }).events;
+    expect(events.some((e) => e.type === 'ConditionApplied' && (e as { conditionId?: string }).conditionId === 'sacred-weapon-active')).toBe(true);
+  });
+
+  it('disabled (already-active) while Sacred Weapon is active; no-uses when Channel Divinity is spent', () => {
+    const active = base({
+      classes: [{ classId: 'paladin', level: 3, hitDiceRemaining: 3, subclassId: 'oath-of-devotion' }],
+      resources: [{ resourceId: 'channel-divinity', current: 2, max: 2 }],
+      appliedConditions: [{ id: newAppliedConditionId(), conditionId: 'sacred-weapon-active' }],
+    });
+    const as = setup([active], active.id);
+    expect(byId(as, active.id)['sacred-weapon']).toMatchObject({ enabled: false, reason: 'already-active' });
+    const empty = devotionPaladin(0);
+    const es = setup([empty], empty.id);
+    expect(byId(es, empty.id)['sacred-weapon']).toMatchObject({ enabled: false, reason: 'no-uses' });
+  });
+
+  it('not offered to a non-Devotion paladin', () => {
+    const plain = base({ classes: [{ classId: 'paladin', level: 3, hitDiceRemaining: 3 }], resources: [{ resourceId: 'channel-divinity', current: 2, max: 2 }] });
+    const s = setup([plain], plain.id);
+    expect(s.engine.query.bonusActions(s.campaign.state, s.encounterId, plain.id).find((o) => o.id === 'sacred-weapon')).toBeUndefined();
+  });
+});
+
+describe('slice 773: Intimidating Presence', () => {
+  it('offered to a Berserker L14; useOption frightens the targets', () => {
+    const b = berserker();
+    const foe = wizard();
+    const s = setup([b, foe], b.id);
+    expect(byId(s, b.id)['intimidating-presence']).toMatchObject({ target: 'none', enabled: true });
+    expect(() => s.engine.plan.useOption(s.campaign.state, { combatantId: b.id, optionId: 'intimidating-presence', targetIds: [foe.id] })).not.toThrow();
+  });
+
+  it('not offered below L14 or to a non-Berserker', () => {
+    const young = berserker(13);
+    const ys = setup([young], young.id);
+    expect(ys.engine.query.bonusActions(ys.campaign.state, ys.encounterId, young.id).find((o) => o.id === 'intimidating-presence')).toBeUndefined();
+    const plainBarb = base({ classes: [{ classId: 'barbarian', level: 14, hitDiceRemaining: 14 }], resources: [{ resourceId: 'rage', current: 4, max: 4 }] });
+    const ps = setup([plainBarb], plainBarb.id);
+    expect(ps.engine.query.bonusActions(ps.campaign.state, ps.encounterId, plainBarb.id).find((o) => o.id === 'intimidating-presence')).toBeUndefined();
+  });
+
+  it('actionIntent-equivalent: useOption throws without targetIds', () => {
+    const b = berserker();
+    const s = setup([b], b.id);
+    expect(() => s.engine.plan.useOption(s.campaign.state, { combatantId: b.id, optionId: 'intimidating-presence' })).toThrow(/requires a targetIds/);
   });
 });

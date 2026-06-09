@@ -105,7 +105,9 @@ const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
   // Special-cast / placed-entity / multi-arg spell planners:
   'magicWeapon', 'removeCurse', 'mistyStep', 'thunderStep', 'dimensionDoor',
   'silentImage', 'majorImage', 'clairvoyance', 'scrying', 'arcaneEye', 'divineIntervention',
-  'innateSorcery', 'selfRestoration',
+  // Slice 762: innateSorcery moved to the performIntent dispatch (it's now a
+  // bonusActions menu option routed via useOption), so it's no longer here.
+  'selfRestoration',
   // Sensor / illusion management:
   'switchSensorMode', 'moveSensor', 'removeSensor', 'investigateIllusion', 'dismissIllusion',
   // Transformations (code-handler escape hatch shape):
@@ -118,6 +120,11 @@ const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
   'grantInitialHeroPoints', 'spendHeroPoint',
   // Travel / rest / resurrection / attack follow-ups:
   'rest', 'forcedMarch', 'resurrect', 'cleave',
+  // Slice 754: the two-phase attack sub-planners. `attack` (bundled) is the
+  // dispatched player action; attackRoll/attackDamage are the consumer-
+  // orchestrated halves (roll -> reaction window -> damage), invoked
+  // directly, not as their own intent types.
+  'attackRoll', 'attackDamage',
   // Slice 618: post-CharacterCreated choice cascade — consumer invokes
   // after committing CharacterCreated to drain L1 OfferChoice entries
   // (Fighter Fighting Style, future L1 origin-feat picks). Not a player
@@ -132,6 +139,9 @@ const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
   // option id to its own planner and routes it through the shared
   // planIntent table. It IS the dispatcher, not a routed intent.
   'useOption',
+  // Slice 764: generic action executor — the actionOptions sibling of
+  // useOption. Also a dispatcher, not a routed intent.
+  'useActionOption',
 ]);
 
 describe('planner-wiring audit: every engine.plan method is dispatch-routed or allowlisted', () => {
