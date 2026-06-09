@@ -350,3 +350,77 @@ describe('slice 765: Protection (shield + Fighting Style + adjacency)', () => {
     expect(engine.query.reactionsForTrigger(campaign.state, encounterId, protector.id, trigger).find((r) => r.id === 'protection')).toBeUndefined();
   });
 });
+
+// Slice 766: Opportunity Attack — a CombatantMoved that leaves the reactor's
+// melee reach (the reactor non-active, wielding a melee weapon).
+describe('slice 766: Opportunity Attack (leaves-reach)', () => {
+  const meleeFighter = (name: string, weaponId?: string): Character =>
+    CharacterSchema.parse({
+      id: newCharacterId(), name, speciesId: 'human', backgroundId: 'soldier',
+      classes: [{ classId: 'fighter', level: 3, hitDiceRemaining: 3 }],
+      abilityScores: { STR: 16, DEX: 12, CON: 14, INT: 10, WIS: 10, CHA: 10 },
+      hp: { current: 28, max: 28, temp: 0 },
+      inventory: weaponId !== undefined ? [weaponId] : [],
+      equipped: weaponId !== undefined ? { mainHand: weaponId, attuned: [] } : { attuned: [] },
+    });
+
+  // The mover wins initiative (so it's active and the reactor is NOT); reactor
+  // at (0,0) with a longsword (5 ft reach); the mover starts at (5,0).
+  const run = (reactorHasWeapon: boolean, moverTo: { x: number; y: number }) => {
+    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(3) });
+    const sword = makeItemInstance('longsword');
+    const reactor = meleeFighter('Reactor', reactorHasWeapon ? sword.id : undefined);
+    const mover = meleeFighter('Mover');
+    let campaign: Campaign = engine.createCampaign({ name: 'oa' });
+    campaign = commit(campaign, [
+      ...(reactorHasWeapon ? [{ id: eventId(), at: isoTimestamp(), type: 'ItemAcquired', instance: sword } as unknown as Event] : []),
+      { id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: reactor } satisfies CharacterCreatedEvent,
+      { id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: mover } satisfies CharacterCreatedEvent,
+    ]);
+    const enc = engine.plan.createEncounter(campaign.state, {
+      name: 'arena',
+      combatants: [
+        { characterId: mover.id, position: { x: 5, y: 0 } },
+        { characterId: reactor.id, position: { x: 0, y: 0 } },
+      ],
+    });
+    campaign = commit(campaign, enc.events);
+    campaign = commit(campaign, [
+      {
+        id: eventId(), at: isoTimestamp(), type: 'InitiativeRolled', encounterId: enc.encounterId as ULID,
+        rolls: [
+          { combatantId: mover.id as ULID, d20: 20, modifier: 0, total: 20 },
+          { combatantId: reactor.id as ULID, d20: 5, modifier: 0, total: 5 },
+        ],
+      } satisfies InitiativeRolledEvent,
+    ]);
+    campaign = commit(campaign, engine.plan.startEncounter(campaign.state, { encounterId: enc.encounterId }).events);
+    campaign = commit(campaign, engine.plan.beginFirstTurn(campaign.state, { encounterId: enc.encounterId }).events);
+    const trigger = {
+      id: eventId(), at: isoTimestamp(), type: 'CombatantMoved', encounterId: enc.encounterId as ULID,
+      combatantId: mover.id as ULID, fromPosition: { x: 5, y: 0 }, toPosition: moverTo, feetTraveled: 25,
+    } as unknown as Event;
+    return { engine, campaign, encounterId: enc.encounterId, reactor, trigger };
+  };
+
+  it('an enemy leaving reach offers an OA to a melee reactor; the planner accepts', () => {
+    const { engine, campaign, encounterId, reactor, trigger } = run(true, { x: 30, y: 0 }); // 30 ft → out of 5 ft reach
+    const reactions = engine.query.reactionsForTrigger(campaign.state, encounterId, reactor.id, trigger);
+    const oa = reactions.find((r) => r.id === 'opportunity-attack');
+    expect(oa, 'OA not offered when an enemy left reach').toBeDefined();
+    const intent = oa!.intent;
+    if (intent.type !== 'OpportunityAttack') throw new Error('expected OpportunityAttack');
+    expect(() => engine.plan.opportunityAttack(campaign.state, intent)).not.toThrow();
+  });
+
+  it('no OA when the mover stayed within reach', () => {
+    const { engine, campaign, encounterId, reactor, trigger } = run(true, { x: 5, y: 5 }); // chebyshev 5 → still in reach
+    expect(engine.query.reactionsForTrigger(campaign.state, encounterId, reactor.id, trigger).find((r) => r.id === 'opportunity-attack')).toBeUndefined();
+  });
+
+  it('no OA without a melee weapon equipped', () => {
+    const { engine, campaign, encounterId, reactor, trigger } = run(false, { x: 30, y: 0 });
+    expect(engine.query.availableReactions(campaign.state, encounterId, reactor.id).find((r) => r.id === 'opportunity-attack')).toBeUndefined();
+    expect(engine.query.reactionsForTrigger(campaign.state, encounterId, reactor.id, trigger).find((r) => r.id === 'opportunity-attack')).toBeUndefined();
+  });
+});

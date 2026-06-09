@@ -20,15 +20,16 @@
 // src/ai/reactions.ts (the same logic the combat-fuzz reaction layer uses).
 //
 // Coverage: Shield, Cutting Words, Uncanny Dodge, Counterspell (slice 763),
-// plus Stone's Endurance + Protection (slice 765) — across the attack-roll /
-// damage / spell-cast triggers — each planner-faithful (its owns/correlate
-// matches what the planner accepts). Stone's Endurance gates on the RESOLVED
-// Giant Ancestry choice; Protection on the shield + Fighting Style + a
-// positional adjacency check (5 ft of the attacked ally; positionless → not
-// offered). Deliberately NOT yet wired — each needs cross-event context a
-// single trigger event can't carry: Deflect Attacks (the attack event linked
-// from the damage), Countercharm (the Charmed/Frightened context the
-// SaveRolled lacks); and Opportunity Attack (a positional move trigger).
+// Stone's Endurance + Protection (slice 765), and Opportunity Attack
+// (slice 766) — across the attack-roll / damage / spell-cast / leaves-reach
+// triggers — each planner-faithful (its owns/correlate matches what the
+// planner accepts). Stone's Endurance gates on the RESOLVED Giant Ancestry;
+// Protection on shield + Fighting Style + 5 ft of the attacked ally;
+// Opportunity Attack on a CombatantMoved that leaves the reactor's melee reach
+// (reactor non-active, wielding a melee weapon). Deliberately NOT yet wired —
+// each needs cross-event context a single trigger event can't carry: Deflect
+// Attacks (the attack event linked from the damage) and Countercharm (the
+// Charmed/Frightened context the SaveRolled lacks).
 
 import type { CampaignState } from '../schemas/runtime/campaign.js';
 import type { ResolvedContent } from '../content/pack.js';
@@ -40,6 +41,8 @@ import type { SpellCastDeclaredEvent } from '../schemas/events/spellcasting.js';
 import type { ShieldIntent, CounterspellIntent, UncannyDodgeIntent, ProtectionIntent } from '../engine/plan/reactive-spells.js';
 import type { CuttingWordsIntent } from '../engine/plan/cutting-words.js';
 import type { StonesEnduranceIntent } from '../engine/plan/stones-endurance.js';
+import type { OpportunityAttackIntent } from '../engine/plan/opportunity-attack.js';
+import type { CombatantMovedEvent } from '../schemas/events/movement.js';
 import { findActorBlockingCondition } from '../engine/plan/_actor-state.js';
 import { findGoliathAncestryChoice } from '../engine/plan/_giant-ancestry.js';
 import { chebyshevDistance } from '../engine/plan/movement.js';
@@ -64,12 +67,14 @@ const SHIELD_SLOT_LEVEL = 1;
 const STONES_ENDURANCE_ANCESTRY = 'stones-endurance';
 // Protection reaches an ally within 5 ft (chebyshev, feet — slice 698).
 const PROTECTION_REACH_FEET = 5;
+const MELEE_REACH_FEET = 5;
+const REACH_PROPERTY_BONUS_FEET = 5;
 
 const REASON_REACTION_USED = 'reaction-used';
 
 // ── Public types ────────────────────────────────────────────────────
 /** What just happened that a reaction responds to. */
-export type ReactionTriggerKind = 'attack-roll' | 'damage' | 'spell-cast';
+export type ReactionTriggerKind = 'attack-roll' | 'damage' | 'spell-cast' | 'leaves-reach';
 
 export interface ReactionOption {
   /** Stable id (matches the produced intent's reaction). */
@@ -92,7 +97,8 @@ export type ReactionIntent =
   | UncannyDodgeIntent
   | CounterspellIntent
   | ProtectionIntent
-  | StonesEnduranceIntent;
+  | StonesEnduranceIntent
+  | OpportunityAttackIntent;
 
 /**
  * A reaction correlated to a trigger event — its params pre-filled and ready
@@ -136,6 +142,7 @@ const TRIGGER_EVENT_TYPE: Record<ReactionTriggerKind, Event['type']> = {
   'attack-roll': 'AttackRolled',
   damage: 'DamageApplied',
   'spell-cast': 'SpellCastDeclared',
+  'leaves-reach': 'CombatantMoved',
 };
 
 const damageTotal = (e: DamageAppliedEvent): number =>
@@ -160,6 +167,27 @@ const hasProtectionStyle = (character: Character, state: CampaignState, content:
 
 const combatantPosition = (state: CampaignState, encounterId: string, combatantId: string) =>
   state.encounters[encounterId]?.combatants.find((c) => c.combatantId === combatantId)?.position;
+
+// The reactor's main-hand melee weapon (the one an Opportunity Attack would
+// use) + its reach in feet, or undefined if it isn't wielding a melee weapon.
+const meleeWeapon = (
+  character: Character,
+  state: CampaignState,
+  content: ResolvedContent,
+): { readonly instanceId: string; readonly reachFeet: number } | undefined => {
+  const instanceId = character.equipped.mainHand;
+  if (instanceId === undefined) return undefined;
+  const instance = state.itemInstances[instanceId];
+  const def = instance !== undefined ? content.items.get(instance.definitionId) : undefined;
+  if (def?.itemKind !== 'weapon' || def.attackKind === 'ranged') return undefined;
+  const reachFeet = def.properties.includes('reach') ? MELEE_REACH_FEET + REACH_PROPERTY_BONUS_FEET : MELEE_REACH_FEET;
+  return { instanceId, reachFeet };
+};
+
+const isActiveCombatant = (state: CampaignState, encounterId: string, combatantId: string): boolean => {
+  const enc = state.encounters[encounterId];
+  return enc?.combatants[enc.activeIndex]?.combatantId === combatantId;
+};
 
 const REGISTRY: ReadonlyArray<ReactionDescriptor> = [
   {
@@ -261,6 +289,29 @@ const REGISTRY: ReadonlyArray<ReactionDescriptor> = [
       if (selfPos === undefined || targetPos === undefined) return undefined;
       if (chebyshevDistance(selfPos, targetPos) > PROTECTION_REACH_FEET) return undefined;
       return { type: 'Protection', protectorId: reactorId, attackerId: e.attackerId, triggeringAttackEventId: e.id };
+    },
+  },
+  {
+    id: 'opportunity-attack',
+    label: 'Opportunity Attack',
+    trigger: 'leaves-reach',
+    owns: (c, state, content) => meleeWeapon(c, state, content) !== undefined,
+    correlate: (reactorId, event, reactor, state, content, encounterId) => {
+      const e = event as CombatantMovedEvent;
+      if (e.combatantId === reactorId) return undefined; // not your own move
+      // planOpportunityAttack rejects an active-turn reactor (you take OAs on
+      // others' turns). The planner does NOT range-check (it uses resolveAttack
+      // directly), so an attack on a creature that has left reach is accepted.
+      if (isActiveCombatant(state, encounterId, reactorId)) return undefined;
+      const weapon = meleeWeapon(reactor, state, content);
+      if (weapon === undefined) return undefined;
+      const reactorPos = combatantPosition(state, encounterId, reactorId);
+      if (reactorPos === undefined || e.fromPosition === undefined) return undefined;
+      // Left reach: within reach before the move, beyond it after.
+      const wasInReach = chebyshevDistance(reactorPos, e.fromPosition) <= weapon.reachFeet;
+      const nowInReach = chebyshevDistance(reactorPos, e.toPosition) <= weapon.reachFeet;
+      if (!wasInReach || nowInReach) return undefined;
+      return { type: 'OpportunityAttack', reactorId, targetId: e.combatantId, weaponInstanceId: weapon.instanceId };
     },
   },
 ];

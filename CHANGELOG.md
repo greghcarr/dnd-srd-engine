@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Feat (slice 766): reaction affordances — Opportunity Attack (leaves-reach trigger)**
+Wires the last positionally-triggered deferred reaction. New `ReactionTriggerKind` `'leaves-reach'` → `CombatantMoved`. OA's `owns` = the reactor wields a main-hand melee weapon; correlate fires when the mover (≠ reactor) was within the reactor's melee reach at `fromPosition` and beyond it at `toPosition` (chebyshev; 5 ft, +5 for a `reach` weapon), the reactor isn't the active combatant. `planOpportunityAttack` uses `resolveAttack` directly (no range gate), so an attack on a creature that just left reach is accepted — planner-faithful. Verified by dispatching the intent.
+Detail: [slice-766.md](docs/changelog/slice-766.md).
+
 **Feat (slice 765): reaction affordances — Stone's Endurance + Protection**
 Wires two reactions slice 763 deferred, now planner-faithful. Stone's Endurance: `owns` gates on the RESOLVED Giant Ancestry (`findGoliathAncestryChoice === 'stones-endurance'`), not just species + resource — so a Goliath who didn't pick it is no longer wrongly offered it (damage trigger). Protection: `owns` = shield + `hasProtectionFightingStyle` (the effect stack), correlated from an `AttackRolled` on an ally within 5 ft (chebyshev; positionless → not offered) → `{ protectorId, attackerId, triggeringAttackEventId }`. Registry `owns`/`correlate` widened to receive state/content/encounterId. Each correlated intent verified against its planner. Still deferred: Deflect Attacks + Countercharm (cross-event context) and Opportunity Attack (positional move trigger).
 Detail: [slice-765.md](docs/changelog/slice-765.md).
