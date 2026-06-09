@@ -345,6 +345,11 @@ import {
   bonusActionTargets as queryBonusActionTargets,
   bonusActionIntent,
 } from '../query/bonus-actions.js';
+import {
+  availableReactions as queryAvailableReactions,
+  reactionsForTrigger as queryReactionsForTrigger,
+} from '../query/reactions.js';
+import type { ReactionOption, CorrelatedReaction } from '../query/reactions.js';
 import type { BonusActionOption, BonusActionTarget } from '../query/bonus-actions.js';
 import { HANDLER_API_VERSION } from '../handlers/index.js';
 import { assertActorCanAct } from './plan/_actor-state.js';
@@ -704,6 +709,31 @@ export interface Engine {
       combatantId: string,
       optionId: string,
     ): ReadonlyArray<BonusActionTarget>;
+    /**
+     * Slice 763: the reactions a combatant owns, each flagged enabled/disabled
+     * (a blocking condition or the reaction already spent this round) with the
+     * trigger kind it responds to. Discovery for a UI; pair with
+     * `reactionsForTrigger` to get ready-to-commit intents for a specific event.
+     */
+    availableReactions(
+      state: CampaignState,
+      encounterId: string,
+      combatantId: string,
+    ): ReadonlyArray<ReactionOption>;
+    /**
+     * Slice 763: the correlation helper — given a trigger event (an
+     * AttackRolled / DamageApplied / SpellCastDeclared), the reactions the
+     * combatant can take in response, with params pre-filled from the event.
+     * Dispatch each by `intent.type` to the matching typed planner
+     * (engine.plan.shield / cuttingWords / uncannyDodge / stonesEndurance /
+     * counterspell) to get the outcome and commit the events.
+     */
+    reactionsForTrigger(
+      state: CampaignState,
+      encounterId: string,
+      reactorId: string,
+      triggerEvent: Event,
+    ): ReadonlyArray<CorrelatedReaction>;
   };
 }
 
@@ -1296,6 +1326,12 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     bonusActionTargets(state, encounterId, combatantId, optionId) {
       return queryBonusActionTargets(state, encounterId, combatantId, optionId);
+    },
+    availableReactions(state, encounterId, combatantId) {
+      return queryAvailableReactions(state, content, encounterId, combatantId);
+    },
+    reactionsForTrigger(state, encounterId, reactorId, triggerEvent) {
+      return queryReactionsForTrigger(state, content, encounterId, reactorId, triggerEvent);
     },
   };
 

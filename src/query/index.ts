@@ -69,3 +69,12 @@ export {
   type BonusActionIntent,
   type BonusActionParams,
 } from './bonus-actions.js';
+// Slice 763: reaction affordances — discovery + trigger correlation.
+export {
+  availableReactions,
+  reactionsForTrigger,
+  type ReactionOption,
+  type ReactionTriggerKind,
+  type ReactionIntent,
+  type CorrelatedReaction,
+} from './reactions.js';

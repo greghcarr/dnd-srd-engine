@@ -318,6 +318,8 @@ export {
   bonusActions,
   bonusActionTargets,
   bonusActionIntent,
+  availableReactions,
+  reactionsForTrigger,
 } from './query/index.js';
 // Slice 706 (A3): tactical enemy AI policy, graduated from scripts/ so
 // consumers can import it from the package.
@@ -350,6 +352,10 @@ export type {
   BonusActionTargetKind,
   BonusActionIntent,
   BonusActionParams,
+  ReactionOption,
+  ReactionTriggerKind,
+  ReactionIntent,
+  CorrelatedReaction,
   SpellFilter,
   MonsterFilter,
   ItemFilter,
