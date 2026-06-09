@@ -858,3 +858,70 @@ describe('slice 768: Conjure Pact Weapon', () => {
     expect(() => s.engine.plan.useOption(s.campaign.state, { combatantId: w.id, optionId: 'conjure-pact-weapon' })).toThrow(/requires a weaponDefinitionId/);
   });
 });
+
+// Slice 773: bonus-action class features — Sacred Weapon (Devotion paladin
+// Channel Divinity) + Intimidating Presence (Berserker barbarian L14).
+const devotionPaladin = (cd = 2): Character =>
+  base({
+    classes: [{ classId: 'paladin', level: 3, hitDiceRemaining: 3, subclassId: 'oath-of-devotion' }],
+    resources: [{ resourceId: 'channel-divinity', current: cd, max: 2 }],
+  });
+const berserker = (level = 14): Character =>
+  base({
+    classes: [{ classId: 'barbarian', level, hitDiceRemaining: level, subclassId: 'path-of-the-berserker' }],
+    resources: [{ resourceId: 'rage', current: 4, max: 4 }],
+  });
+
+describe('slice 773: Sacred Weapon', () => {
+  it('offered to a Devotion paladin; useOption activates it', () => {
+    const p = devotionPaladin();
+    const s = setup([p], p.id);
+    expect(byId(s, p.id)['sacred-weapon']).toMatchObject({ target: 'self', enabled: true });
+    const events = s.engine.plan.useOption(s.campaign.state, { combatantId: p.id, optionId: 'sacred-weapon' }).events;
+    expect(events.some((e) => e.type === 'ConditionApplied' && (e as { conditionId?: string }).conditionId === 'sacred-weapon-active')).toBe(true);
+  });
+
+  it('disabled (already-active) while Sacred Weapon is active; no-uses when Channel Divinity is spent', () => {
+    const active = base({
+      classes: [{ classId: 'paladin', level: 3, hitDiceRemaining: 3, subclassId: 'oath-of-devotion' }],
+      resources: [{ resourceId: 'channel-divinity', current: 2, max: 2 }],
+      appliedConditions: [{ id: newAppliedConditionId(), conditionId: 'sacred-weapon-active' }],
+    });
+    const as = setup([active], active.id);
+    expect(byId(as, active.id)['sacred-weapon']).toMatchObject({ enabled: false, reason: 'already-active' });
+    const empty = devotionPaladin(0);
+    const es = setup([empty], empty.id);
+    expect(byId(es, empty.id)['sacred-weapon']).toMatchObject({ enabled: false, reason: 'no-uses' });
+  });
+
+  it('not offered to a non-Devotion paladin', () => {
+    const plain = base({ classes: [{ classId: 'paladin', level: 3, hitDiceRemaining: 3 }], resources: [{ resourceId: 'channel-divinity', current: 2, max: 2 }] });
+    const s = setup([plain], plain.id);
+    expect(s.engine.query.bonusActions(s.campaign.state, s.encounterId, plain.id).find((o) => o.id === 'sacred-weapon')).toBeUndefined();
+  });
+});
+
+describe('slice 773: Intimidating Presence', () => {
+  it('offered to a Berserker L14; useOption frightens the targets', () => {
+    const b = berserker();
+    const foe = wizard();
+    const s = setup([b, foe], b.id);
+    expect(byId(s, b.id)['intimidating-presence']).toMatchObject({ target: 'none', enabled: true });
+    expect(() => s.engine.plan.useOption(s.campaign.state, { combatantId: b.id, optionId: 'intimidating-presence', targetIds: [foe.id] })).not.toThrow();
+  });
+
+  it('not offered below L14 or to a non-Berserker', () => {
+    const young = berserker(13);
+    const ys = setup([young], young.id);
+    expect(ys.engine.query.bonusActions(ys.campaign.state, ys.encounterId, young.id).find((o) => o.id === 'intimidating-presence')).toBeUndefined();
+    const plainBarb = base({ classes: [{ classId: 'barbarian', level: 14, hitDiceRemaining: 14 }], resources: [{ resourceId: 'rage', current: 4, max: 4 }] });
+    const ps = setup([plainBarb], plainBarb.id);
+    expect(ps.engine.query.bonusActions(ps.campaign.state, ps.encounterId, plainBarb.id).find((o) => o.id === 'intimidating-presence')).toBeUndefined();
+  });
+
+  it('actionIntent-equivalent: useOption throws without targetIds', () => {
+    const b = berserker();
+    const s = setup([b], b.id);
+    expect(() => s.engine.plan.useOption(s.campaign.state, { combatantId: b.id, optionId: 'intimidating-presence' })).toThrow(/requires a targetIds/);
+  });
+});

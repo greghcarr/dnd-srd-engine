@@ -55,6 +55,8 @@ import type { InnateSorceryIntent } from '../engine/plan/innate-sorcery.js';
 import type { OffHandAttackIntent } from '../engine/plan/offhand-attack.js';
 import type { CloudsJauntIntent } from '../engine/plan/clouds-jaunt.js';
 import type { ConjurePactWeaponIntent } from '../engine/plan/conjure-pact-weapon.js';
+import type { SacredWeaponIntent } from '../engine/plan/sacred-weapon.js';
+import type { IntimidatingPresenceIntent } from '../engine/plan/intimidating-presence.js';
 import { findGoliathAncestryChoice, GIANT_ANCESTRY_RESOURCE_ID } from '../engine/plan/_giant-ancestry.js';
 import { buildEffectStack } from '../derive/effect-stack.js';
 
@@ -78,6 +80,11 @@ const INNATE_SORCERY_RESOURCE = 'innate-sorcery';
 const INNATE_SORCERY_ACTIVE_CONDITION = 'innate-sorcery-active';
 const WEAPON_LIGHT_PROPERTY = 'light';
 const CLOUDS_JAUNT_ANCESTRY = 'clouds-jaunt';
+const CHANNEL_DIVINITY_RESOURCE = 'channel-divinity';
+const OATH_OF_DEVOTION_SUBCLASS = 'oath-of-devotion';
+const SACRED_WEAPON_ACTIVE_CONDITION = 'sacred-weapon-active';
+const BERSERKER_SUBCLASS = 'path-of-the-berserker';
+const INTIMIDATING_PRESENCE_LEVEL = 14;
 const LAY_ON_HANDS_CURE_POISON_COST = 5; // matches CURE_POISON_COST in lay-on-hands.ts
 const HEAVY_ARMOR_CATEGORY = 'heavy';
 
@@ -162,7 +169,9 @@ export type BonusActionIntent =
   | InnateSorceryIntent
   | OffHandAttackIntent
   | CloudsJauntIntent
-  | ConjurePactWeaponIntent;
+  | ConjurePactWeaponIntent
+  | SacredWeaponIntent
+  | IntimidatingPresenceIntent;
 
 /**
  * Per-option parameters for `bonusActionIntent` / `engine.plan.useOption`.
@@ -177,6 +186,8 @@ export interface BonusActionParams {
   readonly weaponInstanceId?: string;
   readonly to?: Position;
   readonly weaponDefinitionId?: string;
+  /** Multiple creatures for a multi-target option (Intimidating Presence). */
+  readonly targetIds?: ReadonlyArray<string>;
 }
 
 // ── Registry ────────────────────────────────────────────────────────
@@ -275,6 +286,18 @@ const innateSorceryActiveReason = (character: Character): string | undefined =>
   character.appliedConditions.some((c) => c.conditionId === INNATE_SORCERY_ACTIVE_CONDITION)
     ? REASON_ALREADY_ACTIVE
     : undefined;
+
+// Slice 773: Sacred Weapon can't be re-activated while active (mirrors
+// planSacredWeapon's throw; the same already-active shape).
+const sacredWeaponActiveReason = (character: Character): string | undefined =>
+  character.appliedConditions.some((c) => c.conditionId === SACRED_WEAPON_ACTIVE_CONDITION)
+    ? REASON_ALREADY_ACTIVE
+    : undefined;
+
+const hasSubclass = (character: Character, classId: string, subclassId: string, minLevel = 1): boolean => {
+  const e = character.classes.find((c) => c.classId === classId);
+  return e !== undefined && e.level >= minLevel && e.subclassId === subclassId;
+};
 
 // Slice 762: Off-Hand Attack is available when the character wields a light
 // weapon (the property planOffHandAttack gates on). Equip-state, so `owns`
@@ -512,6 +535,27 @@ const REGISTRY: ReadonlyArray<BonusActionDescriptor> = [
     // The consumer picks which Simple/Martial Melee weapon to conjure.
     requires: ['weaponDefinitionId'],
     toIntent: (id, params) => ({ type: 'ConjurePactWeapon', characterId: id, weaponDefinitionId: params.weaponDefinitionId as string }),
+  },
+  {
+    id: 'sacred-weapon',
+    label: 'Sacred Weapon',
+    target: 'self',
+    // Oath of Devotion's Channel Divinity. RAW-gated on the Oath (the affordance
+    // is correctly stricter than planSacredWeapon, which only checks paladin +
+    // Channel Divinity — a known planner leniency).
+    owns: (c) => hasSubclass(c, PALADIN_CLASS_ID, OATH_OF_DEVOTION_SUBCLASS),
+    resourceId: CHANNEL_DIVINITY_RESOURCE,
+    extraReason: (c) => sacredWeaponActiveReason(c),
+    toIntent: (id) => ({ type: 'SacredWeapon', paladinId: id }),
+  },
+  {
+    id: 'intimidating-presence',
+    label: 'Intimidating Presence',
+    target: 'none',
+    owns: (c) => hasSubclass(c, BARBARIAN_CLASS_ID, BERSERKER_SUBCLASS, INTIMIDATING_PRESENCE_LEVEL),
+    // A WIS-save-or-Frightened over chosen creatures — the consumer supplies them.
+    requires: ['targetIds'],
+    toIntent: (id, params) => ({ type: 'IntimidatingPresence', barbarianId: id, targetIds: params.targetIds as ReadonlyArray<string> }),
   },
 ];
 

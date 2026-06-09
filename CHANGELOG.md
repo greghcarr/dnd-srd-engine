@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Feat (slice 773): bonus-action class features — Sacred Weapon + Intimidating Presence**
+Extends `bonusActions` with the two deferred class-feature bonus actions. Sacred Weapon (Devotion paladin, `target:'self'`, channel-divinity, `already-active` guard — RAW-gated on the Oath, correctly stricter than `planSacredWeapon`'s lenient paladin-only check). Intimidating Presence (Berserker barbarian L14, `target:'none'`, `requires` targetIds). `BonusActionParams`/`UseOptionOptions` gain `targetIds`. Both already dispatched; verified planner-faithful via `useOption`. Completes the deferred class-feature affordances (only the post-hit Paladin's Smite *feature* remains).
+Detail: [slice-773.md](docs/changelog/slice-773.md).
+
 **Feat (slice 772): more class-feature actions — Dragonborn Breath + Preserve Life**
 Extends `actionOptions` with the remaining deferred action-cost feature actions. Dragonborn Breath (`owns` = species dragonborn, `dragonborn-breath-weapon` resource, `requires` targetIds + damageType + areaShape — the PC `planDragonbornBreath`, not the monster breath). Preserve Life (Life Domain Cleric L3 Channel Divinity, `owns` = cleric `subclassId === 'life-domain'`, `requires` allocations). `ActionParams`/`UseActionOptionOptions` gain `damageType`/`areaShape`/`allocations`. Both already dispatched; verified planner-faithful via `useActionOption`.
 Detail: [slice-772.md](docs/changelog/slice-772.md).

@@ -415,6 +415,8 @@ export interface UseOptionOptions {
   readonly to?: { readonly x: number; readonly y: number };
   /** Weapon-definition id for a conjuration option (Conjure Pact Weapon). */
   readonly weaponDefinitionId?: string;
+  /** Multiple creatures for a multi-target option (Intimidating Presence). */
+  readonly targetIds?: ReadonlyArray<string>;
 }
 
 /** Slice 764: argument to `engine.plan.useActionOption` (an `actionOptions` id). */
@@ -862,6 +864,7 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
         weaponInstanceId: opts.weaponInstanceId,
         to: opts.to,
         weaponDefinitionId: opts.weaponDefinitionId,
+        targetIds: opts.targetIds,
       });
       return planIntent(planNs, state, intent);
     },
