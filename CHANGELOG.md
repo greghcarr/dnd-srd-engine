@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Feat (slice 765): reaction affordances — Stone's Endurance + Protection**
+Wires two reactions slice 763 deferred, now planner-faithful. Stone's Endurance: `owns` gates on the RESOLVED Giant Ancestry (`findGoliathAncestryChoice === 'stones-endurance'`), not just species + resource — so a Goliath who didn't pick it is no longer wrongly offered it (damage trigger). Protection: `owns` = shield + `hasProtectionFightingStyle` (the effect stack), correlated from an `AttackRolled` on an ally within 5 ft (chebyshev; positionless → not offered) → `{ protectorId, attackerId, triggeringAttackEventId }`. Registry `owns`/`correlate` widened to receive state/content/encounterId. Each correlated intent verified against its planner. Still deferred: Deflect Attacks + Countercharm (cross-event context) and Opportunity Attack (positional move trigger).
+Detail: [slice-765.md](docs/changelog/slice-765.md).
+
 **Feat (slice 764): general action affordances (G2) — registry-driven `actionOptions`**
 Closes the last completeness gap: `availableActions` was hardcoded to the 5 core combat intents, so the general SRD 2024 actions were drivable but undiscoverable. New `engine.query.actionOptions(state, encounterId, combatantId)` → `{ id, label, target, enabled, reason? }[]` enumerating Search / Study / Influence / Utilize / Hide / Grapple / Shove / Help / Ready (the registry-driven sibling of `availableActions`), plus `actionIntent(optionId, combatantId, params)` (id → intent builder) and `engine.plan.useActionOption(state, { combatantId, optionId, ...params })` (the `useOption` sibling — builds + routes via `planIntent`). All gate uniformly on `not-your-turn` / `action-used` / blocking conditions. Deferred: class-feature actions (Action Surge's inverted economy; Turn Undead / Divine Spark resource + multi-target). Additive query surface.
 Detail: [slice-764.md](docs/changelog/slice-764.md).

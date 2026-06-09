@@ -10,14 +10,16 @@ import { seededRNG } from '../../../src/rng/seeded.js';
 import { commit, type Campaign } from '../../../src/engine/commit.js';
 import { loadStarterPack } from '../../../src/content/packs/starter.js';
 import { CharacterSchema, type Character } from '../../../src/schemas/runtime/character.js';
-import { newCharacterId, newAppliedConditionId } from '../../../src/ids.js';
-import { eventId, isoTimestamp } from '../../fixtures/index.js';
+import { newCharacterId, newAppliedConditionId, newChoiceId } from '../../../src/ids.js';
+import { eventId, isoTimestamp, makeItemInstance, loadPhbExtrasTestPack } from '../../fixtures/index.js';
 import type { CharacterCreatedEvent } from '../../../src/schemas/events/progression.js';
 import type { InitiativeRolledEvent } from '../../../src/schemas/events/encounter.js';
+import type { ChoiceRequiredEvent, ChoiceResolvedEvent } from '../../../src/schemas/events/level-up.js';
 import type { Event } from '../../../src/schemas/events/index.js';
 import type { ULID } from '../../../src/engine/ids-utils.js';
 
 const PACK = loadStarterPack();
+const EXTRAS = loadPhbExtrasTestPack();
 
 const base = (overrides: Partial<Character>): Character =>
   CharacterSchema.parse({
@@ -208,5 +210,143 @@ describe('slice 763: reactionsForTrigger (correlation) — every intent is plann
     const s = setup([rog]);
     s.campaign = commit(s.campaign, [spendReaction(s.encounterId, rog.id)]);
     expect(s.engine.query.reactionsForTrigger(s.campaign.state, s.encounterId, rog.id, damageAppliedTo(rog.id, 12))).toEqual([]);
+  });
+});
+
+// Slice 765: Stone's Endurance (planner-faithful via the resolved ancestry)
+// and Protection (shield + Fighting Style + positional adjacency).
+
+// Emit the Giant Ancestry choice + its resolution so findGoliathAncestryChoice
+// resolves (mirrors the slice-558 planner test).
+const seedAncestry = (characterId: string, selected: string): [ChoiceRequiredEvent, ChoiceResolvedEvent] => {
+  const choiceId = newChoiceId();
+  return [
+    {
+      id: eventId(), at: isoTimestamp(), type: 'ChoiceRequired', choiceId, characterId: characterId as ULID,
+      promptKey: 'goliath-giant-ancestry', prompt: 'Choose a Giant Ancestry.',
+      options: [
+        { id: 'stones-endurance', label: "Stone's Endurance", effects: [] },
+        { id: 'clouds-jaunt', label: "Cloud's Jaunt", effects: [] },
+      ],
+      oneOf: 1,
+    } as unknown as ChoiceRequiredEvent,
+    { id: eventId(), at: isoTimestamp(), type: 'ChoiceResolved', choiceId, characterId: characterId as ULID, selectedOptionIds: [selected] } as unknown as ChoiceResolvedEvent,
+  ];
+};
+
+const goliath = (): Character =>
+  CharacterSchema.parse({
+    id: newCharacterId(), name: 'Goliath', speciesId: 'goliath', backgroundId: 'soldier',
+    classes: [{ classId: 'fighter', level: 1, hitDiceRemaining: 1 }],
+    abilityScores: { STR: 16, DEX: 12, CON: 16, INT: 10, WIS: 10, CHA: 10 },
+    hp: { current: 20, max: 20, temp: 0 },
+    resources: [{ resourceId: 'giant-ancestry', current: 2, max: 2 }],
+  });
+
+describe("slice 765: Stone's Endurance (planner-faithful via resolved ancestry)", () => {
+  it('a Goliath who chose Stone\'s Endurance is offered it on damage; the planner accepts', () => {
+    const g = goliath();
+    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(1) });
+    let campaign: Campaign = engine.createCampaign({ name: 'se' });
+    campaign = commit(campaign, [
+      { id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: g } satisfies CharacterCreatedEvent,
+      ...seedAncestry(g.id, 'stones-endurance'),
+    ]);
+    const enc = engine.plan.createEncounter(campaign.state, { combatantIds: [g.id] });
+    campaign = commit(campaign, enc.events);
+    campaign = commit(campaign, engine.plan.startEncounter(campaign.state, { encounterId: enc.encounterId }).events);
+    campaign = commit(campaign, engine.plan.beginFirstTurn(campaign.state, { encounterId: enc.encounterId }).events);
+    const dmg = { id: eventId(), at: isoTimestamp(), type: 'DamageApplied', targetId: g.id as ULID, components: [{ amount: 12, type: 'slashing' }] } as unknown as Event;
+    const reactions = engine.query.reactionsForTrigger(campaign.state, enc.encounterId, g.id, dmg);
+    const se = reactions.find((r) => r.id === 'stones-endurance');
+    expect(se, "Stone's Endurance not offered to a resolved Goliath").toBeDefined();
+    const seIntent = se!.intent;
+    if (seIntent.type !== 'StonesEndurance') throw new Error('expected StonesEndurance');
+    expect(() => engine.plan.stonesEndurance(campaign.state, seIntent)).not.toThrow();
+  });
+
+  it('a Goliath who did NOT resolve the ancestry is NOT offered it (the deferred-bug fix)', () => {
+    const g = goliath(); // species + resource, but no ancestry choice resolved
+    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(1) });
+    let campaign: Campaign = engine.createCampaign({ name: 'se' });
+    campaign = commit(campaign, [
+      { id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: g } satisfies CharacterCreatedEvent,
+    ]);
+    const enc = engine.plan.createEncounter(campaign.state, { combatantIds: [g.id] });
+    campaign = commit(campaign, enc.events);
+    campaign = commit(campaign, engine.plan.startEncounter(campaign.state, { encounterId: enc.encounterId }).events);
+    campaign = commit(campaign, engine.plan.beginFirstTurn(campaign.state, { encounterId: enc.encounterId }).events);
+    const dmg = { id: eventId(), at: isoTimestamp(), type: 'DamageApplied', targetId: g.id as ULID, components: [{ amount: 12, type: 'slashing' }] } as unknown as Event;
+    expect(engine.query.reactionsForTrigger(campaign.state, enc.encounterId, g.id, dmg).find((r) => r.id === 'stones-endurance')).toBeUndefined();
+    expect(engine.query.availableReactions(campaign.state, enc.encounterId, g.id).find((r) => r.id === 'stones-endurance')).toBeUndefined();
+  });
+});
+
+describe('slice 765: Protection (shield + Fighting Style + adjacency)', () => {
+  const protectionFighter = (name: string, shieldId: string, withStyle: boolean): Character =>
+    CharacterSchema.parse({
+      id: newCharacterId(), name, speciesId: 'human', backgroundId: 'soldier',
+      classes: [{ classId: 'fighter', level: 3, hitDiceRemaining: 3 }],
+      abilityScores: { STR: 16, DEX: 12, CON: 14, INT: 10, WIS: 10, CHA: 10 },
+      hp: { current: 28, max: 28, temp: 0 },
+      featsTaken: withStyle ? ['fighting-style-protection'] : [],
+      inventory: [shieldId],
+      equipped: { shield: shieldId, attuned: [] },
+    });
+
+  // protectorPos: the protector relative to the attacked ally at (5,0).
+  const run = (protectorPos: { x: number; y: number }, withStyle: boolean) => {
+    const engine = createEngine({ contentPacks: [PACK, EXTRAS], rng: seededRNG(7) });
+    const shield = makeItemInstance('shield');
+    const protector = protectionFighter('Shielder', shield.id, withStyle);
+    const ally = protectionFighter('Ally', makeItemInstance('shield').id, false);
+    const attacker = protectionFighter('Foe', makeItemInstance('shield').id, false);
+    let campaign: Campaign = engine.createCampaign({ name: 'prot' });
+    campaign = commit(campaign, [
+      { id: eventId(), at: isoTimestamp(), type: 'ItemAcquired', instance: shield } as unknown as Event,
+      { id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: protector } satisfies CharacterCreatedEvent,
+      { id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: ally } satisfies CharacterCreatedEvent,
+      { id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: attacker } satisfies CharacterCreatedEvent,
+    ]);
+    const enc = engine.plan.createEncounter(campaign.state, {
+      name: 'arena',
+      combatants: [
+        { characterId: protector.id, position: protectorPos },
+        { characterId: ally.id, position: { x: 5, y: 0 } },
+        { characterId: attacker.id, position: { x: 100, y: 0 } },
+      ],
+    });
+    campaign = commit(campaign, enc.events);
+    campaign = commit(campaign, engine.plan.rollInitiative(campaign.state, { encounterId: enc.encounterId }).events);
+    campaign = commit(campaign, engine.plan.startEncounter(campaign.state, { encounterId: enc.encounterId }).events);
+    campaign = commit(campaign, engine.plan.beginFirstTurn(campaign.state, { encounterId: enc.encounterId }).events);
+    // A normal single-d20 attack on the ally.
+    const trigger = {
+      id: eventId(), at: isoTimestamp(), type: 'AttackRolled',
+      attackerId: attacker.id as ULID, targetId: ally.id as ULID, weaponInstanceId: eventId() as ULID,
+      d20: [15], used: 'none', attackBonus: 0, total: 15, targetAC: 13, hit: true, critical: false, attackKind: 'melee',
+    } as unknown as Event;
+    return { engine, campaign, encounterId: enc.encounterId, protector, trigger };
+  };
+
+  it('an adjacent shield-protector with the Fighting Style is offered Protection; the planner accepts', () => {
+    const { engine, campaign, encounterId, protector, trigger } = run({ x: 0, y: 0 }, true); // 5 ft from ally
+    const reactions = engine.query.reactionsForTrigger(campaign.state, encounterId, protector.id, trigger);
+    const prot = reactions.find((r) => r.id === 'protection');
+    expect(prot, 'Protection not offered to an adjacent protector').toBeDefined();
+    const protIntent = prot!.intent;
+    if (protIntent.type !== 'Protection') throw new Error('expected Protection');
+    expect(() => engine.plan.protection(campaign.state, protIntent)).not.toThrow();
+  });
+
+  it('a protector more than 5 ft from the ally is NOT offered Protection', () => {
+    const { engine, campaign, encounterId, protector, trigger } = run({ x: 50, y: 0 }, true); // 45 ft away
+    expect(engine.query.reactionsForTrigger(campaign.state, encounterId, protector.id, trigger).find((r) => r.id === 'protection')).toBeUndefined();
+  });
+
+  it('a shield-bearer WITHOUT the Fighting Style does not own Protection', () => {
+    const { engine, campaign, encounterId, protector, trigger } = run({ x: 0, y: 0 }, false);
+    expect(engine.query.availableReactions(campaign.state, encounterId, protector.id).find((r) => r.id === 'protection')).toBeUndefined();
+    expect(engine.query.reactionsForTrigger(campaign.state, encounterId, protector.id, trigger).find((r) => r.id === 'protection')).toBeUndefined();
   });
 });

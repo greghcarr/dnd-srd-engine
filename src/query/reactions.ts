@@ -19,16 +19,16 @@
 // drift. Applicability reuses the proven decision predicates in
 // src/ai/reactions.ts (the same logic the combat-fuzz reaction layer uses).
 //
-// Coverage: Shield, Cutting Words, Uncanny Dodge, Counterspell — across the
-// attack-roll / damage / spell-cast triggers — each planner-faithful (its
-// owns/correlate matches what the planner accepts). Deliberately NOT yet wired
-// (the framework is ready, but each needs more than a single trigger event +
-// a class/prepared check): Stone's Endurance (planner requires the RESOLVED
-// Giant Ancestry choice, not just species + the giant-ancestry resource),
-// Protection (positional adjacency + fighting-style detection), Countercharm
-// (the SaveRolled doesn't say it was a Charmed/Frightened save), Deflect
-// Attacks (needs the attack event linked from the damage), Opportunity Attack
-// (a positional move trigger, not an event here).
+// Coverage: Shield, Cutting Words, Uncanny Dodge, Counterspell (slice 763),
+// plus Stone's Endurance + Protection (slice 765) — across the attack-roll /
+// damage / spell-cast triggers — each planner-faithful (its owns/correlate
+// matches what the planner accepts). Stone's Endurance gates on the RESOLVED
+// Giant Ancestry choice; Protection on the shield + Fighting Style + a
+// positional adjacency check (5 ft of the attacked ally; positionless → not
+// offered). Deliberately NOT yet wired — each needs cross-event context a
+// single trigger event can't carry: Deflect Attacks (the attack event linked
+// from the damage), Countercharm (the Charmed/Frightened context the
+// SaveRolled lacks); and Opportunity Attack (a positional move trigger).
 
 import type { CampaignState } from '../schemas/runtime/campaign.js';
 import type { ResolvedContent } from '../content/pack.js';
@@ -37,14 +37,19 @@ import type { Event } from '../schemas/events/index.js';
 import type { AttackRolledEvent } from '../schemas/events/attack.js';
 import type { DamageAppliedEvent } from '../schemas/events/combat.js';
 import type { SpellCastDeclaredEvent } from '../schemas/events/spellcasting.js';
-import type { ShieldIntent, CounterspellIntent, UncannyDodgeIntent } from '../engine/plan/reactive-spells.js';
+import type { ShieldIntent, CounterspellIntent, UncannyDodgeIntent, ProtectionIntent } from '../engine/plan/reactive-spells.js';
 import type { CuttingWordsIntent } from '../engine/plan/cutting-words.js';
+import type { StonesEnduranceIntent } from '../engine/plan/stones-endurance.js';
 import { findActorBlockingCondition } from '../engine/plan/_actor-state.js';
+import { findGoliathAncestryChoice } from '../engine/plan/_giant-ancestry.js';
+import { chebyshevDistance } from '../engine/plan/movement.js';
+import { buildEffectStack } from '../derive/effect-stack.js';
 import {
   shouldShield,
   shouldCuttingWords,
   shouldCounterspell,
   hasUncannyDodge,
+  hasStonesEndurance,
 } from '../ai/reactions.js';
 import { computeAvailableSpellSlots } from '../derive/spell-slots.js';
 
@@ -56,6 +61,9 @@ const COUNTERSPELL_SLOT_LEVEL = 3;
 // arg. Mirrors SHIELD_CASTER_CLASS_IDS in src/ai/reactions.ts.
 const ARCANE_CLASS_IDS: ReadonlyArray<string> = ['wizard', 'sorcerer'];
 const SHIELD_SLOT_LEVEL = 1;
+const STONES_ENDURANCE_ANCESTRY = 'stones-endurance';
+// Protection reaches an ally within 5 ft (chebyshev, feet — slice 698).
+const PROTECTION_REACH_FEET = 5;
 
 const REASON_REACTION_USED = 'reaction-used';
 
@@ -82,7 +90,9 @@ export type ReactionIntent =
   | ShieldIntent
   | CuttingWordsIntent
   | UncannyDodgeIntent
-  | CounterspellIntent;
+  | CounterspellIntent
+  | ProtectionIntent
+  | StonesEnduranceIntent;
 
 /**
  * A reaction correlated to a trigger event — its params pre-filled and ready
@@ -99,13 +109,18 @@ interface ReactionDescriptor {
   readonly id: string;
   readonly label: string;
   readonly trigger: ReactionTriggerKind;
-  /** Does this character have the reaction (class / level / species / prepared)? */
-  readonly owns: (character: Character) => boolean;
+  /**
+   * Does this character have the reaction? Usually class / level / species /
+   * prepared (character alone), but a few read more — Stone's Endurance needs
+   * the resolved Giant Ancestry (state), Protection the effect stack
+   * (content) — so `state` + `content` are passed; most ignore them.
+   */
+  readonly owns: (character: Character, state: CampaignState, content: ResolvedContent) => boolean;
   /**
    * Build the ready-to-commit intent from the trigger event, or undefined if
    * this reaction doesn't apply to this specific trigger (wrong target, the
-   * decision predicate says no, no slot, …). The trigger event's concrete
-   * type matches TRIGGER_EVENT_TYPE[trigger].
+   * decision predicate says no, no slot, out of reach, …). The trigger event's
+   * concrete type matches TRIGGER_EVENT_TYPE[trigger].
    */
   readonly correlate: (
     reactorId: string,
@@ -113,6 +128,7 @@ interface ReactionDescriptor {
     reactor: Character,
     state: CampaignState,
     content: ResolvedContent,
+    encounterId: string,
   ) => ReactionIntent | undefined;
 }
 
@@ -130,6 +146,20 @@ const hasCounterspellSlot = (character: Character, content: ResolvedContent): bo
 
 const arcaneClassId = (character: Character): string | undefined =>
   character.classes.find((c) => ARCANE_CLASS_IDS.includes(c.classId))?.classId;
+
+// Protection: a shield-bearer with the Fighting Style (the gates planProtection
+// enforces). buildEffectStack is only reached for shield-bearers (cheap guard).
+const hasProtectionStyle = (character: Character, state: CampaignState, content: ResolvedContent): boolean =>
+  character.equipped.shield !== undefined
+  && buildEffectStack({
+    character,
+    content,
+    itemInstances: state.itemInstances,
+    pendingChoices: state.pendingChoices,
+  }).hasProtectionFightingStyle();
+
+const combatantPosition = (state: CampaignState, encounterId: string, combatantId: string) =>
+  state.encounters[encounterId]?.combatants.find((c) => c.combatantId === combatantId)?.position;
 
 const REGISTRY: ReadonlyArray<ReactionDescriptor> = [
   {
@@ -199,6 +229,40 @@ const REGISTRY: ReadonlyArray<ReactionDescriptor> = [
       };
     },
   },
+  {
+    id: 'stones-endurance',
+    label: "Stone's Endurance",
+    trigger: 'damage',
+    // Planner-faithful: validateGoliathAncestry requires the RESOLVED Stone's
+    // Endurance ancestry (not just species) + the giant-ancestry resource.
+    owns: (c, state) => hasStonesEndurance(c) && findGoliathAncestryChoice(c, state) === STONES_ENDURANCE_ANCESTRY,
+    correlate: (reactorId, event) => {
+      const e = event as DamageAppliedEvent;
+      if (e.targetId !== reactorId) return undefined;
+      return { type: 'StonesEndurance', goliathId: reactorId, damageAmount: damageTotal(e), triggeringDamageEventId: e.id };
+    },
+  },
+  {
+    id: 'protection',
+    label: 'Protection',
+    trigger: 'attack-roll',
+    owns: hasProtectionStyle,
+    correlate: (reactorId, event, _reactor, state, _content, encounterId) => {
+      const e = event as AttackRolledEvent;
+      // Protect an ALLY (not yourself, not your own attack), on a normal
+      // single-d20 attack (no advantage/disadvantage stacking) — mirrors the
+      // combat-fuzz pre-damage policy.
+      if (e.targetId === reactorId || e.attackerId === reactorId) return undefined;
+      if (e.used !== 'none' || e.d20.length !== 1) return undefined;
+      // Positional: within 5 ft of the attacked ally. Both positions must be
+      // known (positionless → adjacency is consumer scope, so don't offer it).
+      const selfPos = combatantPosition(state, encounterId, reactorId);
+      const targetPos = combatantPosition(state, encounterId, e.targetId);
+      if (selfPos === undefined || targetPos === undefined) return undefined;
+      if (chebyshevDistance(selfPos, targetPos) > PROTECTION_REACH_FEET) return undefined;
+      return { type: 'Protection', protectorId: reactorId, attackerId: e.attackerId, triggeringAttackEventId: e.id };
+    },
+  },
 ];
 
 // A reaction needs the reactor's reaction for the round, and the reactor not
@@ -220,7 +284,7 @@ const reactionBlockedReason = (
 // ── availableReactions (enumeration) ────────────────────────────────
 export const availableReactions = (
   state: CampaignState,
-  _content: ResolvedContent,
+  content: ResolvedContent,
   encounterId: string,
   combatantId: string,
 ): ReadonlyArray<ReactionOption> => {
@@ -232,7 +296,7 @@ export const availableReactions = (
   const reason = reactionBlockedReason(state, encounterId, combatantId, character);
   const out: ReactionOption[] = [];
   for (const d of REGISTRY) {
-    if (!d.owns(character)) continue;
+    if (!d.owns(character, state, content)) continue;
     out.push({
       id: d.id,
       label: d.label,
@@ -263,8 +327,8 @@ export const reactionsForTrigger = (
   const out: CorrelatedReaction[] = [];
   for (const d of REGISTRY) {
     if (TRIGGER_EVENT_TYPE[d.trigger] !== triggerEvent.type) continue;
-    if (!d.owns(character)) continue;
-    const intent = d.correlate(reactorId, triggerEvent, character, state, content);
+    if (!d.owns(character, state, content)) continue;
+    const intent = d.correlate(reactorId, triggerEvent, character, state, content, encounterId);
     if (intent !== undefined) out.push({ id: d.id, label: d.label, intent });
   }
   out.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
