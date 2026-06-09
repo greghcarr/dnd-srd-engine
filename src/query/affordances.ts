@@ -357,24 +357,29 @@ export type LegalSpellTargets =
     }
   | { readonly kind: 'points'; readonly cells: ReadonlyArray<Position> };
 
-// Living combatants within `gateFeet` (chebyshev; undefined = no limit,
-// for Self / Sight / Unlimited ranges) of the caster with line of effect.
-// Parallel to legalTargets' in-range loop but parameterized by range +
-// an includeSelf flag (beneficial spells may target the caster). Kept
-// separate so legalTargets stays byte-identical.
+// Combatants within `gateFeet` (chebyshev; undefined = no limit, for Self /
+// Sight / Unlimited ranges) of the caster with line of effect. Parallel to
+// legalTargets' in-range loop but parameterized by range + an includeSelf
+// flag (beneficial spells may target the caster) + an includeDefeated flag.
+// Defeated (0-HP) creatures are excluded by default, but a healing spell can
+// target a dying ally (its primary combat use), so `includeDefeated` keeps
+// them in. Kept separate so legalTargets stays byte-identical.
 const creatureCandidatesInRange = (
   state: CampaignState,
   encounterId: string,
   casterId: string,
   gateFeet: number | undefined,
   includeSelf: boolean,
+  includeDefeated: boolean,
 ): TargetCandidate[] => {
   const encounter = state.encounters[encounterId];
   if (encounter === undefined) return [];
   const self = encounter.combatants.find((c) => c.combatantId === casterId);
   if (self === undefined) return [];
   const pool = encounter.combatants.filter(
-    (c) => (includeSelf || c.combatantId !== casterId) && !isDefeated(state, c.combatantId),
+    (c) =>
+      (includeSelf || c.combatantId !== casterId) &&
+      (includeDefeated || !isDefeated(state, c.combatantId)),
   );
 
   const locationId = state.characterLocations[casterId];
@@ -483,9 +488,13 @@ export const legalSpellTargets = (
   }
   const gate = enforceableSpellRangeFeet(parseSpellRange(spell.range));
   const includeSelf = desc.allow !== 'enemies';
+  // A healing spell can target a dying (0-HP) ally — that's its primary
+  // combat use (Healing Word / Cure Wounds reviving a downed creature), so
+  // it must not be filtered out of the legal targets.
+  const includeDefeated = resolves === 'heal';
   return {
     kind: 'creatures',
-    candidates: creatureCandidatesInRange(state, encounterId, casterId, gate, includeSelf),
+    candidates: creatureCandidatesInRange(state, encounterId, casterId, gate, includeSelf, includeDefeated),
     maxTargets,
   };
 };

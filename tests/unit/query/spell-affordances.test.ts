@@ -254,3 +254,39 @@ describe('slice 716: multi-target maxTargets', () => {
     expect(atThree.maxTargets).toBe(5);
   });
 });
+
+// Slice 757 (pattern-fix): a healing spell can target a DYING (0-HP) creature
+// — reviving a downed ally is its primary combat use. legalSpellTargets used
+// to filter every 0-HP creature out (the same heal-targets-the-dying bug
+// slice 756 fixed for the bonus-action target query). A non-heal spell still
+// excludes the dying.
+describe('slice 757: healing spells can target a downed (0-HP) creature', () => {
+  // Bring a combatant to exactly 0 HP (dying, not massively-dead).
+  const downToZero = (s: Setup, id: string): Campaign =>
+    commit(s.campaign, [
+      {
+        id: eventId(),
+        at: isoTimestamp(),
+        type: 'DamageApplied',
+        targetId: id as ULID,
+        components: [{ amount: 24, type: 'force' }], // buildFoe has 24 max HP
+      },
+    ] as Event[]);
+
+  it('Healing Word (heal) includes a 0-HP creature in range', () => {
+    const s = setup({ x: 10, y: 0 }); // foe within Healing Word's 60 ft
+    s.campaign = downToZero(s, s.foeId);
+    expect(s.campaign.state.characters[s.foeId]!.hp.current).toBe(0);
+    const r = s.engine.query.legalSpellTargets(s.campaign.state, s.encounterId, s.casterId, 'healing-word', 1);
+    if (r.kind !== 'creatures') throw new Error('expected creatures');
+    expect(r.candidates.map((c) => c.combatantId)).toContain(s.foeId);
+  });
+
+  it('an offensive spell (Fire Bolt) still excludes the 0-HP creature', () => {
+    const s = setup({ x: 10, y: 0 });
+    s.campaign = downToZero(s, s.foeId);
+    const r = s.engine.query.legalSpellTargets(s.campaign.state, s.encounterId, s.casterId, 'fire-bolt', 0);
+    if (r.kind !== 'creatures') throw new Error('expected creatures');
+    expect(r.candidates.map((c) => c.combatantId)).not.toContain(s.foeId);
+  });
+});

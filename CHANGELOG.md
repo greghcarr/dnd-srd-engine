@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Fix (slice 757): healing spells can target a dying ally (`legalSpellTargets`) — pattern-fix**
+The pattern-check sibling of slice 756: `legalSpellTargets` routed every creature-target spell through a helper that excluded all 0-HP combatants, so a downed ally was wrongly omitted from a healing spell's legal targets (reviving a dying creature is the primary use of Healing Word / Cure Wounds). `creatureCandidatesInRange` gains an `includeDefeated` flag; `legalSpellTargets` passes `resolves === 'heal'`. Offensive / buff spells unchanged (still exclude the defeated). New test: Healing Word includes a 0-HP creature; Fire Bolt still excludes it.
+Detail: [slice-757.md](docs/changelog/slice-757.md).
+
 **Engine (slice 756): bonus-action affordances — metered amount + creature targets**
 Read-only additions so a consumer can drive amount / target selection for `engine.plan.useOption` (the dnd-web Bonus Actions menu). `BonusActionOption` gains `requiresAmount` (mirrors the descriptor flag) + `maxAmount?` (the spendable pool, e.g. the paladin's Lay on Hands points; overheal clamping stays engine-side). New `engine.query.bonusActionTargets(state, encounterId, combatantId, optionId)` → `{ combatantId, position? }[]` lists an option's legal targets honoring its reach + self / defeated rules (Lay on Hands = touch incl. a dying ally; Bardic = 60 ft excl. self; Flurry = reach), via a new per-descriptor `targeting` spec on all four creature-target options (pattern-check: no silent empty picker). Range is chebyshev on positions (positionless → no range filter). Additive query surface; `useOption` dispatch + event shapes byte-identical.
 Detail: [slice-756.md](docs/changelog/slice-756.md).
