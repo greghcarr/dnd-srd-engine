@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Fix (slice 759): spell-target affordance fidelity — Spare the Dying + AOE encounterId**
+Two `legalSpellTargets` bugs from the correctness sweep. (1) The slice-757 dying-target fix was incomplete: it keyed on `resolves === 'heal'`, but a `stabilize` spell resolves as `'auto'`, so Spare the Dying returned zero legal targets — even though its only valid target is a 0-HP creature (the planner requires `hp.current === 0`). `includeDefeated` now also covers `stabilize` mechanics. (2) `aoePlacementPoints` read `state.activeEncounterId` instead of the `encounterId` argument, so AOE placement cells were empty for any non-active / not-yet-started encounter; now threads `encounterId`. Query-side only.
+Detail: [slice-759.md](docs/changelog/slice-759.md).
+
 **Fix (slice 758): attack affordance fidelity — ranged long range + Extra Attack**
 Two affordance-layer bugs (found by the correctness sweep) where `engine.query.*` disagreed with the attack planner. (1) `weaponRangeFeet` capped ranged reach at `rangeNormal`; the planner allows out to `rangeLong` (attack with Disadvantage), so `legalTargets` omitted legal long-range targets and `availableActions` wrongly said `no-target-in-range`. Now uses `rangeLong ?? rangeNormal`. (2) `availableActions` disabled `attack` the instant the action was used; the planner allows further attacks while `attacksMadeThisTurn < maxAttacksPerAction`, so a Fighter mid-Extra-Attack was shown attack-disabled. Now mirrors `planActionEconomyForAttack` (Dash/Disengage/Dodge keep the once-per-action gate). Query-side only; planner + event shapes unchanged.
 Detail: [slice-758.md](docs/changelog/slice-758.md).

@@ -438,10 +438,11 @@ const creatureCandidatesInRange = (
 // specific cone direction (that geometry lives in the consumer).
 const aoePlacementPoints = (
   state: CampaignState,
+  encounterId: string,
   casterId: string,
   radiusFeet: number,
 ): Position[] => {
-  const encounter = state.activeEncounterId ? state.encounters[state.activeEncounterId] : undefined;
+  const encounter = state.encounters[encounterId];
   const self = encounter?.combatants.find((c) => c.combatantId === casterId);
   const locationId = state.characterLocations[casterId];
   const map = locationId !== undefined ? state.locations[locationId]?.map : undefined;
@@ -488,14 +489,17 @@ export const legalSpellTargets = (
   if (desc.kind === 'point') {
     const r = parseSpellRange(spell.range);
     const radiusFeet = r.kind === 'feet' ? r.feet : desc.sizeFeet;
-    return { kind: 'points', cells: aoePlacementPoints(state, casterId, radiusFeet) };
+    return { kind: 'points', cells: aoePlacementPoints(state, encounterId, casterId, radiusFeet) };
   }
   const gate = enforceableSpellRangeFeet(parseSpellRange(spell.range));
   const includeSelf = desc.allow !== 'enemies';
-  // A healing spell can target a dying (0-HP) ally — that's its primary
-  // combat use (Healing Word / Cure Wounds reviving a downed creature), so
-  // it must not be filtered out of the legal targets.
-  const includeDefeated = resolves === 'heal';
+  // A spell that helps a downed (0-HP) creature must keep it in the legal
+  // targets — otherwise the target picker is empty for exactly the cast that
+  // matters. Two cases: a heal/temp-hp spell (Healing Word / Cure Wounds
+  // reviving a dying ally), and a `stabilize` spell (Spare the Dying), whose
+  // ONLY valid target is a 0-HP creature (the planner requires hp.current === 0).
+  const includeDefeated =
+    resolves === 'heal' || spell.mechanicalEffects.some((m) => m.kind === 'stabilize');
   return {
     kind: 'creatures',
     candidates: creatureCandidatesInRange(state, encounterId, casterId, gate, includeSelf, includeDefeated),
