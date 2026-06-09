@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Driver/infra (slice 752): save reaction window (Countercharm) + charm-person in the fuzz AI**
+Completes the combat-fuzz reaction set with the save window: a Bard L7 on a charmed/frightened creature's team rerolls the failed save with Advantage and, on success, removes the condition (post-commit, like the damage-mitigation reactions). Because the fuzz never produced a charm/frighten save, the AI also learns to cast charm-person under `reactions:'auto'` (gated, so `'none'` stays byte-identical) so the window can occur. Pure `hasCountercharm` + the resolver branch (correlates the failed `SaveRolled` for DC/ability/bonus, finds the Bard, emits `ConditionRemoved` on success); team ids threaded into `ReactionPolicyContext`. Rare in practice (~1% of L7 2v2 PC battles need bards on both sides + a landed charm), so a constructed unit test is the stable correctness gate and a golden anchor (seeds 112/206/275/281/391) shows it firing in real fuzz. Protection deferred.
+Detail: [slice-752.md](docs/changelog/slice-752.md).
+
 **Driver/infra (slice 751): spell-cast reaction window (Counterspell)**
 Adds the spell-cast window to the combat-fuzz reaction layer: under `reactions:'auto'`, an enemy Wizard/Sorcerer Counterspells a leveled cast (CON-save outcome), and the countered spell's effects are omitted. RAW-faithful prepared (Counterspell added to arcane builds only under `'auto'` at L5+, so `'none'` stays byte-identical); `originalSpellLevel:0` avoids double slot consumption. Pure `shouldCounterspell` + resolver `scripts/reactions/pre-cast-policy.ts`. Countercharm / Protection deferred.
 Detail: [slice-751.md](docs/changelog/slice-751.md).

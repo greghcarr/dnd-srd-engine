@@ -12,6 +12,7 @@ import {
   shouldShield,
   shouldCuttingWords,
   shouldCounterspell,
+  hasCountercharm,
   type IncomingDamage,
 } from '../../../src/ai/reactions.js';
 import { REACTION_MIN_DAMAGE } from '../../../src/ai/reaction-constants.js';
@@ -146,5 +147,17 @@ describe('shouldCounterspell (slice 751)', () => {
 
   it('declines without Counterspell prepared', () => {
     expect(shouldCounterspell(withClass('wizard', 5), 1)).toBe(false);
+  });
+});
+
+describe('hasCountercharm (slice 752)', () => {
+  it('is true for a Bard at L7+', () => {
+    expect(hasCountercharm(withClass('bard', 7))).toBe(true);
+    expect(hasCountercharm(withClass('bard', 12))).toBe(true);
+  });
+
+  it('is false below L7 or for a non-Bard', () => {
+    expect(hasCountercharm(withClass('bard', 6))).toBe(false);
+    expect(hasCountercharm(withClass('wizard', 20))).toBe(false);
   });
 });

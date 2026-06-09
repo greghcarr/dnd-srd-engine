@@ -31,6 +31,18 @@ describe('combat-fuzz default reactions guard (slice 749)', () => {
     }
   });
 
+  it('default AI never casts charm-person (slice 752 AI change is auto-gated)', () => {
+    // The Countercharm window only exists because 'auto' teaches a Bard to
+    // cast charm-person. The default AI must not — or 'none' battles change.
+    for (const seed of SEEDS) {
+      const { campaign } = runBattle({ seed, pack: STARTER, level: 7, teamSize: 2 });
+      const cast = campaign.events.some(
+        (e) => e.type === 'SpellCastDeclared' && (e as { spellId?: string }).spellId === 'charm-person',
+      );
+      expect(cast, `seed=${seed} default cast charm-person`).toBe(false);
+    }
+  });
+
   it('default build does not inject Counterspell into any character (slice 751 build is auto-gated)', () => {
     // The RAW-faithful Counterspell prep is added only under reactions:'auto'
     // at L5+. The default build (and thus the CharacterCreated snapshots) must

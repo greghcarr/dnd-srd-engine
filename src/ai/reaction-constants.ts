@@ -37,3 +37,8 @@ export const BARD_CLASS_ID = 'bard';
 // Counterspell (slice 751). The spell a prepared arcane caster uses to
 // counter another spell; the engine needs a 3rd-level slot to cast it.
 export const COUNTERSPELL_SPELL_ID = 'counterspell';
+
+// Countercharm (slice 752). A Bard gains it at L7 — a Reaction that
+// rerolls a nearby creature's failed Charmed/Frightened save with Advantage.
+export const COUNTERCHARM_BARD_LEVEL = 7;
+export const COUNTERCHARM_CONDITIONS: readonly string[] = ['charmed', 'frightened'];

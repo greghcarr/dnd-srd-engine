@@ -97,6 +97,23 @@ describe('golden: pre-damage reactions (slice 750)', () => {
     }
   });
 
+  it('Countercharm fires on deterministic anchors (L7, 2v2 PC): a charmed creature\'s Bard team rerolls and removes it', () => {
+    // Countercharm is rare (~1% of L7 2v2 PC battles need a bard on BOTH
+    // teams + a landed charm); these seeds were found to fire it. Asserted
+    // in aggregate so a single seed shifting under future RNG drift doesn't
+    // break the suite (the constructed resolver test is the stable gate).
+    const COUNTERCHARM_SEEDS = [112, 206, 275, 281, 391];
+    let removals = 0;
+    for (const seed of COUNTERCHARM_SEEDS) {
+      const events = runBattle({ seed, pack: STARTER, level: 7, teamSize: 2, vs: 'pc', reactions: 'auto' })
+        .campaign.events;
+      removals += events.filter(
+        (e) => e.type === 'ConditionRemoved' && (e as { conditionId?: string }).conditionId === 'charmed',
+      ).length;
+    }
+    expect(removals, 'no Countercharm removal fired across the anchor seeds').toBeGreaterThan(0);
+  });
+
   it('Cutting Words fires on a deterministic anchor (seed 7, L3, 2v2 PC): a reaction paired with a Bardic Inspiration spend', () => {
     const events = runBattle({ seed: 7, pack: STARTER, level: 3, teamSize: 2, vs: 'pc', reactions: 'auto' })
       .campaign.events;

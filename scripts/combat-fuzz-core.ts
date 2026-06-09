@@ -595,6 +595,10 @@ const pickIntent = (
   active: Combatant,
   opponent: Combatant,
   allies: ReadonlyArray<Combatant> = [],
+  // Slice 752: under reactions:'auto', a Bard casts charm-person to open a
+  // Countercharm window. Default false keeps the AI (and 'none' battles)
+  // byte-identical.
+  enableCharmPerson = false,
 ): { readonly type: string } & Record<string, unknown> | null => {
   const c = state.characters[active.built.character.id]!;
   const oppId = opponent.built.character.id;
@@ -709,6 +713,10 @@ const pickIntent = (
     if (classId === 'paladin') {
       // Paladin's BA branch above already handles Divine Favor; the
       // Action slot stays available for an attack.
+    } else if (enableCharmPerson && classId === 'bard' && c.preparedSpells.includes('charm-person') && hasUnusedL1Slot(c)) {
+      // Slice 752: open a Countercharm window. Only under 'auto' (the flag),
+      // so 'none' battles keep their prior bard action choice.
+      return { type: 'CastSpell', characterId: c.id, spellId: 'charm-person', slotLevel: 1, targetIds: [oppId] };
     } else if ((classId === 'cleric' || classId === 'bard') && c.preparedSpells.includes('bless') && hasUnusedL1Slot(c) && notConcentrating) {
       return { type: 'CastSpell', characterId: c.id, spellId: 'bless', slotLevel: 1, targetIds: [c.id] };
     } else if ((classId === 'wizard' || classId === 'sorcerer') && c.preparedSpells.includes('mage-armor') && hasUnusedL1Slot(c)) {
@@ -1020,6 +1028,11 @@ export interface ReactionPolicyContext {
   /** The events the just-committed action appended to the log. */
   readonly producedEvents: ReadonlyArray<Event>;
   readonly combatants: Record<string, Combatant>;
+  /** Slice 752: the two teams' character ids, so a reaction can find an
+   *  ally of an affected creature (Countercharm: a Bard on the charmed
+   *  creature's team rerolls its save). */
+  readonly teamACharacterIds: ReadonlyArray<string>;
+  readonly teamBCharacterIds: ReadonlyArray<string>;
 }
 
 export type ReactionPolicy = (ctx: ReactionPolicyContext) => Campaign;
@@ -1232,7 +1245,7 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
         .filter((pc) => pc.character.id !== active.built.character.id
           && campaign.state.characters[pc.character.id]!.hp.current > 0)
         .map((pc) => combatants[pc.character.id]!);
-      const intent = pickIntent(campaign.state, active, opponent, allies);
+      const intent = pickIntent(campaign.state, active, opponent, allies, reactions === 'auto');
       if (intent === null) break;
       // Slice 749: snapshot the log length so the reaction policy (below)
       // sees exactly the events this action produced.
@@ -1379,6 +1392,8 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
         encounterId: enc.encounterId,
         producedEvents: campaign.events.slice(before),
         combatants,
+        teamACharacterIds: teamA.map((pc) => pc.character.id),
+        teamBCharacterIds: teamB.map((pc) => pc.character.id),
       });
       const t = teamWiped();
       if (t !== null) {

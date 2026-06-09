@@ -28,6 +28,7 @@ export {
   shouldShield,
   shouldCuttingWords,
   shouldCounterspell,
+  hasCountercharm,
   type DamageReaction,
   type IncomingDamage,
   type PhysicalDamageType,

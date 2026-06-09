@@ -32,6 +32,7 @@ import {
   SHIELD_CASTER_CLASS_IDS,
   BARD_CLASS_ID,
   COUNTERSPELL_SPELL_ID,
+  COUNTERCHARM_BARD_LEVEL,
 } from './reaction-constants.js';
 
 export type PhysicalDamageType = 'bludgeoning' | 'piercing' | 'slashing';
@@ -140,3 +141,10 @@ export const shouldCounterspell = (
   originalSlotLevel: number,
 ): boolean =>
   originalSlotLevel >= 1 && counterCaster.preparedSpells.includes(COUNTERSPELL_SPELL_ID);
+
+// A Bard at L7+ has Countercharm — a Reaction to reroll a nearby creature's
+// failed Charmed/Frightened save with Advantage. The save context (DC,
+// ability, bonus) and the affected-team / reaction-economy checks live in
+// the resolver glue.
+export const hasCountercharm = (character: Character): boolean =>
+  (character.classes.find((c) => c.classId === BARD_CLASS_ID)?.level ?? 0) >= COUNTERCHARM_BARD_LEVEL;

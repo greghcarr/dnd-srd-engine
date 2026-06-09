@@ -18,16 +18,23 @@
 // here are not themselves re-scanned for further reactions.
 
 import { commit, type Campaign } from '../../src/engine/commit.js';
+import { newEventId } from '../../src/ids.js';
 import type { Event } from '../../src/schemas/events/index.js';
-import type { DamageAppliedEvent } from '../../src/schemas/events/combat.js';
+import type {
+  DamageAppliedEvent,
+  ConditionAppliedEvent,
+  ConditionRemovedEvent,
+} from '../../src/schemas/events/combat.js';
 import type { AttackRolledEvent } from '../../src/schemas/events/attack.js';
+import type { SaveRolledEvent } from '../../src/schemas/events/checks.js';
 import type { CampaignState } from '../../src/schemas/runtime/campaign.js';
 import {
   pickDamageReaction,
+  hasCountercharm,
   type DamageReaction,
   type PhysicalDamageType,
 } from '../../src/ai/reactions.js';
-import { PHYSICAL_DAMAGE_TYPES } from '../../src/ai/reaction-constants.js';
+import { PHYSICAL_DAMAGE_TYPES, COUNTERCHARM_CONDITIONS } from '../../src/ai/reaction-constants.js';
 import type { Engine, ReactionPolicy, ReactionPolicyContext } from '../combat-fuzz-core.js';
 
 const isPhysical = (t: string): t is PhysicalDamageType =>
@@ -120,9 +127,68 @@ const fireReaction = (
   }
 };
 
+// The failed save that applied a condition: the most recent SaveRolled
+// (before the ConditionApplied, in producedEvents) for the same target that
+// the creature failed. Supplies the DC / ability / bonus the Countercharm
+// reroll needs (SaveRolled doesn't record which condition it gated).
+const precedingFailedSave = (
+  producedEvents: ReadonlyArray<Event>,
+  conditionIdx: number,
+  targetId: string,
+): SaveRolledEvent | undefined => {
+  for (let i = conditionIdx - 1; i >= 0; i -= 1) {
+    const e = producedEvents[i]!;
+    if (
+      e.type === 'SaveRolled'
+      && (e as SaveRolledEvent).targetId === targetId
+      && (e as SaveRolledEvent).success === false
+    ) {
+      return e as SaveRolledEvent;
+    }
+  }
+  return undefined;
+};
+
+// Countercharm: a Bard L7 on the affected creature's team (the creature
+// itself counts) rerolls the failed save with Advantage; on success the
+// charmed/frightened condition is removed. The Bard's slot-free Reaction +
+// the reroll come from planCountercharm; we emit the ConditionRemoved.
+const fireCountercharm = (
+  engine: Engine,
+  campaign: Campaign,
+  args: {
+    readonly bardId: string;
+    readonly targetId: string;
+    readonly conditionId: string;
+    readonly save: SaveRolledEvent;
+  },
+): Campaign => {
+  try {
+    const { events, success } = engine.plan.countercharm(campaign.state, {
+      bardId: args.bardId,
+      targetId: args.targetId,
+      ability: args.save.ability,
+      dc: args.save.dc,
+      saveBonus: args.save.bonus,
+    });
+    if (!success) return commit(campaign, [...events]);
+    const removal: ConditionRemovedEvent = {
+      id: newEventId(),
+      at: events[0]?.at ?? args.save.at,
+      type: 'ConditionRemoved',
+      targetId: args.targetId,
+      conditionId: args.conditionId,
+    };
+    return commit(campaign, [...events, removal]);
+  } catch {
+    // Bard ineligible (not L7, reaction spent) — leave the condition.
+    return campaign;
+  }
+};
+
 export const makeAutoReactionPolicy = (): ReactionPolicy =>
   (ctx: ReactionPolicyContext): Campaign => {
-    const { engine, producedEvents, encounterId } = ctx;
+    const { engine, producedEvents, encounterId, teamACharacterIds, teamBCharacterIds } = ctx;
     let campaign = ctx.campaign;
     for (let i = 0; i < producedEvents.length; i += 1) {
       const event = producedEvents[i]!;
@@ -145,6 +211,34 @@ export const makeAutoReactionPolicy = (): ReactionPolicy =>
         total,
         damageEventId: dmg.id,
         attackEventId,
+      });
+    }
+
+    // Slice 752: Countercharm — a Bard L7 on the charmed/frightened
+    // creature's team rerolls its failed save; on success the condition is
+    // removed (post-hoc, like the damage-mitigation reactions).
+    for (let i = 0; i < producedEvents.length; i += 1) {
+      const event = producedEvents[i]!;
+      if (event.type !== 'ConditionApplied') continue;
+      const cond = event as ConditionAppliedEvent;
+      if (!COUNTERCHARM_CONDITIONS.includes(cond.conditionId)) continue;
+      const save = precedingFailedSave(producedEvents, i, cond.targetId);
+      if (save === undefined) continue;
+      const team = teamACharacterIds.includes(cond.targetId)
+        ? teamACharacterIds
+        : teamBCharacterIds;
+      const bardId = team.find((id) => {
+        const c = campaign.state.characters[id];
+        return c !== undefined
+          && reactionAvailable(campaign.state, encounterId, id)
+          && hasCountercharm(c);
+      });
+      if (bardId === undefined) continue;
+      campaign = fireCountercharm(engine, campaign, {
+        bardId,
+        targetId: cond.targetId,
+        conditionId: cond.conditionId,
+        save,
       });
     }
     return campaign;
