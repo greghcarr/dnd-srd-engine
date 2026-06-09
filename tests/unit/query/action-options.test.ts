@@ -129,3 +129,84 @@ describe('slice 764: useActionOption executor + actionIntent builder', () => {
     expect(() => actionIntent('ready', 'x')).toThrow(/requires a trigger/);
   });
 });
+
+// Slice 769: class-feature actions — Action Surge (inverted economy),
+// Divine Spark + Turn Undead (Cleric Channel Divinity).
+const fighterWithSurge = (): Character =>
+  CharacterSchema.parse({
+    id: newCharacterId(), name: 'Surger', speciesId: 'human', backgroundId: 'soldier',
+    classes: [{ classId: 'fighter', level: 2, hitDiceRemaining: 2 }],
+    abilityScores: { STR: 16, DEX: 14, CON: 14, INT: 10, WIS: 12, CHA: 10 },
+    hp: { current: 20, max: 20, temp: 0 },
+    resources: [{ resourceId: 'action-surge', current: 1, max: 1 }],
+  });
+const cleric = (cd = 2): Character =>
+  CharacterSchema.parse({
+    id: newCharacterId(), name: 'Cleric', speciesId: 'human', backgroundId: 'acolyte',
+    classes: [{ classId: 'cleric', level: 2, hitDiceRemaining: 2 }],
+    abilityScores: { STR: 10, DEX: 12, CON: 14, INT: 10, WIS: 16, CHA: 10 },
+    hp: { current: 16, max: 16, temp: 0 },
+    resources: [{ resourceId: 'channel-divinity', current: cd, max: 2 }],
+  });
+
+const consumeAction = (s: Setup, id: string): Campaign =>
+  commit(s.campaign, [
+    { id: eventId(), at: isoTimestamp(), type: 'ActionEconomyConsumed', encounterId: s.encounterId as ULID, combatantId: id as ULID, kind: 'action' } satisfies ActionEconomyConsumedEvent,
+  ]);
+
+describe('slice 769: Action Surge (inverted economy)', () => {
+  it('offered to a Fighter and stays enabled after the action is used (it grants one)', () => {
+    const f = fighterWithSurge();
+    const s = setup([f], f.id);
+    const before = Object.fromEntries(s.engine.query.actionOptions(s.campaign.state, s.encounterId, f.id).map((o) => [o.id, o]));
+    expect(before['action-surge']).toMatchObject({ target: 'none', enabled: true });
+    s.campaign = consumeAction(s, f.id);
+    const after = Object.fromEntries(s.engine.query.actionOptions(s.campaign.state, s.encounterId, f.id).map((o) => [o.id, o]));
+    expect(after['action-surge'], 'Action Surge should remain enabled after the action is used').toMatchObject({ enabled: true });
+    // The general actions are now action-used.
+    expect(after['search']).toMatchObject({ enabled: false, reason: 'action-used' });
+    expect(() => s.engine.plan.useActionOption(s.campaign.state, { combatantId: f.id, optionId: 'action-surge' })).not.toThrow();
+  });
+
+  it('disabled (no-uses) when the resource is spent', () => {
+    const f = fighterWithSurge();
+    f.resources[0]!.current = 0;
+    const s = setup([f], f.id);
+    expect(Object.fromEntries(s.engine.query.actionOptions(s.campaign.state, s.encounterId, f.id).map((o) => [o.id, o]))['action-surge'])
+      .toMatchObject({ enabled: false, reason: 'no-uses' });
+  });
+
+  it('not offered to a non-Fighter', () => {
+    const c = cleric();
+    const s = setup([c], c.id);
+    expect(s.engine.query.actionOptions(s.campaign.state, s.encounterId, c.id).find((o) => o.id === 'action-surge')).toBeUndefined();
+  });
+});
+
+describe('slice 769: Channel Divinity actions (Divine Spark + Turn Undead)', () => {
+  it('Divine Spark offered to a Cleric; useActionOption heals a target', () => {
+    const c = cleric();
+    const ally = fighter();
+    const s = setup([c, ally], c.id);
+    expect(Object.fromEntries(s.engine.query.actionOptions(s.campaign.state, s.encounterId, c.id).map((o) => [o.id, o]))['divine-spark'])
+      .toMatchObject({ target: 'creature', enabled: true });
+    expect(() => s.engine.plan.useActionOption(s.campaign.state, { combatantId: c.id, optionId: 'divine-spark', targetId: ally.id, mode: 'heal' })).not.toThrow();
+  });
+
+  it('Turn Undead offered to a Cleric; actionIntent requires targetIds', () => {
+    const c = cleric();
+    const s = setup([c], c.id);
+    expect(Object.fromEntries(s.engine.query.actionOptions(s.campaign.state, s.encounterId, c.id).map((o) => [o.id, o]))['turn-undead'])
+      .toMatchObject({ enabled: true });
+    expect(() => actionIntent('turn-undead', c.id)).toThrow(/requires a targetIds/);
+    expect(() => s.engine.plan.useActionOption(s.campaign.state, { combatantId: c.id, optionId: 'turn-undead', targetIds: [] })).not.toThrow();
+  });
+
+  it('both disabled (no-uses) when Channel Divinity is spent', () => {
+    const c = cleric(0);
+    const s = setup([c], c.id);
+    const byId = Object.fromEntries(s.engine.query.actionOptions(s.campaign.state, s.encounterId, c.id).map((o) => [o.id, o]));
+    expect(byId['divine-spark']).toMatchObject({ enabled: false, reason: 'no-uses' });
+    expect(byId['turn-undead']).toMatchObject({ enabled: false, reason: 'no-uses' });
+  });
+});

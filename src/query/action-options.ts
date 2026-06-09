@@ -15,10 +15,11 @@
 // An Action menu unions `availableActions` (the 5 core), `actionOptions` (these
 // general actions), and `castableSpells` filtered to action-time casts.
 //
-// Scope: the universal general actions. Class-feature actions (Action Surge —
-// its inverted "grants an extra action" economy; Turn Undead / Divine Spark /
-// Preserve Life / Breath Weapon — resource + multi-target / AoE) are a
-// documented follow-up; they don't fit the uniform "costs your action" gating.
+// Covers the universal general actions plus class-feature actions (slice 769):
+// Action Surge (its inverted "grants an extra action" economy — NOT gated on
+// action-used), Divine Spark and Turn Undead (Cleric Channel Divinity, resource
+// + creature / multi-target). Descriptors carry per-action owns + resource +
+// costsAction, the same shape bonus-actions.ts uses.
 
 import type { CampaignState } from '../schemas/runtime/campaign.js';
 import type { ResolvedContent } from '../content/pack.js';
@@ -31,9 +32,17 @@ import type { InfluenceIntent } from '../engine/plan/influence.js';
 import type { UtilizeIntent } from '../engine/plan/utilize.js';
 import type { HideIntent, GrappleIntent, ShoveIntent } from '../engine/plan/contested.js';
 import type { ReadyIntent } from '../engine/plan/ready.js';
+import type { ActionSurgeIntent } from '../engine/plan/action-surge.js';
+import type { TurnUndeadIntent } from '../engine/plan/turn-undead.js';
+import type { DivineSparkIntent } from '../engine/plan/divine-spark.js';
 
 const REASON_NOT_YOUR_TURN = 'not-your-turn';
 const REASON_ACTION_USED = 'action-used';
+const REASON_NO_USES = 'no-uses';
+const FIGHTER_CLASS_ID = 'fighter';
+const CLERIC_CLASS_ID = 'cleric';
+const ACTION_SURGE_RESOURCE = 'action-surge';
+const CHANNEL_DIVINITY_RESOURCE = 'channel-divinity';
 
 // ── Public types ────────────────────────────────────────────────────
 export type ActionOptionTargetKind = 'none' | 'self' | 'creature';
@@ -61,7 +70,10 @@ export type ActionIntent =
   | GrappleIntent
   | ShoveIntent
   | HelpIntent
-  | ReadyIntent;
+  | ReadyIntent
+  | ActionSurgeIntent
+  | TurnUndeadIntent
+  | DivineSparkIntent;
 
 /**
  * Per-option params for `actionIntent`. `targetId` for creature-target options
@@ -77,6 +89,8 @@ export interface ActionParams {
   readonly dc?: number;
   readonly ability?: string;
   readonly targetAbility?: string;
+  /** Multiple creatures for an AoE action (Turn Undead — the undead in range). */
+  readonly targetIds?: ReadonlyArray<string>;
 }
 
 // ── Registry ────────────────────────────────────────────────────────
@@ -86,8 +100,25 @@ interface ActionDescriptor {
   readonly target: ActionOptionTargetKind;
   /** Required params; `actionIntent` throws if any is missing. */
   readonly requires?: ReadonlyArray<keyof ActionParams>;
+  /**
+   * Owns the feature right now? Default (omitted) = every creature (the general
+   * actions). Class-feature actions gate on class / level (+ the resource).
+   */
+  readonly owns?: (character: Character) => boolean;
+  /** Resource consumed; the option disables `no-uses` when current < resourceMin (1). */
+  readonly resourceId?: string;
+  /**
+   * Does this cost the actor's Action? Default true (gated on `action-used`).
+   * Action Surge sets false — it GRANTS an extra action, so it's available even
+   * after the action is spent (matching planActionSurge).
+   */
+  readonly costsAction?: boolean;
   readonly toIntent: (combatantId: string, params: ActionParams) => ActionIntent;
 }
+
+const hasClass = (c: Character, classId: string): boolean => c.classes.some((cl) => cl.classId === classId);
+const resourceCurrent = (c: Character, resourceId: string): number =>
+  c.resources.find((r) => r.resourceId === resourceId)?.current ?? 0;
 
 // Conditionally include an optional param key (omit when undefined, so the
 // planner's own default applies).
@@ -155,6 +186,36 @@ const REGISTRY: ReadonlyArray<ActionDescriptor> = [
     requires: ['trigger'],
     toIntent: (id, p) => ({ type: 'Ready', combatantId: id, trigger: p.trigger as string }) as ReadyIntent,
   },
+  // ── Class-feature actions (slice 769) ──
+  {
+    id: 'action-surge',
+    label: 'Action Surge',
+    target: 'none',
+    owns: (c) => hasClass(c, FIGHTER_CLASS_ID),
+    resourceId: ACTION_SURGE_RESOURCE,
+    // Grants an extra action — available even after the action is spent.
+    costsAction: false,
+    toIntent: (id) => ({ type: 'ActionSurge', combatantId: id }) as ActionSurgeIntent,
+  },
+  {
+    id: 'divine-spark',
+    label: 'Divine Spark',
+    target: 'creature',
+    owns: (c) => hasClass(c, CLERIC_CLASS_ID),
+    resourceId: CHANNEL_DIVINITY_RESOURCE,
+    requires: ['targetId', 'mode'],
+    toIntent: (id, p) => ({ type: 'DivineSpark', clericId: id, targetId: p.targetId as string, mode: p.mode as 'heal' | 'damage' }) as DivineSparkIntent,
+  },
+  {
+    id: 'turn-undead',
+    label: 'Turn Undead',
+    target: 'none',
+    owns: (c) => hasClass(c, CLERIC_CLASS_ID),
+    resourceId: CHANNEL_DIVINITY_RESOURCE,
+    // AoE over the undead in range — the consumer supplies the affected ids.
+    requires: ['targetIds'],
+    toIntent: (id, p) => ({ type: 'TurnUndead', clericId: id, targetIds: p.targetIds as ReadonlyArray<string> }) as TurnUndeadIntent,
+  },
 ];
 
 // ── actionOptions (enumeration) ─────────────────────────────────────
@@ -172,16 +233,31 @@ export const actionOptions = (
   const blocker = findActorBlockingCondition(character);
   const isActiveTurn =
     encounter.status === 'active' && encounter.combatants[encounter.activeIndex]?.combatantId === combatantId;
-  const reason =
-    blocker !== undefined ? blocker : !isActiveTurn ? REASON_NOT_YOUR_TURN : self.turnUsage.actionUsed ? REASON_ACTION_USED : undefined;
 
-  return REGISTRY.map((d) => ({
-    id: d.id,
-    label: d.label,
-    target: d.target,
-    enabled: reason === undefined,
-    ...(reason !== undefined ? { reason } : {}),
-  }));
+  // Per-descriptor reason: the shared blocker / not-your-turn gates, then the
+  // action-used gate (unless the option grants an extra action), then the
+  // option's own resource gate.
+  const reasonFor = (d: ActionDescriptor): string | undefined => {
+    if (blocker !== undefined) return blocker;
+    if (!isActiveTurn) return REASON_NOT_YOUR_TURN;
+    if (d.costsAction !== false && self.turnUsage.actionUsed) return REASON_ACTION_USED;
+    if (d.resourceId !== undefined && resourceCurrent(character, d.resourceId) < 1) return REASON_NO_USES;
+    return undefined;
+  };
+
+  const out: ActionOption[] = [];
+  for (const d of REGISTRY) {
+    if (d.owns !== undefined && !d.owns(character)) continue;
+    const reason = reasonFor(d);
+    out.push({
+      id: d.id,
+      label: d.label,
+      target: d.target,
+      enabled: reason === undefined,
+      ...(reason !== undefined ? { reason } : {}),
+    });
+  }
+  return out;
 };
 
 // ── actionIntent (dispatch builder) ─────────────────────────────────

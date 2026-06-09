@@ -421,9 +421,11 @@ export interface UseOptionOptions {
 export interface UseActionOptionOptions {
   readonly combatantId: string;
   readonly optionId: string;
-  /** Target creature for creature-target actions (Grapple / Shove / Help). */
+  /** Target creature for creature-target actions (Grapple / Shove / Help / Divine Spark). */
   readonly targetId?: string;
-  /** Shove ('prone'|'push') / Help ('attack'|'check'). */
+  /** Multiple creatures for an AoE action (Turn Undead). */
+  readonly targetIds?: ReadonlyArray<string>;
+  /** Shove ('prone'|'push') / Help ('attack'|'check') / Divine Spark ('heal'|'damage'). */
   readonly mode?: string;
   /** Ready's trigger description. */
   readonly trigger?: string;
@@ -849,7 +851,7 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     useActionOption(state, opts) {
       const { combatantId, optionId, ...params } = opts;
-      return planIntent(planNs, state, buildActionIntent(optionId, combatantId, params));
+      return planIntent(planNs, state, buildActionIntent(optionId, combatantId, params as Parameters<typeof buildActionIntent>[2]));
     },
     shortRest(state, intent) {
       return { events: planShortRest(state, content, { type: 'ShortRest', ...intent }) };
