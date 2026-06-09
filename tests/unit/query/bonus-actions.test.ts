@@ -168,6 +168,7 @@ describe('slice 714: bonusActions enumeration', () => {
       label: 'Second Wind',
       target: 'self',
       enabled: true,
+      requiresAmount: false,
     });
   });
 
@@ -447,5 +448,226 @@ describe('slice 715: extended bonus-action surface', () => {
         targetId: target.id,
       }),
     ).toThrow(/requires a weaponInstanceId/);
+  });
+});
+
+// ── Slice 756: metered-amount + target affordances ──────────────────
+
+// A positioned encounter (combatants carry feet positions) with `activeId`
+// winning initiative — for the bonusActionTargets range tests.
+const setupPositioned = (
+  placed: ReadonlyArray<{ char: Character; pos: { x: number; y: number } }>,
+  activeId: string,
+): Setup => {
+  const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(1) });
+  let campaign: Campaign = engine.createCampaign({ name: 'ba-pos' });
+  campaign = commit(
+    campaign,
+    placed.map(
+      (p) =>
+        ({ id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: p.char }) satisfies CharacterCreatedEvent,
+    ),
+  );
+  const enc = engine.plan.createEncounter(campaign.state, {
+    name: 'arena',
+    combatants: placed.map((p) => ({ characterId: p.char.id, position: p.pos })),
+  });
+  campaign = commit(campaign, enc.events);
+  campaign = commit(campaign, [
+    {
+      id: eventId(),
+      at: isoTimestamp(),
+      type: 'InitiativeRolled',
+      encounterId: enc.encounterId as ULID,
+      rolls: placed.map((p) => ({
+        combatantId: p.char.id as ULID,
+        d20: p.char.id === activeId ? 20 : 5,
+        modifier: 0,
+        total: p.char.id === activeId ? 20 : 5,
+      })),
+    } satisfies InitiativeRolledEvent,
+  ]);
+  campaign = commit(campaign, engine.plan.startEncounter(campaign.state, { encounterId: enc.encounterId }).events);
+  campaign = commit(campaign, engine.plan.beginFirstTurn(campaign.state, { encounterId: enc.encounterId }).events);
+  return { engine, campaign, encounterId: enc.encounterId };
+};
+
+const downedWizard = (): Character => base({ classes: [{ classId: 'wizard', level: 3, hitDiceRemaining: 3 }], hp: { current: 0, max: 24, temp: 0, maxBonus: 0 } });
+
+describe('slice 756: requiresAmount + maxAmount', () => {
+  it('Lay on Hands heal: requiresAmount true, maxAmount = the current pool', () => {
+    const p = paladin(5);
+    const s = setup([p], p.id);
+    expect(byId(s, p.id)['lay-on-hands-heal']).toMatchObject({ requiresAmount: true, maxAmount: 5 });
+  });
+
+  it('maxAmount tracks the pool (a partially-spent paladin offers less)', () => {
+    const p = paladin(3);
+    const s = setup([p], p.id);
+    expect(byId(s, p.id)['lay-on-hands-heal']?.maxAmount).toBe(3);
+  });
+
+  it('non-metered options report requiresAmount false and carry no maxAmount', () => {
+    const p = paladin(5);
+    const s = setup([p], p.id);
+    const opts = byId(s, p.id);
+    for (const id of ['lay-on-hands-cure-poison']) {
+      expect(opts[id]).toMatchObject({ requiresAmount: false });
+      expect(opts[id]).not.toHaveProperty('maxAmount');
+    }
+    const f = fighter();
+    const fs = setup([f], f.id);
+    expect(byId(fs, f.id)['second-wind']).not.toHaveProperty('maxAmount');
+  });
+});
+
+describe('slice 756: bonusActionTargets', () => {
+  it('Lay on Hands heal: self + creatures within touch (incl. a dying ally), excludes the far creature', () => {
+    const p = paladin(5);
+    const adjacent = wizard();
+    const dying = downedWizard();
+    const far = wizard();
+    const s = setupPositioned(
+      [
+        { char: p, pos: { x: 0, y: 0 } },
+        { char: adjacent, pos: { x: 5, y: 0 } },
+        { char: dying, pos: { x: 0, y: 5 } },
+        { char: far, pos: { x: 100, y: 0 } },
+      ],
+      p.id,
+    );
+    const ids = s.engine.query
+      .bonusActionTargets(s.campaign.state, s.encounterId, p.id, 'lay-on-hands-heal')
+      .map((t) => t.combatantId);
+    expect(ids).toContain(p.id); // self
+    expect(ids).toContain(adjacent.id);
+    expect(ids).toContain(dying.id); // a 0-HP ally is the primary heal target
+    expect(ids).not.toContain(far.id);
+  });
+
+  it('targets carry the combatant position when placed', () => {
+    const p = paladin(5);
+    const ally = wizard();
+    const s = setupPositioned(
+      [{ char: p, pos: { x: 0, y: 0 } }, { char: ally, pos: { x: 5, y: 0 } }],
+      p.id,
+    );
+    const target = s.engine.query
+      .bonusActionTargets(s.campaign.state, s.encounterId, p.id, 'lay-on-hands-heal')
+      .find((t) => t.combatantId === ally.id);
+    expect(target?.position).toEqual({ x: 5, y: 0 });
+  });
+
+  it('Cure Poison honors touch range (excludes the far creature)', () => {
+    const p = paladin(5);
+    const adjacent = wizard();
+    const far = wizard();
+    const s = setupPositioned(
+      [
+        { char: p, pos: { x: 0, y: 0 } },
+        { char: adjacent, pos: { x: 5, y: 0 } },
+        { char: far, pos: { x: 50, y: 0 } },
+      ],
+      p.id,
+    );
+    const ids = s.engine.query
+      .bonusActionTargets(s.campaign.state, s.encounterId, p.id, 'lay-on-hands-cure-poison')
+      .map((t) => t.combatantId);
+    expect(ids).toContain(adjacent.id);
+    expect(ids).not.toContain(far.id);
+  });
+
+  it('Bardic Inspiration: within 60 ft, excludes self and the dying', () => {
+    const b = bard();
+    const inRange = wizard();
+    const dying = downedWizard();
+    const far = wizard();
+    const s = setupPositioned(
+      [
+        { char: b, pos: { x: 0, y: 0 } },
+        { char: inRange, pos: { x: 30, y: 0 } },
+        { char: dying, pos: { x: 5, y: 0 } },
+        { char: far, pos: { x: 100, y: 0 } },
+      ],
+      b.id,
+    );
+    const ids = s.engine.query
+      .bonusActionTargets(s.campaign.state, s.encounterId, b.id, 'bardic-inspiration')
+      .map((t) => t.combatantId);
+    expect(ids).toContain(inRange.id);
+    expect(ids).not.toContain(b.id); // RAW: a creature other than yourself
+    expect(ids).not.toContain(dying.id); // a downed creature can't use the die
+    expect(ids).not.toContain(far.id); // out of 60 ft
+  });
+
+  it('Flurry of Blows: reach 5 ft, never the monk itself', () => {
+    const m = monk(2);
+    const adjacent = wizard();
+    const far = wizard();
+    const s = setupPositioned(
+      [
+        { char: m, pos: { x: 0, y: 0 } },
+        { char: adjacent, pos: { x: 5, y: 0 } },
+        { char: far, pos: { x: 50, y: 0 } },
+      ],
+      m.id,
+    );
+    const ids = s.engine.query
+      .bonusActionTargets(s.campaign.state, s.encounterId, m.id, 'flurry-of-blows')
+      .map((t) => t.combatantId);
+    expect(ids).toEqual([adjacent.id]);
+  });
+
+  it('positionless encounter: no range filter (honors self / defeated only)', () => {
+    const p = paladin(5);
+    const ally = wizard();
+    const s = setup([p, ally], p.id); // setup() places no positions
+    const ids = s.engine.query
+      .bonusActionTargets(s.campaign.state, s.encounterId, p.id, 'lay-on-hands-heal')
+      .map((t) => t.combatantId);
+    expect(ids).toEqual([p.id, ally.id].sort());
+  });
+
+  it('returns [] for a non-creature option and for an unknown id', () => {
+    const f = fighter();
+    const s = setup([f], f.id);
+    expect(s.engine.query.bonusActionTargets(s.campaign.state, s.encounterId, f.id, 'second-wind')).toEqual([]);
+    expect(s.engine.query.bonusActionTargets(s.campaign.state, s.encounterId, f.id, 'no-such-option')).toEqual([]);
+  });
+});
+
+// Pattern-lock (slice 756): every creature-target option MUST expose a target
+// query, or the consumer gets an empty picker (the Lay-on-Hands bug class).
+// bonusActionTargets returns [] for a creature option with no targeting spec,
+// so assert each one yields a target in a setup where one is legal.
+describe('slice 756: every creature-target option enumerates targets (no silent empty picker)', () => {
+  it('each target:creature option returns at least one candidate when one is legal', () => {
+    // A paladin/bard/monk multiclass owns all four creature-target options;
+    // an adjacent ally is a legal target for every one.
+    const actor = base({
+      classes: [
+        { classId: 'paladin', level: 1, hitDiceRemaining: 1 },
+        { classId: 'bard', level: 3, hitDiceRemaining: 3 },
+        { classId: 'monk', level: 3, hitDiceRemaining: 3 },
+      ],
+      resources: [
+        { resourceId: 'lay-on-hands', current: 5, max: 5 },
+        { resourceId: 'bardic-inspiration', current: 3, max: 3 },
+        { resourceId: 'ki', current: 3, max: 3 },
+      ],
+    });
+    const ally = wizard();
+    const s = setupPositioned(
+      [{ char: actor, pos: { x: 0, y: 0 } }, { char: ally, pos: { x: 5, y: 0 } }],
+      actor.id,
+    );
+    const creatureOptions = s.engine.query
+      .bonusActions(s.campaign.state, s.encounterId, actor.id)
+      .filter((o) => o.target === 'creature');
+    expect(creatureOptions.length).toBeGreaterThan(0);
+    for (const o of creatureOptions) {
+      const targets = s.engine.query.bonusActionTargets(s.campaign.state, s.encounterId, actor.id, o.id);
+      expect(targets.length, `${o.id} returned no targets (missing targeting spec?)`).toBeGreaterThan(0);
+    }
   });
 });

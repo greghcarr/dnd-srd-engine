@@ -340,8 +340,12 @@ import type {
   CastableSpell,
   LegalSpellTargets,
 } from '../query/affordances.js';
-import { bonusActions as queryBonusActions, bonusActionIntent } from '../query/bonus-actions.js';
-import type { BonusActionOption } from '../query/bonus-actions.js';
+import {
+  bonusActions as queryBonusActions,
+  bonusActionTargets as queryBonusActionTargets,
+  bonusActionIntent,
+} from '../query/bonus-actions.js';
+import type { BonusActionOption, BonusActionTarget } from '../query/bonus-actions.js';
 import { HANDLER_API_VERSION } from '../handlers/index.js';
 import { assertActorCanAct } from './plan/_actor-state.js';
 import { assertReactionAvailable, economyConsumedIfEncountered } from './plan/reactive-spells.js';
@@ -688,6 +692,18 @@ export interface Engine {
       encounterId: string,
       combatantId: string,
     ): ReadonlyArray<BonusActionOption>;
+    /**
+     * Slice 756: the legal targets for a creature-target bonus-action option
+     * (e.g. Lay on Hands heal — self + creatures within touch), honoring the
+     * option's reach + self / defeated rules. Returns [] for a non-creature
+     * option or an unknown id.
+     */
+    bonusActionTargets(
+      state: CampaignState,
+      encounterId: string,
+      combatantId: string,
+      optionId: string,
+    ): ReadonlyArray<BonusActionTarget>;
   };
 }
 
@@ -1277,6 +1293,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     bonusActions(state, encounterId, combatantId) {
       return queryBonusActions(state, content, encounterId, combatantId);
+    },
+    bonusActionTargets(state, encounterId, combatantId, optionId) {
+      return queryBonusActionTargets(state, encounterId, combatantId, optionId);
     },
   };
 

@@ -31,6 +31,8 @@
 import type { CampaignState } from '../schemas/runtime/campaign.js';
 import type { ResolvedContent } from '../content/pack.js';
 import type { Character } from '../schemas/runtime/character.js';
+import type { Position } from '../schemas/runtime/encounter.js';
+import { chebyshevDistance } from '../engine/plan/movement.js';
 // The same precondition predictor `availableActions` uses: returns the
 // blocking-condition id (incapacitated / stunned / ...) or undefined.
 import { findActorBlockingCondition } from '../engine/plan/_actor-state.js';
@@ -68,6 +70,13 @@ const ADRENALINE_RUSH_RESOURCE = 'adrenaline-rush';
 const LAY_ON_HANDS_CURE_POISON_COST = 5; // matches CURE_POISON_COST in lay-on-hands.ts
 const HEAVY_ARMOR_CATEGORY = 'heavy';
 
+// Targeting ranges (feet). Touch / a Monk's unarmed reach are both 5 ft
+// (chebyshev, mirroring the Protection resolver's adjacency check); Bardic
+// Inspiration reaches a creature within 60 ft.
+const TOUCH_RANGE_FEET = 5;
+const UNARMED_REACH_FEET = 5;
+const BARDIC_INSPIRATION_RANGE_FEET = 60;
+
 // Machine-readable disabled reasons (mirrors the availableActions style).
 const REASON_NOT_YOUR_TURN = 'not-your-turn';
 const REASON_BONUS_ACTION_USED = 'bonus-action-used';
@@ -101,6 +110,29 @@ export interface BonusActionOption {
    * 'already-dashed' / 'already-disengaged'.
    */
   readonly reason?: string;
+  /**
+   * Slice 756: does `engine.plan.useOption` need a `params.amount` for this
+   * option (a metered heal, e.g. Lay on Hands heal)? When true, `maxAmount`
+   * carries the spendable pool.
+   */
+  readonly requiresAmount: boolean;
+  /**
+   * Slice 756: the spendable pool for a metered option (present iff
+   * `requiresAmount`) — the current value of the option's resource (e.g. the
+   * paladin's remaining Lay on Hands points). The UI offers 1..maxAmount;
+   * overheal clamping stays engine-side (the planner caps the effective heal).
+   */
+  readonly maxAmount?: number;
+}
+
+/**
+ * Slice 756: a legal target for a creature-target bonus-action option, from
+ * `bonusActionTargets`. `position` is present when the combatant is placed
+ * (feet); absent in positionless encounters.
+ */
+export interface BonusActionTarget {
+  readonly combatantId: string;
+  readonly position?: Position;
 }
 
 /** The intent union `bonusActionIntent` produces for `useOption` dispatch. */
@@ -153,7 +185,26 @@ interface BonusActionDescriptor {
   readonly requiresAmount?: boolean;
   /** Requires `params.weaponInstanceId` (a strike, e.g. Flurry of Blows). */
   readonly requiresWeapon?: boolean;
+  /**
+   * Targeting rules for a `target: 'creature'` option, consumed by
+   * `bonusActionTargets`. Every creature-target descriptor MUST set this
+   * (enforced by the bonus-actions audit) so the consumer can render a
+   * target picker; non-creature options leave it undefined.
+   */
+  readonly targeting?: BonusActionTargeting;
   readonly toIntent: (combatantId: string, params: BonusActionParams) => BonusActionIntent;
+}
+
+interface BonusActionTargeting {
+  /** Reach in feet (chebyshev). Touch / unarmed reach = 5; Bardic = 60. */
+  readonly rangeFeet: number;
+  /** May the option target the caster (beneficial self-targets like a heal)? */
+  readonly includeSelf: boolean;
+  /**
+   * Include creatures at 0 HP? A heal/cure can target a dying ally (its
+   * primary use); an offensive / inspiration option cannot benefit one.
+   */
+  readonly includeDefeated: boolean;
 }
 
 const hasClass = (character: Character, classId: string): boolean =>
@@ -278,6 +329,9 @@ const REGISTRY: ReadonlyArray<BonusActionDescriptor> = [
     target: 'creature',
     owns: (c) => hasClass(c, BARD_CLASS_ID),
     resourceId: BARDIC_INSPIRATION_RESOURCE,
+    // RAW: a creature OTHER than yourself within 60 ft; a downed creature
+    // can't use the die, so defeated targets are excluded.
+    targeting: { rangeFeet: BARDIC_INSPIRATION_RANGE_FEET, includeSelf: false, includeDefeated: false },
     toIntent: (id, params) => ({
       type: 'BardicInspiration',
       bardId: id,
@@ -291,6 +345,9 @@ const REGISTRY: ReadonlyArray<BonusActionDescriptor> = [
     owns: (c) => hasClass(c, PALADIN_CLASS_ID),
     resourceId: LAY_ON_HANDS_RESOURCE,
     requiresAmount: true,
+    // RAW: touch a creature (self or other) to restore HP — a dying ally
+    // (0 HP) is the primary target, so defeated creatures are included.
+    targeting: { rangeFeet: TOUCH_RANGE_FEET, includeSelf: true, includeDefeated: true },
     toIntent: (id, params) => ({
       type: 'LayOnHands',
       paladinId: id,
@@ -306,6 +363,9 @@ const REGISTRY: ReadonlyArray<BonusActionDescriptor> = [
     owns: (c) => hasClass(c, PALADIN_CLASS_ID),
     resourceId: LAY_ON_HANDS_RESOURCE,
     resourceMin: LAY_ON_HANDS_CURE_POISON_COST,
+    // RAW: touch a creature to end the Poisoned condition; a dying poisoned
+    // ally is a valid target, so defeated creatures are included.
+    targeting: { rangeFeet: TOUCH_RANGE_FEET, includeSelf: true, includeDefeated: true },
     toIntent: (id, params) => ({
       type: 'LayOnHands',
       paladinId: id,
@@ -320,6 +380,9 @@ const REGISTRY: ReadonlyArray<BonusActionDescriptor> = [
     owns: (c) => hasClassLevel(c, MONK_CLASS_ID, MONKS_FOCUS_LEVEL),
     needsFocus: true,
     requiresWeapon: true,
+    // Two Unarmed Strikes — a target within the monk's reach (5 ft), never
+    // the monk itself; a defeated target isn't struck.
+    targeting: { rangeFeet: UNARMED_REACH_FEET, includeSelf: false, includeDefeated: false },
     toIntent: (id, params) => ({
       type: 'FlurryOfBlows',
       monkId: id,
@@ -412,15 +475,67 @@ export const bonusActions = (
   for (const d of REGISTRY) {
     if (!d.owns(character)) continue;
     const reason = disabledReason(d, ctx);
+    const requiresAmount = d.requiresAmount === true;
+    // The spendable pool for a metered option: the current value of its
+    // resource (Lay on Hands points). Only metered options carry it.
+    const maxAmount =
+      requiresAmount && d.resourceId !== undefined
+        ? resourceCurrent(character, d.resourceId)
+        : undefined;
     out.push({
       id: d.id,
       label: d.label,
       target: d.target,
       enabled: reason === undefined,
       ...(reason !== undefined ? { reason } : {}),
+      requiresAmount,
+      ...(maxAmount !== undefined ? { maxAmount } : {}),
     });
   }
   out.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  return out;
+};
+
+// ── bonusActionTargets (target enumeration) ─────────────────────────
+//
+// The legal targets for a creature-target option, honoring the option's own
+// reach + self / defeated rules (the descriptor's `targeting`). Returns [] for
+// a non-creature option or an unknown id.
+//
+// Range is chebyshev on the combatants' feet positions (the same primitive
+// the Protection resolver uses), so it works from combatant positions alone —
+// no map / location required. When a position is missing (a positionless
+// encounter), the range gate is a no-op for that pair (positions are consumer
+// scope per engine-scope.md; the consumer applies its own line-of-sight). The
+// authoritative validity is still the planner at `useOption` time.
+export const bonusActionTargets = (
+  state: CampaignState,
+  encounterId: string,
+  combatantId: string,
+  optionId: string,
+): ReadonlyArray<BonusActionTarget> => {
+  const d = REGISTRY.find((x) => x.id === optionId);
+  if (d === undefined || d.target !== 'creature' || d.targeting === undefined) return [];
+  const encounter = state.encounters[encounterId];
+  const self = encounter?.combatants.find((c) => c.combatantId === combatantId);
+  if (encounter === undefined || self === undefined) return [];
+  const { rangeFeet, includeSelf, includeDefeated } = d.targeting;
+  const selfPos = self.position;
+
+  const out: BonusActionTarget[] = [];
+  for (const cb of encounter.combatants) {
+    const isSelf = cb.combatantId === combatantId;
+    if (isSelf && !includeSelf) continue;
+    if (!includeDefeated && (state.characters[cb.combatantId]?.hp.current ?? 1) <= 0) continue;
+    // Range gate (chebyshev, feet): self is always in reach; other targets
+    // gate only when both positions are known.
+    if (!isSelf && selfPos !== undefined && cb.position !== undefined
+      && chebyshevDistance(selfPos, cb.position) > rangeFeet) {
+      continue;
+    }
+    out.push({ combatantId: cb.combatantId, ...(cb.position !== undefined ? { position: cb.position } : {}) });
+  }
+  out.sort((a, b) => (a.combatantId < b.combatantId ? -1 : a.combatantId > b.combatantId ? 1 : 0));
   return out;
 };
 

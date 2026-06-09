@@ -61,8 +61,10 @@ export {
 // combatant use right now?") + the option-id → intent dispatch builder.
 export {
   bonusActions,
+  bonusActionTargets,
   bonusActionIntent,
   type BonusActionOption,
+  type BonusActionTarget,
   type BonusActionTargetKind,
   type BonusActionIntent,
   type BonusActionParams,

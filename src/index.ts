@@ -316,6 +316,7 @@ export {
   castableSpells,
   legalSpellTargets,
   bonusActions,
+  bonusActionTargets,
   bonusActionIntent,
 } from './query/index.js';
 // Slice 706 (A3): tactical enemy AI policy, graduated from scripts/ so
@@ -345,6 +346,7 @@ export type {
   SpellTargetDescriptor,
   LegalSpellTargets,
   BonusActionOption,
+  BonusActionTarget,
   BonusActionTargetKind,
   BonusActionIntent,
   BonusActionParams,

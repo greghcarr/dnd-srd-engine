@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Engine (slice 756): bonus-action affordances — metered amount + creature targets**
+Read-only additions so a consumer can drive amount / target selection for `engine.plan.useOption` (the dnd-web Bonus Actions menu). `BonusActionOption` gains `requiresAmount` (mirrors the descriptor flag) + `maxAmount?` (the spendable pool, e.g. the paladin's Lay on Hands points; overheal clamping stays engine-side). New `engine.query.bonusActionTargets(state, encounterId, combatantId, optionId)` → `{ combatantId, position? }[]` lists an option's legal targets honoring its reach + self / defeated rules (Lay on Hands = touch incl. a dying ally; Bardic = 60 ft excl. self; Flurry = reach), via a new per-descriptor `targeting` spec on all four creature-target options (pattern-check: no silent empty picker). Range is chebyshev on positions (positionless → no range filter). Additive query surface; `useOption` dispatch + event shapes byte-identical.
+Detail: [slice-756.md](docs/changelog/slice-756.md).
+
 **Driver/infra (slice 755): re-wire the combat-fuzz pre-damage reactions to the two-phase attack API**
 Re-wires the slice-750/753 pre-damage reaction window onto the slice-754 engine seam: the resolver takes the attack intent and runs `engine.plan.attackRoll` → reaction cascade (Shield / Protection / Cutting Words) → `engine.plan.attackDamage`, so a prevented hit is committed from the roll alone and the damage phase is **never planned** (no discarded damage dice / on-hit riders / RNG, replacing `dropDamageChain` slicing). `engine.plan.attackDamage` is called at most once, only when the hit stands. `'none'` is untouched (byte-identical); `'auto'` shifts only where a reaction prevents a hit (intended; still deterministic + replay-equivalent, existing anchors still fire). New matrix guard: a Shield-prevented swing rolls no `DamageRolled` at all; the Protection resolver test reworked to drive a real two-phase attack.
 Detail: [slice-755.md](docs/changelog/slice-755.md).
