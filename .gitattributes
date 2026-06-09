@@ -1,0 +1,5 @@
+# Keep shell scripts and git hooks LF so they execute under git-bash on Windows.
+# A CRLF shebang/`set -euo pipefail` breaks `#!/usr/bin/env bash`. Scoped
+# narrowly (not `* text=auto`) to avoid renormalizing the rest of the tree.
+*.sh text eol=lf
+.githooks/** text eol=lf

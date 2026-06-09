@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Infra (slice 776): cross-platform / fresh-agent hardening (Windows readiness)**
+A fresh-agent audit ahead of moving the dev session to Windows fixed three macOS-only onboarding assumptions: new `.gitattributes` forces `*.sh` + `.githooks/**` to LF (a CRLF checkout would break the pre-push hook's bash shebang under git-bash); `prepare` moved from an inline `git config ... 2>/dev/null || true` (POSIX-isms that misbehave under cmd.exe) to a shell-agnostic `node scripts/setup-hooks.mjs`; `test:fast`'s `--exclude` glob switched single → double quotes (cmd.exe passes single quotes literally, silently disabling the heavy-tier exclusion). No engine change.
+Detail: [slice-776.md](docs/changelog/slice-776.md).
+
 **Docs (slice 775): L7 SRD-completion audit — master worklist**
 New [docs/l7-completion-audit.md](docs/l7-completion-audit.md): the finite, severity-tagged list of what stands between today's engine and "a consumer like dnd-web runs a full L1-7 SRD game with zero expert-visible divergences, including input handling + targeting." Compiled from a 7-agent parallel audit (SRD canon + code + tests + gaps catalogs): ~95 findings across 9 areas (edition drift, spell mechanics L0-4, targeting/AoE seam, core combat, build validation, base equipment, monster runtime, exploration pillar, consumer duties), each tagged `BLOCKER`/`DIVERGENCE`/`QUIRK` + owner (engine/seam/consumer/docs) + fix size + file evidence. Four edition-drift headliners canon-verified (long rest restores all HD not half; Sleep/Color Spray are saves not 2014 HP-pool; 2014 Small-creature Heavy rule removed in 2024). No code change; linked from CLAUDE.md.
 Detail: [slice-775.md](docs/changelog/slice-775.md).
