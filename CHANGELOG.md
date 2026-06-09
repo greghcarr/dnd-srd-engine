@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Fix (slice 770): encounter-view surfaces hp.maxBonus**
+The last unfixed finding from the affordance-correctness sweep. `buildEncounterView`'s `CombatantView.hp` reported `{ current, max, temp }` from the raw `hp.max`, omitting `hp.maxBonus` — so a combatant under a max-HP buff (Aid) showed the unbuffed maximum and a tracker couldn't reconcile `current > max`. `hp` now carries `maxBonus` (displayed max = `max + maxBonus`). Additive read-model field.
+Detail: [slice-770.md](docs/changelog/slice-770.md).
+
 **Feat (slice 769): action affordances — class-feature actions (Action Surge / Divine Spark / Turn Undead)**
 Completes the deferred affordance program. `actionOptions` grows the `bonusActions` shape — per-descriptor `owns` + `resourceId` (`no-uses` gate) + `costsAction` — and `ActionParams`/`UseActionOptionOptions` gain `targetIds`. Action Surge (Fighter, `action-surge`, `costsAction:false` → stays enabled after the action is used, matching its "grants an extra action" economy); Divine Spark (Cleric Channel Divinity, creature + `mode`); Turn Undead (Channel Divinity, `targetIds`). All already dispatched, so `useActionOption` routes them unchanged. Each verified planner-faithful by dispatch. Also evicted the 0.3.0-alpha.0 release narrative to [released-versions-0.3.0-alpha.0.md](docs/changelog/released-versions-0.3.0-alpha.0.md) (doc-size discipline; CHANGELOG ~60 KB → ~25 KB).
 Detail: [slice-769.md](docs/changelog/slice-769.md).

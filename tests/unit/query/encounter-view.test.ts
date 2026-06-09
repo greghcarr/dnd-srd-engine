@@ -78,6 +78,14 @@ describe('slice 419: buildEncounterView', () => {
     expect([...inits].sort((x, y) => y - x)).toEqual(inits);
   });
 
+  it('slice 770: surfaces hp.maxBonus so a buffed max is reconstructable', () => {
+    const base = buildFighter({ name: 'Aided', hpMax: 20, hpCurrent: 20 });
+    const buffed: Character = { ...base, hp: { ...base.hp, maxBonus: 5 } }; // Aid: max 20 (+5)
+    const { engine, campaign, encounterId } = planningEncounter(buffed);
+    const entry = buildEncounterView(campaign.state, engine.content, encounterId)!.combatants.find((c) => c.name === 'Aided')!;
+    expect(entry.hp).toMatchObject({ max: 20, maxBonus: 5, current: 20 });
+  });
+
   it('flags a combatant at 0 HP as defeated', () => {
     const downed = buildFighter({ name: 'Downed', hpMax: 10, hpCurrent: 0 });
     const { engine, campaign, encounterId } = planningEncounter(downed);
