@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Fix (slice 760): legalMoveDestinations honors the prone stand-up surcharge**
+`remainingMovementFeet` (feeding `legalMoveDestinations` + the `availableActions` move gate) ignored Prone, returning the full speed budget — but `planMove` charges a `floor(speed/2)` stand-up surcharge on a prone move, so the query offered destinations the planner would reject. Now subtracts the surcharge (effective travel = `maxThisTurn - feetMoved - standUpCost`), matching the planner. Verified with a planner cross-check (prone speed-30 mover reaches 15 ft, not 20). Query-side only.
+Detail: [slice-760.md](docs/changelog/slice-760.md).
+
 **Fix (slice 759): spell-target affordance fidelity — Spare the Dying + AOE encounterId**
 Two `legalSpellTargets` bugs from the correctness sweep. (1) The slice-757 dying-target fix was incomplete: it keyed on `resolves === 'heal'`, but a `stabilize` spell resolves as `'auto'`, so Spare the Dying returned zero legal targets — even though its only valid target is a 0-HP creature (the planner requires `hp.current === 0`). `includeDefeated` now also covers `stabilize` mechanics. (2) `aoePlacementPoints` read `state.activeEncounterId` instead of the `encounterId` argument, so AOE placement cells were empty for any non-active / not-yet-started encounter; now threads `encounterId`. Query-side only.
 Detail: [slice-759.md](docs/changelog/slice-759.md).

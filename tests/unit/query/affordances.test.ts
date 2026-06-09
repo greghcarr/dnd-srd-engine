@@ -188,6 +188,27 @@ describe('slice 705: affordance queries (engine.query.*)', () => {
       expect(dests.some((d) => d.position.x === 10 && d.position.y === 0)).toBe(false);
     });
 
+    it('slice 760: a prone combatant\'s reachable set accounts for the stand-up surcharge', () => {
+      // Speed 30, stand-up surcharge floor(30/2)=15 → effective travel 15 ft.
+      const prone = buildFighter('Prone', [], {
+        appliedConditions: [{ id: newAppliedConditionId(), conditionId: 'prone' }],
+      });
+      const foe = buildFighter('Foe');
+      const s = setupCombat([prone, foe], buildOpenMap, [{ x: 0, y: 0 }, { x: 35, y: 35 }]);
+      const dests = s.engine.query.legalMoveDestinations(s.campaign.state, s.encounterId, prone.id);
+      for (const d of dests) expect(d.costFeet).toBeLessThanOrEqual(15);
+      expect(dests.some((d) => d.position.x === 15 && d.position.y === 0)).toBe(true);
+      expect(dests.some((d) => d.position.x === 20 && d.position.y === 0)).toBe(false);
+      // Cross-check the planner: it accepts the 15 ft move (15+15=30) and
+      // rejects 20 ft (20+15=35 > 30).
+      expect(() =>
+        s.engine.plan.move(s.campaign.state, { combatantId: prone.id, to: { x: 15, y: 0 } }),
+      ).not.toThrow();
+      expect(() =>
+        s.engine.plan.move(s.campaign.state, { combatantId: prone.id, to: { x: 20, y: 0 } }),
+      ).toThrow();
+    });
+
     it('honors Frightened: no destination moves closer to the fear source', () => {
       const foe = buildFighter('Scary');
       const moverId = newCharacterId();

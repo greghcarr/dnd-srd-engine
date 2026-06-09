@@ -103,7 +103,12 @@ const resolvePositioned = (
   };
 };
 
-// Feet of movement still available this turn (0 if Steady-Aim-zeroed).
+// Feet of travel still available this turn (0 if Steady-Aim-zeroed). When the
+// combatant is Prone, the move planner charges a stand-up surcharge of half
+// speed (floor) on top of the travel distance, so the EFFECTIVE travel budget
+// is `remaining - standUpCost` (matches planMove's `distance + standUpCost <=
+// remaining` gate). Returning the raw budget would offer destinations a prone
+// combatant can't actually reach.
 const remainingMovementFeet = (
   state: CampaignState,
   content: ResolvedContent,
@@ -118,7 +123,9 @@ const remainingMovementFeet = (
     pendingChoices: state.pendingChoices,
   });
   const maxThisTurn = turnUsage.dashed ? speed * 2 : speed;
-  return Math.max(0, maxThisTurn - turnUsage.feetMovedThisTurn);
+  const isProne = character.appliedConditions.some((c) => c.conditionId === 'prone');
+  const standUpCost = isProne ? Math.floor(speed / 2) : 0;
+  return Math.max(0, maxThisTurn - turnUsage.feetMovedThisTurn - standUpCost);
 };
 
 // The fear source's position when the combatant is Frightened by a
