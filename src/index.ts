@@ -323,6 +323,8 @@ export {
   actionOptions,
   actionTargets,
   actionIntent,
+  postHitOptions,
+  postHitIntent,
 } from './query/index.js';
 // Slice 706 (A3): tactical enemy AI policy, graduated from scripts/ so
 // consumers can import it from the package.
@@ -364,6 +366,9 @@ export type {
   ActionOptionTargetKind,
   ActionIntent,
   ActionParams,
+  PostHitOption,
+  PostHitIntent,
+  PostHitParams,
   SpellFilter,
   MonsterFilter,
   ItemFilter,

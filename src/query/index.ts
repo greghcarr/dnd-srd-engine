@@ -90,3 +90,12 @@ export {
   type ActionIntent,
   type ActionParams,
 } from './action-options.js';
+// Slice 774: post-hit affordances — options contextual on a just-landed attack
+// (Paladin's Smite). Discovery + slot-picker + intent builder.
+export {
+  postHitOptions,
+  postHitIntent,
+  type PostHitOption,
+  type PostHitIntent,
+  type PostHitParams,
+} from './post-hit.js';

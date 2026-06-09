@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Feat (slice 774): post-hit affordances — Paladin's Smite (the last deferred affordance)**
+New `src/query/post-hit.ts`: `engine.query.postHitOptions(state, encounterId, attackEvent)` enumerates options contextual on a just-committed `AttackRolled` (through L7, only Paladin's Smite — a Bonus Action riding the paladin's own melee hit, discoverable from neither `bonusActions` (no triggering attack in scope) nor `castableSpells` (it's the L2 feature, not the Divine Smite spell)). Returns `[]` unless the attack is a melee hit by a paladin; otherwise the single option carries the spell-slot picker (`slotLevels`, 1-5) and an `enabled`/`reason` reflecting the Bonus Action economy (`not-your-turn` off an Opportunity Attack, `bonus-action-used`, `no-uses`). `postHitIntent(optionId, attackEvent, { slotLevel, targetIsUndeadOrFiend? })` builds the `PaladinsSmiteIntent`; the consumer runs it via `engine.plan.paladinsSmite` (deliberately not in the dispatch). RAW-correct gate (stricter than the lenient `planPaladinsSmite`), verified planner-faithful by dispatch. Completes the affordance program — no deferred affordances remain.
+Detail: [slice-774.md](docs/changelog/slice-774.md).
+
 **Feat (slice 773): bonus-action class features — Sacred Weapon + Intimidating Presence**
 Extends `bonusActions` with the two deferred class-feature bonus actions. Sacred Weapon (Devotion paladin, `target:'self'`, channel-divinity, `already-active` guard — RAW-gated on the Oath, correctly stricter than `planSacredWeapon`'s lenient paladin-only check). Intimidating Presence (Berserker barbarian L14, `target:'none'`, `requires` targetIds). `BonusActionParams`/`UseOptionOptions` gain `targetIds`. Both already dispatched; verified planner-faithful via `useOption`. Completes the deferred class-feature affordances (only the post-hit Paladin's Smite *feature* remains).
 Detail: [slice-773.md](docs/changelog/slice-773.md).

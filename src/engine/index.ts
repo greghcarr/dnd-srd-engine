@@ -352,6 +352,9 @@ import {
 import type { ReactionOption, CorrelatedReaction } from '../query/reactions.js';
 import { actionOptions as queryActionOptions, actionTargets as queryActionTargets, actionIntent as buildActionIntent } from '../query/action-options.js';
 import type { ActionOption, ActionTarget } from '../query/action-options.js';
+import { postHitOptions as queryPostHitOptions } from '../query/post-hit.js';
+import type { PostHitOption } from '../query/post-hit.js';
+import type { AttackRolledEvent } from '../schemas/events/attack.js';
 import type { BonusActionOption, BonusActionTarget } from '../query/bonus-actions.js';
 import { HANDLER_API_VERSION } from '../handlers/index.js';
 import { assertActorCanAct } from './plan/_actor-state.js';
@@ -804,6 +807,22 @@ export interface Engine {
       combatantId: string,
       optionId: string,
     ): ReadonlyArray<ActionTarget>;
+    /**
+     * Slice 774: the post-hit options contextual on a just-committed AttackRolled
+     * — through L7, Paladin's Smite (a Bonus Action riding the paladin's own
+     * melee hit). Discoverable from neither `bonusActions` (no triggering attack
+     * in scope) nor `castableSpells` (it's the L2 FEATURE, not the Divine Smite
+     * spell). Returns [] unless the attack is a melee hit by a paladin; otherwise
+     * the single option carries the spell-slot picker (`slotLevels`) and an
+     * `enabled`/`reason` reflecting the Bonus Action economy + slot availability.
+     * Build the intent with `postHitIntent(optionId, attackEvent, { slotLevel })`
+     * and run it through `engine.plan.paladinsSmite`.
+     */
+    postHitOptions(
+      state: CampaignState,
+      encounterId: string,
+      attackEvent: AttackRolledEvent,
+    ): ReadonlyArray<PostHitOption>;
   };
 }
 
@@ -1415,6 +1434,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     actionTargets(state, encounterId, combatantId, optionId) {
       return queryActionTargets(state, encounterId, combatantId, optionId);
+    },
+    postHitOptions(state, encounterId, attackEvent) {
+      return queryPostHitOptions(state, content, encounterId, attackEvent);
     },
   };
 
