@@ -84,6 +84,27 @@ describe('fuzz pre-damage reaction window (slice 750)', () => {
   });
 });
 
+// Slice 753: Protection (the positional reaction) only engages in tactical
+// mode. It rarely fires in random fuzz (it needs a shield-bearing ally with
+// the Protection fighting style adjacent to an attacked ally — the fuzz
+// grants no fighting styles), so this just proves the Protection adjacency
+// scan doesn't break tactical+auto battles: they complete and replay
+// equivalently. The constructed protection-resolver test is the correctness
+// gate.
+describe('fuzz tactical + reactions matrix (slice 753)', () => {
+  it('tactical + reactions:auto battles complete and replay equivalently', () => {
+    for (const seed of [1, 2, 5, 10, 14]) {
+      for (const teamSize of [1, 2]) {
+        const r = runBattle({ seed, pack: STARTER, level: 7, teamSize, vs: 'pc', movement: 'tactical', reactions: 'auto' });
+        expect(r.rounds, `seed=${seed} ts=${teamSize} advanced no rounds`).toBeGreaterThan(0);
+        expect(JSON.stringify(replay(r.campaign.events)), `seed=${seed} ts=${teamSize} replay mismatch`).toBe(
+          JSON.stringify(r.campaign.state),
+        );
+      }
+    }
+  });
+});
+
 // Slice 751: the spell-cast reaction window. A counter-caster (Wizard/
 // Sorcerer with Counterspell prepared under 'auto' + a 3rd-level slot)
 // counters a leveled spell, omitting its effects. L5 2v2-PC seeds field

@@ -13,6 +13,7 @@ import {
   shouldCuttingWords,
   shouldCounterspell,
   hasCountercharm,
+  disadvantageFlipsHit,
   type IncomingDamage,
 } from '../../../src/ai/reactions.js';
 import { REACTION_MIN_DAMAGE } from '../../../src/ai/reaction-constants.js';
@@ -159,5 +160,22 @@ describe('hasCountercharm (slice 752)', () => {
   it('is false below L7 or for a non-Bard', () => {
     expect(hasCountercharm(withClass('bard', 6))).toBe(false);
     expect(hasCountercharm(withClass('wizard', 20))).toBe(false);
+  });
+});
+
+describe('disadvantageFlipsHit (slice 753)', () => {
+  it('flips a marginal hit when the reroll is lower', () => {
+    // original 18 + 0 hits AC 18; a reroll of 10 drops min to 10 -> miss.
+    expect(disadvantageFlipsHit(18, 10, 0, 18)).toBe(true);
+  });
+
+  it('does not flip when the lower roll still clears AC', () => {
+    // both dice high vs a low AC: min(18,15)+2 = 17 >= 12.
+    expect(disadvantageFlipsHit(18, 15, 2, 12)).toBe(false);
+  });
+
+  it('does not flip when the reroll is higher than the original used die', () => {
+    // disadvantage takes the lower, so a higher reroll can't help the attacker.
+    expect(disadvantageFlipsHit(15, 20, 3, 18)).toBe(false); // min=15, 15+3=18 >= 18
   });
 });

@@ -20,9 +20,22 @@
 import { commit, type Campaign } from '../../src/engine/commit.js';
 import type { Event } from '../../src/schemas/events/index.js';
 import type { AttackRolledEvent } from '../../src/schemas/events/attack.js';
-import { shouldShield, shouldCuttingWords } from '../../src/ai/reactions.js';
+import type { Position } from '../../src/schemas/runtime/encounter.js';
+import { chebyshevDistance } from '../../src/engine/plan/movement.js';
+import { shouldShield, shouldCuttingWords, disadvantageFlipsHit } from '../../src/ai/reactions.js';
 import { reactionAvailable } from './reaction-policy.js';
 import type { Engine } from '../combat-fuzz-core.js';
+
+// Protection reaches an ally within 5 ft. Positions are stored in feet
+// (slice 698), so chebyshevDistance (max axis delta, in feet) is the reach.
+const PROTECTION_REACH_FEET = 5;
+
+const combatantPosition = (
+  campaign: Campaign,
+  encounterId: string,
+  combatantId: string,
+): Position | undefined =>
+  campaign.state.encounters[encounterId]?.combatants.find((c) => c.combatantId === combatantId)?.position;
 
 // Keep every event before the first damage event — this retains the
 // front-loaded ActionEconomyConsumed (action + attack) and the AttackRolled
@@ -86,6 +99,29 @@ const tryCuttingWords = (
   }
 };
 
+// Protection: a shield-bearing ally imposes disadvantage on the attack.
+// planProtection enforces the shield + Protection-fighting-style + reaction
+// gates (it throws — before rolling — for a shield-bearer without the
+// style, so we fall through). Returns the events + whether the disadvantage
+// reroll flips the hit to a miss.
+const tryProtection = (
+  engine: Engine,
+  campaign: Campaign,
+  protectorId: string,
+  ar: AttackRolledEvent,
+): { readonly events: ReadonlyArray<Event>; readonly flipped: boolean } | null => {
+  try {
+    const { events, newD20 } = engine.plan.protection(campaign.state, {
+      protectorId,
+      attackerId: ar.attackerId,
+      triggeringAttackEventId: ar.id,
+    });
+    return { events, flipped: disadvantageFlipsHit(ar.d20[0]!, newD20, ar.attackBonus, ar.targetAC) };
+  } catch {
+    return null;
+  }
+};
+
 // Run the pre-damage reaction window over a planned (uncommitted) attack
 // and commit the result. On a miss (or no AttackRolled) the full attack is
 // committed unchanged.
@@ -94,10 +130,12 @@ export const resolveAttackWithReactions = (args: {
   readonly campaign: Campaign;
   readonly encounterId: string;
   readonly attackEvents: ReadonlyArray<Event>;
-  /** Character ids on the attack target's team — scanned for a Cutting-Words Bard. */
+  /** Character ids on the attack target's team — scanned for Cutting-Words / Protection reactors. */
   readonly defenderTeam: ReadonlyArray<string>;
+  /** Slice 753: Protection needs positions, so it only runs in tactical mode. */
+  readonly isTactical: boolean;
 }): Campaign => {
-  const { engine, campaign, encounterId, attackEvents, defenderTeam } = args;
+  const { engine, campaign, encounterId, attackEvents, defenderTeam, isTactical } = args;
   const ar = attackEvents.find((e): e is AttackRolledEvent => e.type === 'AttackRolled');
   if (ar === undefined || ar.hit !== true) {
     return commit(campaign, [...attackEvents]);
@@ -117,7 +155,34 @@ export const resolveAttackWithReactions = (args: {
     }
   }
 
-  // 2. Cutting Words — a Bard on the target's team reduces the attacker's roll.
+  // 2. Protection — a shield-bearing ally within 5 ft imposes disadvantage.
+  //    Tactical-only (needs positions); only on a normal single-d20 attack
+  //    (no advantage/disadvantage stacking). The reaction is spent whether
+  //    or not it flips the hit (RAW: declared before the reroll is known).
+  if (isTactical && ar.used === 'none' && ar.d20.length === 1) {
+    const targetPos = combatantPosition(campaign, encounterId, targetId);
+    if (targetPos !== undefined) {
+      const protectorId = defenderTeam.find((id) => {
+        if (id === targetId) return false;
+        const c = campaign.state.characters[id];
+        if (c === undefined || c.equipped.shield === undefined) return false;
+        if (!reactionAvailable(campaign.state, encounterId, id)) return false;
+        const pos = combatantPosition(campaign, encounterId, id);
+        return pos !== undefined && chebyshevDistance(pos, targetPos) <= PROTECTION_REACH_FEET;
+      });
+      if (protectorId !== undefined) {
+        const prot = tryProtection(engine, campaign, protectorId, ar);
+        if (prot !== null) {
+          const finalEvents = prot.flipped
+            ? [...dropDamageChain(attackEvents), ...prot.events]
+            : [...attackEvents, ...prot.events];
+          return commit(campaign, finalEvents);
+        }
+      }
+    }
+  }
+
+  // 3. Cutting Words — a Bard on the target's team reduces the attacker's roll.
   const bardId = defenderTeam.find((id) => {
     const c = campaign.state.characters[id];
     return c !== undefined
@@ -136,6 +201,6 @@ export const resolveAttackWithReactions = (args: {
     }
   }
 
-  // 3. No reaction — commit the full attack unchanged.
+  // 4. No reaction — commit the full attack unchanged.
   return commit(campaign, [...attackEvents]);
 };

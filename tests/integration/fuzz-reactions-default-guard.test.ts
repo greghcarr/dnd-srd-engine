@@ -72,6 +72,18 @@ describe('combat-fuzz default reactions guard (slice 749)', () => {
     }
   });
 
+  it('tactical reactions:"none" emits no ProtectionUsed and matches the default tactical run (slice 753 resolver is auto-only)', () => {
+    for (const seed of SEEDS) {
+      const def = runBattle({ seed, pack: STARTER, level: 7, teamSize: 2, movement: 'tactical' });
+      expect(
+        def.campaign.events.some((e) => e.type === 'ProtectionUsed'),
+        `seed=${seed} tactical default emitted ProtectionUsed`,
+      ).toBe(false);
+      const explicitNone = runBattle({ seed, pack: STARTER, level: 7, teamSize: 2, movement: 'tactical', reactions: 'none' });
+      expect(normalizeEvents(explicitNone.campaign.events)).toEqual(normalizeEvents(def.campaign.events));
+    }
+  });
+
   it('reactions:"auto" diverges from the default (proves the option is wired)', () => {
     // At least one of these reaction-rich seeds must differ once reactions
     // fire — otherwise the seam isn't doing anything.

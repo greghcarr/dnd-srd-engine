@@ -1279,6 +1279,7 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
             encounterId: enc.encounterId,
             attackEvents: planned,
             defenderTeam,
+            isTactical: movement === 'tactical',
           });
         } else if (reactions === 'auto' && intent.type === 'CastSpell') {
           // Slice 751: two-phase cast — plan (uncommitted), run the

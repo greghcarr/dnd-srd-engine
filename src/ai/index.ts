@@ -29,6 +29,7 @@ export {
   shouldCuttingWords,
   shouldCounterspell,
   hasCountercharm,
+  disadvantageFlipsHit,
   type DamageReaction,
   type IncomingDamage,
   type PhysicalDamageType,

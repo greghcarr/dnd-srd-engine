@@ -148,3 +148,15 @@ export const shouldCounterspell = (
 // the resolver glue.
 export const hasCountercharm = (character: Character): boolean =>
   (character.classes.find((c) => c.classId === BARD_CLASS_ID)?.level ?? 0) >= COUNTERCHARM_BARD_LEVEL;
+
+// Protection fighting style imposes disadvantage on the triggering attack:
+// the attacker effectively rolls a second d20 and takes the lower. Given the
+// original used d20 and the Protection reroll, does the lower of the two
+// (plus the attack bonus) now miss the target's AC? (The shield + Protection
+// fighting-style + reaction gates are enforced engine-side by planProtection.)
+export const disadvantageFlipsHit = (
+  usedD20: number,
+  newD20: number,
+  attackBonus: number,
+  targetAC: number,
+): boolean => Math.min(usedD20, newD20) + attackBonus < targetAC;

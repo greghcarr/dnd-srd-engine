@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Driver/infra (slice 753): Protection reaction (positional, pre-damage attack window)**
+Completes the reaction layer (damage 749 / attack 750 / cast 751 / save 752 / positional 753): a shield-bearing ally within 5 ft of an attacked creature imposes disadvantage on the attack roll, re-deciding the hit. Extends the slice-750 pre-damage window with an `isTactical` flag + a `chebyshevDistance ≤ 5` adjacency check on combatant positions, recomputing the hit via a new pure `disadvantageFlipsHit` and dropping the damage chain on a flip; engages only under `movement:'tactical'` + `reactions:'auto'`, composing the existing `planProtection`. No pack/AI change, so it won't fire in random fuzz (documented); a constructed test is the correctness gate and a tactical+auto matrix block proves replay-equivalence. Only the engine two-phase attack API remains deferred.
+Detail: [slice-753.md](docs/changelog/slice-753.md).
+
 **Driver/infra (slice 752): save reaction window (Countercharm) + charm-person in the fuzz AI**
 Completes the combat-fuzz reaction set with the save window: a Bard L7 on a charmed/frightened creature's team rerolls the failed save with Advantage and, on success, removes the condition (post-commit, like the damage-mitigation reactions). Because the fuzz never produced a charm/frighten save, the AI also learns to cast charm-person under `reactions:'auto'` (gated, so `'none'` stays byte-identical) so the window can occur. Pure `hasCountercharm` + the resolver branch (correlates the failed `SaveRolled` for DC/ability/bonus, finds the Bard, emits `ConditionRemoved` on success); team ids threaded into `ReactionPolicyContext`. Rare in practice (~1% of L7 2v2 PC battles need bards on both sides + a landed charm), so a constructed unit test is the stable correctness gate and a golden anchor (seeds 112/206/275/281/391) shows it firing in real fuzz. Protection deferred.
 Detail: [slice-752.md](docs/changelog/slice-752.md).
