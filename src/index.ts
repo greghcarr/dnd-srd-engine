@@ -445,11 +445,13 @@ export { commit } from './engine/commit.js';
 export { undo, redo } from './engine/undo-redo.js';
 export { performIntent, serializeCampaign, loadCampaign, createPC } from './engine/conveniences.js';
 export type { CreatePCOptions, SerializedCampaign } from './engine/conveniences.js';
-export type { Engine, Campaign, CreateEngineOptions, CampaignInit, PlanResult, UseOptionOptions } from './engine/index.js';
+export type { Engine, Campaign, CreateEngineOptions, CampaignInit, PlanResult, AttackRollPlanResult, UseOptionOptions } from './engine/index.js';
 export {
   planShortRest,
   planLongRest,
   planAttack,
+  planAttackRoll,
+  planAttackDamage,
   planOpportunityAttack,
   planCreateEncounter,
   planRollInitiative,
@@ -478,6 +480,7 @@ export type {
   LongRestIntent,
   RestIntent,
   AttackIntent,
+  AttackRollHandle,
   CleaveIntent,
   OpportunityAttackIntent,
   CreateEncounterIntent,

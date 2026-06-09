@@ -7,9 +7,16 @@ export {
 } from './rest.js';
 export {
   planAttack,
+  planAttackRoll,
+  planAttackDamage,
   planCleave,
   resolveAttack,
+  resolveAttackRollPhase,
+  resolveAttackDamage,
   type AttackIntent,
+  type AttackRollHandle,
+  type AttackRollResult,
+  type RollContext,
   type CleaveIntent,
   type ResolveAttackInput,
 } from './attack.js';

@@ -36,6 +36,7 @@ import { evaluatePredicate } from '../../effects/predicate.js';
 import { rollSaveAgainstDC } from './_save-roll.js';
 import { rollBonusDice } from './_bonus-dice.js';
 import { resolveAttackRoll } from './_attack-roll.js';
+import type { ItemInstance } from '../../schemas/runtime/item-instance.js';
 import {
   GIANT_ANCESTRY_RESOURCE_ID,
   validateGoliathAncestry,
@@ -595,7 +596,41 @@ const buildConsumeOnIncomingAttackRemovals = (
       conditionId: applied.conditionId,
     }));
 
-export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> => {
+// Slice 754: two-phase attack. `resolveAttackRollPhase` runs the roll phase
+// (attack bonus / advantage / d20 / AC / hit / critical, emits AttackRolled
+// + on-attack consumes/triggers) and, on a hit, returns a `RollContext`
+// continuation. `resolveAttackDamage(ctx)` runs the damage phase. The
+// bundled `resolveAttack` composer (below) calls both and is byte-identical
+// to the pre-slice monolith (the golden + fuzz + replay suites are the
+// gate). A consumer can open a reaction window between the two phases.
+//
+// `RollContext` carries every roll-phase local the damage phase reads — its
+// fields are exactly the variables `resolveAttackDamage` destructures (kept
+// in sync by tsc). Built once at the end of the roll phase; the damage code
+// is unchanged (it reads the same names from the destructure).
+export interface RollContext {
+  readonly input: ResolveAttackInput;
+  readonly attackRolled: AttackRolledEvent;
+  readonly attackTriggers: ReadonlyArray<Event>;
+  readonly attacker: Character;
+  readonly target: Character;
+  readonly weaponInstance: ItemInstance;
+  readonly weaponDef: Weapon;
+  readonly attackerEffects: ReturnType<typeof buildEffectStack>;
+  readonly critical: boolean;
+  readonly stateAfterAttack: CampaignState;
+}
+
+export type AttackRollResult =
+  | {
+      readonly events: ReadonlyArray<Event>;
+      readonly hit: true;
+      readonly attackRolled: AttackRolledEvent;
+      readonly ctx: RollContext;
+    }
+  | { readonly events: ReadonlyArray<Event>; readonly hit: false };
+
+export const resolveAttackRollPhase = (input: ResolveAttackInput): AttackRollResult => {
   const { state, content, rng, at } = input;
   const attacker = state.characters[input.attackerId];
   if (!attacker) throw new Error(`Unknown attacker ${input.attackerId}`);
@@ -1034,7 +1069,7 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
       at,
       mirrorImage,
     });
-    if (deflectedEvents !== undefined) return deflectedEvents;
+    if (deflectedEvents !== undefined) return { events: deflectedEvents, hit: false };
   }
   // Slice 611: the d20 roll + advantage resolution + Halfling Luck
   // reroll + Bless/Bane bonus-dice fold + crit threshold all live in
@@ -1157,9 +1192,37 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     ...(input.cunningStrike !== undefined ? { cunningStrike: input.cunningStrike } : {}),
   });
 
-  if (!hit) {
-    return [attackRolled, ...consumed, ...targetConsumed, ...steadyAimConsumedEvents, ...attackTriggers];
-  }
+  const rollEvents: ReadonlyArray<Event> = [attackRolled, ...consumed, ...targetConsumed, ...steadyAimConsumedEvents, ...attackTriggers];
+  if (!hit) return { events: rollEvents, hit: false };
+  const ctx: RollContext = {
+    input,
+    attackRolled,
+    attackTriggers,
+    attacker,
+    target,
+    weaponInstance,
+    weaponDef,
+    attackerEffects,
+    critical,
+    stateAfterAttack,
+  };
+  return { events: rollEvents, hit: true, attackRolled, ctx };
+};
+
+export const resolveAttackDamage = (ctx: RollContext): ReadonlyArray<Event> => {
+  const {
+    input,
+    attackRolled,
+    attackTriggers,
+    attacker,
+    target,
+    weaponInstance,
+    weaponDef,
+    attackerEffects,
+    critical,
+    stateAfterAttack,
+  } = ctx;
+  const { state, content, rng, at } = input;
 
   // Slice 494: when input.abilityOverride is set (True Strike), the damage
   // roll uses that ability instead of STR/DEX. Slice 501: a Shillelagh-
@@ -1674,11 +1737,6 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     : [];
 
   return [
-    attackRolled,
-    ...consumed,
-    ...targetConsumed,
-    ...steadyAimConsumedEvents,
-    ...attackTriggers,
     damageRolled,
     ...savageAttackerEvent,
     damageApplied,
@@ -1690,6 +1748,13 @@ export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> =
     ...intercept.extraEvents,
     ...concentrationBreak,
   ];
+};
+
+// Slice 754: the bundled composer — byte-identical to the pre-slice
+// monolith. planAttack + planMultiattack call this.
+export const resolveAttack = (input: ResolveAttackInput): ReadonlyArray<Event> => {
+  const result = resolveAttackRollPhase(input);
+  return result.hit ? [...result.events, ...resolveAttackDamage(result.ctx)] : result.events;
 };
 
 /**
@@ -1751,12 +1816,29 @@ const assertWeaponInRange = (
   }
 };
 
-export const planAttack = (
+// Slice 754: the handle returned by planAttackRoll. `events` are the
+// committed roll-phase events (action-economy prelude + the attack roll);
+// `tail` is the post-attack record (WeaponLoaded) that fires even when a
+// reaction prevents the damage (the weapon was still fired); `phase` is the
+// continuation passed to planAttackDamage; `hit`/`attackRolled` are
+// surfaced for the consumer's reaction window.
+export interface AttackRollHandle {
+  readonly hit: boolean;
+  readonly attackRolled: AttackRolledEvent | undefined;
+  readonly tail: ReadonlyArray<Event>;
+  readonly phase: AttackRollResult;
+}
+
+// Phase 1 of a two-phase attack: the action-economy prelude + range / LoS /
+// loading gates + the attack roll. Returns the roll-phase events to commit
+// and an opaque handle to resume with planAttackDamage after a reaction
+// window. Composed by planAttack (below) into the byte-identical bundled form.
+export const planAttackRoll = (
   state: CampaignState,
   content: ResolvedContent,
   rng: RNG,
   intent: AttackIntent,
-): ReadonlyArray<Event> => {
+): { readonly events: ReadonlyArray<Event>; readonly roll: AttackRollHandle } => {
   const attacker = state.characters[intent.attackerId];
   if (attacker) assertActorCanAct(attacker, 'Attack');
   // RAW Appendix "Charmed": "the charmed creature can't attack the
@@ -1813,7 +1895,7 @@ export const planAttack = (
     weaponDef?.name ?? 'this weapon',
   );
   const at = intent.at ?? nowIso();
-  const resolution = resolveAttack({
+  const phase = resolveAttackRollPhase({
     state,
     content,
     rng,
@@ -1844,7 +1926,8 @@ export const planAttack = (
   });
   // If we fired a Loading weapon, append a WeaponLoaded event so the
   // reducer records it in turnUsage. Second attempt this turn will
-  // hit the guard above.
+  // hit the guard above. (Belongs to the roll: the weapon fired even if
+  // a reaction then prevents the damage — surfaced on the handle's `tail`.)
   const tail: Event[] = [];
   if (weaponIsLoading && encounter !== undefined) {
     tail.push({
@@ -1856,7 +1939,36 @@ export const planAttack = (
       weaponInstanceId: intent.weaponInstanceId,
     });
   }
-  return [...economyPrelude, ...resolution, ...tail];
+  return {
+    events: [...economyPrelude, ...phase.events],
+    roll: {
+      hit: phase.hit,
+      attackRolled: phase.hit ? phase.attackRolled : undefined,
+      tail,
+      phase,
+    },
+  };
+};
+
+// Phase 2 of a two-phase attack: the damage chain, run only if the hit
+// stands (the consumer may have prevented it via a reaction, in which case
+// it doesn't call this). The loading-weapon `tail` is appended either way.
+export const planAttackDamage = (roll: AttackRollHandle): { readonly events: ReadonlyArray<Event> } => ({
+  events: roll.phase.hit
+    ? [...resolveAttackDamage(roll.phase.ctx), ...roll.tail]
+    : [...roll.tail],
+});
+
+// Bundled attack — byte-identical to the pre-slice monolith. planAttack =
+// roll then damage; this is what the `Attack` intent + multiattack use.
+export const planAttack = (
+  state: CampaignState,
+  content: ResolvedContent,
+  rng: RNG,
+  intent: AttackIntent,
+): ReadonlyArray<Event> => {
+  const { events, roll } = planAttackRoll(state, content, rng, intent);
+  return [...events, ...planAttackDamage(roll).events];
 };
 
 const CLEAVE_TRIGGER_ID = 'mastery:cleave';

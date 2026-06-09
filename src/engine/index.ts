@@ -25,6 +25,9 @@ import {
   planShortRest,
   planLongRest,
   planAttack,
+  planAttackRoll,
+  planAttackDamage,
+  type AttackRollHandle,
   planCleave,
   planCreateEncounter,
   planPlaceCombatant,
@@ -375,6 +378,18 @@ export interface PlanResult {
   readonly events: ReadonlyArray<Event>;
 }
 
+/**
+ * Slice 754: result of `engine.plan.attackRoll` — the roll-phase events to
+ * commit plus an opaque handle to resume the damage phase with
+ * `engine.plan.attackDamage`. `roll.hit` tells a consumer whether a damage
+ * phase exists; a reaction window may decide to prevent it (commit only
+ * `events`) or let it stand (commit `events` then `attackDamage(roll).events`).
+ */
+export interface AttackRollPlanResult {
+  readonly events: ReadonlyArray<Event>;
+  readonly roll: AttackRollHandle;
+}
+
 /** Slice 714/715: argument to `engine.plan.useOption` (a `bonusActions` option id). */
 export interface UseOptionOptions {
   readonly combatantId: string;
@@ -427,6 +442,23 @@ export interface Engine {
     longRest(state: CampaignState, intent: { participantIds: ReadonlyArray<string>; at?: string }): PlanResult;
     rest(state: CampaignState, intent: RestIntent): PlanResult;
     attack(state: CampaignState, intent: Omit<AttackIntent, 'type'>): PlanResult;
+    /**
+     * Slice 754: phase 1 of a two-phase attack — the action-economy prelude,
+     * range / line-of-sight / loading gates, and the attack roll. Returns the
+     * roll-phase events to commit plus an opaque `roll` handle (`roll.hit`
+     * surfaces whether the swing connected). A consumer opens a reaction window
+     * here, then either commits only these events (a reaction prevented the
+     * hit) or follows with `attackDamage(roll)`. `attack` = `attackRoll` then
+     * `attackDamage` composed, byte-identical to the bundled form.
+     */
+    attackRoll(state: CampaignState, intent: Omit<AttackIntent, 'type'>): AttackRollPlanResult;
+    /**
+     * Slice 754: phase 2 of a two-phase attack — the damage chain for a hit
+     * that stands. Pass the `roll` handle from `attackRoll`. If the roll missed
+     * (or a consumer chooses to prevent the hit and never calls this), the
+     * damage dice and on-hit riders are never rolled.
+     */
+    attackDamage(roll: AttackRollHandle): PlanResult;
     cleave(state: CampaignState, intent: Omit<CleaveIntent, 'type'>): PlanResult;
     opportunityAttack(state: CampaignState, intent: Omit<OpportunityAttackIntent, 'type'>): PlanResult;
     createEncounter(
@@ -729,6 +761,12 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     attack(state, intent) {
       return { events: planAttack(state, content, rng, { type: 'Attack', ...intent }) };
+    },
+    attackRoll(state, intent) {
+      return planAttackRoll(state, content, rng, { type: 'Attack', ...intent });
+    },
+    attackDamage(roll) {
+      return planAttackDamage(roll);
     },
     cleave(state, intent) {
       return { events: planCleave(state, content, rng, { type: 'Cleave', ...intent }) };
