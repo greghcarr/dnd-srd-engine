@@ -759,6 +759,13 @@ export interface Engine {
       encounterId: string,
       reactorId: string,
       triggerEvent: Event,
+      /**
+       * Optional recent committed events (a log slice) for cross-event
+       * correlation: Deflect Attacks needs the triggering AttackRolled and
+       * Countercharm the preceding failed SaveRolled. Omit it and those two
+       * don't correlate; every other reaction reads only the trigger event.
+       */
+      recentEvents?: ReadonlyArray<Event>,
     ): ReadonlyArray<CorrelatedReaction>;
     /**
      * Slice 764: the general SRD 2024 actions (Search, Study, Influence,
@@ -1373,8 +1380,8 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     availableReactions(state, encounterId, combatantId) {
       return queryAvailableReactions(state, content, encounterId, combatantId);
     },
-    reactionsForTrigger(state, encounterId, reactorId, triggerEvent) {
-      return queryReactionsForTrigger(state, content, encounterId, reactorId, triggerEvent);
+    reactionsForTrigger(state, encounterId, reactorId, triggerEvent, recentEvents) {
+      return queryReactionsForTrigger(state, content, encounterId, reactorId, triggerEvent, recentEvents);
     },
     actionOptions(state, encounterId, combatantId) {
       return queryActionOptions(state, content, encounterId, combatantId);

@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Feat (slice 767): reaction affordances — Deflect Attacks + Countercharm (cross-event correlation)**
+Completes the reaction layer. `reactionsForTrigger` gains an optional `recentEvents` param (the consumer's log slice) for cross-event correlation — additive, every other reaction ignores it. Deflect Attacks (damage trigger, Monk L3): correlates when the reactor is the damaged target with deflectable physical damage, scanning `recentEvents` for the triggering `AttackRolled`. Countercharm (new `condition-applied` trigger → `ConditionApplied`, Bard L7): correlates a Charmed/Frightened `ConditionApplied`, scanning `recentEvents` for the preceding failed `SaveRolled` to fill the reroll's DC/ability/bonus (30 ft consumer-managed; the consumer removes the condition on a successful reroll). Both verified by dispatch. The reaction-affordance layer is now complete (9 reactions across 5 trigger kinds).
+Detail: [slice-767.md](docs/changelog/slice-767.md).
+
 **Feat (slice 766): reaction affordances — Opportunity Attack (leaves-reach trigger)**
 Wires the last positionally-triggered deferred reaction. New `ReactionTriggerKind` `'leaves-reach'` → `CombatantMoved`. OA's `owns` = the reactor wields a main-hand melee weapon; correlate fires when the mover (≠ reactor) was within the reactor's melee reach at `fromPosition` and beyond it at `toPosition` (chebyshev; 5 ft, +5 for a `reach` weapon), the reactor isn't the active combatant. `planOpportunityAttack` uses `resolveAttack` directly (no range gate), so an attack on a creature that just left reach is accepted — planner-faithful. Verified by dispatching the intent.
 Detail: [slice-766.md](docs/changelog/slice-766.md).

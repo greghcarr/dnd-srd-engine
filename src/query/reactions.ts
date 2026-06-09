@@ -19,17 +19,18 @@
 // drift. Applicability reuses the proven decision predicates in
 // src/ai/reactions.ts (the same logic the combat-fuzz reaction layer uses).
 //
-// Coverage: Shield, Cutting Words, Uncanny Dodge, Counterspell (slice 763),
-// Stone's Endurance + Protection (slice 765), and Opportunity Attack
-// (slice 766) — across the attack-roll / damage / spell-cast / leaves-reach
-// triggers — each planner-faithful (its owns/correlate matches what the
-// planner accepts). Stone's Endurance gates on the RESOLVED Giant Ancestry;
-// Protection on shield + Fighting Style + 5 ft of the attacked ally;
-// Opportunity Attack on a CombatantMoved that leaves the reactor's melee reach
-// (reactor non-active, wielding a melee weapon). Deliberately NOT yet wired —
-// each needs cross-event context a single trigger event can't carry: Deflect
-// Attacks (the attack event linked from the damage) and Countercharm (the
-// Charmed/Frightened context the SaveRolled lacks).
+// Coverage (complete): Shield, Cutting Words, Uncanny Dodge, Counterspell
+// (763), Stone's Endurance + Protection (765), Opportunity Attack (766),
+// Deflect Attacks + Countercharm (767) — across the attack-roll / damage /
+// spell-cast / leaves-reach / condition-applied triggers, each planner-faithful
+// (its owns/correlate matches what the planner accepts, verified by dispatch).
+// Deflect Attacks (damage trigger) and Countercharm (condition-applied trigger)
+// need CROSS-EVENT context — the DamageApplied has no link to its attack, and
+// the SaveRolled doesn't say which condition it gated — so they scan the
+// optional `recentEvents` the consumer passes to reactionsForTrigger (the
+// triggering AttackRolled / the preceding failed SaveRolled). Without
+// recentEvents they don't correlate; every other reaction reads only the
+// trigger event.
 
 import type { CampaignState } from '../schemas/runtime/campaign.js';
 import type { ResolvedContent } from '../content/pack.js';
@@ -43,6 +44,10 @@ import type { CuttingWordsIntent } from '../engine/plan/cutting-words.js';
 import type { StonesEnduranceIntent } from '../engine/plan/stones-endurance.js';
 import type { OpportunityAttackIntent } from '../engine/plan/opportunity-attack.js';
 import type { CombatantMovedEvent } from '../schemas/events/movement.js';
+import type { DeflectAttacksIntent } from '../engine/plan/deflect-attacks.js';
+import type { CountercharmIntent } from '../engine/plan/countercharm.js';
+import type { SaveRolledEvent } from '../schemas/events/checks.js';
+import type { ConditionAppliedEvent } from '../schemas/events/combat.js';
 import { findActorBlockingCondition } from '../engine/plan/_actor-state.js';
 import { findGoliathAncestryChoice } from '../engine/plan/_giant-ancestry.js';
 import { chebyshevDistance } from '../engine/plan/movement.js';
@@ -53,6 +58,8 @@ import {
   shouldCounterspell,
   hasUncannyDodge,
   hasStonesEndurance,
+  hasDeflectAttacks,
+  hasCountercharm,
 } from '../ai/reactions.js';
 import { computeAvailableSpellSlots } from '../derive/spell-slots.js';
 
@@ -69,12 +76,20 @@ const STONES_ENDURANCE_ANCESTRY = 'stones-endurance';
 const PROTECTION_REACH_FEET = 5;
 const MELEE_REACH_FEET = 5;
 const REACH_PROPERTY_BONUS_FEET = 5;
+// Countercharm rerolls a failed save against these conditions.
+const CHARM_FRIGHTEN_CONDITIONS: ReadonlyArray<string> = ['charmed', 'frightened'];
+// Countercharm's 30 ft range (consumer-managed per the planner; used here only
+// to refine the affordance when positions are known).
+const COUNTERCHARM_RANGE_FEET = 30;
+// Deflect Attacks only reduces physical attack damage.
+type DeflectablePhysical = 'bludgeoning' | 'piercing' | 'slashing';
+const DEFLECTABLE_TYPES: ReadonlyArray<string> = ['bludgeoning', 'piercing', 'slashing'];
 
 const REASON_REACTION_USED = 'reaction-used';
 
 // ── Public types ────────────────────────────────────────────────────
 /** What just happened that a reaction responds to. */
-export type ReactionTriggerKind = 'attack-roll' | 'damage' | 'spell-cast' | 'leaves-reach';
+export type ReactionTriggerKind = 'attack-roll' | 'damage' | 'spell-cast' | 'leaves-reach' | 'condition-applied';
 
 export interface ReactionOption {
   /** Stable id (matches the produced intent's reaction). */
@@ -98,7 +113,9 @@ export type ReactionIntent =
   | CounterspellIntent
   | ProtectionIntent
   | StonesEnduranceIntent
-  | OpportunityAttackIntent;
+  | OpportunityAttackIntent
+  | DeflectAttacksIntent
+  | CountercharmIntent;
 
 /**
  * A reaction correlated to a trigger event — its params pre-filled and ready
@@ -135,6 +152,10 @@ interface ReactionDescriptor {
     state: CampaignState,
     content: ResolvedContent,
     encounterId: string,
+    // Recent events for cross-event correlation (Deflect Attacks needs the
+    // triggering AttackRolled; Countercharm the preceding failed SaveRolled).
+    // Empty unless the consumer supplies it — those reactions then don't correlate.
+    recentEvents: ReadonlyArray<Event>,
   ) => ReactionIntent | undefined;
 }
 
@@ -143,6 +164,7 @@ const TRIGGER_EVENT_TYPE: Record<ReactionTriggerKind, Event['type']> = {
   damage: 'DamageApplied',
   'spell-cast': 'SpellCastDeclared',
   'leaves-reach': 'CombatantMoved',
+  'condition-applied': 'ConditionApplied',
 };
 
 const damageTotal = (e: DamageAppliedEvent): number =>
@@ -187,6 +209,43 @@ const meleeWeapon = (
 const isActiveCombatant = (state: CampaignState, encounterId: string, combatantId: string): boolean => {
   const enc = state.encounters[encounterId];
   return enc?.combatants[enc.activeIndex]?.combatantId === combatantId;
+};
+
+// The deflectable physical damage type with the most damage in the components,
+// or undefined if none is physical (Deflect Attacks only reduces B/P/S attack
+// damage). Mirrors scripts/reactions/reaction-policy.ts.
+const dominantPhysicalType = (
+  components: DamageAppliedEvent['components'],
+): DeflectablePhysical | undefined => {
+  let best: { readonly type: DeflectablePhysical; readonly amount: number } | undefined;
+  for (const c of components) {
+    if (!DEFLECTABLE_TYPES.includes(c.type)) continue;
+    if (best === undefined || c.amount > best.amount) best = { type: c.type as DeflectablePhysical, amount: c.amount };
+  }
+  return best?.type;
+};
+
+// The id of the most recent AttackRolled targeting `targetId` in `recentEvents`
+// (the attack that caused the damage). Undefined if none — Deflect can't fire.
+const mostRecentAttackOn = (recentEvents: ReadonlyArray<Event>, targetId: string): string | undefined => {
+  for (let i = recentEvents.length - 1; i >= 0; i -= 1) {
+    const e = recentEvents[i]!;
+    if (e.type === 'AttackRolled' && (e as AttackRolledEvent).targetId === targetId) return e.id;
+  }
+  return undefined;
+};
+
+// The most recent FAILED SaveRolled for `targetId` in `recentEvents` — supplies
+// the DC / ability / bonus the Countercharm reroll needs (SaveRolled doesn't
+// record which condition it gated). Mirrors the slice-752 policy's lookback.
+const precedingFailedSave = (recentEvents: ReadonlyArray<Event>, targetId: string): SaveRolledEvent | undefined => {
+  for (let i = recentEvents.length - 1; i >= 0; i -= 1) {
+    const e = recentEvents[i]!;
+    if (e.type === 'SaveRolled' && (e as SaveRolledEvent).targetId === targetId && (e as SaveRolledEvent).success === false) {
+      return e as SaveRolledEvent;
+    }
+  }
+  return undefined;
 };
 
 const REGISTRY: ReadonlyArray<ReactionDescriptor> = [
@@ -314,6 +373,48 @@ const REGISTRY: ReadonlyArray<ReactionDescriptor> = [
       return { type: 'OpportunityAttack', reactorId, targetId: e.combatantId, weaponInstanceId: weapon.instanceId };
     },
   },
+  {
+    id: 'deflect-attacks',
+    label: 'Deflect Attacks',
+    trigger: 'damage',
+    owns: hasDeflectAttacks,
+    // Cross-event: the DamageApplied carries no link to its attack, so scan
+    // recentEvents for the triggering AttackRolled. Only physical attack damage
+    // is deflectable.
+    correlate: (reactorId, event, _reactor, _state, _content, _encounterId, recentEvents) => {
+      const e = event as DamageAppliedEvent;
+      if (e.targetId !== reactorId) return undefined;
+      const damageType = dominantPhysicalType(e.components);
+      if (damageType === undefined) return undefined;
+      const triggeringAttackEventId = mostRecentAttackOn(recentEvents, reactorId);
+      if (triggeringAttackEventId === undefined) return undefined; // needs recentEvents
+      return { type: 'DeflectAttacks', monkId: reactorId, triggeringAttackEventId, incomingDamage: damageTotal(e), damageType };
+    },
+  },
+  {
+    id: 'countercharm',
+    label: 'Countercharm',
+    trigger: 'condition-applied',
+    owns: hasCountercharm,
+    // Cross-event: triggers on the Charmed/Frightened ConditionApplied (the
+    // SaveRolled doesn't say which condition it gated), then scans recentEvents
+    // for the preceding failed save to fill the reroll's DC / ability / bonus.
+    // On a successful reroll the consumer removes the just-applied condition
+    // (the slice-752 pattern). 30 ft range is consumer-managed; refined here
+    // when positions are known.
+    correlate: (reactorId, event, _reactor, state, _content, encounterId, recentEvents) => {
+      const e = event as ConditionAppliedEvent;
+      if (!CHARM_FRIGHTEN_CONDITIONS.includes(e.conditionId)) return undefined;
+      const save = precedingFailedSave(recentEvents, e.targetId);
+      if (save === undefined) return undefined;
+      const reactorPos = combatantPosition(state, encounterId, reactorId);
+      const targetPos = combatantPosition(state, encounterId, e.targetId);
+      if (reactorPos !== undefined && targetPos !== undefined && chebyshevDistance(reactorPos, targetPos) > COUNTERCHARM_RANGE_FEET) {
+        return undefined;
+      }
+      return { type: 'Countercharm', bardId: reactorId, targetId: e.targetId, ability: save.ability, dc: save.dc, saveBonus: save.bonus };
+    },
+  },
 ];
 
 // A reaction needs the reactor's reaction for the round, and the reactor not
@@ -367,6 +468,11 @@ export const reactionsForTrigger = (
   encounterId: string,
   reactorId: string,
   triggerEvent: Event,
+  // Recent committed events (the consumer's log slice) for cross-event
+  // correlation. Deflect Attacks needs the triggering AttackRolled and
+  // Countercharm the preceding failed SaveRolled; without it those two don't
+  // correlate (every other reaction reads only the trigger event).
+  recentEvents: ReadonlyArray<Event> = [],
 ): ReadonlyArray<CorrelatedReaction> => {
   const encounter = state.encounters[encounterId];
   const self = encounter?.combatants.find((c) => c.combatantId === reactorId);
@@ -379,7 +485,7 @@ export const reactionsForTrigger = (
   for (const d of REGISTRY) {
     if (TRIGGER_EVENT_TYPE[d.trigger] !== triggerEvent.type) continue;
     if (!d.owns(character, state, content)) continue;
-    const intent = d.correlate(reactorId, triggerEvent, character, state, content, encounterId);
+    const intent = d.correlate(reactorId, triggerEvent, character, state, content, encounterId, recentEvents);
     if (intent !== undefined) out.push({ id: d.id, label: d.label, intent });
   }
   out.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));

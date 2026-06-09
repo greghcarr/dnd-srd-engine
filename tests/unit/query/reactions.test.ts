@@ -424,3 +424,73 @@ describe('slice 766: Opportunity Attack (leaves-reach)', () => {
     expect(engine.query.reactionsForTrigger(campaign.state, encounterId, reactor.id, trigger).find((r) => r.id === 'opportunity-attack')).toBeUndefined();
   });
 });
+
+// Slice 767: Deflect Attacks + Countercharm — cross-event correlation via the
+// optional recentEvents passed to reactionsForTrigger.
+const damageOfType = (targetId: string, amount: number, type: string): Event =>
+  ({ id: eventId(), at: isoTimestamp(), type: 'DamageApplied', targetId: targetId as ULID, components: [{ amount, type }] }) as unknown as Event;
+
+const saveFailed = (targetId: string, ability: string, dc: number, bonus: number): Event =>
+  ({
+    id: eventId(), at: isoTimestamp(), type: 'SaveRolled',
+    targetId: targetId as ULID, ability, dc, d20: [5], used: 'none', bonus, total: 5 + bonus, success: false,
+  }) as unknown as Event;
+
+const conditionApplied = (targetId: string, conditionId: string): Event =>
+  ({ id: eventId(), at: isoTimestamp(), type: 'ConditionApplied', targetId: targetId as ULID, conditionId, appliedConditionId: eventId() as ULID }) as unknown as Event;
+
+describe('slice 767: Deflect Attacks (cross-event: triggering attack)', () => {
+  it('a Monk correlates Deflect from physical attack damage + recentEvents; the planner accepts', () => {
+    const monk = base({ classes: [{ classId: 'monk', level: 3, hitDiceRemaining: 3 }] });
+    const foe = base({ classes: [{ classId: 'fighter', level: 1, hitDiceRemaining: 1 }] });
+    const s = setup([monk, foe]);
+    const attack = attackRolledOn(monk.id, foe.id, 15, 13);
+    const dmg = damageOfType(monk.id, 10, 'slashing');
+    const reactions = s.engine.query.reactionsForTrigger(s.campaign.state, s.encounterId, monk.id, dmg, [attack, dmg]);
+    const d = reactions.find((r) => r.id === 'deflect-attacks');
+    expect(d, 'Deflect not correlated with recentEvents').toBeDefined();
+    const intent = d!.intent;
+    if (intent.type !== 'DeflectAttacks') throw new Error('expected DeflectAttacks');
+    expect(intent.triggeringAttackEventId).toBe((attack as { id: string }).id);
+    expect(intent.damageType).toBe('slashing');
+    expect(() => s.engine.plan.deflectAttacks(s.campaign.state, intent)).not.toThrow();
+  });
+
+  it('not correlated without recentEvents (no attack linkage), or for non-physical damage', () => {
+    const monk = base({ classes: [{ classId: 'monk', level: 3, hitDiceRemaining: 3 }] });
+    const s = setup([monk]);
+    const dmg = damageOfType(monk.id, 10, 'slashing');
+    expect(s.engine.query.reactionsForTrigger(s.campaign.state, s.encounterId, monk.id, dmg).find((r) => r.id === 'deflect-attacks')).toBeUndefined();
+    const fire = damageOfType(monk.id, 10, 'fire');
+    const attack = attackRolledOn(monk.id, monk.id, 15, 13);
+    expect(s.engine.query.reactionsForTrigger(s.campaign.state, s.encounterId, monk.id, fire, [attack, fire]).find((r) => r.id === 'deflect-attacks')).toBeUndefined();
+  });
+});
+
+describe('slice 767: Countercharm (cross-event: preceding failed save)', () => {
+  it('a Bard L7 correlates Countercharm from a Charmed ConditionApplied + the failed save; the planner accepts', () => {
+    const bard = base({ classes: [{ classId: 'bard', level: 7, hitDiceRemaining: 7 }], resources: [{ resourceId: 'bardic-inspiration', current: 3, max: 3 }] });
+    const ally = base({ classes: [{ classId: 'fighter', level: 1, hitDiceRemaining: 1 }] });
+    const s = setup([bard, ally]);
+    const save = saveFailed(ally.id, 'WIS', 13, 2);
+    const cond = conditionApplied(ally.id, 'charmed');
+    const reactions = s.engine.query.reactionsForTrigger(s.campaign.state, s.encounterId, bard.id, cond, [save, cond]);
+    const cc = reactions.find((r) => r.id === 'countercharm');
+    expect(cc, 'Countercharm not correlated').toBeDefined();
+    const intent = cc!.intent;
+    if (intent.type !== 'Countercharm') throw new Error('expected Countercharm');
+    expect(intent).toMatchObject({ bardId: bard.id, targetId: ally.id, ability: 'WIS', dc: 13, saveBonus: 2 });
+    expect(() => s.engine.plan.countercharm(s.campaign.state, intent)).not.toThrow();
+  });
+
+  it('not correlated without the preceding failed save, nor for a non-charm condition', () => {
+    const bard = base({ classes: [{ classId: 'bard', level: 7, hitDiceRemaining: 7 }], resources: [{ resourceId: 'bardic-inspiration', current: 3, max: 3 }] });
+    const ally = base({ classes: [{ classId: 'fighter', level: 1, hitDiceRemaining: 1 }] });
+    const s = setup([bard, ally]);
+    const cond = conditionApplied(ally.id, 'charmed');
+    expect(s.engine.query.reactionsForTrigger(s.campaign.state, s.encounterId, bard.id, cond, [cond]).find((r) => r.id === 'countercharm')).toBeUndefined();
+    const poisoned = conditionApplied(ally.id, 'poisoned');
+    const save = saveFailed(ally.id, 'CON', 12, 1);
+    expect(s.engine.query.reactionsForTrigger(s.campaign.state, s.encounterId, bard.id, poisoned, [save, poisoned]).find((r) => r.id === 'countercharm')).toBeUndefined();
+  });
+});
