@@ -35,6 +35,8 @@ import type { ReadyIntent } from '../engine/plan/ready.js';
 import type { ActionSurgeIntent } from '../engine/plan/action-surge.js';
 import type { TurnUndeadIntent } from '../engine/plan/turn-undead.js';
 import type { DivineSparkIntent } from '../engine/plan/divine-spark.js';
+import type { DragonbornBreathIntent } from '../engine/plan/dragonborn-breath.js';
+import type { PreserveLifeIntent } from '../engine/plan/preserve-life.js';
 import { creatureTargetsInReach, type CreatureTargeting, type CreatureTarget } from './_targeting.js';
 
 const REASON_NOT_YOUR_TURN = 'not-your-turn';
@@ -42,8 +44,11 @@ const REASON_ACTION_USED = 'action-used';
 const REASON_NO_USES = 'no-uses';
 const FIGHTER_CLASS_ID = 'fighter';
 const CLERIC_CLASS_ID = 'cleric';
+const DRAGONBORN_SPECIES_ID = 'dragonborn';
+const LIFE_DOMAIN_SUBCLASS_ID = 'life-domain';
 const ACTION_SURGE_RESOURCE = 'action-surge';
 const CHANNEL_DIVINITY_RESOURCE = 'channel-divinity';
+const DRAGONBORN_BREATH_RESOURCE = 'dragonborn-breath-weapon';
 
 // ── Public types ────────────────────────────────────────────────────
 export type ActionOptionTargetKind = 'none' | 'self' | 'creature';
@@ -77,7 +82,9 @@ export type ActionIntent =
   | ReadyIntent
   | ActionSurgeIntent
   | TurnUndeadIntent
-  | DivineSparkIntent;
+  | DivineSparkIntent
+  | DragonbornBreathIntent
+  | PreserveLifeIntent;
 
 /**
  * Per-option params for `actionIntent`. `targetId` for creature-target options
@@ -95,6 +102,11 @@ export interface ActionParams {
   readonly targetAbility?: string;
   /** Multiple creatures for an AoE action (Turn Undead — the undead in range). */
   readonly targetIds?: ReadonlyArray<string>;
+  /** Dragonborn Breath: damage type (from Draconic Ancestry) + area shape ('cone'|'line'). */
+  readonly damageType?: string;
+  readonly areaShape?: string;
+  /** Preserve Life: the heal-pool distribution among Bloodied allies. */
+  readonly allocations?: ReadonlyArray<{ readonly targetId: string; readonly amount: number }>;
 }
 
 // ── Registry ────────────────────────────────────────────────────────
@@ -234,6 +246,34 @@ const REGISTRY: ReadonlyArray<ActionDescriptor> = [
     // AoE over the undead in range — the consumer supplies the affected ids.
     requires: ['targetIds'],
     toIntent: (id, p) => ({ type: 'TurnUndead', clericId: id, targetIds: p.targetIds as ReadonlyArray<string> }) as TurnUndeadIntent,
+  },
+  {
+    id: 'dragonborn-breath',
+    label: 'Breath Weapon',
+    target: 'none',
+    owns: (c) => c.speciesId === DRAGONBORN_SPECIES_ID,
+    resourceId: DRAGONBORN_BREATH_RESOURCE,
+    // AoE (cone/line). The consumer supplies the affected ids + the ancestry
+    // damage type + the chosen shape.
+    requires: ['targetIds', 'damageType', 'areaShape'],
+    toIntent: (id, p) =>
+      ({
+        type: 'DragonbornBreath',
+        dragonbornId: id,
+        damageType: p.damageType,
+        areaShape: p.areaShape,
+        targetIds: p.targetIds as ReadonlyArray<string>,
+      }) as unknown as DragonbornBreathIntent,
+  },
+  {
+    id: 'preserve-life',
+    label: 'Preserve Life',
+    target: 'none',
+    owns: (c) => c.classes.find((cl) => cl.classId === CLERIC_CLASS_ID)?.subclassId === LIFE_DOMAIN_SUBCLASS_ID,
+    resourceId: CHANNEL_DIVINITY_RESOURCE,
+    // The consumer supplies the heal-pool distribution among Bloodied allies.
+    requires: ['allocations'],
+    toIntent: (id, p) => ({ type: 'PreserveLife', clericId: id, allocations: p.allocations }) as unknown as PreserveLifeIntent,
   },
 ];
 

@@ -271,3 +271,74 @@ describe('slice 771: actionTargets', () => {
     expect(s.engine.query.actionTargets(s.campaign.state, s.encounterId, f.id, 'no-such')).toEqual([]);
   });
 });
+
+// Slice 772: more class-feature actions — Dragonborn Breath (species) +
+// Preserve Life (Life Domain Cleric Channel Divinity).
+const dragonborn = (breath = 2): Character =>
+  CharacterSchema.parse({
+    id: newCharacterId(), name: 'Drake', speciesId: 'dragonborn', backgroundId: 'soldier',
+    classes: [{ classId: 'fighter', level: 1, hitDiceRemaining: 1 }],
+    abilityScores: { STR: 16, DEX: 12, CON: 16, INT: 10, WIS: 10, CHA: 10 },
+    hp: { current: 20, max: 20, temp: 0 },
+    resources: [{ resourceId: 'dragonborn-breath-weapon', current: breath, max: 2 }],
+  });
+const lifeCleric = (cd = 2): Character =>
+  CharacterSchema.parse({
+    id: newCharacterId(), name: 'Priest', speciesId: 'human', backgroundId: 'acolyte',
+    classes: [{ classId: 'cleric', level: 3, hitDiceRemaining: 3, subclassId: 'life-domain' }],
+    abilityScores: { STR: 10, DEX: 12, CON: 14, INT: 10, WIS: 16, CHA: 10 },
+    hp: { current: 22, max: 22, temp: 0 },
+    resources: [{ resourceId: 'channel-divinity', current: cd, max: 2 }],
+  });
+
+describe('slice 772: Dragonborn Breath', () => {
+  it('offered to a Dragonborn; useActionOption breathes on the targets', () => {
+    const d = dragonborn();
+    const foe = fighter({ name: 'Foe' });
+    const s = setup([d, foe], d.id);
+    expect(byId(s, d.id)['dragonborn-breath']).toMatchObject({ target: 'none', enabled: true });
+    expect(() =>
+      s.engine.plan.useActionOption(s.campaign.state, { combatantId: d.id, optionId: 'dragonborn-breath', targetIds: [foe.id], damageType: 'fire', areaShape: 'cone' }),
+    ).not.toThrow();
+  });
+
+  it('no-uses when the breath is spent; not offered to a non-Dragonborn', () => {
+    const d = dragonborn(0);
+    const s = setup([d], d.id);
+    expect(byId(s, d.id)['dragonborn-breath']).toMatchObject({ enabled: false, reason: 'no-uses' });
+    const f = fighter();
+    const fs = setup([f], f.id);
+    expect(byId(fs, f.id)['dragonborn-breath']).toBeUndefined();
+  });
+
+  it('actionIntent requires targetIds + damageType + areaShape', () => {
+    expect(() => actionIntent('dragonborn-breath', 'x', { damageType: 'fire', areaShape: 'cone' })).toThrow(/requires a targetIds/);
+    expect(() => actionIntent('dragonborn-breath', 'x', { targetIds: ['y'], areaShape: 'cone' })).toThrow(/requires a damageType/);
+    expect(() => actionIntent('dragonborn-breath', 'x', { targetIds: ['y'], damageType: 'fire' })).toThrow(/requires a areaShape/);
+  });
+});
+
+describe('slice 772: Preserve Life', () => {
+  it('offered to a Life Domain Cleric; useActionOption heals a Bloodied ally', () => {
+    const c = lifeCleric();
+    const hurt = fighter({ name: 'Hurt', hp: { current: 5, max: 20, temp: 0, maxBonus: 0 } });
+    const s = setup([c, hurt], c.id);
+    expect(byId(s, c.id)['preserve-life']).toMatchObject({ target: 'none', enabled: true });
+    expect(() =>
+      s.engine.plan.useActionOption(s.campaign.state, { combatantId: c.id, optionId: 'preserve-life', allocations: [{ targetId: hurt.id, amount: 3 }] }),
+    ).not.toThrow();
+  });
+
+  it('not offered to a non-Life-Domain cleric; no-uses when Channel Divinity is spent', () => {
+    const plain = cleric(); // no subclass
+    const ps = setup([plain], plain.id);
+    expect(ps.engine.query.actionOptions(ps.campaign.state, ps.encounterId, plain.id).find((o) => o.id === 'preserve-life')).toBeUndefined();
+    const empty = lifeCleric(0);
+    const es = setup([empty], empty.id);
+    expect(byId(es, empty.id)['preserve-life']).toMatchObject({ enabled: false, reason: 'no-uses' });
+  });
+
+  it('actionIntent requires allocations', () => {
+    expect(() => actionIntent('preserve-life', 'x')).toThrow(/requires a allocations/);
+  });
+});

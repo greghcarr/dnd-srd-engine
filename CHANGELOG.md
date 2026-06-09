@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Feat (slice 772): more class-feature actions — Dragonborn Breath + Preserve Life**
+Extends `actionOptions` with the remaining deferred action-cost feature actions. Dragonborn Breath (`owns` = species dragonborn, `dragonborn-breath-weapon` resource, `requires` targetIds + damageType + areaShape — the PC `planDragonbornBreath`, not the monster breath). Preserve Life (Life Domain Cleric L3 Channel Divinity, `owns` = cleric `subclassId === 'life-domain'`, `requires` allocations). `ActionParams`/`UseActionOptionOptions` gain `damageType`/`areaShape`/`allocations`. Both already dispatched; verified planner-faithful via `useActionOption`.
+Detail: [slice-772.md](docs/changelog/slice-772.md).
+
 **Feat (slice 771): actionTargets query — target enumeration for creature-target actions**
 The `bonusActionTargets` sibling for the Action menu. New `engine.query.actionTargets(state, encounterId, combatantId, optionId)` → `{ combatantId, position? }[]` for Grapple / Shove (5 ft) / Help (no range filter — consumer-managed) / Divine Spark (30 ft, self + the dying for heal mode). The shared enumerator was factored into `src/query/_targeting.ts` (`creatureTargetsInReach`, `CreatureTargeting` with optional `rangeFeet`); `bonusActionTargets` refactored to delegate to it (behavior unchanged). Additive query surface.
 Detail: [slice-771.md](docs/changelog/slice-771.md).

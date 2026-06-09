@@ -423,8 +423,13 @@ export interface UseActionOptionOptions {
   readonly optionId: string;
   /** Target creature for creature-target actions (Grapple / Shove / Help / Divine Spark). */
   readonly targetId?: string;
-  /** Multiple creatures for an AoE action (Turn Undead). */
+  /** Multiple creatures for an AoE action (Turn Undead / Dragonborn Breath). */
   readonly targetIds?: ReadonlyArray<string>;
+  /** Dragonborn Breath: damage type (Draconic Ancestry) + area shape ('cone'|'line'). */
+  readonly damageType?: string;
+  readonly areaShape?: string;
+  /** Preserve Life: the heal-pool distribution among Bloodied allies. */
+  readonly allocations?: ReadonlyArray<{ readonly targetId: string; readonly amount: number }>;
   /** Shove ('prone'|'push') / Help ('attack'|'check') / Divine Spark ('heal'|'damage'). */
   readonly mode?: string;
   /** Ready's trigger description. */
