@@ -78,3 +78,12 @@ export {
   type ReactionIntent,
   type CorrelatedReaction,
 } from './reactions.js';
+// Slice 764: general 2024 action affordances (registry-driven discovery).
+export {
+  actionOptions,
+  actionIntent,
+  type ActionOption,
+  type ActionOptionTargetKind,
+  type ActionIntent,
+  type ActionParams,
+} from './action-options.js';

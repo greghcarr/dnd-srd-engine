@@ -350,6 +350,8 @@ import {
   reactionsForTrigger as queryReactionsForTrigger,
 } from '../query/reactions.js';
 import type { ReactionOption, CorrelatedReaction } from '../query/reactions.js';
+import { actionOptions as queryActionOptions, actionIntent as buildActionIntent } from '../query/action-options.js';
+import type { ActionOption } from '../query/action-options.js';
 import type { BonusActionOption, BonusActionTarget } from '../query/bonus-actions.js';
 import { HANDLER_API_VERSION } from '../handlers/index.js';
 import { assertActorCanAct } from './plan/_actor-state.js';
@@ -411,6 +413,23 @@ export interface UseOptionOptions {
   readonly weaponInstanceId?: string;
 }
 
+/** Slice 764: argument to `engine.plan.useActionOption` (an `actionOptions` id). */
+export interface UseActionOptionOptions {
+  readonly combatantId: string;
+  readonly optionId: string;
+  /** Target creature for creature-target actions (Grapple / Shove / Help). */
+  readonly targetId?: string;
+  /** Shove ('prone'|'push') / Help ('attack'|'check'). */
+  readonly mode?: string;
+  /** Ready's trigger description. */
+  readonly trigger?: string;
+  /** Pass-throughs for the check-style actions (Search / Study / Influence / Utilize / Hide). */
+  readonly skill?: string;
+  readonly dc?: number;
+  readonly ability?: string;
+  readonly targetAbility?: string;
+}
+
 export interface Engine {
   readonly content: ResolvedContent;
   readonly schemaVersion: number;
@@ -447,6 +466,13 @@ export interface Engine {
     // an unknown id or a missing required target; dice route through the
     // active RollProvider (it delegates to the same planners as every action).
     useOption(state: CampaignState, opts: UseOptionOptions): PlanResult;
+    /**
+     * Slice 764: generic executor for an `query.actionOptions` id (the general
+     * 2024 actions). Maps the id (+ params) to its planner and returns that
+     * planner's PlanResult — the sibling of `useOption` for the Action menu.
+     * Throws on an unknown id or a missing required param.
+     */
+    useActionOption(state: CampaignState, opts: UseActionOptionOptions): PlanResult;
     shortRest(state: CampaignState, intent: { participantIds: ReadonlyArray<string>; at?: string }): PlanResult;
     longRest(state: CampaignState, intent: { participantIds: ReadonlyArray<string>; at?: string }): PlanResult;
     rest(state: CampaignState, intent: RestIntent): PlanResult;
@@ -734,6 +760,19 @@ export interface Engine {
       reactorId: string,
       triggerEvent: Event,
     ): ReadonlyArray<CorrelatedReaction>;
+    /**
+     * Slice 764: the general SRD 2024 actions (Search, Study, Influence,
+     * Utilize, Hide, Grapple, Shove, Help, Ready) a combatant can take —
+     * the registry-driven sibling of `availableActions` (the 5 core combat
+     * intents). Each `{ id, label, target, enabled, reason? }`. Build the
+     * chosen one with `actionIntent(optionId, combatantId, params)` and run it
+     * through `performIntent`.
+     */
+    actionOptions(
+      state: CampaignState,
+      encounterId: string,
+      combatantId: string,
+    ): ReadonlyArray<ActionOption>;
   };
 }
 
@@ -794,6 +833,10 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
         weaponInstanceId: opts.weaponInstanceId,
       });
       return planIntent(planNs, state, intent);
+    },
+    useActionOption(state, opts) {
+      const { combatantId, optionId, ...params } = opts;
+      return planIntent(planNs, state, buildActionIntent(optionId, combatantId, params));
     },
     shortRest(state, intent) {
       return { events: planShortRest(state, content, { type: 'ShortRest', ...intent }) };
@@ -1332,6 +1375,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     reactionsForTrigger(state, encounterId, reactorId, triggerEvent) {
       return queryReactionsForTrigger(state, content, encounterId, reactorId, triggerEvent);
+    },
+    actionOptions(state, encounterId, combatantId) {
+      return queryActionOptions(state, content, encounterId, combatantId);
     },
   };
 

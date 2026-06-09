@@ -139,6 +139,9 @@ const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
   // option id to its own planner and routes it through the shared
   // planIntent table. It IS the dispatcher, not a routed intent.
   'useOption',
+  // Slice 764: generic action executor — the actionOptions sibling of
+  // useOption. Also a dispatcher, not a routed intent.
+  'useActionOption',
 ]);
 
 describe('planner-wiring audit: every engine.plan method is dispatch-routed or allowlisted', () => {

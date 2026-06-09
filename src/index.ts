@@ -320,6 +320,8 @@ export {
   bonusActionIntent,
   availableReactions,
   reactionsForTrigger,
+  actionOptions,
+  actionIntent,
 } from './query/index.js';
 // Slice 706 (A3): tactical enemy AI policy, graduated from scripts/ so
 // consumers can import it from the package.
@@ -356,6 +358,10 @@ export type {
   ReactionTriggerKind,
   ReactionIntent,
   CorrelatedReaction,
+  ActionOption,
+  ActionOptionTargetKind,
+  ActionIntent,
+  ActionParams,
   SpellFilter,
   MonsterFilter,
   ItemFilter,
@@ -453,7 +459,7 @@ export { commit } from './engine/commit.js';
 export { undo, redo } from './engine/undo-redo.js';
 export { performIntent, serializeCampaign, loadCampaign, createPC } from './engine/conveniences.js';
 export type { CreatePCOptions, SerializedCampaign } from './engine/conveniences.js';
-export type { Engine, Campaign, CreateEngineOptions, CampaignInit, PlanResult, AttackRollPlanResult, UseOptionOptions } from './engine/index.js';
+export type { Engine, Campaign, CreateEngineOptions, CampaignInit, PlanResult, AttackRollPlanResult, UseOptionOptions, UseActionOptionOptions } from './engine/index.js';
 export {
   planShortRest,
   planLongRest,
