@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Fix (slice 758): attack affordance fidelity — ranged long range + Extra Attack**
+Two affordance-layer bugs (found by the correctness sweep) where `engine.query.*` disagreed with the attack planner. (1) `weaponRangeFeet` capped ranged reach at `rangeNormal`; the planner allows out to `rangeLong` (attack with Disadvantage), so `legalTargets` omitted legal long-range targets and `availableActions` wrongly said `no-target-in-range`. Now uses `rangeLong ?? rangeNormal`. (2) `availableActions` disabled `attack` the instant the action was used; the planner allows further attacks while `attacksMadeThisTurn < maxAttacksPerAction`, so a Fighter mid-Extra-Attack was shown attack-disabled. Now mirrors `planActionEconomyForAttack` (Dash/Disengage/Dodge keep the once-per-action gate). Query-side only; planner + event shapes unchanged.
+Detail: [slice-758.md](docs/changelog/slice-758.md).
+
 **Fix (slice 757): healing spells can target a dying ally (`legalSpellTargets`) — pattern-fix**
 The pattern-check sibling of slice 756: `legalSpellTargets` routed every creature-target spell through a helper that excluded all 0-HP combatants, so a downed ally was wrongly omitted from a healing spell's legal targets (reviving a dying creature is the primary use of Healing Word / Cure Wounds). `creatureCandidatesInRange` gains an `includeDefeated` flag; `legalSpellTargets` passes `resolves === 'heal'`. Offensive / buff spells unchanged (still exclude the defeated). New test: Healing Word includes a 0-HP creature; Fire Bolt still excludes it.
 Detail: [slice-757.md](docs/changelog/slice-757.md).

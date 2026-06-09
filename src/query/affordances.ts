@@ -256,7 +256,11 @@ export interface TargetCandidate {
 }
 
 // The attacker's effective weapon reach/range in feet, from the
-// main-hand weapon (unarmed = 5 ft melee).
+// main-hand weapon (unarmed = 5 ft melee). For ranged weapons this is the
+// LONG range — an attack to long range is legal (with Disadvantage), and the
+// attack planner's range gate caps at `rangeLong ?? rangeNormal`
+// (assertWeaponInRange). Using normal range here would omit legal long-range
+// targets the planner accepts.
 const weaponRangeFeet = (
   state: CampaignState,
   content: ResolvedContent,
@@ -268,7 +272,7 @@ const weaponRangeFeet = (
   if (def === undefined || def.itemKind !== 'weapon') return UNARMED_REACH_FEET;
   const weapon = def as Weapon;
   if (weapon.attackKind === 'ranged') {
-    return weapon.rangeNormal ?? RANGED_FALLBACK_RANGE_FEET;
+    return weapon.rangeLong ?? weapon.rangeNormal ?? RANGED_FALLBACK_RANGE_FEET;
   }
   return weapon.properties.includes('reach')
     ? MELEE_REACH_FEET + REACH_PROPERTY_BONUS_FEET
@@ -545,18 +549,46 @@ export const availableActions = (
     );
   }
 
+  // Attack uses the multiattack-aware budget (Extra Attack lets a Fighter
+  // attack again after the action is spent), so it can't be gated on
+  // `actionUsed` alone like the once-per-action intents below.
+  const budget = computeActionEconomyBudget({
+    character,
+    itemInstances: state.itemInstances,
+    content,
+    pendingChoices: state.pendingChoices,
+    characters: state.characters,
+  });
+
   // Action-cost intents.
   for (const action of ACTION_INTENTS) {
     if (blocker !== undefined) {
       out.push({ action, enabled: false, reason: blocker });
       continue;
     }
-    if (u.actionUsed) {
-      out.push({ action, enabled: false, reason: 'action-used' });
+    if (action === 'attack') {
+      // Mirror planActionEconomyForAttack: blocked only when the action was
+      // spent on a non-attack (actionUsed with no attacks yet) or the
+      // per-action attack budget is exhausted — NOT merely because the
+      // action is used (a second attack within Extra Attack is legal).
+      if (
+        (u.actionUsed && u.attacksMadeThisTurn === 0) ||
+        u.attacksMadeThisTurn >= budget.maxAttacksPerAction
+      ) {
+        out.push({ action, enabled: false, reason: 'action-used' });
+        continue;
+      }
+      if (legalTargets(state, content, encounterId, combatantId, 'attack').length === 0) {
+        out.push({ action, enabled: false, reason: 'no-target-in-range' });
+        continue;
+      }
+      out.push({ action, enabled: true });
       continue;
     }
-    if (action === 'attack' && legalTargets(state, content, encounterId, combatantId, 'attack').length === 0) {
-      out.push({ action, enabled: false, reason: 'no-target-in-range' });
+    // Dash / Disengage / Dodge — once per action (Action Surge resets
+    // `actionUsed`, so a surged second action re-enables these naturally).
+    if (u.actionUsed) {
+      out.push({ action, enabled: false, reason: 'action-used' });
       continue;
     }
     out.push({ action, enabled: true });
