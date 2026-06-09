@@ -51,6 +51,8 @@ import type { LayOnHandsIntent } from '../engine/plan/lay-on-hands.js';
 import type { AdrenalineRushIntent } from '../engine/plan/adrenaline-rush.js';
 import type { NimbleEscapeIntent } from '../engine/plan/nimble-escape.js';
 import type { FlurryOfBlowsIntent } from '../engine/plan/flurry-of-blows.js';
+import type { InnateSorceryIntent } from '../engine/plan/innate-sorcery.js';
+import type { OffHandAttackIntent } from '../engine/plan/offhand-attack.js';
 
 // ── Named constants ─────────────────────────────────────────────────
 const FIGHTER_CLASS_ID = 'fighter';
@@ -58,6 +60,7 @@ const BARBARIAN_CLASS_ID = 'barbarian';
 const MONK_CLASS_ID = 'monk';
 const BARD_CLASS_ID = 'bard';
 const PALADIN_CLASS_ID = 'paladin';
+const SORCERER_CLASS_ID = 'sorcerer';
 const ORC_SPECIES_ID = 'orc';
 const MONKS_FOCUS_LEVEL = 2;
 
@@ -67,6 +70,9 @@ const KI_RESOURCE = 'ki';
 const BARDIC_INSPIRATION_RESOURCE = 'bardic-inspiration';
 const LAY_ON_HANDS_RESOURCE = 'lay-on-hands';
 const ADRENALINE_RUSH_RESOURCE = 'adrenaline-rush';
+const INNATE_SORCERY_RESOURCE = 'innate-sorcery';
+const INNATE_SORCERY_ACTIVE_CONDITION = 'innate-sorcery-active';
+const WEAPON_LIGHT_PROPERTY = 'light';
 const LAY_ON_HANDS_CURE_POISON_COST = 5; // matches CURE_POISON_COST in lay-on-hands.ts
 const HEAVY_ARMOR_CATEGORY = 'heavy';
 
@@ -88,6 +94,9 @@ const REASON_ALREADY_DISENGAGED = 'already-disengaged';
 // Slice 743: Rage is entered once and persists; you don't re-enter it while
 // already raging (mirrors planRage's guard).
 const REASON_ALREADY_RAGING = 'already-raging';
+// Slice 762: a persistent self "active-state" buff (Innate Sorcery) can't be
+// re-activated while active (mirrors the planner's already-active throw).
+const REASON_ALREADY_ACTIVE = 'already-active';
 
 const DASH_MODE: CunningActionMode = 'dash';
 const DISENGAGE_MODE: CunningActionMode = 'disengage';
@@ -146,7 +155,9 @@ export type BonusActionIntent =
   | LayOnHandsIntent
   | AdrenalineRushIntent
   | NimbleEscapeIntent
-  | FlurryOfBlowsIntent;
+  | FlurryOfBlowsIntent
+  | InnateSorceryIntent
+  | OffHandAttackIntent;
 
 /**
  * Per-option parameters for `bonusActionIntent` / `engine.plan.useOption`.
@@ -164,8 +175,13 @@ interface BonusActionDescriptor {
   readonly id: string;
   readonly label: string;
   readonly target: BonusActionTargetKind;
-  /** Does this character own the feature at all (class / level / statblock)? */
-  readonly owns: (character: Character) => boolean;
+  /**
+   * Does this character own the feature right now? Usually class / level /
+   * species (character alone), but a few options depend on equipped gear
+   * (Off-Hand Attack needs a wielded light weapon), so `state` + `content`
+   * are passed — most descriptors ignore them.
+   */
+  readonly owns: (character: Character, state: CampaignState, content: ResolvedContent) => boolean;
   /** Resource consumed; the option disables when current < resourceMin. */
   readonly resourceId?: string;
   readonly resourceMin?: number;
@@ -250,6 +266,30 @@ const rageReason = (
   return heavyArmorReason(character, state, content);
 };
 
+// Slice 762: Innate Sorcery can't be re-activated while active (mirrors
+// planInnateSorcery's throw; the same already-active shape as Rage).
+const innateSorceryActiveReason = (character: Character): string | undefined =>
+  character.appliedConditions.some((c) => c.conditionId === INNATE_SORCERY_ACTIVE_CONDITION)
+    ? REASON_ALREADY_ACTIVE
+    : undefined;
+
+// Slice 762: Off-Hand Attack is available when the character wields a light
+// weapon (the property planOffHandAttack gates on). Equip-state, so `owns`
+// reads it from state + content.
+const wieldsLightWeapon = (
+  character: Character,
+  state: CampaignState,
+  content: ResolvedContent,
+): boolean => {
+  for (const instanceId of [character.equipped.mainHand, character.equipped.offHand]) {
+    if (instanceId === undefined) continue;
+    const instance = state.itemInstances[instanceId];
+    const def = instance !== undefined ? content.items.get(instance.definitionId) : undefined;
+    if (def?.itemKind === 'weapon' && def.properties.includes(WEAPON_LIGHT_PROPERTY)) return true;
+  }
+  return false;
+};
+
 const REGISTRY: ReadonlyArray<BonusActionDescriptor> = [
   {
     id: 'second-wind',
@@ -267,6 +307,15 @@ const REGISTRY: ReadonlyArray<BonusActionDescriptor> = [
     resourceId: RAGE_RESOURCE,
     extraReason: rageReason,
     toIntent: (id) => ({ type: 'Rage', barbarianId: id }),
+  },
+  {
+    id: 'innate-sorcery',
+    label: 'Innate Sorcery',
+    target: 'self',
+    owns: (c) => hasClass(c, SORCERER_CLASS_ID),
+    resourceId: INNATE_SORCERY_RESOURCE,
+    extraReason: (c) => innateSorceryActiveReason(c),
+    toIntent: (id) => ({ type: 'InnateSorcery', characterId: id }),
   },
   {
     id: 'cunning-action-dash',
@@ -391,6 +440,22 @@ const REGISTRY: ReadonlyArray<BonusActionDescriptor> = [
     }),
   },
   {
+    id: 'off-hand-attack',
+    label: 'Off-Hand Attack',
+    target: 'creature',
+    // Two-weapon fighting: available whenever a light weapon is wielded (the
+    // property planOffHandAttack gates on). Not class-gated.
+    owns: (c, state, content) => wieldsLightWeapon(c, state, content),
+    requiresWeapon: true,
+    targeting: { rangeFeet: UNARMED_REACH_FEET, includeSelf: false, includeDefeated: false },
+    toIntent: (id, params) => ({
+      type: 'OffHandAttack',
+      attackerId: id,
+      targetId: params.targetId as string,
+      weaponInstanceId: params.weaponInstanceId as string,
+    }),
+  },
+  {
     id: 'adrenaline-rush',
     label: 'Adrenaline Rush (Dash)',
     target: 'none',
@@ -480,7 +545,7 @@ export const bonusActions = (
 
   const out: BonusActionOption[] = [];
   for (const d of REGISTRY) {
-    if (!d.owns(character)) continue;
+    if (!d.owns(character, state, content)) continue;
     const reason = disabledReason(d, ctx);
     const requiresAmount = d.requiresAmount === true;
     // The spendable pool for a metered option: the current value of its

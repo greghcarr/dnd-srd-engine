@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Feat (slice 762): bonus-action registry — Innate Sorcery + Off-Hand Attack**
+Adds the two cleanly-fitting bonus-action features the completeness sweep found missing from `bonusActions` (drivable but undiscoverable). Innate Sorcery (Sorcerer self-buff, spends `innate-sorcery`, disabled `already-active` while active) + Off-Hand Attack (two-weapon, creature target, available when wielding a `light` weapon — so the descriptor's `owns` was widened to `(character, state, content)` to read equipped gear). `InnateSorcery` added to the `planIntent` dispatch (useOption routes it) and removed from the planner-wiring allowlist; `OffHandAttack` was already dispatched. Deferred (need param-bag extensions): Paladin's Smite (slot + triggering attack), Conjure Pact Weapon (weapon-definition choice), Clouds Jaunt (destination); Metamagic excluded (a spell-cast modifier, not a menu action).
+Detail: [slice-762.md](docs/changelog/slice-762.md).
+
 **Fix (slice 761): bonusActions gates on the encounter being active**
 `isActiveTurn` didn't check `encounter.status`, so in a created-but-not-started ('planning') encounter — `activeIndex` 0, no `activeEncounterId` — combatant 0 looked "active" and the encounter-only options (Cunning Action, Flurry, etc.) showed enabled, but their planners throw "only in an active encounter." Now requires `status === 'active'`. Verified with a planner cross-check. Query-side only.
 Detail: [slice-761.md](docs/changelog/slice-761.md).

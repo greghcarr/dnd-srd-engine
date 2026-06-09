@@ -105,7 +105,9 @@ const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
   // Special-cast / placed-entity / multi-arg spell planners:
   'magicWeapon', 'removeCurse', 'mistyStep', 'thunderStep', 'dimensionDoor',
   'silentImage', 'majorImage', 'clairvoyance', 'scrying', 'arcaneEye', 'divineIntervention',
-  'innateSorcery', 'selfRestoration',
+  // Slice 762: innateSorcery moved to the performIntent dispatch (it's now a
+  // bonusActions menu option routed via useOption), so it's no longer here.
+  'selfRestoration',
   // Sensor / illusion management:
   'switchSensorMode', 'moveSensor', 'removeSensor', 'investigateIllusion', 'dismissIllusion',
   // Transformations (code-handler escape hatch shape):

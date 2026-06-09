@@ -62,6 +62,11 @@ const paladin = (pool = 5): Character =>
   });
 const wizard = (): Character =>
   base({ classes: [{ classId: 'wizard', level: 3, hitDiceRemaining: 3 }] });
+const sorcerer = (innate = 1): Character =>
+  base({
+    classes: [{ classId: 'sorcerer', level: 1, hitDiceRemaining: 1 }],
+    resources: [{ resourceId: 'innate-sorcery', current: innate, max: 2 }],
+  });
 const orc = (rush = 2): Character =>
   base({
     speciesId: 'orc',
@@ -694,5 +699,73 @@ describe('slice 761: bonus actions in a not-started (planning) encounter', () =>
     expect(() =>
       engine.plan.useOption(campaign.state, { combatantId: r.id, optionId: 'cunning-action-dash' }),
     ).toThrow();
+  });
+});
+
+// Slice 762: two more bonus-action features in the registry — Innate Sorcery
+// (Sorcerer self-buff) and Off-Hand Attack (two-weapon, equip-gated).
+describe('slice 762: Innate Sorcery + Off-Hand Attack', () => {
+  it('Sorcerer: Innate Sorcery (self) enabled, and useOption activates it', () => {
+    const sorc = sorcerer();
+    const s = setup([sorc], sorc.id);
+    expect(byId(s, sorc.id)['innate-sorcery']).toMatchObject({
+      target: 'self',
+      enabled: true,
+      requiresAmount: false,
+    });
+    const events = s.engine.plan
+      .useOption(s.campaign.state, { combatantId: sorc.id, optionId: 'innate-sorcery' })
+      .events;
+    expect(
+      events.some((e) => e.type === 'ConditionApplied' && (e as { conditionId?: string }).conditionId === 'innate-sorcery-active'),
+    ).toBe(true);
+  });
+
+  it('Innate Sorcery is disabled (already-active) while the condition is present', () => {
+    const sorc = base({
+      classes: [{ classId: 'sorcerer', level: 1, hitDiceRemaining: 1 }],
+      resources: [{ resourceId: 'innate-sorcery', current: 1, max: 2 }],
+      appliedConditions: [{ id: newAppliedConditionId(), conditionId: 'innate-sorcery-active' }],
+    });
+    const s = setup([sorc], sorc.id);
+    expect(byId(s, sorc.id)['innate-sorcery']).toMatchObject({ enabled: false, reason: 'already-active' });
+  });
+
+  it('Off-Hand Attack appears only when wielding a light weapon; useOption strikes', () => {
+    const dagger = makeItemInstance('dagger'); // light
+    const ftr = base({
+      classes: [{ classId: 'fighter', level: 1, hitDiceRemaining: 1 }],
+      inventory: [dagger.id],
+      equipped: { mainHand: dagger.id, attuned: [] },
+    });
+    const foe = wizard();
+    const s = setup([ftr, foe], ftr.id);
+    s.campaign = commit(s.campaign, [
+      { id: eventId(), at: isoTimestamp(), type: 'ItemAcquired', instance: dagger },
+    ]);
+    expect(byId(s, ftr.id)['off-hand-attack']).toMatchObject({ target: 'creature', enabled: true });
+    const events = s.engine.plan
+      .useOption(s.campaign.state, {
+        combatantId: ftr.id,
+        optionId: 'off-hand-attack',
+        targetId: foe.id,
+        weaponInstanceId: dagger.id,
+      })
+      .events;
+    expect(events.some((e) => e.type === 'AttackRolled')).toBe(true);
+  });
+
+  it('Off-Hand Attack is absent without a light weapon (longsword only)', () => {
+    const sword = makeItemInstance('longsword'); // not light
+    const ftr = base({
+      classes: [{ classId: 'fighter', level: 1, hitDiceRemaining: 1 }],
+      inventory: [sword.id],
+      equipped: { mainHand: sword.id, attuned: [] },
+    });
+    const s = setup([ftr], ftr.id);
+    s.campaign = commit(s.campaign, [
+      { id: eventId(), at: isoTimestamp(), type: 'ItemAcquired', instance: sword },
+    ]);
+    expect(byId(s, ftr.id)['off-hand-attack']).toBeUndefined();
   });
 });
