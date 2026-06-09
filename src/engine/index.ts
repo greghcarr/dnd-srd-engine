@@ -350,8 +350,8 @@ import {
   reactionsForTrigger as queryReactionsForTrigger,
 } from '../query/reactions.js';
 import type { ReactionOption, CorrelatedReaction } from '../query/reactions.js';
-import { actionOptions as queryActionOptions, actionIntent as buildActionIntent } from '../query/action-options.js';
-import type { ActionOption } from '../query/action-options.js';
+import { actionOptions as queryActionOptions, actionTargets as queryActionTargets, actionIntent as buildActionIntent } from '../query/action-options.js';
+import type { ActionOption, ActionTarget } from '../query/action-options.js';
 import type { BonusActionOption, BonusActionTarget } from '../query/bonus-actions.js';
 import { HANDLER_API_VERSION } from '../handlers/index.js';
 import { assertActorCanAct } from './plan/_actor-state.js';
@@ -786,6 +786,17 @@ export interface Engine {
       encounterId: string,
       combatantId: string,
     ): ReadonlyArray<ActionOption>;
+    /**
+     * Slice 771: the legal targets for a creature-target action option
+     * (Grapple / Shove / Help / Divine Spark) — the `bonusActionTargets`
+     * sibling for the Action menu. Returns [] for a non-creature option.
+     */
+    actionTargets(
+      state: CampaignState,
+      encounterId: string,
+      combatantId: string,
+      optionId: string,
+    ): ReadonlyArray<ActionTarget>;
   };
 }
 
@@ -1393,6 +1404,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     actionOptions(state, encounterId, combatantId) {
       return queryActionOptions(state, content, encounterId, combatantId);
+    },
+    actionTargets(state, encounterId, combatantId, optionId) {
+      return queryActionTargets(state, encounterId, combatantId, optionId);
     },
   };
 

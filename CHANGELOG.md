@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Feat (slice 771): actionTargets query — target enumeration for creature-target actions**
+The `bonusActionTargets` sibling for the Action menu. New `engine.query.actionTargets(state, encounterId, combatantId, optionId)` → `{ combatantId, position? }[]` for Grapple / Shove (5 ft) / Help (no range filter — consumer-managed) / Divine Spark (30 ft, self + the dying for heal mode). The shared enumerator was factored into `src/query/_targeting.ts` (`creatureTargetsInReach`, `CreatureTargeting` with optional `rangeFeet`); `bonusActionTargets` refactored to delegate to it (behavior unchanged). Additive query surface.
+Detail: [slice-771.md](docs/changelog/slice-771.md).
+
 **Fix (slice 770): encounter-view surfaces hp.maxBonus**
 The last unfixed finding from the affordance-correctness sweep. `buildEncounterView`'s `CombatantView.hp` reported `{ current, max, temp }` from the raw `hp.max`, omitting `hp.maxBonus` — so a combatant under a max-HP buff (Aid) showed the unbuffed maximum and a tracker couldn't reconcile `current > max`. `hp` now carries `maxBonus` (displayed max = `max + maxBonus`). Additive read-model field.
 Detail: [slice-770.md](docs/changelog/slice-770.md).

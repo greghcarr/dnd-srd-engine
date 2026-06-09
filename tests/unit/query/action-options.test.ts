@@ -210,3 +210,64 @@ describe('slice 769: Channel Divinity actions (Divine Spark + Turn Undead)', () 
     expect(byId['turn-undead']).toMatchObject({ enabled: false, reason: 'no-uses' });
   });
 });
+
+// Slice 771: actionTargets — target enumeration for the creature-target actions.
+const setupPositioned = (placed: ReadonlyArray<{ char: Character; pos: { x: number; y: number } }>, activeId: string): Setup => {
+  const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(1) });
+  let campaign: Campaign = engine.createCampaign({ name: 'at' });
+  campaign = commit(campaign, placed.map((p) => ({ id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: p.char }) satisfies CharacterCreatedEvent));
+  const enc = engine.plan.createEncounter(campaign.state, { name: 'arena', combatants: placed.map((p) => ({ characterId: p.char.id, position: p.pos })) });
+  campaign = commit(campaign, enc.events);
+  campaign = commit(campaign, [
+    { id: eventId(), at: isoTimestamp(), type: 'InitiativeRolled', encounterId: enc.encounterId as ULID,
+      rolls: placed.map((p) => ({ combatantId: p.char.id as ULID, d20: p.char.id === activeId ? 20 : 5, modifier: 0, total: p.char.id === activeId ? 20 : 5 })) } satisfies InitiativeRolledEvent,
+  ]);
+  campaign = commit(campaign, engine.plan.startEncounter(campaign.state, { encounterId: enc.encounterId }).events);
+  campaign = commit(campaign, engine.plan.beginFirstTurn(campaign.state, { encounterId: enc.encounterId }).events);
+  return { engine, campaign, encounterId: enc.encounterId };
+};
+const downed = (): Character => fighter({ name: 'Downed', hp: { current: 0, max: 20, temp: 0, maxBonus: 0 } });
+
+describe('slice 771: actionTargets', () => {
+  it('Grapple/Shove: creatures within 5 ft, excludes self + the far one', () => {
+    const f = fighter({ name: 'Brute' });
+    const adj = fighter({ name: 'Adj' });
+    const far = fighter({ name: 'Far' });
+    const s = setupPositioned([{ char: f, pos: { x: 0, y: 0 } }, { char: adj, pos: { x: 5, y: 0 } }, { char: far, pos: { x: 30, y: 0 } }], f.id);
+    for (const opt of ['grapple', 'shove']) {
+      const ids = s.engine.query.actionTargets(s.campaign.state, s.encounterId, f.id, opt).map((t) => t.combatantId);
+      expect(ids).toContain(adj.id);
+      expect(ids).not.toContain(far.id);
+      expect(ids).not.toContain(f.id); // not self
+    }
+  });
+
+  it('Help: no range filter (consumer-managed), excludes self', () => {
+    const f = fighter({ name: 'Helper' });
+    const adj = fighter({ name: 'Adj' });
+    const far = fighter({ name: 'Far' });
+    const s = setupPositioned([{ char: f, pos: { x: 0, y: 0 } }, { char: adj, pos: { x: 5, y: 0 } }, { char: far, pos: { x: 30, y: 0 } }], f.id);
+    const ids = s.engine.query.actionTargets(s.campaign.state, s.encounterId, f.id, 'help').map((t) => t.combatantId);
+    expect(ids).toContain(adj.id);
+    expect(ids).toContain(far.id); // no range filter
+    expect(ids).not.toContain(f.id);
+  });
+
+  it('Divine Spark: within 30 ft incl. self and a dying ally, excludes the far one', () => {
+    const c = cleric();
+    const dying = downed();
+    const far = fighter({ name: 'Far' });
+    const s = setupPositioned([{ char: c, pos: { x: 0, y: 0 } }, { char: dying, pos: { x: 10, y: 0 } }, { char: far, pos: { x: 40, y: 0 } }], c.id);
+    const ids = s.engine.query.actionTargets(s.campaign.state, s.encounterId, c.id, 'divine-spark').map((t) => t.combatantId);
+    expect(ids).toContain(c.id); // self (self-heal)
+    expect(ids).toContain(dying.id); // a 0-HP ally (heal mode)
+    expect(ids).not.toContain(far.id); // beyond 30 ft
+  });
+
+  it('returns [] for a non-creature option and an unknown id', () => {
+    const f = fighter();
+    const s = setup([f], f.id);
+    expect(s.engine.query.actionTargets(s.campaign.state, s.encounterId, f.id, 'search')).toEqual([]);
+    expect(s.engine.query.actionTargets(s.campaign.state, s.encounterId, f.id, 'no-such')).toEqual([]);
+  });
+});

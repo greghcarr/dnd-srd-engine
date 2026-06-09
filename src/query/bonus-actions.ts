@@ -32,7 +32,7 @@ import type { CampaignState } from '../schemas/runtime/campaign.js';
 import type { ResolvedContent } from '../content/pack.js';
 import type { Character } from '../schemas/runtime/character.js';
 import type { Position } from '../schemas/runtime/encounter.js';
-import { chebyshevDistance } from '../engine/plan/movement.js';
+import { creatureTargetsInReach, type CreatureTargeting, type CreatureTarget } from './_targeting.js';
 // The same precondition predictor `availableActions` uses: returns the
 // blocking-condition id (incapacitated / stunned / ...) or undefined.
 import { findActorBlockingCondition } from '../engine/plan/_actor-state.js';
@@ -142,12 +142,10 @@ export interface BonusActionOption {
 /**
  * Slice 756: a legal target for a creature-target bonus-action option, from
  * `bonusActionTargets`. `position` is present when the combatant is placed
- * (feet); absent in positionless encounters.
+ * (feet); absent in positionless encounters. (Alias of the shared
+ * `CreatureTarget` since slice 771.)
  */
-export interface BonusActionTarget {
-  readonly combatantId: string;
-  readonly position?: Position;
-}
+export type BonusActionTarget = CreatureTarget;
 
 /** The intent union `bonusActionIntent` produces for `useOption` dispatch. */
 export type BonusActionIntent =
@@ -220,24 +218,12 @@ interface BonusActionDescriptor {
   readonly requires?: ReadonlyArray<keyof BonusActionParams>;
   /**
    * Targeting rules for a `target: 'creature'` option, consumed by
-   * `bonusActionTargets`. Every creature-target descriptor MUST set this
-   * (enforced by the bonus-actions audit) so the consumer can render a
-   * target picker; non-creature options leave it undefined.
+   * `bonusActionTargets` (the shared `CreatureTargeting`). Every creature-target
+   * descriptor MUST set this (enforced by the bonus-actions audit) so the
+   * consumer can render a target picker; non-creature options leave it undefined.
    */
-  readonly targeting?: BonusActionTargeting;
+  readonly targeting?: CreatureTargeting;
   readonly toIntent: (combatantId: string, params: BonusActionParams) => BonusActionIntent;
-}
-
-interface BonusActionTargeting {
-  /** Reach in feet (chebyshev). Touch / unarmed reach = 5; Bardic = 60. */
-  readonly rangeFeet: number;
-  /** May the option target the caster (beneficial self-targets like a heal)? */
-  readonly includeSelf: boolean;
-  /**
-   * Include creatures at 0 HP? A heal/cure can target a dying ally (its
-   * primary use); an offensive / inspiration option cannot benefit one.
-   */
-  readonly includeDefeated: boolean;
 }
 
 const hasClass = (character: Character, classId: string): boolean =>
@@ -636,27 +622,7 @@ export const bonusActionTargets = (
 ): ReadonlyArray<BonusActionTarget> => {
   const d = REGISTRY.find((x) => x.id === optionId);
   if (d === undefined || d.target !== 'creature' || d.targeting === undefined) return [];
-  const encounter = state.encounters[encounterId];
-  const self = encounter?.combatants.find((c) => c.combatantId === combatantId);
-  if (encounter === undefined || self === undefined) return [];
-  const { rangeFeet, includeSelf, includeDefeated } = d.targeting;
-  const selfPos = self.position;
-
-  const out: BonusActionTarget[] = [];
-  for (const cb of encounter.combatants) {
-    const isSelf = cb.combatantId === combatantId;
-    if (isSelf && !includeSelf) continue;
-    if (!includeDefeated && (state.characters[cb.combatantId]?.hp.current ?? 1) <= 0) continue;
-    // Range gate (chebyshev, feet): self is always in reach; other targets
-    // gate only when both positions are known.
-    if (!isSelf && selfPos !== undefined && cb.position !== undefined
-      && chebyshevDistance(selfPos, cb.position) > rangeFeet) {
-      continue;
-    }
-    out.push({ combatantId: cb.combatantId, ...(cb.position !== undefined ? { position: cb.position } : {}) });
-  }
-  out.sort((a, b) => (a.combatantId < b.combatantId ? -1 : a.combatantId > b.combatantId ? 1 : 0));
-  return out;
+  return creatureTargetsInReach(state, encounterId, combatantId, d.targeting);
 };
 
 // ── bonusActionIntent (dispatch builder) ────────────────────────────

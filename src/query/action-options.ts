@@ -35,6 +35,7 @@ import type { ReadyIntent } from '../engine/plan/ready.js';
 import type { ActionSurgeIntent } from '../engine/plan/action-surge.js';
 import type { TurnUndeadIntent } from '../engine/plan/turn-undead.js';
 import type { DivineSparkIntent } from '../engine/plan/divine-spark.js';
+import { creatureTargetsInReach, type CreatureTargeting, type CreatureTarget } from './_targeting.js';
 
 const REASON_NOT_YOUR_TURN = 'not-your-turn';
 const REASON_ACTION_USED = 'action-used';
@@ -46,6 +47,9 @@ const CHANNEL_DIVINITY_RESOURCE = 'channel-divinity';
 
 // ── Public types ────────────────────────────────────────────────────
 export type ActionOptionTargetKind = 'none' | 'self' | 'creature';
+
+/** A legal target for a creature-target action, from `actionTargets`. */
+export type ActionTarget = CreatureTarget;
 
 export interface ActionOption {
   /** Stable id — pass back to `actionIntent({ optionId })`. */
@@ -113,6 +117,12 @@ interface ActionDescriptor {
    * after the action is spent (matching planActionSurge).
    */
   readonly costsAction?: boolean;
+  /**
+   * Targeting rules for a `target: 'creature'` action, consumed by
+   * `actionTargets` (the shared `CreatureTargeting`). Creature-target actions
+   * set this; others leave it undefined.
+   */
+  readonly targeting?: CreatureTargeting;
   readonly toIntent: (combatantId: string, params: ActionParams) => ActionIntent;
 }
 
@@ -162,6 +172,8 @@ const REGISTRY: ReadonlyArray<ActionDescriptor> = [
     label: 'Grapple',
     target: 'creature',
     requires: ['targetId'],
+    // Melee reach; a living creature you can reach.
+    targeting: { rangeFeet: 5, includeSelf: false, includeDefeated: false },
     toIntent: (id, p) =>
       ({ type: 'Grapple', attackerId: id, targetId: p.targetId as string, ...opt('targetAbility', p.targetAbility) }) as GrappleIntent,
   },
@@ -170,6 +182,7 @@ const REGISTRY: ReadonlyArray<ActionDescriptor> = [
     label: 'Shove',
     target: 'creature',
     requires: ['targetId', 'mode'],
+    targeting: { rangeFeet: 5, includeSelf: false, includeDefeated: false },
     toIntent: (id, p) => ({ type: 'Shove', attackerId: id, targetId: p.targetId as string, mode: p.mode as 'prone' | 'push' }) as ShoveIntent,
   },
   {
@@ -177,6 +190,9 @@ const REGISTRY: ReadonlyArray<ActionDescriptor> = [
     label: 'Help',
     target: 'creature',
     requires: ['targetId', 'mode'],
+    // Never yourself; the 5-ft (attack) / see-and-hear (check) gate is
+    // consumer-managed (planHelp doesn't range-check), so no range filter here.
+    targeting: { includeSelf: false, includeDefeated: false },
     toIntent: (id, p) => ({ type: 'Help', helperId: id, targetId: p.targetId as string, mode: p.mode as 'attack' | 'check' }) as HelpIntent,
   },
   {
@@ -204,6 +220,9 @@ const REGISTRY: ReadonlyArray<ActionDescriptor> = [
     owns: (c) => hasClass(c, CLERIC_CLASS_ID),
     resourceId: CHANNEL_DIVINITY_RESOURCE,
     requires: ['targetId', 'mode'],
+    // 30 ft; self allowed (self-heal) and the dying included (heal mode revives
+    // a downed ally — the consumer picks mode + target, the planner validates).
+    targeting: { rangeFeet: 30, includeSelf: true, includeDefeated: true },
     toIntent: (id, p) => ({ type: 'DivineSpark', clericId: id, targetId: p.targetId as string, mode: p.mode as 'heal' | 'damage' }) as DivineSparkIntent,
   },
   {
@@ -276,4 +295,22 @@ export const actionIntent = (
     if (params[key] === undefined) throw new Error(`Action option '${optionId}' requires a ${key}`);
   }
   return d.toIntent(combatantId, params);
+};
+
+// ── actionTargets (target enumeration) ──────────────────────────────
+//
+// The legal targets for a creature-target action (Grapple / Shove / Help /
+// Divine Spark), honoring the option's reach + self / defeated rules. The
+// `bonusActionTargets` sibling for the Action menu; returns [] for a
+// non-creature option or an unknown id. Range is chebyshev on positions
+// (positionless → no range filter); the planner is authoritative.
+export const actionTargets = (
+  state: CampaignState,
+  encounterId: string,
+  combatantId: string,
+  optionId: string,
+): ReadonlyArray<ActionTarget> => {
+  const d = REGISTRY.find((x) => x.id === optionId);
+  if (d === undefined || d.target !== 'creature' || d.targeting === undefined) return [];
+  return creatureTargetsInReach(state, encounterId, combatantId, d.targeting);
 };

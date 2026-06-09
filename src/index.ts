@@ -321,6 +321,7 @@ export {
   availableReactions,
   reactionsForTrigger,
   actionOptions,
+  actionTargets,
   actionIntent,
 } from './query/index.js';
 // Slice 706 (A3): tactical enemy AI policy, graduated from scripts/ so
@@ -359,6 +360,7 @@ export type {
   ReactionIntent,
   CorrelatedReaction,
   ActionOption,
+  ActionTarget,
   ActionOptionTargetKind,
   ActionIntent,
   ActionParams,
