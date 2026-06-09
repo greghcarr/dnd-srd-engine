@@ -27,6 +27,7 @@ export {
   hasStonesEndurance,
   shouldShield,
   shouldCuttingWords,
+  shouldCounterspell,
   type DamageReaction,
   type IncomingDamage,
   type PhysicalDamageType,

@@ -80,6 +80,23 @@ describe('golden: pre-damage reactions (slice 750)', () => {
     expect(preventedAndClean, 'anchor produced no clean Shield prevention').toBeGreaterThan(0);
   });
 
+  it('Counterspell fires on a deterministic anchor (seed 16, L5, 2v2 PC): the countered spell\'s effects are omitted', () => {
+    const events = runBattle({ seed: 16, pack: STARTER, level: 5, teamSize: 2, vs: 'pc', reactions: 'auto' })
+      .campaign.events;
+    const countered = events.filter((e) => e.type === 'SpellCountered');
+    expect(countered.length, 'anchor produced no Counterspell').toBeGreaterThan(0);
+    // No damage between the countered cast's declaration and the counter.
+    for (let i = 0; i < events.length; i += 1) {
+      const e = events[i]!;
+      if (e.type !== 'SpellCountered') continue;
+      const declIdx = events.findIndex((x) => x.id === (e as { originalSpellEventId: string }).originalSpellEventId);
+      const leaked = events
+        .slice(declIdx + 1, i)
+        .some((x) => x.type === 'DamageRolled' || x.type === 'DamageApplied');
+      expect(leaked, 'countered spell leaked damage').toBe(false);
+    }
+  });
+
   it('Cutting Words fires on a deterministic anchor (seed 7, L3, 2v2 PC): a reaction paired with a Bardic Inspiration spend', () => {
     const events = runBattle({ seed: 7, pack: STARTER, level: 3, teamSize: 2, vs: 'pc', reactions: 'auto' })
       .campaign.events;

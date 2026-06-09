@@ -15,7 +15,7 @@ import { normalizeEvents } from '../fixtures/index.js';
 
 const STARTER = loadStarterPack();
 const SEEDS = [1, 2, 3, 7, 42];
-const REACTION_EVENT_TYPES = ['UncannyDodgeUsed', 'DeflectAttacksUsed'];
+const REACTION_EVENT_TYPES = ['UncannyDodgeUsed', 'DeflectAttacksUsed', 'SpellCountered'];
 
 describe('combat-fuzz default reactions guard (slice 749)', () => {
   it('default path (reactions omitted) emits no damage-mitigation reaction events', () => {
@@ -27,6 +27,21 @@ describe('combat-fuzz default reactions guard (slice 749)', () => {
       const types = campaign.events.map((e) => e.type);
       for (const reactionType of REACTION_EVENT_TYPES) {
         expect(types, `seed=${seed} default emitted ${reactionType}`).not.toContain(reactionType);
+      }
+    }
+  });
+
+  it('default build does not inject Counterspell into any character (slice 751 build is auto-gated)', () => {
+    // The RAW-faithful Counterspell prep is added only under reactions:'auto'
+    // at L5+. The default build (and thus the CharacterCreated snapshots) must
+    // be unchanged, or byte-identity with the pre-slice path breaks.
+    for (const seed of SEEDS) {
+      const { campaign } = runBattle({ seed, pack: STARTER, level: 7, teamSize: 2 });
+      for (const character of Object.values(campaign.state.characters)) {
+        expect(
+          character.preparedSpells,
+          `seed=${seed} ${character.name} has Counterspell prepared under the default`,
+        ).not.toContain('counterspell');
       }
     }
   });

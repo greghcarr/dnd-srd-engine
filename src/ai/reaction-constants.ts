@@ -33,3 +33,7 @@ export const SHIELD_SPELL_ID = 'shield';
 export const SHIELD_AC_BONUS = 5;
 export const SHIELD_CASTER_CLASS_IDS: readonly string[] = ['wizard', 'sorcerer'];
 export const BARD_CLASS_ID = 'bard';
+
+// Counterspell (slice 751). The spell a prepared arcane caster uses to
+// counter another spell; the engine needs a 3rd-level slot to cast it.
+export const COUNTERSPELL_SPELL_ID = 'counterspell';

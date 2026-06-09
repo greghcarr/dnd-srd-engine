@@ -31,6 +31,7 @@ import {
   SHIELD_AC_BONUS,
   SHIELD_CASTER_CLASS_IDS,
   BARD_CLASS_ID,
+  COUNTERSPELL_SPELL_ID,
 } from './reaction-constants.js';
 
 export type PhysicalDamageType = 'bludgeoning' | 'piercing' | 'slashing';
@@ -129,3 +130,13 @@ export const shouldCuttingWords = (
   if (attackTotal < targetAC) return false;
   return attackTotal - bardicInspirationDieFor(bardClass.level) < targetAC;
 };
+
+// A caster should Counterspell when they have it prepared and the incoming
+// spell is leveled (a cantrip isn't worth a 3rd-level slot, and the fuzz's
+// counter always spends a 3rd-level slot). The 3rd-level slot + reaction
+// economy are enforced by the engine planner / the resolver's slot check.
+export const shouldCounterspell = (
+  counterCaster: Character,
+  originalSlotLevel: number,
+): boolean =>
+  originalSlotLevel >= 1 && counterCaster.preparedSpells.includes(COUNTERSPELL_SPELL_ID);

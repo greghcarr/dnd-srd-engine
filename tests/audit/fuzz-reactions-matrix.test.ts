@@ -83,3 +83,34 @@ describe('fuzz pre-damage reaction window (slice 750)', () => {
     expect(prevented, 'no Shield prevention fired across the shield seeds').toBeGreaterThan(0);
   });
 });
+
+// Slice 751: the spell-cast reaction window. A counter-caster (Wizard/
+// Sorcerer with Counterspell prepared under 'auto' + a 3rd-level slot)
+// counters a leveled spell, omitting its effects. L5 2v2-PC seeds field
+// arcane casters on both sides.
+const COUNTER_SEEDS = Array.from({ length: 20 }, (_, i) => i + 1);
+
+describe('fuzz spell-cast reaction window (slice 751)', () => {
+  it('Counterspell fires, omits the countered spell\'s effects (no damage between the cast and the counter), and replays equivalently', () => {
+    let countered = 0;
+    for (const seed of COUNTER_SEEDS) {
+      const r = runBattle({ seed, pack: STARTER, level: 5, teamSize: 2, vs: 'pc', reactions: 'auto' });
+      const events = r.campaign.events;
+      expect(JSON.stringify(replay(events)), `seed=${seed} replay mismatch`).toBe(
+        JSON.stringify(r.campaign.state),
+      );
+      for (let i = 0; i < events.length; i += 1) {
+        const e = events[i]!;
+        if (e.type !== 'SpellCountered') continue;
+        countered += 1;
+        const declIdx = events.findIndex((x) => x.id === (e as { originalSpellEventId: string }).originalSpellEventId);
+        for (let j = declIdx + 1; j < i; j += 1) {
+          const t = events[j]!.type;
+          const leaked = t === 'DamageRolled' || t === 'DamageApplied';
+          expect(leaked, `seed=${seed} countered spell leaked damage before the counter`).toBe(false);
+        }
+      }
+    }
+    expect(countered, 'no Counterspell fired across the counter seeds').toBeGreaterThan(0);
+  });
+});

@@ -25,6 +25,13 @@ import { emitTacticalSetup } from './tactical/setup.js';
 import { makeTacticalMovePolicy } from './tactical/move-policy.js';
 import { makeAutoReactionPolicy } from './reactions/reaction-policy.js';
 import { resolveAttackWithReactions } from './reactions/pre-damage-policy.js';
+import { resolveCastWithCounterspell } from './reactions/pre-cast-policy.js';
+import { COUNTERSPELL_SPELL_ID } from '../src/ai/reaction-constants.js';
+
+// Slice 751: the level at which a full caster has 3rd-level slots and can
+// thus cast Counterspell. Below this, the reaction can't fire, so the
+// RAW-faithful prepared injection is skipped.
+const COUNTERSPELL_MIN_LEVEL = 5;
 
 export const MAX_ROUNDS = 20;
 const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8] as const;
@@ -453,6 +460,12 @@ const buildL1 = (
   // back to the random pick. All downstream draws come from the chosen
   // pool, so they're deterministic for a given (rng stream, forcedClassId).
   forcedClassId?: string,
+  // Slice 751: under reactions:'auto' at L5+, a Wizard/Sorcerer prepares
+  // Counterspell so the spell-cast reaction window is RAW-faithful (the
+  // reaction gates on preparedSpells.includes('counterspell')). Default
+  // false keeps the 'none' / sub-L5 build (and its CharacterCreated
+  // snapshot) byte-identical.
+  includeCounterspell = false,
 ): BuiltCharacter => {
   const drawnPool = pickRandom(CLASS_POOLS, rngFloat());
   const pool =
@@ -534,6 +547,11 @@ const buildL1 = (
     identifiedByCharacterIds: [],
   };
 
+  const counterspellPrep =
+    includeCounterspell && (build.classId === 'wizard' || build.classId === 'sorcerer')
+      ? [COUNTERSPELL_SPELL_ID]
+      : [];
+
   const character = CharacterSchema.parse({
     id: newCharacterId(),
     name,
@@ -554,8 +572,8 @@ const buildL1 = (
       ...(shieldInstance ? { shield: shieldInstance.id } : {}),
       attuned: [],
     },
-    knownSpells: [...build.cantrips, ...build.l1Spells],
-    preparedSpells: [...build.cantrips, ...build.l1Spells],
+    knownSpells: [...build.cantrips, ...build.l1Spells, ...counterspellPrep],
+    preparedSpells: [...build.cantrips, ...build.l1Spells, ...counterspellPrep],
     resources: [...(build.resources ?? []), ...speciesGrantedResources(pack, speciesId)],
     weaponMasteries: MASTERY_CLASSES.has(build.classId) ? [build.weaponId] : [],
   });
@@ -1048,15 +1066,19 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
     pinCursor = (pinCursor * 9301 + 49297) % 233280;
     return pinCursor / 233280;
   };
+  // Slice 751: arcane casters prepare Counterspell only under 'auto' at
+  // L5+ (when they have 3rd-level slots), so the 'none' / sub-L5 builds —
+  // and their CharacterCreated snapshots — stay byte-identical.
+  const includeCounterspell = reactions === 'auto' && level >= COUNTERSPELL_MIN_LEVEL;
   const teamA: BuiltCharacter[] = teamNames('Aria').map((n, i) => {
-    const built = buildL1(n, rngFloat, pack); // always consume the shared draws
+    const built = buildL1(n, rngFloat, pack, undefined, includeCounterspell); // always consume the shared draws
     return i === 0 && pinnedClass !== undefined
-      ? buildL1(n, pinRngFloat, pack, pinnedClass) // isolated rebuild as the pinned class
+      ? buildL1(n, pinRngFloat, pack, pinnedClass, includeCounterspell) // isolated rebuild as the pinned class
       : built;
   });
   const teamB: BuiltCharacter[] = vs === 'monster'
     ? teamNames('Beast').map((n) => buildMonster(n, pack, rngFloat))
-    : teamNames('Bran').map((n) => buildL1(n, rngFloat, pack));
+    : teamNames('Bran').map((n) => buildL1(n, rngFloat, pack, undefined, includeCounterspell));
 
   const now = (offsetSec = 0): string => new Date(Date.UTC(2026, 0, 1, 0, 0, offsetSec)).toISOString();
   let eventCounter = 0;
@@ -1155,6 +1177,9 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
   const reactionPolicy: ReactionPolicy = reactions === 'auto'
     ? makeAutoReactionPolicy()
     : NO_REACTIONS;
+  // Slice 751: the counterspell resolver needs resolved content (for the
+  // 3rd-level-slot check). Resolve once, only in 'auto'.
+  const reactionContent = reactions === 'auto' ? resolveContent([pack]) : undefined;
 
   let rounds = 1;
   let winner: string | null = null;
@@ -1241,6 +1266,24 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
             encounterId: enc.encounterId,
             attackEvents: planned,
             defenderTeam,
+          });
+        } else if (reactions === 'auto' && intent.type === 'CastSpell') {
+          // Slice 751: two-phase cast — plan (uncommitted), run the
+          // spell-cast reaction window (Counterspell), then commit the full
+          // spell or, if countered, the spell's declaration minus its
+          // effects. 'none' keeps the single-phase commit.
+          const planned = planIntent(engine.plan, campaign.state, intent).events;
+          const casterId = intent.characterId as string;
+          const opposingTeam = (teamAIds.has(casterId) ? teamB : teamA).map(
+            (pc) => pc.character.id,
+          );
+          campaign = resolveCastWithCounterspell({
+            engine,
+            content: reactionContent!,
+            campaign,
+            encounterId: enc.encounterId,
+            spellEvents: planned,
+            opposingTeam,
           });
         } else {
           campaign = performIntent(engine, campaign, intent);

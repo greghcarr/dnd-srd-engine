@@ -11,6 +11,7 @@ import {
   hasStonesEndurance,
   shouldShield,
   shouldCuttingWords,
+  shouldCounterspell,
   type IncomingDamage,
 } from '../../../src/ai/reactions.js';
 import { REACTION_MIN_DAMAGE } from '../../../src/ai/reaction-constants.js';
@@ -127,5 +128,23 @@ describe('shouldCuttingWords (slice 750)', () => {
     expect(shouldCuttingWords(bardWithBI(3), 12, 14)).toBe(false); // 12 < 14 (missed already)
     expect(shouldCuttingWords(withClass('bard', 3), 15, 14)).toBe(false); // no BI die
     expect(shouldCuttingWords(withClass('fighter', 3, { resources: [{ resourceId: 'bardic-inspiration', current: 1, max: 1 }] }), 15, 14)).toBe(false);
+  });
+});
+
+describe('shouldCounterspell (slice 751)', () => {
+  const wizardWithCounterspell = (): Character =>
+    withClass('wizard', 5, { preparedSpells: ['counterspell'] });
+
+  it('fires when the caster has Counterspell prepared and the spell is leveled', () => {
+    expect(shouldCounterspell(wizardWithCounterspell(), 1)).toBe(true);
+    expect(shouldCounterspell(wizardWithCounterspell(), 3)).toBe(true);
+  });
+
+  it('declines against a cantrip (slot level 0)', () => {
+    expect(shouldCounterspell(wizardWithCounterspell(), 0)).toBe(false);
+  });
+
+  it('declines without Counterspell prepared', () => {
+    expect(shouldCounterspell(withClass('wizard', 5), 1)).toBe(false);
   });
 });
