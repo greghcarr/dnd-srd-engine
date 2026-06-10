@@ -2357,7 +2357,7 @@
     { "id": "true-strike", "name": "True Strike", "level": 0, "school": "divination", "castingTime": "Action", "range": "Self", "components": { "somatic": true, "material": "a weapon with which you have proficiency and that is worth 1+ CP" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["bard", "sorcerer", "warlock", "wizard"], "mechanicalEffects": [{ "kind": "weaponAttack" }] },
     { "id": "vicious-mockery", "name": "Vicious Mockery", "level": 0, "school": "enchantment", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["bard"], "mechanicalEffects": [{ "kind": "save", "ability": "WIS", "damageDice": "1d6", "damageType": "psychic", "cantripScalingDice": "1d6", "conditionOnFail": "viciously-mocked", "applyConditionSourceFromTarget": true }] },
     { "id": "charm-person", "name": "Charm Person", "level": 1, "school": "enchantment", "castingTime": "Action", "range": "30 feet", "components": { "verbal": true, "somatic": true }, "duration": "1 hour", "concentration": false, "ritual": false, "classes": ["bard", "druid", "sorcerer", "warlock", "wizard"], "mechanicalEffects": [{ "kind": "save", "ability": "WIS", "conditionOnFail": "charmed" }] },
-    { "id": "color-spray", "name": "Color Spray", "level": 1, "school": "illusion", "castingTime": "Action", "range": "Self (15-foot cone)", "components": { "verbal": true, "somatic": true, "material": "a pinch of colorful sand" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["bard", "sorcerer", "wizard"], "targeting": { "shape": "cone", "size": 15 }, "mechanicalEffects": [{ "kind": "hp-pool-knockout", "poolDice": "6d10", "extraPoolDicePerSlotLevel": "2d10", "conditionId": "blinded" }] },
+    { "id": "color-spray", "name": "Color Spray", "level": 1, "school": "illusion", "castingTime": "Action", "range": "Self (15-foot cone)", "components": { "verbal": true, "somatic": true, "material": "a pinch of colorful sand" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["bard", "sorcerer", "wizard"], "targeting": { "shape": "cone", "size": 15 }, "mechanicalEffects": [{ "kind": "save", "ability": "CON", "conditionOnFail": "color-sprayed-blinded-active" }] },
     { "id": "dissonant-whispers", "name": "Dissonant Whispers", "level": 1, "school": "enchantment", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["bard"], "mechanicalEffects": [{ "kind": "save", "ability": "WIS", "damageDice": "3d6", "damageType": "psychic", "halfOnSuccess": true, "extraDicePerSlotLevel": 1 }] },
     { "id": "guiding-bolt", "name": "Guiding Bolt", "level": 1, "school": "evocation", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true }, "duration": "1 round", "concentration": false, "ritual": false, "classes": ["cleric"], "mechanicalEffects": [{ "kind": "attack", "attackKind": "ranged", "damageDice": "4d6", "damageType": "radiant", "extraDicePerSlotLevel": 1 }] },
     { "id": "hellish-rebuke", "name": "Hellish Rebuke", "level": 1, "school": "evocation", "castingTime": "Reaction", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["warlock"], "mechanicalEffects": [{ "kind": "save", "ability": "DEX", "damageDice": "2d10", "damageType": "fire", "halfOnSuccess": true, "extraDicePerSlotLevel": 1 }] },
@@ -9425,6 +9425,18 @@
       "endsOn": [],
       "effects": [],
       "recurringSave": { "ability": "WIS", "trigger": "turnEnd", "onSuccess": "removeCondition", "onFail": "escalateToCondition", "escalateToConditionId": "unconscious" }
+    },
+    {
+      "id": "color-sprayed-blinded-active",
+      "name": "Blinded (Color Spray)",
+      "description": "Blinded by Color Spray until the end of the caster's next turn (SRD 5.2.1: 'have the Blinded condition until the end of your next turn'). An Instantaneous spell with a fixed-duration effect — no Concentration, no save-to-end. Carries the base Blinded effects directly (Disadvantage on the bearer's attack rolls; attackers have Advantage), the same shape cockatrice-restrained-active uses for Restrained; the auto-fail sight-dependent-check arm is the same deferred gap as base `blinded` (no sight-check predicate exists). The autoExpiry { afterRounds 1, turnEnd } lifts it at the end of the source caster's next turn (the encounter sweep keys on sourceCharacterId).",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
+        { "kind": "SetAdvantage", "on": "attack", "mode": "disadvantage" },
+        { "kind": "GrantAdvantageToAttackers" }
+      ],
+      "autoExpiry": { "afterRounds": 1, "trigger": "turnEnd" }
     },
     {
       "id": "confused-active",

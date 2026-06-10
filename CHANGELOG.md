@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Fix (slice 784): edition drift — Color Spray is the SRD 5.2.1 CON-save Blinded cone**
+Color Spray shipped the 2014 `hp-pool-knockout` (6d10); SRD 5.2.1 is a 15-ft cone, CON save → Blinded until the end of the caster's next turn (Instantaneous, no Concentration). Now `{ kind: 'save', ability: 'CON', conditionOnFail: 'color-sprayed-blinded-active' }` — a new Blinded variant carrying the base Blinded effects + `autoExpiry { afterRounds: 1, turnEnd }` (lifts at the end of the source caster's next turn). The cone target-selection reuses the consumer `targetIds` seam (the true rasterizer is the separate Area-3 blocker). Closes the last [L7 audit](docs/l7-completion-audit.md) Area 1 row (`color-spray-hp-pool`) — **edition-drift sweep complete (781–784)**. New 4-test slice-784 + spell-coverage update.
+Detail: [slice-784.md](docs/changelog/slice-784.md).
+
 **Fix (slice 783): edition drift — Sleep is the SRD 5.2.1 save/escalation spell**
 Sleep shipped the 2014 `hp-pool-knockout`; SRD 5.2.1 is a WIS save → Incapacitated → repeat → 2nd-fail → Unconscious, Concentration, ends-on-damage, with elves/Exhaustion-immune auto-succeeding. Wired with the existing `escalateToCondition` recurring save (new `sleep-drowsy-active` condition → Unconscious) plus: a small `recurring-save` fix propagating `endsOnDamage` + the concentration link onto the escalated condition; `planSaveMechanic` now stamps the concentration link on save-applied conditions; a new opt-in `SpellSaveMechanicSchema.autoSucceedIfImmuneToConditionId` arm (auto-succeed if immune to the named condition or the spell's own `conditionOnFail`), with Elf Trance modeled as immunity to `sleep-drowsy-active`. Closes the [L7 audit](docs/l7-completion-audit.md) `sleep-hp-pool` row (Area 1). New 8-test slice-783 + spell-coverage update.
 Detail: [slice-783.md](docs/changelog/slice-783.md).

@@ -126,7 +126,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   // PHB 2024 L1 spells with wired mechanics
   'cause-fear': { kind: 'save' },
   'charm-person': { kind: 'save' },
-  'color-spray': { kind: 'hp-pool-knockout' },
+  'color-spray': { kind: 'save' },
   'dissonant-whispers': { kind: 'save' },
   'guiding-bolt': { kind: 'attack' },
   'hellish-rebuke': { kind: 'save' },
