@@ -65,9 +65,6 @@ export const applyShortRestEnded = (
   clearShortRestCountersForCharacters(state, session.participantIds);
 };
 
-const halfRoundedDown = (n: number): number => Math.floor(n / 2);
-const oneMin = (n: number): number => Math.max(1, n);
-
 export const applyLongRestStarted = (
   state: Draft<CampaignState>,
   event: LongRestStartedEvent,
@@ -127,18 +124,12 @@ export const applyLongRestEnded = (
     if (character.exhaustion > 0) {
       character.exhaustion = character.exhaustion - 1;
     }
-    let totalHitDice = 0;
+    // SRD 5.2.1 Long Rest regains ALL spent Hit Point Dice (rules-glossary
+    // "Long Rest": "You regain all lost Hit Points and all spent Hit Point
+    // Dice"). The prior half-your-total-HD budget was the 2014 rule
+    // (slice 781 edition-drift fix).
     for (const enrollment of character.classes) {
-      totalHitDice += enrollment.level;
-    }
-    const recoveryBudget = oneMin(halfRoundedDown(totalHitDice));
-    let remaining = recoveryBudget;
-    for (const enrollment of character.classes) {
-      if (remaining <= 0) break;
-      const possible = enrollment.level - enrollment.hitDiceRemaining;
-      const take = Math.min(remaining, possible);
-      enrollment.hitDiceRemaining += take;
-      remaining -= take;
+      enrollment.hitDiceRemaining = enrollment.level;
     }
     for (const resource of character.resources) {
       resource.current = resource.max;

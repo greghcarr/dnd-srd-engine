@@ -61,7 +61,9 @@ describe('golden: create → damage → heal → long rest', () => {
     expect(result?.hp.current).toBe(26);
     expect(result?.hp.temp).toBe(0);
     expect(result?.exhaustion).toBe(1);
-    expect(result?.classes[0]?.hitDiceRemaining).toBe(2);
+    // SRD 5.2.1: a Long Rest restores ALL spent Hit Dice, so a level-3
+    // fighter who had spent 2 (1 remaining) is back to 3 (slice 781).
+    expect(result?.classes[0]?.hitDiceRemaining).toBe(3);
     expect(result?.resources[0]?.current).toBe(2);
     expect(final.version).toBe(events.length);
 

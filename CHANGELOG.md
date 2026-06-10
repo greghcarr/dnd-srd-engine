@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Fix (slice 781): edition drift — Long Rest restores ALL spent Hit Dice**
+`applyLongRestEnded` regained only `max(1, floor(totalHD/2))` Hit Dice (the 2014 rule); SRD 5.2.1 restores **all** spent HD ("Regain All HP. You regain all lost Hit Points and all spent Hit Point Dice"). Each enrollment's `hitDiceRemaining` now resets to its level; the 2014 half-budget loop + its `halfRoundedDown`/`oneMin` helpers were removed. Short Rest unaffected. First of the [L7 audit](docs/l7-completion-audit.md) Area 1 (edition-drift) sweep. Tests: the rest-reducer + `s1-long-rest` golden assertions updated (golden transcript unchanged — rendered from events).
+Detail: [slice-781.md](docs/changelog/slice-781.md).
+
 **Infra (slice 780): pin `*.snap` to LF — kill the post-test snapshot churn on Windows**
 Adds `*.snap text eol=lf` to `.gitattributes` so vitest's LF snapshot writes stop showing as modified under `core.autocrlf=true` (the committed blobs are already LF; the attribute just stops the autocrlf round-trip). Narrowly scoped — generated snapshots only — completing the 776/779 Windows line-ending hygiene. Verified: re-running the snapshot tests leaves `git status` clean.
 Detail: [slice-780.md](docs/changelog/slice-780.md).

@@ -42,7 +42,7 @@ The most damning class for an expert: not missing, just wrong. All quick.
 
 | ID | Sev | Owner | Fix | Finding |
 |---|---|---|---|---|
-| `long-rest-half-hd` | DIVERGENCE | Engine | S | `[canon-verified]` Long rest restores only `halfRoundedDown(totalHitDice)` Hit Dice; SRD 5.2.1 restores **all** spent HD. `src/engine/reducers/rest.ts:130-142`; canon `references/srd-markdown/rules-glossary.md` "Long Rest". |
+| ~~`long-rest-half-hd`~~ | DIVERGENCE | Engine | S | `[canon-verified]` Long rest restored only `halfRoundedDown(totalHitDice)` Hit Dice; SRD 5.2.1 restores **all** spent HD. `src/engine/reducers/rest.ts`; canon `references/srd-markdown/rules-glossary.md` "Long Rest". **Closed by slice 781** (each enrollment's `hitDiceRemaining` resets to its level; the 2014 half-budget + its `halfRoundedDown`/`oneMin` helpers were removed). |
 | `sleep-hp-pool` | DIVERGENCE | Engine | M | `[canon-verified]` Sleep uses the 2014 `hp-pool-knockout` (5d8 +2d8/slot); SRD 5.2.1 is a WIS save → Incapacitated, second-fail → Unconscious. No HP pool, no save in the engine. `src/content/packs/starter-pack.json:2190`; `tests/unit/engine/spell-coverage.test.ts:99` locks the 2014 shape. |
 | `color-spray-hp-pool` | DIVERGENCE | Engine | M | `[canon-verified]` Color Spray uses `hp-pool-knockout` (6d10); SRD 5.2.1 is a 15-ft cone, CON save → Blinded. `src/content/packs/starter-pack.json:2358`. |
 | `small-creature-heavy-disadvantage` | DIVERGENCE | Engine | S | Engine imposes the 2014 "Small creatures have Disadvantage with Heavy weapons" rule, removed in 2024 (replaced by the STR/DEX-13 rule — see `heavy-property-str-dex` in Area 6). `src/engine/plan/attack.ts:802-810` (`heavyForSmall`). |

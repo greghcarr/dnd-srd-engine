@@ -47,7 +47,7 @@ describe('LongRest reducers', () => {
     expect(next.characters[characterId]?.hp.temp).toBe(0);
   });
 
-  it('long rest restores half hit dice (rounded down, min 1)', () => {
+  it('long rest restores ALL spent hit dice (SRD 5.2.1, not the 2014 half)', () => {
     const { state, characterId } = seedFighter({ level: 4, hitDiceRemaining: 0 });
     const start: LongRestStartedEvent = {
       id: eventId(),
@@ -61,7 +61,7 @@ describe('LongRest reducers', () => {
       type: 'LongRestEnded',
     };
     const next = applyAll(state, [start, end]);
-    expect(next.characters[characterId]?.classes[0]?.hitDiceRemaining).toBe(2);
+    expect(next.characters[characterId]?.classes[0]?.hitDiceRemaining).toBe(4);
   });
 
   it('long rest reduces exhaustion by 1', () => {
