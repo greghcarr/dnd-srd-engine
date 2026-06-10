@@ -439,6 +439,7 @@ export {
   hasLineOfSight,
   hasLineOfEffect,
   coveredCells,
+  validateBackgroundAbilityIncrease,
   runtimeMultiattackFromStatblock,
   getEffectiveFeatIds,
 } from './derive/index.js';

@@ -80,4 +80,5 @@ export {
   hasLineOfEffect,
 } from './terrain.js';
 export { coveredCells, type AreaOfEffectSpec } from './aoe.js';
+export { validateBackgroundAbilityIncrease } from './background-asi.js';
 export { runtimeMultiattackFromStatblock } from './multiattack.js';

@@ -143,6 +143,17 @@ export const CharacterSchema = z.object({
   backgroundId: z.string(),
   classes: z.array(ClassEnrollmentSchema).min(1),
   abilityScores: AbilityScoresSchema,
+  // Slice 793: the 2024 background ability-score increase — which abilities
+  // receive the +2/+1 (or +1/+1/+1) from the character's background. When
+  // present, the engine applies it on top of `abilityScores` (composed via
+  // effectiveAbilityScoreIncrease, capped at 20), so `abilityScores` are the
+  // BASE (pre-background) scores and every derivation — sheet, saves, checks,
+  // attacks, AC, spell DC — reflects the increase. Optional + opt-in for
+  // backward compatibility: a character without it gets no increase, so the
+  // existing "consumer supplies final scores" callers are byte-unchanged.
+  // Validate the allocation against the background's `abilityScoreIncreases`
+  // (`options` / `pattern`) with `validateBackgroundAbilityIncrease`.
+  backgroundAbilityIncrease: z.record(AbilityScoreSchema, z.number().int().min(1).max(2)).optional(),
   hp: HPSchema,
   deathSaves: DeathSavesSchema.default({ successes: 0, failures: 0, stable: false }),
   exhaustion: ExhaustionLevelSchema.default(0),

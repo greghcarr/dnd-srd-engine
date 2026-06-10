@@ -26,7 +26,7 @@ State the engine owns and reduces from events. You read it, the engine writes it
 - **Trigger counters**: per-turn / per-round / per-rest "already fired" flags so reactions and once-per-turn riders gate correctly.
 - **Pending choices**: level-up, ASI vs feat, subclass selection, OfferChoice cascades. `ChoiceRequired` events install the choice; `ChoiceResolved` records the selection; the effect stack reads resolved choices for derivations.
 - **RNG consumption**: every roll is captured into events. Replay reads the baked rolls — `apply()` itself is RNG-free, so a captured event log replays to byte-identical state.
-- **Ability scores**: base scores, ASI increases, score-cap floors, proficiency bonus by level.
+- **Ability scores**: base scores, ASI increases, score-cap floors, proficiency bonus by level. The 2024 background +2/+1 increase is engine-applied **opt-in** (slice 793): set `Character.backgroundAbilityIncrease` and `abilityScores` become the base scores the engine layers the increase onto (capped at 20); omit it and you hand the engine final scores as before. `validateBackgroundAbilityIncrease` checks an allocation against the background's options/pattern.
 - **Class progression**: level per class, multi-class spell-slot math, feature grants at each level, subclass selection at the gating level.
 
 ## What your app tracks

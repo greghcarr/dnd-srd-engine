@@ -9,6 +9,11 @@ import { resolveEnchantment } from './enchantment.js';
 import type { FormulaContext } from '../effects/formula.js';
 import { computeTotalLevel } from '../schemas/runtime/character.js';
 import { proficiencyBonus } from './ability.js';
+import type { AbilityScore } from '../schemas/primitives.js';
+
+// 2024 chargen ceiling: the background ability-score increase can't raise an
+// ability above 20.
+const BACKGROUND_ASI_CAP = 20;
 
 // Slice 661: supersession lifecycle for OfferChoice resolutions.
 //
@@ -360,6 +365,17 @@ export const buildEffectStack = (input: BuildEffectStackInput): EffectAccumulato
         source: `background:${background.id}`,
         formulaContext: targetFormulaContext,
       });
+    }
+  }
+
+  // Slice 793: the 2024 background ability-score increase. The character's
+  // chosen +2/+1 (or +1/+1/+1) allocation rides through the same
+  // ability-score-increase accumulator as the IncreaseAbilityScore item
+  // primitive (slice 308), so it composes with floors/items and is capped at
+  // 20 (the 2024 chargen ceiling) by effectiveAbilityScore everywhere.
+  if (character.backgroundAbilityIncrease !== undefined) {
+    for (const [ability, amount] of Object.entries(character.backgroundAbilityIncrease)) {
+      if (amount > 0) acc.addAbilityScoreIncrease(ability as AbilityScore, amount, BACKGROUND_ASI_CAP);
     }
   }
 
