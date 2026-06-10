@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Content (slice 790): CR 0-1 multiattackers — Violet Fungus + Sahuagin Warrior**
+The two CR ≤ 1 RAW multiattackers whose attack needed a brand-new weapon def (789 deferred these, shipping only existing-def reuse). Both SRD-verified directly: Violet Fungus `violet-fungus-rotting-touch` (1d8 necrotic, reach, `noAbilityModifierDamage` — RAW flat 1d8, no +mod) + multiattack ×2; Sahuagin Warrior `sahuagin-warrior-claw` (1d6 slashing) + multiattack ×2. Riderless, reuse the slice-464 multiattack bridge (no engine change). Establishes the rider-aware authoring standard for the higher bands (verified `Hit:` dice without the ability mod; `noAbilityModifierDamage` when RAW shows flat dice; `reach` property > 5 ft; onHit riders from SRD text, with weapon-inexpressible drains left to their tracked rows). Weapon count 80 → 82. CR 0-1's three real multiattackers (Goblin Boss + these two) are now done.
+Detail: [slice-790.md](docs/changelog/slice-790.md).
+
 **Content (slice 789): monster `actions` + `multiattack` — CR 0-1 gate-safe subset**
 First increment of the `multiattack-unpopulated` sweep. A multi-agent workflow read the SRD markdown for all 66 CR ≤ 1 statblocks lacking multiattack, authored their actions + multiattack, and adversarially re-verified each against the SRD. This applies the gate-safe subset — 9 statblocks whose attacks reuse EXISTING weapon defs (Commoner, Noble, Spy, Tough, Dire Wolf, Quasit, Sphinx of Wonder, Goblin Minion + Goblin Boss's `scimitar ×2` multiattack) — so no new content can drift. Deferred (tracked): ~40 CR 0-1 monsters whose natural weapons aren't yet defined need rider-aware authoring (secondary damage / conditions / drains the SRD carries — damage-only defs would under-damage them), and the 25 combat-fuzz statblocks need a separate fuzz-determinism reconciliation (788 set their `actions[0]` to historical stand-in weapons, not RAW). The real multiattack payoff is CR 2-11, where multiattackers cluster and more natural-weapon defs already exist.
 Detail: [slice-789.md](docs/changelog/slice-789.md).
