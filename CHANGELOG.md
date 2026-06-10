@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Fix (slice 805): synthetic-Unconscious arms on a 0-HP drop**
+A creature at 0 HP got the within-5-ft auto-crit (keyed on `hp <= 0`) but not the Unconscious condition's "attackers have Advantage" or "auto-fail STR/DEX saves" arms — those live on the condition's effects, which the HP-drop path never applies, so a downed creature was attacked without Advantage (and the dragon's killing blow in the showcase transcript actually *missed*). Made both arms synthetic on `hp.current <= 0` too: `targetGrantsAdvantage` in attack.ts and `hasAutoFail` (STR/DEX) in save.ts. Keeps `hp <= 0` the single source of truth (no dual-tracked condition to desync on heal); composes with the explicit `unconscious` condition (Sleep). Prone / drop-items stay deferred. **Closes the [L7 audit](docs/l7-completion-audit.md) Area 4 divergence `drop-to-0-no-unconscious-arms`.** New 4-test slice-805; showcase golden updated (the downed-PC attack now lands with Advantage → auto-crit); fast suite green.
+Detail: [slice-805.md](docs/changelog/slice-805.md).
+
 **Fix (slice 804): Armor Training penalties (untrained armor)**
 The class `armorProficiencies` arrays were never read, so RAW Armor Training did nothing — a Wizard in Plate rolled STR/DEX normally, cast freely, and any shield gave +2 AC. New `derive/armor-training.ts` resolves training (class arrays + effect-stack `GrantProficiency('armor')`, mirroring `isWeaponProficient`) and the three RAW effects apply at their five sites: Disadvantage on STR/DEX checks (ability-check), saves (save), and weapon attacks (attack, beside the Heavy-weapon rule); can't cast (cast-spell gate); and a shield gives no AC untrained (AC gate). Monsters (armorClass override, no equipped armor) are unaffected. **Closes the [L7 audit](docs/l7-completion-audit.md) Area 6 divergence `untrained-armor-penalty`.** New 6-test slice-804; slice-798's stealth test re-based onto a Fighter to isolate its arm; fast suite green (587 files, 4524 passed).
 Detail: [slice-804.md](docs/changelog/slice-804.md).

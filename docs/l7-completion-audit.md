@@ -23,7 +23,7 @@
 | 1. Edition drift | 4 | 0 | 0 | 0 | Engine — **fully closed** |
 | 2. Spell mechanics (L0-4) | 23 | 0 | 15 | 5 | Engine |
 | 3. Targeting / AoE seam | 14 | 0 | 6 | 7 | Seam + Consumer |
-| 4. Core combat correctness | 11 | 0 | 3 | 5 | Engine |
+| 4. Core combat correctness | 11 | 0 | 2 | 5 | Engine |
 | 5. Build & leveling validation | 10 | 0 | 5 | 3 | Engine |
 | 6. Base equipment mechanics | 9 | 1\* | 1 | 4 | Engine |
 | 7. Monster runtime (DM side) | 14 | 0 | 5 | 6 | Engine (schema+content) |
@@ -124,7 +124,7 @@ The combat loop itself, independent of specific spells/items. (Engine targets SR
 
 | ID | Sev | Owner | Fix | Finding |
 |---|---|---|---|---|
-| `drop-to-0-no-unconscious-arms` | DIVERGENCE | Engine | M | Dropping to 0 HP sets HP + death-save state but doesn't apply the Unconscious condition's arms: attackers' Advantage, auto-fail STR/DEX saves, Prone, drop items. Engine grants the auto-crit (synthetic-unconscious) but not the advantage-to-hit — internally inconsistent. `src/engine/reducers/combat.ts:88-137`; `src/engine/plan/attack.ts:766`. |
+| ~~`drop-to-0-no-unconscious-arms`~~ | DIVERGENCE | Engine | M | Dropping to 0 HP sets HP + death-save state but doesn't apply the Unconscious condition's arms: attackers' Advantage, auto-fail STR/DEX saves, Prone, drop items. Engine grants the auto-crit (synthetic-unconscious) but not the advantage-to-hit — internally inconsistent. **Closed by slice 805** — the advantage-to-attackers (`attack.ts`) and STR/DEX save auto-fail (`save.ts`) arms are now synthetic on `hp.current <= 0`, matching the existing auto-crit; Prone / drop-items stay deferred (unmodeled posture / held-item state, per the `unconscious` condition's own note). `src/engine/plan/attack.ts`; `src/derive/save.ts`. |
 | ~~`surprise-not-in-initiative`~~ | DIVERGENCE | Engine | S | `RollInitiativeIntent` has no surprise channel; SRD 2024 surprise = Disadvantage on the initiative roll. **Closed by slice 802** — new consumer-coordinated `RollInitiativeIntent.surprisedCombatantIds?`; `planRollInitiative` OR-s it into the combatant's initiative disadvantage (advantage + surprise cancel). The Incapacitated→disadvantage / Invisible→advantage glossary arms are a separate condition-driven follow-up. `src/engine/plan/encounter.ts`. |
 | `bonus-action-spell-restriction` | DIVERGENCE | Engine | M | Missing the 2024 rule: cast a spell with a Bonus Action → your Action spell that turn can only be a cantrip with an action casting time. A caster can cast two leveled spells in a turn. `src/engine/plan/cast-spell.ts:2123-2192`. |
 | ~~`grapple-shove-missing-gates`~~ | DIVERGENCE | Engine | S | `planGrapple`/`planShove` skip the size (≤ one larger), free-hand, and `assertActorCanAct` gates; a stunned Medium PC can grapple a Gargantuan dragon. **Closed by slice 803** — added `assertActorCanAct`, the size gate (`SIZES` rank diff ≤ 1, both planners), and a free-hand gate (grapple only; two-handed weapon / main-hand + off-hand-or-shield = no free hand). `src/engine/plan/contested.ts`. |

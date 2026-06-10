@@ -765,7 +765,14 @@ export const resolveAttackRollPhase = (input: ResolveAttackInput): AttackRollRes
     ['event.attackKind', weaponDef.attackKind],
   ]);
   const targetGrantsAdvantage =
-    targetEffects.grantsAdvantageToAttackers(targetSideAttackerFacts) || targetRecklessGrantsAdvantage;
+    targetEffects.grantsAdvantageToAttackers(targetSideAttackerFacts)
+    || targetRecklessGrantsAdvantage
+    // Slice 805: synthetic-unconscious — a target at 0 HP grants Advantage
+    // to attackers (RAW Unconscious), consistent with the auto-crit which
+    // already keys on HP <= 0 (line ~1130). The `unconscious` condition's
+    // GrantAdvantageToAttackers only fires when the condition is explicitly
+    // applied (Sleep); the HP-drop path relies on this synthetic check.
+    || target.hp.current <= 0;
   // Slice 199: target may carry `CancelAdvantageOnAttackers` (Rogue
   // L18 Elusive). Build a small bearer-facts map so a predicate-gated
   // entry can consult the target's own state — Elusive's gate is

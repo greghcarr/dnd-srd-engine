@@ -526,7 +526,11 @@ Damage rolled: 2d6=[6,1]+6 slashing.
 
 **Alyx** takes 13 damage from **Stoneheart, the Young Red** (13 slashing). (HP 2 -> 0)
 
-**Stoneheart, the Young Red** attacks **Alyx**: d20(3) + 10 = 13 vs AC 15 -> miss.
+**Stoneheart, the Young Red** attacks **Alyx** [advantage]: d20(3/13) + 10 = 23 vs AC 15 -> CRITICAL HIT!.
+
+Damage rolled (critical, doubled dice): 2d6=[6,5,1,3]+6 slashing.
+
+**Alyx** takes 21 damage from **Stoneheart, the Young Red** (21 slashing).
 
 End of Stoneheart, the Young Red's turn.
 
@@ -538,17 +542,17 @@ _(Brother Cassius consumes bonusAction)_
 
 Slot consumed: 1st-level.
 
-**Alyx** healed 8 from healing-word. (HP 0 -> 8)
+**Alyx** healed 5 from healing-word. (HP 0 -> 5)
 
 _(Brother Cassius consumes action)_
 
 _(Brother Cassius consumes attack)_
 
-**Brother Cassius** attacks **Stoneheart, the Young Red**: d20(16) + 6 = 22 vs AC 18 -> hit.
+**Brother Cassius** attacks **Stoneheart, the Young Red**: d20(18) + 6 = 24 vs AC 18 -> hit.
 
-Damage rolled: 1d8=[1]+3 slashing.
+Damage rolled: 1d8=[3]+3 slashing.
 
-**Stoneheart, the Young Red** takes 4 damage from **Brother Cassius** (4 slashing). (HP 128 -> 124)
+**Stoneheart, the Young Red** takes 6 damage from **Brother Cassius** (6 slashing). (HP 128 -> 122)
 
 End of Brother Cassius's turn.
 
@@ -556,7 +560,7 @@ End of round 1.
 
 ### Round 2: Vex's turn
 
-**Stoneheart, the Young Red** takes 24 damage from **Vex** (24 piercing). (HP 124 -> 100)
+**Stoneheart, the Young Red** takes 24 damage from **Vex** (24 piercing). (HP 122 -> 98)
 
 End of Vex's turn.
 
@@ -564,13 +568,13 @@ End of Vex's turn.
 
 Wand of Magic Missiles loses 3 charge(s) by **Mira** for Magic Missile (3rd level).
 
-**Stoneheart, the Young Red** takes 22 damage from **Mira** (22 force). (HP 100 -> 78)
+**Stoneheart, the Young Red** takes 22 damage from **Mira** (22 force). (HP 98 -> 76)
 
 End of Mira's turn.
 
 ### Round 2: Alyx's turn
 
-**Stoneheart, the Young Red** takes 22 damage from **Alyx** (22 slashing). (HP 78 -> 56)
+**Stoneheart, the Young Red** takes 22 damage from **Alyx** (22 slashing). (HP 76 -> 54)
 
 End of Alyx's turn.
 
@@ -580,7 +584,7 @@ End of Stoneheart, the Young Red's turn.
 
 ### Round 2: Brother Cassius's turn
 
-**Stoneheart, the Young Red** takes 35 damage from **Brother Cassius** (35 radiant). (HP 56 -> 21)
+**Stoneheart, the Young Red** takes 35 damage from **Brother Cassius** (35 radiant). (HP 54 -> 19)
 
 ## Encounter ends: victory.
 

@@ -181,6 +181,13 @@ export const computeSavingThrow = (input: ComputeSaveInput): SaveResult => {
     (input.ability === 'STR' || input.ability === 'DEX') &&
     wearsUntrainedBodyArmor(input.character, input.content, input.itemInstances, effects);
   const effectiveDisadvantage = adv.disadvantage || untrainedArmorDisadvantage;
+  // Slice 805: synthetic-unconscious — a creature at 0 HP auto-fails STR +
+  // DEX saves (RAW Unconscious), consistent with the synthetic auto-crit
+  // (attack.ts) which keys on HP <= 0. The `unconscious` condition's
+  // auto-fail SetAdvantage only fires when the condition is explicitly
+  // applied (Sleep); the HP-drop path relies on this synthetic check.
+  const syntheticUnconsciousAutoFail =
+    (input.ability === 'STR' || input.ability === 'DEX') && input.character.hp.current <= 0;
   const total = breakdown.reduce((acc, e) => acc + e.value, 0);
   return {
     total,
@@ -198,6 +205,7 @@ export const computeSavingThrow = (input: ComputeSaveInput): SaveResult => {
     // tracks `autoFail` per ability via SetAdvantage mode: 'auto-fail'
     // entries — slice 567's pack-declaration tests verified the data
     // shape. This exposes the flag so the save planner can force-fail.
-    hasAutoFail: adv.autoFail,
+    // Slice 805 adds the synthetic-unconscious (HP <= 0) STR/DEX auto-fail.
+    hasAutoFail: adv.autoFail || syntheticUnconsciousAutoFail,
   };
 };
