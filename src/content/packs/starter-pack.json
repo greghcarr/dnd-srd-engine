@@ -3706,7 +3706,14 @@
       "cr": 2,
       "xp": 450,
       "proficiencyBonus": 2,
-      "languages": ["common"]
+      "languages": ["common"],
+      "traits": [
+        { "kind": "SetSpellcastingProfile", "ability": "WIS", "saveDC": 12, "attackBonus": 4 },
+        { "kind": "GrantSpell", "spellId": "light", "preparation": "at-will" },
+        { "kind": "GrantSpell", "spellId": "thaumaturgy", "preparation": "at-will" },
+        { "kind": "GrantSpell", "spellId": "command", "preparation": "perLongRest", "usesPerLongRest": 2 },
+        { "kind": "GrantSpell", "spellId": "hold-person", "preparation": "perLongRest", "usesPerLongRest": 1 }
+      ]
     },
     {
       "id": "priest-acolyte",
@@ -4084,7 +4091,13 @@
       "cr": 2,
       "xp": 450,
       "proficiencyBonus": 2,
-      "languages": ["common"]
+      "languages": ["common"],
+      "traits": [
+        { "kind": "SetSpellcastingProfile", "ability": "WIS", "saveDC": 13 },
+        { "kind": "GrantSpell", "spellId": "light", "preparation": "at-will" },
+        { "kind": "GrantSpell", "spellId": "thaumaturgy", "preparation": "at-will" },
+        { "kind": "GrantSpell", "spellId": "spirit-guardians", "preparation": "perLongRest", "usesPerLongRest": 1 }
+      ]
     },
     {
       "id": "druid",
@@ -4103,7 +4116,17 @@
       "cr": 2,
       "xp": 450,
       "proficiencyBonus": 2,
-      "languages": ["common", "druidic"]
+      "languages": ["common", "druidic"],
+      "traits": [
+        { "kind": "SetSpellcastingProfile", "ability": "WIS", "saveDC": 13 },
+        { "kind": "GrantSpell", "spellId": "druidcraft", "preparation": "at-will" },
+        { "kind": "GrantSpell", "spellId": "speak-with-animals", "preparation": "at-will" },
+        { "kind": "GrantSpell", "spellId": "entangle", "preparation": "perLongRest", "usesPerLongRest": 2 },
+        { "kind": "GrantSpell", "spellId": "thunderwave", "preparation": "perLongRest", "usesPerLongRest": 2 },
+        { "kind": "GrantSpell", "spellId": "animal-messenger", "preparation": "perLongRest", "usesPerLongRest": 1 },
+        { "kind": "GrantSpell", "spellId": "longstrider", "preparation": "perLongRest", "usesPerLongRest": 1 },
+        { "kind": "GrantSpell", "spellId": "moonbeam", "preparation": "perLongRest", "usesPerLongRest": 1 }
+      ]
     },
     {
       "id": "mage",
