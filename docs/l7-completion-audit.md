@@ -26,13 +26,13 @@
 | 4. Core combat correctness | 11 | 0 | 6 | 5 | Engine |
 | 5. Build & leveling validation | 10 | 1\* | 6 | 3 | Engine |
 | 6. Base equipment mechanics | 9 | 1\* | 4 | 4 | Engine |
-| 7. Monster runtime (DM side) | 12 | 3 | 5 | 4 | Engine (schema+content) |
+| 7. Monster runtime (DM side) | 12 | 2 | 5 | 4 | Engine (schema+content) |
 | 8. Exploration / non-combat | 14 | 0 | 4 | 9 | Engine |
 | 9. Consumer duties & docs | 8 | 0 | 3 | 5 | Consumer + Docs |
 
 \* Pending an ownership/canon confirm (see the row's `[verify]` tag) before it's firmly a blocker.
 
-**Recommended order:** Area 1 (cheap, flatly-wrong, highest expert-visibility) → the structural blockers (~~`aoe-shape-coverage`~~ *(closed by slices 786–787)*, `no-actions-field` + `multiattack`, ~~`no-hit-die-spend-planner`~~ *(closed by slice 785)*, `background-ability-bonus`) → remaining divergences by area → quirks. Consumer items (Area 9 + the consumer half of Area 3) bundle into a hand-off note for the dnd-web session.
+**Recommended order:** Area 1 (cheap, flatly-wrong, highest expert-visibility) → the structural blockers (~~`aoe-shape-coverage`~~ *(closed by slices 786–787)*, ~~`no-actions-field`~~ *(closed by slice 788)* + `multiattack` *(sweep underway)*, ~~`no-hit-die-spend-planner`~~ *(closed by slice 785)*, `background-ability-bonus`) → remaining divergences by area → quirks. Consumer items (Area 9 + the consumer half of Area 3) bundle into a hand-off note for the dnd-web session.
 
 ---
 
@@ -182,7 +182,7 @@ The big rocks are content population, not engine machinery — the deferred-mech
 | ID | Sev | Owner | Fix | Finding |
 |---|---|---|---|---|
 | `multiattack-unpopulated` | **BLOCKER** | Engine (content) | L | Multiattack is authored on only 9/214 statblocks; ~169 in-scope RAW multiattackers (ogre, knight, all young/wyrmling dragons, owlbear, …) do one attack → roughly half their damage. Planner + schema support it. `src/schemas/content/monster.ts`; `src/derive/multiattack.ts`. |
-| `no-actions-field` | **BLOCKER** | Engine (schema+content) | M | `MonsterStatblock` has no `actions` field, so a single-attack monster's natural weapon is unlinked/un-queryable; consumers hardcode `wolf → wolf-bite` and diverge. `src/schemas/content/monster.ts:92-120`. |
+| ~~`no-actions-field`~~ | **BLOCKER** | Engine (schema+content) | M | `MonsterStatblock` had no `actions` field, so a single-attack monster's natural weapon was unlinked/un-queryable; consumers hardcoded `wolf → wolf-bite` and diverged. `src/schemas/content/monster.ts`. **Closed by slice 788** — new `actions: [{ name, weaponId }]` field + `monsterAttackActions` query + pack-integrity weaponId guard; the canonical consumer (combat-fuzz) was rewired off its hardcoded map to read `actions[0]` (byte-identical). Full `actions` population across all statblocks rides along with the `multiattack` sweep below. |
 | `spellcaster-npc-no-spells` | **BLOCKER** | Engine (primitive+content) | L | Mage / Priest / Druid / Cultist Fanatic carry no spell list (the per-day/slot casting envelope primitive doesn't exist; only at-will `GrantSpell` does). A Mage is a stick-wielder. |
 | `dragon-rend-no-elemental-rider` | DIVERGENCE | Engine (content) | S | Dragon Rend weapons miss the RAW +1dX elemental on-hit rider (machinery exists). |
 | `weapon-material-qualifier` | DIVERGENCE | Engine (enum+content) | M | `GrantResistance.qualifier` is only nonmagical/magical — no silvered/adamantine; a party with silvered weapons still sees devil/lycanthrope resistance applied. `src/schemas/effects.ts:257`. |

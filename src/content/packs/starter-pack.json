@@ -3378,6 +3378,7 @@
   "monsters": [
     {
       "id": "goblin-warrior",
+      "actions": [{ "name": "Shortsword", "weaponId": "shortsword" }],
       "name": "Goblin Warrior",
       "size": "Small",
       "type": "Fey",
@@ -3399,6 +3400,7 @@
     },
     {
       "id": "wolf",
+      "actions": [{ "name": "Bite", "weaponId": "wolf-bite" }],
       "name": "Wolf",
       "size": "Medium",
       "type": "Beast",
@@ -3419,6 +3421,7 @@
     },
     {
       "id": "skeleton",
+      "actions": [{ "name": "Shortsword", "weaponId": "shortsword" }],
       "name": "Skeleton",
       "size": "Medium",
       "type": "Undead",
@@ -3474,6 +3477,7 @@
     },
     {
       "id": "bandit",
+      "actions": [{ "name": "Shortsword", "weaponId": "shortsword" }],
       "name": "Bandit",
       "size": "Medium",
       "type": "Humanoid",
@@ -3508,6 +3512,7 @@
     },
     {
       "id": "cultist",
+      "actions": [{ "name": "Scimitar", "weaponId": "scimitar" }],
       "name": "Cultist",
       "size": "Medium",
       "type": "Humanoid",
@@ -3577,6 +3582,7 @@
     },
     {
       "id": "guard",
+      "actions": [{ "name": "Spear", "weaponId": "spear" }],
       "name": "Guard",
       "size": "Medium",
       "type": "Humanoid",
@@ -3611,6 +3617,7 @@
     },
     {
       "id": "scout",
+      "actions": [{ "name": "Shortsword", "weaponId": "shortsword" }, { "name": "Longbow", "weaponId": "longbow" }],
       "name": "Scout",
       "size": "Medium",
       "type": "Humanoid",
@@ -3647,6 +3654,7 @@
     },
     {
       "id": "warrior-infantry",
+      "actions": [{ "name": "Spear", "weaponId": "spear" }],
       "name": "Warrior Infantry",
       "size": "Medium",
       "type": "Humanoid",
@@ -3736,6 +3744,7 @@
     },
     {
       "id": "zombie",
+      "actions": [{ "name": "Slam", "weaponId": "unarmed-strike" }],
       "name": "Zombie",
       "size": "Medium",
       "type": "Undead",
@@ -3798,6 +3807,7 @@
     },
     {
       "id": "giant-spider",
+      "actions": [{ "name": "Bite", "weaponId": "giant-spider-bite" }],
       "name": "Giant Spider",
       "size": "Large",
       "type": "Beast",
@@ -3816,6 +3826,7 @@
     },
     {
       "id": "giant-wolf-spider",
+      "actions": [{ "name": "Bite", "weaponId": "giant-spider-bite" }],
       "name": "Giant Wolf Spider",
       "size": "Medium",
       "type": "Beast",
@@ -3871,6 +3882,7 @@
     },
     {
       "id": "stirge",
+      "actions": [{ "name": "Blood Drain", "weaponId": "stirge-proboscis" }],
       "name": "Stirge",
       "size": "Tiny",
       "type": "Monstrosity",
@@ -3939,6 +3951,7 @@
     },
     {
       "id": "mastiff",
+      "actions": [{ "name": "Bite", "weaponId": "mastiff-bite" }],
       "name": "Mastiff",
       "size": "Medium",
       "type": "Beast",
@@ -3957,6 +3970,7 @@
     },
     {
       "id": "boar",
+      "actions": [{ "name": "Tusk", "weaponId": "boar-gore" }],
       "name": "Boar",
       "size": "Medium",
       "type": "Beast",
@@ -4010,6 +4024,7 @@
     },
     {
       "id": "giant-centipede",
+      "actions": [{ "name": "Bite", "weaponId": "giant-centipede-bite" }],
       "name": "Giant Centipede",
       "size": "Small",
       "type": "Beast",
@@ -4026,6 +4041,7 @@
     },
     {
       "id": "black-bear",
+      "actions": [{ "name": "Rend", "weaponId": "black-bear-rend" }],
       "name": "Black Bear",
       "size": "Medium",
       "type": "Beast",
@@ -4200,6 +4216,7 @@
     },
     {
       "id": "imp",
+      "actions": [{ "name": "Sting", "weaponId": "imp-sting" }],
       "name": "Imp",
       "size": "Tiny",
       "type": "Fiend",
@@ -4868,6 +4885,7 @@
     },
     {
       "id": "sprite",
+      "actions": [{ "name": "Shortsword", "weaponId": "sprite-needle-sword" }],
       "name": "Sprite",
       "size": "Tiny",
       "type": "Fey",
@@ -4888,6 +4906,7 @@
     },
     {
       "id": "venomous-snake",
+      "actions": [{ "name": "Bite", "weaponId": "venomous-snake-bite" }],
       "name": "Venomous Snake",
       "size": "Tiny",
       "type": "Beast",
@@ -6776,6 +6795,7 @@
     },
     {
       "id": "cockatrice",
+      "actions": [{ "name": "Bite", "weaponId": "cockatrice-bite" }],
       "name": "Cockatrice",
       "size": "Small",
       "type": "Monstrosity",
@@ -7317,6 +7337,7 @@
     },
     {
       "id": "hobgoblin-warrior",
+      "actions": [{ "name": "Longsword", "weaponId": "longsword" }],
       "name": "Hobgoblin Warrior",
       "size": "Medium",
       "type": "Fey",
@@ -7616,6 +7637,7 @@
     },
     {
       "id": "kobold-warrior",
+      "actions": [{ "name": "Dagger", "weaponId": "dagger" }],
       "name": "Kobold Warrior",
       "size": "Small",
       "type": "Dragon",
@@ -7847,6 +7869,7 @@
     },
     {
       "id": "pseudodragon",
+      "actions": [{ "name": "Bite", "weaponId": "pseudodragon-bite" }],
       "name": "Pseudodragon",
       "size": "Tiny",
       "type": "Dragon",
@@ -8021,6 +8044,7 @@
     },
     {
       "id": "gnoll-warrior",
+      "actions": [{ "name": "Spear", "weaponId": "spear" }],
       "name": "Gnoll Warrior",
       "size": "Medium",
       "type": "Fiend",
@@ -8054,6 +8078,7 @@
     },
     {
       "id": "worg",
+      "actions": [{ "name": "Bite", "weaponId": "worg-bite" }],
       "name": "Worg",
       "size": "Large",
       "type": "Fey",

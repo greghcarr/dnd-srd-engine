@@ -92,6 +92,33 @@ export const queryMonsters = (
     )
     .sort((a, b) => a.cr - b.cr || compareByName(a, b));
 
+export interface ResolvedMonsterAction {
+  readonly name: string;
+  readonly weaponId: string;
+  /** The resolved weapon definition; undefined if the id isn't a pack weapon. */
+  readonly weapon: ItemDefinition | undefined;
+}
+
+/**
+ * Slice 788: a monster's attack actions (`statblock.actions`) with each
+ * `weaponId` resolved to its weapon definition — the queryable replacement
+ * for hardcoding `wolf → wolf-bite`. Returns [] for an unknown statblock or
+ * one with no authored actions. `weapon` is undefined only when the id
+ * doesn't resolve (the pack-integrity audit guards against that in-pack).
+ */
+export const monsterAttackActions = (
+  content: ResolvedContent,
+  statblockId: string,
+): readonly ResolvedMonsterAction[] => {
+  const statblock = content.monsters.get(statblockId);
+  if (statblock === undefined) return [];
+  return statblock.actions.map((a) => ({
+    name: a.name,
+    weaponId: a.weaponId,
+    weapon: content.items.get(a.weaponId),
+  }));
+};
+
 export interface ItemFilter {
   readonly itemKind?: ItemDefinition['itemKind'];
   readonly rarity?: MagicRarity;

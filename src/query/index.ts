@@ -8,9 +8,11 @@ export {
   querySpells,
   queryMonsters,
   queryItems,
+  monsterAttackActions,
   type SpellFilter,
   type MonsterFilter,
   type ItemFilter,
+  type ResolvedMonsterAction,
 } from './content-query.js';
 export {
   buildCharacterSheet,

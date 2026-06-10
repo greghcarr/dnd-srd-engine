@@ -381,6 +381,37 @@ describe('pack integrity: content cross-references resolve', () => {
   }
 });
 
+describe('pack integrity: monster attack weaponIds resolve to weapons', () => {
+  // Slice 788: every monster `actions[].weaponId` (the natural-weapon link the
+  // `no-actions-field` blocker added) and every `multiattack.attacks[].weaponId`
+  // must name a weapon definition in the pack — otherwise the link dangles
+  // silently (the consumer mints an instance of a non-existent weapon, or the
+  // runtimeMultiattackFromStatblock bridge throws at build time).
+  interface MonsterEntry {
+    readonly id: string;
+    readonly actions?: ReadonlyArray<{ readonly weaponId: string }>;
+    readonly multiattack?: { readonly attacks: ReadonlyArray<{ readonly weaponId: string }> };
+  }
+  const monsters = (pack as unknown as { monsters: MonsterEntry[] }).monsters;
+  const weaponIds = new Set(
+    (pack as unknown as { items: Array<{ id: string; itemKind?: string }> }).items
+      .filter((i) => i.itemKind === 'weapon')
+      .map((i) => i.id),
+  );
+  const danglingFrom = (pick: (m: MonsterEntry) => ReadonlyArray<{ weaponId: string }>) =>
+    monsters
+      .flatMap((m) => pick(m).map((a) => `${m.id}:${a.weaponId}`))
+      .filter((ref) => !weaponIds.has(ref.split(':')[1]!))
+      .sort();
+
+  it('every actions[].weaponId names a pack weapon', () => {
+    expect(danglingFrom((m) => m.actions ?? [])).toEqual([]);
+  });
+  it('every multiattack weaponId names a pack weapon', () => {
+    expect(danglingFrom((m) => m.multiattack?.attacks ?? [])).toEqual([]);
+  });
+});
+
 describe('pack integrity: wired spells do not apply effect-less conditions', () => {
   // A spell that ships mechanicalEffects (i.e. is "wired") but applies a
   // condition whose own `effects: []` is empty does nothing mechanically

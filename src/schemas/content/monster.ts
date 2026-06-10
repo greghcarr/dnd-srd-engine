@@ -89,6 +89,22 @@ export const MonsterMultiattackSchema = z.object({
 });
 export type MonsterMultiattack = z.infer<typeof MonsterMultiattackSchema>;
 
+// Slice 788: the statblock's "Actions" — the weapon attacks a monster can
+// make, each linking a weapon DEFINITION id in the pack (a natural weapon
+// like "wolf-bite", or a mundane weapon like "scimitar"). Closes the
+// `no-actions-field` L7 blocker: a single-attack monster's natural weapon was
+// previously unlinked, so consumers hardcoded `wolf → wolf-bite` and diverged.
+// Now the link is on the statblock and queryable (resolve via
+// `monsterAttackActions`). `multiattack` groups these into a per-turn pattern
+// ("two Bite attacks"); `actions` is the menu of distinct attack options
+// (primary first — combat-fuzz equips `actions[0]`). The `weaponId`s are
+// integrity-checked against the pack's weapon definitions.
+export const MonsterAttackActionSchema = z.object({
+  name: z.string(),
+  weaponId: z.string(),
+});
+export type MonsterAttackAction = z.infer<typeof MonsterAttackActionSchema>;
+
 export const MonsterStatblockSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -117,5 +133,6 @@ export const MonsterStatblockSchema = z.object({
   traits: z.array(EffectSchema).default([]),
   breathWeapon: BreathWeaponSpecSchema.optional(),
   multiattack: MonsterMultiattackSchema.optional(),
+  actions: z.array(MonsterAttackActionSchema).default([]),
 });
 export type MonsterStatblock = z.infer<typeof MonsterStatblockSchema>;

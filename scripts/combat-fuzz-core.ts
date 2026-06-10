@@ -356,52 +356,52 @@ const speciesGrantedResources = (
   return out;
 };
 
-// Slice 622: expanded from 10 to 25 entries covering CR <= 1/2
-// statblocks. Mix of natural-weapon beasts and humanoid/mundane-weapon
-// monsters so transcripts surface a wider monster sampling. Each entry
-// is { monsterId, weaponId, classBuild }; the weaponId points at a real
-// pack item (natural weapon for beasts, simple/martial weapon for
-// humanoids). The build shape stays the placeholder 'companion' classId
-// pickIntent uses to route monsters through the default attack branch.
+// Slice 622: expanded from 10 to 25 entries covering CR <= 1/2 statblocks.
+// Mix of natural-weapon beasts and humanoid/mundane-weapon monsters so
+// transcripts surface a wider monster sampling.
+//
+// Slice 788: the weapon is no longer hardcoded here. Each entry is now just
+// { monsterId, primary, secondary } — the attack weapon is sourced from the
+// statblock's `actions[0]` (the queryable link the `no-actions-field` blocker
+// added), so the harness no longer encodes a private monster→weapon map. The
+// ability priorities stay (the build pool wants a primary/secondary, not
+// derivable from raw scores alone). The build keeps the placeholder
+// 'companion' classId pickIntent uses to route monsters through the default
+// attack branch.
 const monsterEntry = (
   id: string,
-  weaponId: string,
   primary: AbilityScore,
   secondary: AbilityScore,
-): { id: string; weaponId: string; classBuild: ClassBuild } => ({
-  id,
-  weaponId,
-  classBuild: { classId: 'companion', primary, secondary, weaponId, cantrips: [], l1Spells: [] },
-});
+): { id: string; primary: AbilityScore; secondary: AbilityScore } => ({ id, primary, secondary });
 
-const MONSTER_OPTIONS: ReadonlyArray<{ id: string; weaponId: string; classBuild: ClassBuild }> = [
+const MONSTER_OPTIONS: ReadonlyArray<{ id: string; primary: AbilityScore; secondary: AbilityScore }> = [
   // Beasts with natural-weapon definitions.
-  monsterEntry('wolf', 'wolf-bite', 'STR', 'DEX'),
-  monsterEntry('venomous-snake', 'venomous-snake-bite', 'DEX', 'CON'),
-  monsterEntry('giant-centipede', 'giant-centipede-bite', 'DEX', 'CON'),
-  monsterEntry('imp', 'imp-sting', 'DEX', 'INT'),
-  monsterEntry('boar', 'boar-gore', 'STR', 'CON'),
-  monsterEntry('mastiff', 'mastiff-bite', 'STR', 'DEX'),
-  monsterEntry('worg', 'worg-bite', 'STR', 'CON'),
-  monsterEntry('pseudodragon', 'pseudodragon-bite', 'DEX', 'CHA'),
-  monsterEntry('giant-spider', 'giant-spider-bite', 'DEX', 'STR'),
-  monsterEntry('cockatrice', 'cockatrice-bite', 'DEX', 'CON'),
-  monsterEntry('stirge', 'stirge-proboscis', 'DEX', 'CON'),
-  monsterEntry('giant-wolf-spider', 'giant-spider-bite', 'DEX', 'STR'),
-  monsterEntry('black-bear', 'black-bear-rend', 'STR', 'CON'),
-  monsterEntry('sprite', 'sprite-needle-sword', 'DEX', 'CHA'),
+  monsterEntry('wolf', 'STR', 'DEX'),
+  monsterEntry('venomous-snake', 'DEX', 'CON'),
+  monsterEntry('giant-centipede', 'DEX', 'CON'),
+  monsterEntry('imp', 'DEX', 'INT'),
+  monsterEntry('boar', 'STR', 'CON'),
+  monsterEntry('mastiff', 'STR', 'DEX'),
+  monsterEntry('worg', 'STR', 'CON'),
+  monsterEntry('pseudodragon', 'DEX', 'CHA'),
+  monsterEntry('giant-spider', 'DEX', 'STR'),
+  monsterEntry('cockatrice', 'DEX', 'CON'),
+  monsterEntry('stirge', 'DEX', 'CON'),
+  monsterEntry('giant-wolf-spider', 'DEX', 'STR'),
+  monsterEntry('black-bear', 'STR', 'CON'),
+  monsterEntry('sprite', 'DEX', 'CHA'),
   // Humanoid + undead monsters using mundane pack weapons.
-  monsterEntry('goblin-warrior', 'shortsword', 'DEX', 'CON'),
-  monsterEntry('kobold-warrior', 'dagger', 'DEX', 'CON'),
-  monsterEntry('skeleton', 'shortsword', 'DEX', 'CON'),
-  monsterEntry('zombie', 'unarmed-strike', 'STR', 'CON'),
-  monsterEntry('bandit', 'shortsword', 'DEX', 'CON'),
-  monsterEntry('cultist', 'scimitar', 'STR', 'WIS'),
-  monsterEntry('guard', 'spear', 'STR', 'CON'),
-  monsterEntry('scout', 'shortsword', 'DEX', 'WIS'),
-  monsterEntry('hobgoblin-warrior', 'longsword', 'STR', 'CON'),
-  monsterEntry('gnoll-warrior', 'spear', 'STR', 'CON'),
-  monsterEntry('warrior-infantry', 'spear', 'STR', 'CON'),
+  monsterEntry('goblin-warrior', 'DEX', 'CON'),
+  monsterEntry('kobold-warrior', 'DEX', 'CON'),
+  monsterEntry('skeleton', 'DEX', 'CON'),
+  monsterEntry('zombie', 'STR', 'CON'),
+  monsterEntry('bandit', 'DEX', 'CON'),
+  monsterEntry('cultist', 'STR', 'WIS'),
+  monsterEntry('guard', 'STR', 'CON'),
+  monsterEntry('scout', 'DEX', 'WIS'),
+  monsterEntry('hobgoblin-warrior', 'STR', 'CON'),
+  monsterEntry('gnoll-warrior', 'STR', 'CON'),
+  monsterEntry('warrior-infantry', 'STR', 'CON'),
 ];
 
 const buildMonster = (name: string, pack: Pack, rngFloat: () => number): BuiltCharacter => {
@@ -410,9 +410,24 @@ const buildMonster = (name: string, pack: Pack, rngFloat: () => number): BuiltCh
   if (statblock === undefined) {
     throw new Error(`Monster ${choice.id} not in pack`);
   }
+  // Slice 788: the attack weapon comes from the statblock's `actions` (the
+  // queryable natural-weapon link), not a hardcoded map. `actions[0]` is the
+  // primary attack; the build config is assembled here with that weapon.
+  const weaponId = statblock.actions[0]?.weaponId;
+  if (weaponId === undefined) {
+    throw new Error(`Monster ${choice.id} has no actions[0] weapon to equip`);
+  }
+  const classBuild: ClassBuild = {
+    classId: 'companion',
+    primary: choice.primary,
+    secondary: choice.secondary,
+    weaponId,
+    cantrips: [],
+    l1Spells: [],
+  };
   const weaponInstance: ItemInstance = {
     id: newItemInstanceId(),
-    definitionId: choice.weaponId ?? 'dagger',
+    definitionId: weaponId,
     quantity: 1,
     attuned: false,
     identifiedByCharacterIds: [],
@@ -442,7 +457,7 @@ const buildMonster = (name: string, pack: Pack, rngFloat: () => number): BuiltCh
     preparedSpells: [],
     resources: [],
   });
-  return { character, weaponInstance, potionInstance, build: choice.classBuild };
+  return { character, weaponInstance, potionInstance, build: classBuild };
 };
 
 // Slice 622: pool-driven build. Per character, draw weapon / armor /

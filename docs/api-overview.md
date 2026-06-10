@@ -171,6 +171,7 @@ The consumer-facing read layer for browsing the catalog (the spell / monster / i
 querySpells(content, { level: 3, school: 'evocation', class: 'wizard' }); // -> Spell[]
 queryMonsters(content, { type: 'Undead', crMin: 1, crMax: 5 });           // -> MonsterStatblock[]
 queryItems(content, { itemKind: 'magic', rarity: 'rare', search: 'sword' }); // -> ItemDefinition[]
+monsterAttackActions(content, 'wolf'); // -> ResolvedMonsterAction[]  (slice 788: a statblock's attack actions with each weaponId resolved to its weapon def — query the link instead of hardcoding wolf → wolf-bite)
 ```
 
 Each is per-category and returns that category's precise type. Every filter field is optional and AND-combines; an absent field matches everything. `search` is a case-insensitive name substring. `querySpells` takes `level` (exact) or `levelMin`/`levelMax` (inclusive range; exact wins), plus `school` / `class` (lowercase class id) / `concentration` / `ritual`. `queryMonsters` takes `type` / `size` / `cr` (exact) or `crMin`/`crMax` (inclusive; fractional CRs are decimals, 1/4 = 0.25). `queryItems` takes `itemKind` / `rarity` (`MagicRarity`). Results return in stable display order: spells by level then name, monsters by CR then name, items by name.
