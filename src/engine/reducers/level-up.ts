@@ -86,6 +86,14 @@ export const applyChoiceResolved = (
       `Option ${id} not in choice ${event.choiceId}`,
     );
   }
+  // Slice 801: multi-select choices require distinct picks (the planner
+  // gate's replay-side mirror). Stops the ASI "+1 to two" oneOf:2 menu
+  // (and Skilled / Magic Initiate, etc.) from taking the same option
+  // twice — e.g. ['str','str'] = an illegal +2 to one ability.
+  invariant(
+    new Set(event.selectedOptionIds).size === event.selectedOptionIds.length,
+    `Choice ${event.choiceId} requires distinct selections`,
+  );
   choice.resolution = {
     selectedOptionIds: [...event.selectedOptionIds],
     atEventId: event.id,

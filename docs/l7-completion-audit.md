@@ -24,7 +24,7 @@
 | 2. Spell mechanics (L0-4) | 23 | 0 | 15 | 5 | Engine |
 | 3. Targeting / AoE seam | 14 | 0 | 6 | 7 | Seam + Consumer |
 | 4. Core combat correctness | 11 | 0 | 5 | 5 | Engine |
-| 5. Build & leveling validation | 10 | 0 | 6 | 3 | Engine |
+| 5. Build & leveling validation | 10 | 0 | 5 | 3 | Engine |
 | 6. Base equipment mechanics | 9 | 1\* | 2 | 4 | Engine |
 | 7. Monster runtime (DM side) | 14 | 0 | 5 | 6 | Engine (schema+content) |
 | 8. Exploration / non-combat | 14 | 0 | 4 | 9 | Engine |
@@ -145,7 +145,7 @@ Where the floor audits (feature *presence*) don't exercise choice-validation or 
 | ID | Sev | Owner | Fix | Finding |
 |---|---|---|---|---|
 | ~~`background-ability-bonus`~~ | **BLOCKER** | Engine | M | The 2024 background ability-score increase (+2/+1 or +1/+1/+1) field existed but had no engine reader — a Sage's INT 15 derived as 15, not 17. The `[verify]` resolved **engine-owned, opt-in** (createPC/getting-started/fuzz pass final scores today; auto-applying to all would double-count). **Closed by slice 793** — new `Character.backgroundAbilityIncrease?` allocation: when present, `abilityScores` are base and the increase rides the existing `addAbilityScoreIncrease` accumulator (cap 20) in `buildEffectStack`, so every derivation reflects it; when absent, byte-unchanged. New `validateBackgroundAbilityIncrease` checks the allocation vs the background's options/pattern. |
-| `asi-distinctness` | DIVERGENCE | Engine | S | The "+1 to two abilities" ASI path accepts `['str','str']` (= illegal +2 to one); also lets Skilled/Magic Initiate pick a duplicate. `src/engine/plan/level-up.ts:165-174`; `src/engine/reducers/level-up.ts:80-90`. |
+| ~~`asi-distinctness`~~ | DIVERGENCE | Engine | S | The "+1 to two abilities" ASI path accepts `['str','str']` (= illegal +2 to one); also lets Skilled/Magic Initiate pick a duplicate. **Closed by slice 801** — a distinctness check (`new Set(ids).size === ids.length`) in both the planner gate (`planResolveChoice`) and the replay invariant (`applyChoiceResolved`), covering every multi-select `oneOf:N` choice; single-select (the +2-to-one path) is unaffected. `src/engine/plan/level-up.ts`; `src/engine/reducers/level-up.ts`. |
 | `l4-feat-menu-eligibility` | DIVERGENCE | Engine | M | The L4 feat choice lists a static {ASI, Grappler} regardless of character: ignores Grappler's STR/DEX-13 prereq and omits Fighting-Style feats for classes with the Fighting Style feature. `src/engine/plan/level-up.ts:78-103`. |
 | `multiclass-prereqs` | DIVERGENCE | Engine | M | No 13+-in-primary-ability check on entering a class; an INT 8 character can take a Wizard level. `src/engine/plan/level-up.ts:36-45`. |
 | `multiclass-entry-proficiencies` | DIVERGENCE | Engine | M | No first-class-vs-multiclass-entry proficiency branch; leveling into a second class grants none of the reduced entry proficiencies. (Slot math is correct.) `src/engine/plan/level-up.ts`. |

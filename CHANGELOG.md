@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Fix (slice 801): distinct picks on multi-select choices (ASI back-door)**
+The ASI "+1 to two ability scores" menu (`asi-plus1-abilities`, oneOf:2) accepted `['str','str']` — two +1s stacking into an illegal +2 to one ability, the back-door the separate +2-to-one choice exists for. Added a distinctness check (`new Set(ids).size === ids.length`) to both the planner gate (`planResolveChoice`) and the replay invariant (`applyChoiceResolved`), after the existing count + membership checks. One fix covers every multi-select `oneOf:N` choice (Skilled, Magic Initiate, …); single-select choices (the +2-to-one path) are unaffected. **Closes the [L7 audit](docs/l7-completion-audit.md) Area 5 divergence `asi-distinctness`.** New 3-test slice-801 (driving the real level-up cascade); fast suite green.
+Detail: [slice-801.md](docs/changelog/slice-801.md).
+
 **Fix (slice 800): Exhaustion level 6 is fatal**
 RAW "You die if your Exhaustion level is 6" — but the reducer clamped exhaustion at 6 and never killed, leaving a ground-down character alive with a −12 to all D20 Tests. Extracted a shared `markCreatureDead` helper (HP 0 + death-save failures at the kill threshold + Concentration dropped — the slice-323 instant-death shape) and call it from both exhaustion mutation paths (`ConditionApplied`'s exhaustion branch + `ExhaustionChanged`) when exhaustion lands on `EXHAUSTION_MAX`; `applyCreatureDestroyed` now delegates to the same helper (DRY, no behavior change). **Closes the [L7 audit](docs/l7-completion-audit.md) Area 4 divergence `exhaustion-6-not-fatal`.** New 5-test slice-800; fast suite green.
 Detail: [slice-800.md](docs/changelog/slice-800.md).

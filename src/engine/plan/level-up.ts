@@ -172,6 +172,18 @@ export const planResolveChoice = (
       throw new Error(`Option ${id} not in choice ${intent.choiceId}`);
     }
   }
+  // Slice 801: a multi-select choice picks DISTINCT options. Without
+  // this, the ASI "+1 to two ability scores" path (the `asi-plus1-
+  // abilities` oneOf:2 menu) accepted ['str','str'] and applied +1+1 =
+  // +2 to one ability — the illegal back-door to a +2 the separate
+  // `asi-plus2-ability` choice is for. Also closes duplicate picks on
+  // Skilled (3 skills), Magic Initiate, and every other oneOf:N menu;
+  // the +2-to-one path is oneOf:1 and so is unaffected.
+  if (new Set(intent.selectedOptionIds).size !== intent.selectedOptionIds.length) {
+    throw new Error(
+      `Choice ${intent.choiceId} requires distinct selections (duplicate in [${intent.selectedOptionIds.join(', ')}])`,
+    );
+  }
   const event: ChoiceResolvedEvent = {
     id: newEventId() as ULID,
     at: intent.at ?? nowIso(),
