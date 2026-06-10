@@ -25,6 +25,7 @@ import { buildEffectStack, collectEffectsFromCharacter, getEffectiveFeatIds } fr
 import { cunningStrikeForgoDice, cunningStrikeMinLevel, type CunningStrikeOption } from './cunning-strike.js';
 import { getCreatureType } from '../../derive/creature-type.js';
 import { creatureSize, isLargeOrSmaller } from '../../derive/creature-size.js';
+import { wearsUntrainedBodyArmor } from '../../derive/armor-training.js';
 import { canUseWeaponMastery } from '../../derive/weapon-mastery.js';
 import { abilityModifier, effectiveAbilityScore } from '../../derive/ability.js';
 import { computeActionEconomyBudget } from '../../derive/action-economy.js';
@@ -1009,10 +1010,15 @@ export const resolveAttackRollPhase = (input: ResolveAttackInput): AttackRollRes
     );
     return effective < HEAVY_WEAPON_MIN_ABILITY;
   })();
+  // Slice 804: RAW Armor Training — wearing Light/Medium/Heavy armor you
+  // lack training with gives Disadvantage on any D20 Test involving STR or
+  // DEX, which includes a weapon attack roll (it uses a STR or DEX mod).
+  const attackerInUntrainedArmor = wearsUntrainedBodyArmor(attacker, content, state.itemInstances, attackerEffects);
   const targetImposesDisadvantage =
     targetEffects.imposesDisadvantageOnAttackers(attackerFacts)
     || rangedInMelee
     || heavyWeaponBelowThreshold
+    || attackerInUntrainedArmor
     || attackerVsTargetAdvantage.disadvantage
     || attackerVsMarkedTargetAdvantage.disadvantage
     || attackerSelfAdvantage.disadvantage;

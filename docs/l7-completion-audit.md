@@ -25,7 +25,7 @@
 | 3. Targeting / AoE seam | 14 | 0 | 6 | 7 | Seam + Consumer |
 | 4. Core combat correctness | 11 | 0 | 3 | 5 | Engine |
 | 5. Build & leveling validation | 10 | 0 | 5 | 3 | Engine |
-| 6. Base equipment mechanics | 9 | 1\* | 2 | 4 | Engine |
+| 6. Base equipment mechanics | 9 | 1\* | 1 | 4 | Engine |
 | 7. Monster runtime (DM side) | 14 | 0 | 5 | 6 | Engine (schema+content) |
 | 8. Exploration / non-combat | 14 | 0 | 4 | 9 | Engine |
 | 9. Consumer duties & docs | 8 | 0 | 3 | 5 | Consumer + Docs |
@@ -167,7 +167,7 @@ Every character uses weapons/armor, so base-equipment bugs are high-frequency.
 | ~~`armor-stealth-disadvantage`~~ | DIVERGENCE | Engine | S | `stealthDisadvantage` is authored on every armor entry but never read; plate-wearers roll Stealth normally. **Closed by slice 798** — `computeAbilityCheck` now resolves the equipped armor (the instance→definition path `computeAC` uses) and OR-s its `stealthDisadvantage` into Stealth checks (gated on `skill === 'stealth'`; flows through passive Stealth). `src/derive/ability-check.ts`. |
 | ~~`armor-str-requirement-speed`~~ | DIVERGENCE | Engine | M | `strRequirement` (chain 13 / splint+plate 15) is never read; under-STR heavy-armor wearers keep full speed (RAW -10 ft). **Closed by slice 799** — `getEffectiveSpeedForMode` applies a -10 walk-speed penalty when the equipped armor's `strRequirement` exceeds the wearer's EFFECTIVE STR (so a STR ASI / Gauntlets of Ogre Power count); folded into the natural base (Haste doubles the reduced speed), walk-mode only, stacks with exhaustion. `src/derive/speed.ts`. |
 | `ammunition-not-consumed` | DIVERGENCE | Engine | M | Firing an Ammunition-property weapon doesn't consume or require ammo (no recover-half). `src/engine/plan/attack.ts`. |
-| `untrained-armor-penalty` | DIVERGENCE | Engine | M | `armorProficiencies` is unread: wearing untrained armor imposes no STR/DEX-disadvantage / no-cast penalty, and a shield grants +2 AC without training. `src/schemas/content/class.ts:39`; `src/derive/ac.ts:126`. |
+| ~~`untrained-armor-penalty`~~ | DIVERGENCE | Engine | M | `armorProficiencies` is unread: wearing untrained armor imposes no STR/DEX-disadvantage / no-cast penalty, and a shield grants +2 AC without training. **Closed by slice 804** — new `derive/armor-training.ts` (`isArmorTrained` / `wearsUntrainedBodyArmor` / `wieldsUntrainedShield`, resolved over class `armorProficiencies` + effect-stack `GrantProficiency`); the STR/DEX disadvantage applies at all three D20 sites (ability-check, save, attack), the no-cast gate in `planCastSpell`, and the shield-AC gate in `computeAC`. `src/derive/armor-training.ts`. |
 | `topple-save-bypasses-effect-stack` | QUIRK | Engine | M | Topple's CON save is a raw ability mod, bypassing `computeSavingThrow` → Bless/Bane/save-advantage don't apply. `src/engine/plan/weapon-mastery.ts:224-243`. |
 | `graze-hardcodes-str` | QUIRK | Engine | S | Graze damage hardcodes base STR; RAW is "the ability modifier you used" and should read the effective score. `src/engine/plan/weapon-mastery.ts:303`. |
 | `attune-prereq-not-validated` | QUIRK | Engine | S | The 3-item limit is enforced, but `attunementCondition` (class/species) and `requiresAttunement` aren't — any class can attune a class-locked item. `src/engine/reducers/inventory.ts:65-81`. |

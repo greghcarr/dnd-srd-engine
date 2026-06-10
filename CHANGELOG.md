@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Fix (slice 804): Armor Training penalties (untrained armor)**
+The class `armorProficiencies` arrays were never read, so RAW Armor Training did nothing — a Wizard in Plate rolled STR/DEX normally, cast freely, and any shield gave +2 AC. New `derive/armor-training.ts` resolves training (class arrays + effect-stack `GrantProficiency('armor')`, mirroring `isWeaponProficient`) and the three RAW effects apply at their five sites: Disadvantage on STR/DEX checks (ability-check), saves (save), and weapon attacks (attack, beside the Heavy-weapon rule); can't cast (cast-spell gate); and a shield gives no AC untrained (AC gate). Monsters (armorClass override, no equipped armor) are unaffected. **Closes the [L7 audit](docs/l7-completion-audit.md) Area 6 divergence `untrained-armor-penalty`.** New 6-test slice-804; slice-798's stealth test re-based onto a Fighter to isolate its arm; fast suite green (587 files, 4524 passed).
+Detail: [slice-804.md](docs/changelog/slice-804.md).
+
 **Fix (slice 803): Grapple / Shove RAW gates**
 `planGrapple`/`planShove` rolled the save but skipped the RAW preconditions — a Stunned Medium PC could grapple a Gargantuan dragon two-handed. Added three gates (reusing existing helpers): `assertActorCanAct` (both); a size gate (`SIZES` rank diff ≤ 1 — target no more than one size larger, both); and a free-hand gate (grapple only — a two-handed weapon, or main-hand + off-hand/shield, leaves no free hand). Shove keeps no free-hand requirement per RAW. **Closes the [L7 audit](docs/l7-completion-audit.md) Area 4 divergence `grapple-shove-missing-gates`.** New 6-test slice-803; fast suite green.
 Detail: [slice-803.md](docs/changelog/slice-803.md).

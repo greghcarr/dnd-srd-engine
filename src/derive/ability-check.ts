@@ -7,6 +7,7 @@ import { SKILL_ABILITY, PROFICIENCY_MULTIPLIER } from '../schemas/primitives.js'
 import { abilityModifier, effectiveAbilityScore, proficiencyBonus } from './ability.js';
 import { computeTotalLevel } from '../schemas/runtime/character.js';
 import { buildEffectStack } from './effect-stack.js';
+import { wearsUntrainedBodyArmor } from './armor-training.js';
 import { EXHAUSTION_SAVE_PENALTY_PER_LEVEL } from '../internal/constants.js';
 
 export interface AbilityCheckBreakdownEntry {
@@ -214,9 +215,15 @@ export const computeAbilityCheck = (input: ComputeAbilityCheckInput): AbilityChe
     const armorDef = armorInstance ? input.content.items.get(armorInstance.definitionId) : undefined;
     return armorDef?.itemKind === 'armor' && armorDef.stealthDisadvantage === true;
   })();
+  // Slice 804: RAW Armor Training — wearing Light/Medium/Heavy armor you
+  // lack training with gives Disadvantage on "any D20 Test that involves
+  // Strength or Dexterity", which covers STR/DEX ability + skill checks.
+  const untrainedArmorStrDexDisadvantage =
+    (input.ability === 'STR' || input.ability === 'DEX') &&
+    wearsUntrainedBodyArmor(input.character, input.content, input.itemInstances, effects);
   const adv = {
     advantage: skillAdv.advantage || checkAdv.advantage,
-    disadvantage: skillAdv.disadvantage || checkAdv.disadvantage || armorStealthDisadvantage,
+    disadvantage: skillAdv.disadvantage || checkAdv.disadvantage || armorStealthDisadvantage || untrainedArmorStrDexDisadvantage,
     autoCrit: skillAdv.autoCrit || checkAdv.autoCrit,
     autoFail: skillAdv.autoFail || checkAdv.autoFail,
   };

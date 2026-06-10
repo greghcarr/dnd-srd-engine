@@ -5,6 +5,7 @@ import type { AbilityScore } from '../schemas/primitives.js';
 import { abilityModifier, effectiveAbilityScore } from './ability.js';
 import { buildEffectStack } from './effect-stack.js';
 import { resolveEnchantment } from './enchantment.js';
+import { wieldsUntrainedShield } from './armor-training.js';
 import type { EffectAccumulator } from '../effects/builder.js';
 
 const UNARMORED_BASE = 10;
@@ -74,7 +75,12 @@ const computeArmorAC = (
   if (shieldInstanceId !== undefined) {
     const shieldInstance = itemInstances[shieldInstanceId];
     const shieldDef = shieldInstance ? content.items.get(shieldInstance.definitionId) : undefined;
-    if (shieldDef && shieldDef.itemKind === 'armor' && shieldDef.category === 'shield') {
+    // Slice 804: RAW "You gain the AC benefit of a Shield only if you have
+    // training with it" — an untrained Shield contributes no AC at all.
+    if (
+      shieldDef && shieldDef.itemKind === 'armor' && shieldDef.category === 'shield'
+      && !wieldsUntrainedShield(character, content, itemInstances, effects)
+    ) {
       breakdown.push({ source: `shield:${shieldDef.id}`, value: shieldDef.baseAC });
       // Slice 315: magic-shield enhancement bonus (Shield +1/+2/+3).
       if (shieldDef.acBonus !== undefined && shieldDef.acBonus !== 0) {

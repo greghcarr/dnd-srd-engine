@@ -4,6 +4,7 @@ import type { ResolvedContent } from '../content/pack.js';
 import type { AbilityScore } from '../schemas/primitives.js';
 import { abilityModifier, effectiveAbilityScore, proficiencyBonus } from './ability.js';
 import { buildEffectStack } from './effect-stack.js';
+import { wearsUntrainedBodyArmor } from './armor-training.js';
 import type { BonusDieContribution } from '../effects/builder.js';
 import { computeTotalLevel } from '../schemas/runtime/character.js';
 import { EXHAUSTION_SAVE_PENALTY_PER_LEVEL } from '../internal/constants.js';
@@ -174,12 +175,18 @@ export const computeSavingThrow = (input: ComputeSaveInput): SaveResult => {
   const magicResistanceAdvantage =
     input.sourceIsMagical === true && effects.hasMagicResistance();
   const effectiveAdvantage = adv.advantage || magicResistanceAdvantage;
+  // Slice 804: untrained armor → Disadvantage on STR/DEX saves (RAW Armor
+  // Training: "any D20 Test that involves Strength or Dexterity").
+  const untrainedArmorDisadvantage =
+    (input.ability === 'STR' || input.ability === 'DEX') &&
+    wearsUntrainedBodyArmor(input.character, input.content, input.itemInstances, effects);
+  const effectiveDisadvantage = adv.disadvantage || untrainedArmorDisadvantage;
   const total = breakdown.reduce((acc, e) => acc + e.value, 0);
   return {
     total,
     breakdown,
-    hasAdvantage: effectiveAdvantage && !adv.disadvantage,
-    hasDisadvantage: adv.disadvantage && !effectiveAdvantage,
+    hasAdvantage: effectiveAdvantage && !effectiveDisadvantage,
+    hasDisadvantage: effectiveDisadvantage && !effectiveAdvantage,
     hasHalflingLuck: effects.hasHalflingLuck(),
     // Slice 331: the pending per-roll bonus dice for this save (Bless
     // +1d4 / Bane -1d4 via AddBonusDie). Returned unrolled (this is a

@@ -28,8 +28,12 @@ const wearing = (armorId?: string): { character: Character; itemInstances: Recor
     armorInstanceId = inst.id;
   }
   const character = CharacterSchema.parse({
+    // Fighter: trained with all armor, so the only Stealth-check
+    // disadvantage in play is the armor's stealthDisadvantage flag — not
+    // the slice-804 untrained-armor STR/DEX penalty (which would otherwise
+    // fire for a Rogue in medium/heavy armor and confound this test).
     id: newCharacterId(), name: 'Scout', speciesId: 'human', backgroundId: 'soldier',
-    classes: [{ classId: 'rogue', level: 3, hitDiceRemaining: 3 }],
+    classes: [{ classId: 'fighter', level: 3, hitDiceRemaining: 3 }],
     abilityScores: { STR: 10, DEX: 16, CON: 12, INT: 10, WIS: 12, CHA: 10 },
     hp: { current: 21, max: 21, temp: 0 },
     equipped: armorInstanceId !== undefined ? { armor: armorInstanceId, attuned: [] } : { attuned: [] },

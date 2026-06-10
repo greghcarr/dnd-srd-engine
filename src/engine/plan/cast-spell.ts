@@ -64,6 +64,7 @@ import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { applyAll } from '../apply.js';
 import { dispatchTriggers } from '../triggers/dispatch.js';
 import { buildEffectStack } from '../../derive/effect-stack.js';
+import { wearsUntrainedBodyArmor } from '../../derive/armor-training.js';
 import { isImmuneToCondition } from '../../derive/condition-immunity.js';
 import { isHealingBlocked } from '../../derive/healing-block.js';
 import { planConcentrationOnDamage } from './concentration.js';
@@ -2074,6 +2075,13 @@ export const planCastSpell = (
   assertActorCanAct(character, 'cast a spell');
   const spell = content.spells.get(rawIntent.spellId);
   if (!spell) throw new Error(`Unknown spell ${rawIntent.spellId}`);
+  // Slice 804: RAW Armor Training — "you can't cast spells" while wearing
+  // Light/Medium/Heavy armor you lack training with.
+  if (wearsUntrainedBodyArmor(character, content, state.itemInstances, buildEffectStack({
+    character, content, itemInstances: state.itemInstances, pendingChoices: state.pendingChoices,
+  }))) {
+    throw new Error(`${character.name} can't cast spells while wearing armor they lack training with`);
+  }
 
   // Slice 787: opt-in area enforcement. When the caller supplies an `aim`
   // and the spell has an area, the engine derives WHO the template covers
