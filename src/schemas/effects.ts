@@ -308,7 +308,11 @@ export type Effect =
   | { kind: 'Regeneration'; perTurn: number; suppressedBy: DamageType[] }
   | { kind: 'GrantResource'; resourceId: string; max: number | Formula; recharge: Recharge; diceSize?: number }
   | { kind: 'GrantSpellSlots'; level: SpellLevel; count: number; source: 'full' | 'half' | 'third' | 'pact' }
-  | { kind: 'GrantSpell'; spellId: string; preparation: 'always-prepared' | 'prepared' | 'known' | 'at-will' | 'oncePerLongRest' | 'oncePerShortRest'; spellcastingAbility?: AbilityScore; freeCastResourceId?: string }
+  | { kind: 'GrantSpell'; spellId: string; preparation: 'always-prepared' | 'prepared' | 'known' | 'at-will' | 'oncePerLongRest' | 'oncePerShortRest' | 'perLongRest'; spellcastingAbility?: AbilityScore; usesPerLongRest?: number; freeCastResourceId?: string }
+  // Slice 794: the SRD 5.2.1 NPC "Spellcasting" action header — a fixed
+  // spell save DC / attack bonus + ability for a creature with no
+  // spellcasting class. See the schema literal below for the full note.
+  | { kind: 'SetSpellcastingProfile'; ability: AbilityScore; saveDC?: number; attackBonus?: number }
   | { kind: 'OnEvent'; id?: string; trigger: { eventType: string; filter?: Predicate }; actions: TriggerAction[]; oncePer?: 'turn' | 'round' | 'shortRest' | 'longRest'; requiresReaction?: boolean; consumeOnTrigger?: boolean }
   | { kind: 'RecoverResource'; resourceId: string; amount: number | 'all' | Formula; when: 'shortRest' | 'longRest' | 'turnStart' | 'turnEnd' | 'dawn'; limitedByResourceId?: string }
   | { kind: 'GrantAction'; actionId: string; name: string; cost: 'action' | 'bonusAction' | 'reaction' | 'free'; resourceCost?: { resourceId: string; amount: number } }
@@ -748,8 +752,20 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
         'at-will',
         'oncePerLongRest',
         'oncePerShortRest',
+        // Slice 794: the SRD 5.2.1 NPC "N/Day Each" usage bucket. Cast
+        // with `useFreeCast: true`; the engine meters it against
+        // `usesPerLongRest` via the bearer's `perDayCastsUsed` counter
+        // (a generalization of the boolean `oncePerLongRest` path), no
+        // spell slot consumed. The Mage's "2/Day Each: Fireball,
+        // Invisibility" and "1/Day Each: Cone of Cold, Fly" are each a
+        // GrantSpell with `preparation: 'perLongRest'` + the count.
+        'perLongRest',
       ]),
       spellcastingAbility: AbilityScoreSchema.optional(),
+      // Slice 794: the per-long-rest cast budget for a `perLongRest`
+      // grant (2 for "2/Day Each", 1 for "1/Day"). Ignored for other
+      // preparations. Defaults to 1 when omitted on a perLongRest grant.
+      usesPerLongRest: z.number().int().min(1).optional(),
       // Slice 566: pool-based free-cast bypass. When set, a cast of
       // `spellId` with `useFreeCast: true` consumes 1 from the named
       // resource (emits ResourceSpent) and skips the slot. Composes
@@ -760,6 +776,22 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       // GrantResource pumps the resource's max (2 at L1, 3/4/5/6 at
       // L5/9/13/17) under the SAME `recharge: 'longRest'` policy.
       freeCastResourceId: z.string().optional(),
+    }),
+    // Slice 794: the SRD 5.2.1 NPC "Spellcasting" action header —
+    // "casts one of the following spells, using <ability> (spell save
+    // DC <N>[, +<M> to hit with spell attacks])". A creature has no
+    // spellcasting class, so its save DC / attack bonus can't derive
+    // from a class level; this effect pins the flat statblock values.
+    // Authored in `MonsterStatblock.traits` alongside the GrantSpell
+    // entries (At Will + perLongRest). When present, computeSpellSaveDC
+    // / computeSpellAttackBonus return the fixed value instead of the
+    // 8 + proficiency + ability-mod derivation, and the cast path uses
+    // `ability` when no GrantSpell carries a per-spell override.
+    z.object({
+      kind: z.literal('SetSpellcastingProfile'),
+      ability: AbilityScoreSchema,
+      saveDC: z.number().int().min(1).optional(),
+      attackBonus: z.number().int().optional(),
     }),
     z.object({
       kind: z.literal('OnEvent'),

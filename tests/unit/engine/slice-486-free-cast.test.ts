@@ -210,7 +210,7 @@ describe('once-per-long-rest free-cast tracking (slice 486)', () => {
         targetIds: [ally.id],
         useFreeCast: true,
       }),
-    ).toThrow(/no oncePerLongRest or pool-based grant/i);
+    ).toThrow(/no oncePerLongRest, per-day, or pool-based grant/i);
   });
 
   it('completing a long rest clears usedFreeCastSpellIds and re-enables the free cast', () => {

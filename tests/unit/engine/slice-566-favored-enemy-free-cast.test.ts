@@ -251,7 +251,7 @@ describe("Favored Enemy Hunter's Mark free-cast wiring (slice 566)", () => {
           targetIds: [ranger.id],
           useFreeCast: true,
         }),
-      ).toThrow(/no oncePerLongRest or pool-based grant/i);
+      ).toThrow(/no oncePerLongRest, per-day, or pool-based grant/i);
     });
   });
 });

@@ -46,12 +46,34 @@ const lookupSpellcastingAbility = (input: ComputeSpellDCInput): 'INT' | 'WIS' | 
   return undefined;
 };
 
+// Slice 794: a creature carrying a SetSpellcastingProfile trait has no
+// spellcasting class, so the class-ability lookup returns undefined.
+// Fall back to the profile's ability (narrowed to a casting ability) so
+// the monster's DC / attack still derive (and a monster sheet shows the
+// right ability even when no explicit `castingAbility` is threaded).
+const resolveDCAbility = (
+  input: ComputeSpellDCInput,
+  profileAbility: import('../schemas/primitives.js').AbilityScore | undefined,
+): 'INT' | 'WIS' | 'CHA' | undefined => {
+  const direct = lookupSpellcastingAbility(input);
+  if (direct !== undefined) return direct;
+  if (profileAbility === 'INT' || profileAbility === 'WIS' || profileAbility === 'CHA') {
+    return profileAbility;
+  }
+  return undefined;
+};
+
 export const computeSpellSaveDC = (input: ComputeSpellDCInput): SpellDCResult => {
-  const ability = lookupSpellcastingAbility(input);
+  const effects = buildEffectStack(input);
+  // Slice 794: a fixed NPC spell save DC short-circuits the derivation.
+  const profile = effects.spellcastingProfile();
+  if (profile?.saveDC !== undefined) {
+    return { total: profile.saveDC, breakdown: [{ source: 'fixed', value: profile.saveDC }] };
+  }
+  const ability = resolveDCAbility(input, profile?.ability);
   if (ability === undefined) {
     return { total: 0, breakdown: [] };
   }
-  const effects = buildEffectStack(input);
   const baseScore = input.character.abilityScores[ability];
   const floor = effects.effectiveAbilityScoreFloor(ability)?.value;
   const increase = effects.effectiveAbilityScoreIncrease(ability);
@@ -68,11 +90,17 @@ export const computeSpellSaveDC = (input: ComputeSpellDCInput): SpellDCResult =>
 };
 
 export const computeSpellAttackBonus = (input: ComputeSpellDCInput): SpellDCResult => {
-  const ability = lookupSpellcastingAbility(input);
+  const effects = buildEffectStack(input);
+  // Slice 794: a fixed NPC spell attack bonus short-circuits the
+  // derivation (e.g. Cultist Fanatic "+4 to hit with spell attacks").
+  const profile = effects.spellcastingProfile();
+  if (profile?.attackBonus !== undefined) {
+    return { total: profile.attackBonus, breakdown: [{ source: 'fixed', value: profile.attackBonus }] };
+  }
+  const ability = resolveDCAbility(input, profile?.ability);
   if (ability === undefined) {
     return { total: 0, breakdown: [] };
   }
-  const effects = buildEffectStack(input);
   const baseScore = input.character.abilityScores[ability];
   const floor = effects.effectiveAbilityScoreFloor(ability)?.value;
   const increase = effects.effectiveAbilityScoreIncrease(ability);

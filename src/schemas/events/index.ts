@@ -64,6 +64,7 @@ import {
   SpellSlotsRegainedEventSchema,
   PreparedSpellsChangedEventSchema,
   FreeCastUsedEventSchema,
+  PerDayCastUsedEventSchema,
 } from './spellcasting.js';
 import {
   ConcentrationStartedEventSchema,
@@ -264,6 +265,7 @@ export const EventSchema = z.discriminatedUnion('type', [
   SpellSlotsRegainedEventSchema,
   PreparedSpellsChangedEventSchema,
   FreeCastUsedEventSchema,
+  PerDayCastUsedEventSchema,
   ConcentrationStartedEventSchema,
   ConcentrationBrokenEventSchema,
   SpellEffectStartedEventSchema,
@@ -423,6 +425,7 @@ export const EVENT_TYPES = [
   'SpellSlotsRegained',
   'PreparedSpellsChanged',
   'FreeCastUsed',
+  'PerDayCastUsed',
   'ConcentrationStarted',
   'ConcentrationBroken',
   'SpellEffectStarted',
@@ -692,6 +695,7 @@ export {
   SpellSlotsRegainedEventSchema,
   PreparedSpellsChangedEventSchema,
   FreeCastUsedEventSchema,
+  PerDayCastUsedEventSchema,
   SpellSlotSourceSchema,
 } from './spellcasting.js';
 export type {
@@ -703,6 +707,7 @@ export type {
   SpellSlotsRegainedEvent,
   PreparedSpellsChangedEvent,
   FreeCastUsedEvent,
+  PerDayCastUsedEvent,
   SpellSlotSource,
 } from './spellcasting.js';
 export {

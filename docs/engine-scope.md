@@ -14,6 +14,7 @@ State the engine owns and reduces from events. You read it, the engine writes it
 - **Action economy**: action / bonus action / reaction / movement budget per turn, per encounter. Consumed by intents, reset on turn-start.
 - **Conditions**: the 15 RAW conditions plus 128 mechanic-rider variants the pack uses. Effects on attack rolls, saves, checks, AC, and movement compose into derivations automatically.
 - **Spell slots**: used vs total per level, pact slots, free-cast slots (Magic Initiate, Magic Item charges, etc.).
+- **NPC daily casting** (slice 794): SRD 5.2.1 statblock casters (Mage, Priest, Druid, Cultist Fanatic, dragons) don't use slots. A `SetSpellcastingProfile` trait pins their flat spell save DC / attack bonus / ability (a class-less creature would otherwise derive DC 0); `GrantSpell { preparation: 'perLongRest', usesPerLongRest: N }` is each "N/Day Each" bucket, metered per-spell by `Character.perDayCastsUsed` and refreshed on a Long Rest. Cast a metered spell with `useFreeCast: true` (the same signal as the once-per-rest free-cast path); "At Will" NPC spells stay slot-free without the flag (slice 527).
 - **Concentration**: which effect a character is concentrating on, broken automatically on damage saves, unconsciousness, or a new concentration cast.
 - **Weapon mastery**: slot budget + chosen weapons (per the 2024 PHB Weapon Mastery class feature).
 - **Effect instances**: active spells, conditions, and buffs with their `sourceCharacterId`, `durationRounds`, and `expiresOnRound` metadata.

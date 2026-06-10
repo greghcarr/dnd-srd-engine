@@ -3,6 +3,7 @@ import type { ResolvedContent } from '../../content/pack.js';
 import type { Event } from '../../schemas/events/index.js';
 import type {
   FreeCastUsedEvent,
+  PerDayCastUsedEvent,
   PactSlotConsumedEvent,
   SpellCastDeclaredEvent,
   SpellCastFizzledEvent,
@@ -215,6 +216,14 @@ const resolveCastingAbility = (
   const grantAbility = grant?.spellcastingAbility;
   if (grantAbility === 'INT' || grantAbility === 'WIS' || grantAbility === 'CHA') {
     return grantAbility;
+  }
+  // Slice 794: an NPC caster (Mage, Priest, ...) carries one
+  // SetSpellcastingProfile trait whose `ability` covers all of its
+  // granted spells, so the per-spell GrantSpell entries need not repeat
+  // `spellcastingAbility`. Fall back to the profile ability here.
+  const profileAbility = effects.spellcastingProfile()?.ability;
+  if (profileAbility === 'INT' || profileAbility === 'WIS' || profileAbility === 'CHA') {
+    return profileAbility;
   }
   return undefined;
 };
@@ -2110,6 +2119,10 @@ export const planCastSpell = (
   // surface even when the caster has no slots of the requested level.
   const useFreeCast = intent.useFreeCast === true;
   let freeCastPoolResourceId: string | undefined;
+  // Slice 794: set to the spellId when this free cast draws from an NPC
+  // "N/Day Each" per-long-rest budget (a perLongRest GrantSpell); the
+  // emit block below records the use via PerDayCastUsed.
+  let perDayCastSpellId: string | undefined;
   if (useFreeCast) {
     const effects = buildEffectStack({
       character,
@@ -2120,6 +2133,8 @@ export const planCastSpell = (
     const grants = effects.grantedSpells().filter((g) => g.spellId === intent.spellId);
     const onceGrant = grants.find((g) => g.preparation === 'oncePerLongRest');
     const poolGrant = grants.find((g) => g.freeCastResourceId !== undefined);
+    // Slice 794: the SRD 5.2.1 NPC "N/Day Each" usage bucket.
+    const perDayGrant = grants.find((g) => g.preparation === 'perLongRest');
     if (onceGrant !== undefined) {
       if (character.usedFreeCastSpellIds.includes(intent.spellId)) {
         throw new Error(
@@ -2135,9 +2150,18 @@ export const planCastSpell = (
         );
       }
       freeCastPoolResourceId = resourceId;
+    } else if (perDayGrant !== undefined) {
+      const budget = perDayGrant.usesPerLongRest ?? 1;
+      const used = character.perDayCastsUsed[intent.spellId] ?? 0;
+      if (used >= budget) {
+        throw new Error(
+          `${character.name} has no remaining daily uses of ${spell.name} (${budget}/day)`,
+        );
+      }
+      perDayCastSpellId = intent.spellId;
     } else {
       throw new Error(
-        `${character.name} cannot use a free cast for ${spell.name}: no oncePerLongRest or pool-based grant for this spell`,
+        `${character.name} cannot use a free cast for ${spell.name}: no oncePerLongRest, per-day, or pool-based grant for this spell`,
       );
     }
   }
@@ -2423,6 +2447,18 @@ export const planCastSpell = (
         causedByEventId: declared.id,
       };
       events.push(resourceSpent);
+    } else if (perDayCastSpellId !== undefined) {
+      // Slice 794: record one consumed "N/Day Each" use; the reducer
+      // increments perDayCastsUsed[spellId], the long rest clears it.
+      const perDay: PerDayCastUsedEvent = {
+        id: newEventId() as ULID,
+        at,
+        type: 'PerDayCastUsed',
+        characterId: intent.characterId as ULID,
+        spellId: perDayCastSpellId,
+        causedByEventId: declared.id,
+      };
+      events.push(perDay);
     } else {
       const freeCast: FreeCastUsedEvent = {
         id: newEventId() as ULID,

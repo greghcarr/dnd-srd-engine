@@ -356,6 +356,8 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       return `Prepared spell swapped: ${spellName(content, event.removed)} → ${spellName(content, event.added)} (${event.source}).`;
     case 'FreeCastUsed':
       return `Free cast used: ${spellName(content, event.spellId)}.`;
+    case 'PerDayCastUsed':
+      return `Daily spell use spent: ${spellName(content, event.spellId)}.`;
     case 'ConcentrationStarted': {
       const caster = characterName(stateBefore, event.casterId);
       const spell = spellName(content, event.spellId);

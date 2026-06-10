@@ -237,9 +237,18 @@ export class EffectAccumulator {
   private auraRangeBonusTotal: number = 0;
   private grantedSpellEntries: Array<{
     spellId: string;
-    preparation: 'always-prepared' | 'prepared' | 'known' | 'at-will' | 'oncePerLongRest' | 'oncePerShortRest';
+    preparation: 'always-prepared' | 'prepared' | 'known' | 'at-will' | 'oncePerLongRest' | 'oncePerShortRest' | 'perLongRest';
     spellcastingAbility?: AbilityScore;
+    usesPerLongRest?: number;
   }> = [];
+  // Slice 794: the bearer's fixed NPC spellcasting profile (SRD 5.2.1
+  // statblock "spell save DC N"). Last-write-wins; a creature carries at
+  // most one Spellcasting action. When set, computeSpellSaveDC /
+  // computeSpellAttackBonus return the flat value instead of deriving
+  // from a (non-existent) class level.
+  private spellcastingProfileValue:
+    | { ability: AbilityScore; saveDC?: number; attackBonus?: number }
+    | undefined = undefined;
   // Slice 119: marker for the Two-Weapon Fighting Fighting Style.
   // When set, planOffHandAttack adds the wielder's ability mod to
   // off-hand damage even when positive (RAW: only negative mods
@@ -1032,19 +1041,28 @@ export class EffectAccumulator {
   // `character.preparedSpells` + `character.knownSpells`.
   addGrantedSpell(entry: {
     spellId: string;
-    preparation: 'always-prepared' | 'prepared' | 'known' | 'at-will' | 'oncePerLongRest' | 'oncePerShortRest';
+    preparation: 'always-prepared' | 'prepared' | 'known' | 'at-will' | 'oncePerLongRest' | 'oncePerShortRest' | 'perLongRest';
     spellcastingAbility?: AbilityScore;
     freeCastResourceId?: string;
+    usesPerLongRest?: number;
   }): void {
     this.grantedSpellEntries.push(entry);
   }
   grantedSpells(): ReadonlyArray<{
     readonly spellId: string;
-    readonly preparation: 'always-prepared' | 'prepared' | 'known' | 'at-will' | 'oncePerLongRest' | 'oncePerShortRest';
+    readonly preparation: 'always-prepared' | 'prepared' | 'known' | 'at-will' | 'oncePerLongRest' | 'oncePerShortRest' | 'perLongRest';
     readonly spellcastingAbility?: AbilityScore;
     readonly freeCastResourceId?: string;
+    readonly usesPerLongRest?: number;
   }> {
     return this.grantedSpellEntries;
+  }
+  // Slice 794: set / read the bearer's fixed NPC spellcasting profile.
+  setSpellcastingProfile(profile: { ability: AbilityScore; saveDC?: number; attackBonus?: number }): void {
+    this.spellcastingProfileValue = profile;
+  }
+  spellcastingProfile(): { ability: AbilityScore; saveDC?: number; attackBonus?: number } | undefined {
+    return this.spellcastingProfileValue;
   }
   markTwoWeaponFighting(): void {
     this.twoWeaponFightingFlag = true;
@@ -1299,6 +1317,16 @@ export const applyEffectToBuilder = (
         ...(effect.freeCastResourceId !== undefined
           ? { freeCastResourceId: effect.freeCastResourceId }
           : {}),
+        ...(effect.usesPerLongRest !== undefined
+          ? { usesPerLongRest: effect.usesPerLongRest }
+          : {}),
+      });
+      return;
+    case 'SetSpellcastingProfile':
+      acc.setSpellcastingProfile({
+        ability: effect.ability,
+        ...(effect.saveDC !== undefined ? { saveDC: effect.saveDC } : {}),
+        ...(effect.attackBonus !== undefined ? { attackBonus: effect.attackBonus } : {}),
       });
       return;
     case 'GrantWeaponMastery':

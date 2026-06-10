@@ -203,6 +203,15 @@ export const CharacterSchema = z.object({
   // by `applyLongRestEnded`. Empty by default; pre-slice-486 saves load
   // clean.
   usedFreeCastSpellIds: z.array(z.string()).default([]),
+  // Slice 794: per-spell cast counts consumed since the last long rest
+  // for `GrantSpell { preparation: 'perLongRest' }` grants — the SRD
+  // 5.2.1 NPC "N/Day Each" usage buckets (Mage Fireball 2/Day, etc.).
+  // Keyed by spellId → times cast. The cast gate allows a cast while the
+  // count is below the grant's `usesPerLongRest`; `PerDayCastUsed`
+  // increments it; `applyLongRestEnded` clears it. A count generalizes
+  // the boolean `usedFreeCastSpellIds` (which stays the 1/long-rest PC
+  // free-cast path). Empty by default; pre-slice-794 saves load clean.
+  perDayCastsUsed: z.record(z.string(), z.number().int().min(0)).default({}),
   // Slice 502: the weapon definition ids this character has chosen for
   // the 2024 Weapon Mastery feature (Fighter 3, Barbarian / Paladin /
   // Ranger / Rogue 2). A weapon's mastery property applies only when its

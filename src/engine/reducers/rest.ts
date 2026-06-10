@@ -140,6 +140,9 @@ export const applyLongRestEnded = (
     // Initiate, Warlock Contact Patron). Safe to overwrite as a fresh
     // empty array even when the participant never cast one this rest.
     character.usedFreeCastSpellIds = [];
+    // Slice 794: clear the NPC "N/Day Each" per-spell cast counters
+    // (Mage Fireball 2/Day, etc.) so the budget refreshes on a Long Rest.
+    character.perDayCastsUsed = {};
     // Slice 293. Reset per-long-rest item time budgets (Boots of
     // Speed's 10-min/LR cumulative activation pool). The field is
     // optional; only instances that have been activated since the

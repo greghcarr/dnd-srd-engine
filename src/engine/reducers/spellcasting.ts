@@ -3,6 +3,7 @@ import type { CampaignState } from '../../schemas/runtime/campaign.js';
 import type { Character } from '../../schemas/runtime/character.js';
 import type {
   FreeCastUsedEvent,
+  PerDayCastUsedEvent,
   PactSlotConsumedEvent,
   PactSlotsRegainedEvent,
   PreparedSpellsChangedEvent,
@@ -94,4 +95,16 @@ export const applyFreeCastUsed = (
   if (!character.usedFreeCastSpellIds.includes(event.spellId)) {
     character.usedFreeCastSpellIds.push(event.spellId);
   }
+};
+
+// Slice 794: records that the bearer has cast one of its per-long-rest
+// "N/Day Each" uses of `spellId`. Increments the per-spell counter; the
+// planner's pre-emit gate enforces the `usesPerLongRest` cap, and
+// `applyLongRestEnded` clears the map.
+export const applyPerDayCastUsed = (
+  state: Draft<CampaignState>,
+  event: PerDayCastUsedEvent,
+): void => {
+  const character = requireCharacter(state, event.characterId);
+  character.perDayCastsUsed[event.spellId] = (character.perDayCastsUsed[event.spellId] ?? 0) + 1;
 };

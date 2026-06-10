@@ -57,6 +57,7 @@ export const applyCompanionSummoned = (
     spellSlotsUsed: {},
     pactSlotsUsed: 0,
     usedFreeCastSpellIds: [],
+    perDayCastsUsed: {},
     weaponMasteries: [],
     triggerCounters: {},
     featsTaken: [],

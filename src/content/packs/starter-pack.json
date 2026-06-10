@@ -4123,7 +4123,19 @@
       "cr": 6,
       "xp": 2300,
       "proficiencyBonus": 3,
-      "languages": ["common"]
+      "languages": ["common"],
+      "traits": [
+        { "kind": "SetSpellcastingProfile", "ability": "INT", "saveDC": 14 },
+        { "kind": "GrantSpell", "spellId": "detect-magic", "preparation": "at-will" },
+        { "kind": "GrantSpell", "spellId": "light", "preparation": "at-will" },
+        { "kind": "GrantSpell", "spellId": "mage-armor", "preparation": "at-will" },
+        { "kind": "GrantSpell", "spellId": "mage-hand", "preparation": "at-will" },
+        { "kind": "GrantSpell", "spellId": "prestidigitation", "preparation": "at-will" },
+        { "kind": "GrantSpell", "spellId": "fireball", "preparation": "perLongRest", "usesPerLongRest": 2 },
+        { "kind": "GrantSpell", "spellId": "invisibility", "preparation": "perLongRest", "usesPerLongRest": 2 },
+        { "kind": "GrantSpell", "spellId": "cone-of-cold", "preparation": "perLongRest", "usesPerLongRest": 1 },
+        { "kind": "GrantSpell", "spellId": "fly", "preparation": "perLongRest", "usesPerLongRest": 1 }
+      ]
     },
     {
       "id": "mastiff",

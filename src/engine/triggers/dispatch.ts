@@ -565,6 +565,7 @@ const fireSpawnCreature = (
       spellSlotsUsed: {},
       pactSlotsUsed: 0,
       usedFreeCastSpellIds: [],
+      perDayCastsUsed: {},
       weaponMasteries: [],
       triggerCounters: {},
       featsTaken: [],

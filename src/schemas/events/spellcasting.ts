@@ -100,3 +100,16 @@ export const FreeCastUsedEventSchema = EventEnvelopeSchema.extend({
   spellId: z.string(),
 });
 export type FreeCastUsedEvent = z.infer<typeof FreeCastUsedEventSchema>;
+
+// Slice 794: emitted when a cast consumes one of an NPC's per-long-rest
+// "N/Day Each" uses (a GrantSpell with `preparation: 'perLongRest'`).
+// Reducer increments the bearer's `perDayCastsUsed[spellId]`; the
+// long-rest reducer clears the map. Emitted alongside SpellCastDeclared
+// (no SpellSlotConsumed) when `useFreeCast: true` matches a perLongRest
+// grant and the per-spell count is still below `usesPerLongRest`.
+export const PerDayCastUsedEventSchema = EventEnvelopeSchema.extend({
+  type: z.literal('PerDayCastUsed'),
+  characterId: ULIDSchema,
+  spellId: z.string(),
+});
+export type PerDayCastUsedEvent = z.infer<typeof PerDayCastUsedEventSchema>;
