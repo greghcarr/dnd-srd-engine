@@ -25,7 +25,7 @@
 | 3. Targeting / AoE seam | 14 | 0 | 6 | 7 | Seam + Consumer |
 | 4. Core combat correctness | 11 | 0 | 6 | 5 | Engine |
 | 5. Build & leveling validation | 10 | 0 | 6 | 3 | Engine |
-| 6. Base equipment mechanics | 9 | 1\* | 4 | 4 | Engine |
+| 6. Base equipment mechanics | 9 | 1\* | 3 | 4 | Engine |
 | 7. Monster runtime (DM side) | 14 | 0 | 5 | 6 | Engine (schema+content) |
 | 8. Exploration / non-combat | 14 | 0 | 4 | 9 | Engine |
 | 9. Consumer duties & docs | 8 | 0 | 3 | 5 | Consumer + Docs |
@@ -164,7 +164,7 @@ Every character uses weapons/armor, so base-equipment bugs are high-frequency.
 | ID | Sev | Owner | Fix | Finding |
 |---|---|---|---|---|
 | ~~`heavy-property-str-dex`~~ | **BLOCKER** `[verify]` | Engine | S | The 2024 Heavy rule (Disadvantage on attacks if melee-Heavy & STR < 13, or ranged-Heavy & DEX < 13) was unimplemented. Canon-confirmed against `references/srd-markdown/equipment.md` ("Disadvantage on attack rolls with a Heavy weapon if it's a Melee weapon and your Strength score isn't at least 13, or if it's a Ranged weapon and your Dexterity score isn't at least 13"). **Closed by slice 782** (`heavyWeaponBelowThreshold`, effective-score aware, paired with removing the 2014 Small rule). |
-| `armor-stealth-disadvantage` | DIVERGENCE | Engine | S | `stealthDisadvantage` is authored on every armor entry but never read; plate-wearers roll Stealth normally. `src/content/packs/starter-pack.json`; `src/derive/ability-check.ts`. |
+| ~~`armor-stealth-disadvantage`~~ | DIVERGENCE | Engine | S | `stealthDisadvantage` is authored on every armor entry but never read; plate-wearers roll Stealth normally. **Closed by slice 798** — `computeAbilityCheck` now resolves the equipped armor (the instance→definition path `computeAC` uses) and OR-s its `stealthDisadvantage` into Stealth checks (gated on `skill === 'stealth'`; flows through passive Stealth). `src/derive/ability-check.ts`. |
 | `armor-str-requirement-speed` | DIVERGENCE | Engine | M | `strRequirement` (chain 13 / splint+plate 15) is never read; under-STR heavy-armor wearers keep full speed (RAW -10 ft). `src/derive/speed.ts`. |
 | `ammunition-not-consumed` | DIVERGENCE | Engine | M | Firing an Ammunition-property weapon doesn't consume or require ammo (no recover-half). `src/engine/plan/attack.ts`. |
 | `untrained-armor-penalty` | DIVERGENCE | Engine | M | `armorProficiencies` is unread: wearing untrained armor imposes no STR/DEX-disadvantage / no-cast penalty, and a shield grants +2 AC without training. `src/schemas/content/class.ts:39`; `src/derive/ac.ts:126`. |

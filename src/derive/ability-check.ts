@@ -199,9 +199,24 @@ export const computeAbilityCheck = (input: ComputeAbilityCheckInput): AbilityChe
     ? effects.advantageFor({ kind: 'skill', skill: input.skill }, facts)
     : { advantage: false, disadvantage: false, autoCrit: false, autoFail: false };
   const checkAdv = effects.advantageFor({ kind: 'check', ability: input.ability }, facts);
+  // Slice 798: armor with the Stealth-disadvantage property (RAW
+  // equipment.md — Padded, Scale Mail, Half Plate, Ring Mail, Splint,
+  // Chain Mail, Plate) imposes Disadvantage on Dexterity (Stealth)
+  // checks while worn. The `stealthDisadvantage` flag was authored on
+  // every armor entry but never read, so plate-wearers rolled Stealth
+  // normally. Resolved the same way `computeAC` reads the equipped
+  // armor (instance → definition); shields don't carry the flag.
+  const armorStealthDisadvantage = (() => {
+    if (input.skill !== 'stealth') return false;
+    const armorInstanceId = input.character.equipped.armor;
+    if (armorInstanceId === undefined) return false;
+    const armorInstance = input.itemInstances[armorInstanceId];
+    const armorDef = armorInstance ? input.content.items.get(armorInstance.definitionId) : undefined;
+    return armorDef?.itemKind === 'armor' && armorDef.stealthDisadvantage === true;
+  })();
   const adv = {
     advantage: skillAdv.advantage || checkAdv.advantage,
-    disadvantage: skillAdv.disadvantage || checkAdv.disadvantage,
+    disadvantage: skillAdv.disadvantage || checkAdv.disadvantage || armorStealthDisadvantage,
     autoCrit: skillAdv.autoCrit || checkAdv.autoCrit,
     autoFail: skillAdv.autoFail || checkAdv.autoFail,
   };

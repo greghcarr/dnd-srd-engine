@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Fix (slice 798): armor Stealth disadvantage**
+Every armor carried a `stealthDisadvantage` flag (RAW: Padded, Scale Mail, Half Plate, Ring Mail, Splint, Chain Mail, Plate) but nothing read it — a Rogue in Splint rolled Stealth at full proficiency. `computeAbilityCheck` now resolves the equipped armor (the same instance→definition path `computeAC` uses) and OR-s its `stealthDisadvantage` into Stealth checks (gated on `skill === 'stealth'`; Acrobatics/raw-DEX unaffected; flows through passive Stealth). No new schema or content — purely reading a field that was already there. **Closes the [L7 audit](docs/l7-completion-audit.md) Area 6 divergence `armor-stealth-disadvantage`.** New 6-test slice-798; fast suite green (no existing Stealth assertion regressed).
+Detail: [slice-798.md](docs/changelog/slice-798.md).
+
 **Content (slice 797): cantrip on-hit riders — Ray of Frost slow + Chill Touch anti-heal**
 Two damage cantrips dropped their RAW on-hit rider. Ray of Frost now applies `ray-of-frost-slowed` (ModifySpeed -10, autoExpiry 1-round/turnStart = "until the start of your next turn"); Chill Touch now applies `chill-touched-no-heal` (BlockHealing, autoExpiry 1-round/turnEnd = "until the end of your next turn"). Both ride the attack mechanic's `conditionOnHit` on the slice-796 autoExpiry path, each reusing a pre-existing effect primitive. Shocking Grasp ("can't make Opportunity Attacks") is deferred — no OA-prevention effect primitive exists (re-tagged M, kept open). **Closes the [L7 audit](docs/l7-completion-audit.md) Area 2 quirks `ray-of-frost-no-slow` + `chill-touch-no-anti-heal`.** New 4-test slice-797; coverage snapshot +2; conditions 161 → 163; fast suite green.
 Detail: [slice-797.md](docs/changelog/slice-797.md).
