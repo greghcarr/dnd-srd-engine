@@ -44,6 +44,7 @@
     { "id": "elf", "name": "Elf", "size": "Medium", "creatureType": "Humanoid", "speed": { "walk": 30 }, "languages": ["common", "elvish"], "traits": [
       { "kind": "GrantSense", "sense": "darkvision", "range": 60 },
       { "kind": "SetAdvantage", "on": { "kind": "save" }, "mode": "advantage", "condition": { "kind": "eq", "path": "event.savePreventsCondition", "value": "charmed" } },
+      { "kind": "GrantConditionImmunity", "conditionId": "sleep-drowsy-active" },
       { "kind": "OfferChoice", "choiceId": "elf-keen-senses", "prompt": "Choose a skill to gain proficiency in (Elf Keen Senses).", "oneOf": 1, "when": "onAcquire", "options": [
         { "id": "insight", "label": "Insight", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "insight", "level": "proficient" }] },
         { "id": "perception", "label": "Perception", "effects": [{ "kind": "GrantProficiency", "target": "skill", "id": "perception", "level": "proficient" }] },
@@ -2187,10 +2188,11 @@
       "targeting": { "shape": "sphere", "size": 5 },
       "mechanicalEffects": [
         {
-          "kind": "hp-pool-knockout",
-          "poolDice": "5d8",
-          "extraPoolDicePerSlotLevel": "2d8",
-          "conditionId": "unconscious"
+          "kind": "save",
+          "ability": "WIS",
+          "conditionOnFail": "sleep-drowsy-active",
+          "conditionEndsOnDamage": true,
+          "autoSucceedIfImmuneToConditionId": "exhaustion"
         }
       ]
     },
@@ -9414,6 +9416,15 @@
       "endsOn": [],
       "effects": [],
       "recurringSave": { "ability": "WIS", "trigger": "turnEnd", "onSuccess": "removeCondition" }
+    },
+    {
+      "id": "sleep-drowsy-active",
+      "name": "Drowsy (Sleep)",
+      "description": "The Sleep spell's first phase: the target is Incapacitated until the end of its next turn, when it repeats the Wisdom save against the caster's spell DC (the consumer calls engine.plan.tickRecurringSave). On a success the spell ends on it; on a failure it escalates to the Unconscious condition for the spell's duration. Action-blocking via ACTION_BLOCKING_CONDITIONS (the Incapacitated half), like hideous-laughter-active. The Sleep cast stamps per-instance endsOnDamage (the spell ends on a target that takes damage) and binds the condition to the caster's Concentration; the escalated Unconscious inherits both (recurring-save escalation propagation, slice 783), so it likewise ends on damage and when Concentration drops. Empty mechanical effects because Incapacitated and Unconscious are engine-coded base conditions; the action-block + escalating recurring save are the load-bearing wires.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [],
+      "recurringSave": { "ability": "WIS", "trigger": "turnEnd", "onSuccess": "removeCondition", "onFail": "escalateToCondition", "escalateToConditionId": "unconscious" }
     },
     {
       "id": "confused-active",

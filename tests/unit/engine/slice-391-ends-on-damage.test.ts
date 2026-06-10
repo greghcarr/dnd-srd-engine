@@ -2,10 +2,12 @@
 //
 // RAW Sleep: "the effect ends on a creature if it takes damage." RAW Knock
 // Out (Rogue Devious Strikes): Unconscious "until it takes any damage."
-// Both apply the base `unconscious` condition, which must NOT always end
-// on damage (a creature unconscious at 0 HP doesn't wake from a hit). So
-// the clause is a per-instance `endsOnDamage` flag, swept by the damage
-// chokepoint (`interceptFatalDamage`) on any positive damage.
+// Knock Out applies the base `unconscious`; Sleep (slice 783) applies
+// `sleep-drowsy-active`, which carries the flag and escalates to
+// `unconscious`. The base `unconscious` must NOT always end on damage (a
+// creature unconscious at 0 HP doesn't wake from a hit), so the clause is a
+// per-instance `endsOnDamage` flag, swept by the damage chokepoint
+// (`interceptFatalDamage`) on any positive damage.
 import { describe, expect, it } from 'vitest';
 import { createEngine } from '../../../src/engine/index.js';
 import { seededRNG } from '../../../src/rng/seeded.js';
@@ -78,30 +80,37 @@ describe('slice 391: ends-on-damage removal', () => {
   });
 });
 
-describe('slice 391: Sleep / Knock Out bake endsOnDamage', () => {
-  it('Sleep applies an unconscious flagged endsOnDamage', () => {
-    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(2) });
-    const caster = CharacterSchema.parse({
-      id: newCharacterId(), name: 'Wiz', speciesId: 'human', backgroundId: 'sage',
-      classes: [{ classId: 'wizard', level: 5, hitDiceRemaining: 5 }],
-      abilityScores: { STR: 10, DEX: 12, CON: 12, INT: 18, WIS: 10, CHA: 10 },
-      hp: { current: 30, max: 30, temp: 0 }, preparedSpells: ['sleep'],
-    });
-    const sleeper = CharacterSchema.parse({
-      id: newCharacterId(), name: 'Mook', speciesId: 'human', backgroundId: 'soldier',
-      classes: [{ classId: 'fighter', level: 1, hitDiceRemaining: 1 }],
-      abilityScores: { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 },
-      hp: { current: 6, max: 6, temp: 0 },
-    });
-    let campaign: Campaign = engine.createCampaign({ name: 'sleep-eod' });
-    campaign = commit(campaign, [
-      { id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: caster } satisfies CharacterCreatedEvent,
-      { id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: sleeper } satisfies CharacterCreatedEvent,
-    ]);
-    const events = engine.plan.castSpell(campaign.state, {
-      characterId: caster.id, spellId: 'sleep', slotLevel: 1, targetIds: [sleeper.id],
-    }).events as ReadonlyArray<Event>;
-    const cond = events.find((e): e is ConditionAppliedEvent => e.type === 'ConditionApplied' && (e as ConditionAppliedEvent).conditionId === 'unconscious');
-    expect(cond?.endsOnDamage).toBe(true);
+describe('slice 391: Sleep bakes endsOnDamage onto its drowsy condition (slice 783)', () => {
+  it('Sleep applies sleep-drowsy-active flagged endsOnDamage on a failed save', () => {
+    // The drowsy condition is applied only on a failed WIS save, so loop
+    // seeds until a sleeper fails and assert the per-instance flag.
+    for (let seed = 1; seed < 40; seed += 1) {
+      const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(seed) });
+      const caster = CharacterSchema.parse({
+        id: newCharacterId(), name: 'Wiz', speciesId: 'human', backgroundId: 'sage',
+        classes: [{ classId: 'wizard', level: 5, hitDiceRemaining: 5 }],
+        abilityScores: { STR: 10, DEX: 12, CON: 12, INT: 18, WIS: 10, CHA: 10 },
+        hp: { current: 30, max: 30, temp: 0 }, preparedSpells: ['sleep'],
+      });
+      const sleeper = CharacterSchema.parse({
+        id: newCharacterId(), name: 'Mook', speciesId: 'human', backgroundId: 'soldier',
+        classes: [{ classId: 'fighter', level: 1, hitDiceRemaining: 1 }],
+        abilityScores: { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 6, CHA: 10 },
+        hp: { current: 6, max: 6, temp: 0 },
+      });
+      let campaign: Campaign = engine.createCampaign({ name: `sleep-eod-${seed}` });
+      campaign = commit(campaign, [
+        { id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: caster } satisfies CharacterCreatedEvent,
+        { id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: sleeper } satisfies CharacterCreatedEvent,
+      ]);
+      const events = engine.plan.castSpell(campaign.state, {
+        characterId: caster.id, spellId: 'sleep', slotLevel: 1, targetIds: [sleeper.id],
+      }).events as ReadonlyArray<Event>;
+      const cond = events.find((e): e is ConditionAppliedEvent => e.type === 'ConditionApplied' && (e as ConditionAppliedEvent).conditionId === 'sleep-drowsy-active');
+      if (cond === undefined) continue; // sleeper passed the save this seed
+      expect(cond.endsOnDamage).toBe(true);
+      return;
+    }
+    throw new Error('no seed where the sleeper failed the Sleep save');
   });
 });

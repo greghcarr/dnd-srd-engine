@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Fix (slice 783): edition drift — Sleep is the SRD 5.2.1 save/escalation spell**
+Sleep shipped the 2014 `hp-pool-knockout`; SRD 5.2.1 is a WIS save → Incapacitated → repeat → 2nd-fail → Unconscious, Concentration, ends-on-damage, with elves/Exhaustion-immune auto-succeeding. Wired with the existing `escalateToCondition` recurring save (new `sleep-drowsy-active` condition → Unconscious) plus: a small `recurring-save` fix propagating `endsOnDamage` + the concentration link onto the escalated condition; `planSaveMechanic` now stamps the concentration link on save-applied conditions; a new opt-in `SpellSaveMechanicSchema.autoSucceedIfImmuneToConditionId` arm (auto-succeed if immune to the named condition or the spell's own `conditionOnFail`), with Elf Trance modeled as immunity to `sleep-drowsy-active`. Closes the [L7 audit](docs/l7-completion-audit.md) `sleep-hp-pool` row (Area 1). New 8-test slice-783 + spell-coverage update.
+Detail: [slice-783.md](docs/changelog/slice-783.md).
+
 **Fix (slice 782): edition drift — Heavy-weapon disadvantage is the 2024 STR/DEX-13 rule**
 The attack planner imposed the 2014 "Small creatures have Disadvantage with Heavy weapons" rule (`heavyForSmall`) and never implemented the 2024 replacement. Now `heavyWeaponBelowThreshold`: a Heavy weapon gives Disadvantage if it's Melee and effective STR < 13, or Ranged and effective DEX < 13 (canon-confirmed against `equipment.md`); size no longer factors in. Effective-score aware (a Belt of Giant Strength lifts the wielder past the threshold). Closes two [L7 audit](docs/l7-completion-audit.md) rows — `small-creature-heavy-disadvantage` (Area 1) + the `heavy-property-str-dex` blocker (Area 6). New slice-782 test covers both arms + thresholds; the raw-compliance / slice-560 / slice-561 tests that locked the 2014 behavior were updated.
 Detail: [slice-782.md](docs/changelog/slice-782.md).

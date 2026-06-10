@@ -236,6 +236,17 @@ export const planTickRecurringSave = (
       appliedConditionId: newAppliedConditionId(),
       sourceCharacterId: applied.sourceCharacterId,
       causedByEventId: saveEvent.id,
+      // Slice 783: carry the original condition's concentration link +
+      // ends-on-damage onto the escalated condition. Sleep's drowsy phase
+      // escalates to Unconscious; the new condition must still clear when the
+      // caster drops concentration (clearConcentrationEffect sweeps applied
+      // conditions by sourceEffectInstanceId) and end if the target takes
+      // damage. Cockatrice's fixed-DC Petrified carries neither, so this is
+      // a no-op there.
+      ...(applied.sourceEffectInstanceId !== undefined
+        ? { sourceEffectInstanceId: applied.sourceEffectInstanceId }
+        : {}),
+      ...(applied.endsOnDamage === true ? { endsOnDamage: true } : {}),
     };
     events.push(escalated);
   }

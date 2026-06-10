@@ -47,6 +47,10 @@ const ACTION_BLOCKING_CONDITIONS: ReadonlySet<string> = new Set([
   // Incapacitated; it was missing here pre-slice 366, so a creature
   // incapacitated by laughter could still take actions.
   'hideous-laughter-active',
+  // `sleep-drowsy-active` (Sleep, slice 783) is the Incapacitated "until the
+  // end of its next turn" phase before the recurring save escalates the
+  // target to Unconscious; it RAW-includes Incapacitated.
+  'sleep-drowsy-active',
 ]);
 
 /**

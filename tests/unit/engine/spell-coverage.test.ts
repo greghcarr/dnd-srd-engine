@@ -96,7 +96,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   // Control / crowd-control spells not yet mechanically modeled.
   'faerie-fire': { kind: 'save' },
   'bane': { kind: 'save' },
-  'sleep': { kind: 'hp-pool-knockout' },
+  'sleep': { kind: 'save' },
   'web': { kind: 'save' },
   'spirit-guardians': { kind: 'aura-damage', castingClass: 'cleric', slotLevel: 3, expectsSave: true, expectsDamage: true },
   // Buffs / utility spells with simple shapes not yet wired.

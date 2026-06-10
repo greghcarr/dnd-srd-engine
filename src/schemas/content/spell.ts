@@ -155,6 +155,14 @@ const SpellSaveMechanicSchema = z.object({
   // spell ends"). Documented RAW deviation: the engine's endsOnDamage
   // fires on ANY positive damage, not just caster-side damage.
   conditionEndsOnDamage: z.boolean().optional(),
+  // Slice 783: Sleep's "creatures that don't sleep, such as elves, or that
+  // have Immunity to the Exhaustion condition automatically succeed." When
+  // set, a target auto-succeeds (no save rolled, no condition) if it is immune
+  // to the named condition OR to this mechanic's own `conditionOnFail` (so
+  // elf Trance, modeled as immunity to `sleep-drowsy-active`, reads as an
+  // auto-success). Opt-in so other save spells are unaffected. Canonical
+  // user: Sleep ('exhaustion').
+  autoSucceedIfImmuneToConditionId: z.string().optional(),
   // Slice 503: targets of size Large or larger gain Advantage on the save
   // (RAW Ensnaring Strike: "A Large or larger creature has Advantage on
   // this save"). Read per-target in the save planner; ORs into any

@@ -45,6 +45,9 @@ const INCAPACITATING_CONDITIONS: ReadonlySet<string> = new Set([
   'held-paralyzed-active',
   'power-word-stunned-active',
   'hideous-laughter-active',
+  // Slice 783: Sleep's Incapacitated phase — becoming drowsy ends the
+  // bearer's own Concentration, in parity with ACTION_BLOCKING_CONDITIONS.
+  'sleep-drowsy-active',
 ]);
 
 const requireCharacter = (state: Draft<CampaignState>, id: string): Draft<Character> => {

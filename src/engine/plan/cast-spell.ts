@@ -869,6 +869,11 @@ const planSaveMechanic = (
   at: string,
   castingClassId: string | undefined,
   castingAbility: 'INT' | 'WIS' | 'CHA',
+  // Slice 783: the concentration effect id (when this is a concentration
+  // spell), stamped as `sourceEffectInstanceId` on the applied condition so
+  // the recurring-save escalation can carry it onto the escalated condition
+  // and clearConcentrationEffect sweeps both on a drop.
+  concentrationEffectId: string | undefined,
 ): SaveMechanicOutcome => {
   const character = state.characters[intent.characterId];
   if (!character) throw new Error(`Unknown character ${intent.characterId}`);
@@ -982,6 +987,26 @@ const planSaveMechanic = (
       getCreatureType(target, content) !== mechanic.targetCreatureType
     ) {
       continue;
+    }
+    // Slice 783: Sleep's auto-succeed clause — "creatures that don't sleep,
+    // such as elves, or that have Immunity to the Exhaustion condition
+    // automatically succeed." Full skip (no save, no condition) when the
+    // target is immune to the named condition OR to this mechanic's own
+    // conditionOnFail (elf Trance is modeled as immunity to
+    // sleep-drowsy-active). Opt-in via autoSucceedIfImmuneToConditionId.
+    if (mechanic.autoSucceedIfImmuneToConditionId !== undefined) {
+      const autoSucceeds =
+        isImmuneToCondition({
+          state, content, targetId,
+          conditionId: mechanic.autoSucceedIfImmuneToConditionId,
+          sourceCharacterId: intent.characterId,
+        })
+        || (conditionOnFail !== undefined && isImmuneToCondition({
+          state, content, targetId,
+          conditionId: conditionOnFail,
+          sourceCharacterId: intent.characterId,
+        }));
+      if (autoSucceeds) continue;
     }
     const saveDerivation = computeSavingThrow({
       character: target,
@@ -1162,6 +1187,10 @@ const planSaveMechanic = (
           causedByEventId: saveEvent.id,
           // Slice 500: Animal Friendship's "ends if damaged" arm.
           ...(mechanic.conditionEndsOnDamage === true ? { endsOnDamage: true } : {}),
+          // Slice 783: bind the condition to the caster's concentration (when
+          // any) so it clears on a drop, and so the recurring-save escalation
+          // can propagate the link to the escalated condition (Sleep).
+          ...(concentrationEffectId !== undefined ? { sourceEffectInstanceId: concentrationEffectId as ULID } : {}),
           ...expiryFields,
         };
         events.push(cond);
@@ -2387,7 +2416,7 @@ export const planCastSpell = (
       );
     } else if (mechanic.kind === 'save') {
       const outcome = planSaveMechanic(
-        state, content, rng, intent, spell, mechanic, declared.id, at, castingClassId, castingAbility,
+        state, content, rng, intent, spell, mechanic, declared.id, at, castingClassId, castingAbility, concentrationEffectId,
       );
       events.push(...outcome.events);
       conditionsApplied.push(...outcome.conditionsApplied);
