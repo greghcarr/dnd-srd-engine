@@ -21,7 +21,7 @@
 | Area | Items | Blockers | Divergences | Quirks | Owner mix |
 |---|---|---|---|---|---|
 | 1. Edition drift | 4 | 0 | 4 | 0 | Engine |
-| 2. Spell mechanics (L0-4) | 23 | 0 | 16 | 7 | Engine |
+| 2. Spell mechanics (L0-4) | 23 | 0 | 15 | 7 | Engine |
 | 3. Targeting / AoE seam | 14 | 0 | 6 | 7 | Seam + Consumer |
 | 4. Core combat correctness | 11 | 0 | 6 | 5 | Engine |
 | 5. Build & leveling validation | 10 | 0 | 6 | 3 | Engine |
@@ -75,7 +75,7 @@ A level-7 caster's whole repertoire. "Cast does nothing" and "missing a defining
 | `heat-metal-save-on-wrong-arm` | DIVERGENCE | Engine | M | Engine gates the 2d8 fire behind a CON save (no damage on success). RAW: damage is automatic; the save only decides drop-the-object / disadvantage. `starter-pack.json` heat-metal. |
 | `searing-smite-no-recurring-burn` | DIVERGENCE | Engine | M | Only the one-time +1d6 fire fires; RAW repeats 1d6 + CON save at the start of each of the target's turns. `searing-smite-active` condition (single `consumeOnTrigger`). |
 | `acid-arrow-no-delayed-or-miss` | DIVERGENCE | Engine | M | Wired as flat 4d4 on hit; RAW adds 2d4 at end of target's next turn and half on a miss. `starter-pack.json` acid-arrow. |
-| `guiding-bolt-no-advantage-grant` | DIVERGENCE | Engine | S | Wired as flat 4d6; RAW grants the next attacker Advantage vs the target. `starter-pack.json` guiding-bolt. |
+| ~~`guiding-bolt-no-advantage-grant`~~ | DIVERGENCE | Engine | S | Wired as flat 4d6; RAW grants the next attacker Advantage vs the target. **Closed by slice 796** — new `guiding-bolt-glow` condition (`GrantAdvantageToAttackers` + autoExpiry { afterRounds 1, turnEnd }) applied via the attack mechanic's `conditionOnHit`; the on-hit path now stamps the rider's autoExpiry (it previously only stamped the save/buff paths). RAW "next attack only" is modeled as a 1-round window (no consume-on-first-attack machinery) — noted on the condition. |
 | `heroism-no-recurring-temp-hp` | DIVERGENCE | Engine | M | `heroic-active` grants only Frightened immunity; RAW also grants temp HP = spell mod at the start of each of the target's turns. |
 | `enlarge-reduce-no-damage-rider-or-save` | DIVERGENCE | Engine | M | Pure buff (STR adv/disadv only); RAW adds ±1d4 weapon damage and an unwilling-target CON save (auto-applies today). `enlarged-active` / `reduced-active`. |
 | `hideous-laughter-no-conditions` | DIVERGENCE | Engine | M | `hideous-laughter-active` projects no effects; RAW applies Prone + Incapacitated on a failed save (+ damage re-save). |

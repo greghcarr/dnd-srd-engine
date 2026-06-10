@@ -233,6 +233,7 @@ describe('pack integrity: conditions with effects are reachable', () => {
               k === 'allyConditionId' ||
               k === 'conditionOnFail' ||
               k === 'conditionOnSuccess' ||
+              k === 'conditionOnHit' ||
               k === 'applyConditionId' ||
               k === 'bearerConditionId') &&
             typeof v === 'string'

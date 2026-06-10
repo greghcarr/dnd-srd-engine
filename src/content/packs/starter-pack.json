@@ -2359,7 +2359,7 @@
     { "id": "charm-person", "name": "Charm Person", "level": 1, "school": "enchantment", "castingTime": "Action", "range": "30 feet", "components": { "verbal": true, "somatic": true }, "duration": "1 hour", "concentration": false, "ritual": false, "classes": ["bard", "druid", "sorcerer", "warlock", "wizard"], "mechanicalEffects": [{ "kind": "save", "ability": "WIS", "conditionOnFail": "charmed" }] },
     { "id": "color-spray", "name": "Color Spray", "level": 1, "school": "illusion", "castingTime": "Action", "range": "Self (15-foot cone)", "components": { "verbal": true, "somatic": true, "material": "a pinch of colorful sand" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["bard", "sorcerer", "wizard"], "targeting": { "shape": "cone", "size": 15 }, "mechanicalEffects": [{ "kind": "save", "ability": "CON", "conditionOnFail": "color-sprayed-blinded-active" }] },
     { "id": "dissonant-whispers", "name": "Dissonant Whispers", "level": 1, "school": "enchantment", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["bard"], "mechanicalEffects": [{ "kind": "save", "ability": "WIS", "damageDice": "3d6", "damageType": "psychic", "halfOnSuccess": true, "extraDicePerSlotLevel": 1 }] },
-    { "id": "guiding-bolt", "name": "Guiding Bolt", "level": 1, "school": "evocation", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true }, "duration": "1 round", "concentration": false, "ritual": false, "classes": ["cleric"], "mechanicalEffects": [{ "kind": "attack", "attackKind": "ranged", "damageDice": "4d6", "damageType": "radiant", "extraDicePerSlotLevel": 1 }] },
+    { "id": "guiding-bolt", "name": "Guiding Bolt", "level": 1, "school": "evocation", "castingTime": "Action", "range": "120 feet", "components": { "verbal": true, "somatic": true }, "duration": "1 round", "concentration": false, "ritual": false, "classes": ["cleric"], "mechanicalEffects": [{ "kind": "attack", "attackKind": "ranged", "damageDice": "4d6", "damageType": "radiant", "extraDicePerSlotLevel": 1, "conditionOnHit": "guiding-bolt-glow" }] },
     { "id": "hellish-rebuke", "name": "Hellish Rebuke", "level": 1, "school": "evocation", "castingTime": "Reaction", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["warlock"], "mechanicalEffects": [{ "kind": "save", "ability": "DEX", "damageDice": "2d10", "damageType": "fire", "halfOnSuccess": true, "extraDicePerSlotLevel": 1 }] },
     { "id": "inflict-wounds", "name": "Inflict Wounds", "level": 1, "school": "necromancy", "castingTime": "Action", "range": "Touch", "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["cleric"], "mechanicalEffects": [{ "kind": "save", "ability": "CON", "damageDice": "2d10", "damageType": "necrotic", "halfOnSuccess": true, "extraDicePerSlotLevel": 1 }] },
     { "id": "ray-of-sickness", "name": "Ray of Sickness", "level": 1, "school": "necromancy", "castingTime": "Action", "range": "60 feet", "components": { "verbal": true, "somatic": true }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["sorcerer", "wizard"], "mechanicalEffects": [{ "kind": "attack", "attackKind": "ranged", "damageDice": "2d8", "damageType": "poison", "extraDicePerSlotLevel": 1 }] },
@@ -9885,6 +9885,17 @@
       "endsOn": [],
       "effects": [
         { "kind": "SetAdvantage", "on": "attack", "mode": "disadvantage" },
+        { "kind": "GrantAdvantageToAttackers" }
+      ],
+      "autoExpiry": { "afterRounds": 1, "trigger": "turnEnd" }
+    },
+    {
+      "id": "guiding-bolt-glow",
+      "name": "Guiding Bolt",
+      "description": "The mystical glow from a Guiding Bolt hit clings to the target (SRD 5.2.1 Guiding Bolt: 'the next attack roll made against the target before the end of your next turn has Advantage'). Carries GrantAdvantageToAttackers + autoExpiry { afterRounds 1, turnEnd }, the same window shape color-sprayed-blinded-active uses — the encounter sweep keys on sourceCharacterId, so it lifts at the end of the source caster's next turn. RAW grants Advantage only to the NEXT attack; the engine grants it to attackers throughout the window (there is no 'consume on first attack' machinery), a minor over-grant that bites only when the target is attacked more than once before the caster's next turn ends.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [
         { "kind": "GrantAdvantageToAttackers" }
       ],
       "autoExpiry": { "afterRounds": 1, "trigger": "turnEnd" }

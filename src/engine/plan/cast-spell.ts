@@ -749,6 +749,19 @@ const planAttackMechanic = (
     // the condition is stamped on the attack's target with the caster
     // as `sourceCharacterId` so concentration-drop cleanup removes it.
     if (hit && mechanic.conditionOnHit !== undefined) {
+      // Slice 796: stamp the rider's declarative autoExpiry the same way
+      // the save / buff condition paths do, so a NON-concentration on-hit
+      // rider actually lifts. Guiding Bolt's glow has
+      // autoExpiry { afterRounds 1, turnEnd } → it lifts at the end of the
+      // caster's next turn. Concentration riders (Ray of Enfeeblement)
+      // leave autoExpiry unset and bind to the EffectInstance instead.
+      const onHitAutoExpiry = content.conditions.get(mechanic.conditionOnHit)?.autoExpiry;
+      const onHitRound = state.activeEncounterId
+        ? state.encounters[state.activeEncounterId]?.round
+        : undefined;
+      const onHitExpiry = onHitAutoExpiry !== undefined && onHitRound !== undefined
+        ? { expiresOnRound: onHitRound + onHitAutoExpiry.afterRounds, expiryTrigger: onHitAutoExpiry.trigger }
+        : undefined;
       const onHitApplied: ConditionAppliedEvent = {
         id: newEventId() as ULID,
         at,
@@ -765,6 +778,7 @@ const planAttackMechanic = (
         ...(concentrationEffectId !== undefined
           ? { sourceEffectInstanceId: concentrationEffectId as ULID }
           : {}),
+        ...(onHitExpiry !== undefined ? onHitExpiry : {}),
       };
       events.push(onHitApplied);
     }
