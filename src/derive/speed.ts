@@ -8,8 +8,36 @@ import type { ItemInstance } from '../schemas/runtime/item-instance.js';
 import type { PendingChoice } from '../schemas/runtime/pending-choice.js';
 import type { ResolvedContent } from '../content/pack.js';
 import type { MovementMode } from '../schemas/primitives.js';
-import { collectEffectsFromCharacter } from './effect-stack.js';
+import { collectEffectsFromCharacter, buildEffectStack } from './effect-stack.js';
+import { effectiveAbilityScore } from './ability.js';
 import { EXHAUSTION_SPEED_PENALTY_PER_LEVEL } from '../internal/constants.js';
+
+// Slice 799 (Area 6 `armor-str-requirement-speed`): RAW equipment.md
+// "Strength" — armor whose entry lists a Strength score "reduces the
+// wearer's speed by 10 feet unless the wearer has a Strength score equal
+// to or higher than the listed score." The `strRequirement` field (Chain
+// Mail 13, Splint 15, Plate 15) was authored but never read. Returns -10
+// when the equipped armor lists a requirement the bearer's EFFECTIVE
+// Strength (base + floor + IncreaseAbilityScore — so Gauntlets of Ogre
+// Power / a STR ASI count) doesn't meet, else 0. The effect stack is
+// built only when such an armor is actually worn (cheap early-out keeps
+// the common path off the heavier accumulator).
+const ARMOR_STR_SPEED_PENALTY = -10;
+const armorStrSpeedPenalty = (input: GetEffectiveSpeedInput): number => {
+  const { character, content, itemInstances, pendingChoices } = input;
+  const armorInstanceId = character.equipped.armor;
+  if (armorInstanceId === undefined) return 0;
+  const armorInstance = itemInstances[armorInstanceId];
+  const armorDef = armorInstance ? content.items.get(armorInstance.definitionId) : undefined;
+  if (armorDef?.itemKind !== 'armor' || armorDef.strRequirement === undefined) return 0;
+  const effects = buildEffectStack({ character, content, itemInstances, pendingChoices });
+  const effStr = effectiveAbilityScore(
+    character.abilityScores.STR,
+    effects.effectiveAbilityScoreFloor('STR')?.value,
+    effects.effectiveAbilityScoreIncrease('STR'),
+  );
+  return effStr < armorDef.strRequirement ? ARMOR_STR_SPEED_PENALTY : 0;
+};
 
 export interface GetEffectiveSpeedInput {
   readonly character: Character;
@@ -115,7 +143,14 @@ export const getEffectiveSpeedForMode = (
     }
   }
   const base = baseSpeedForMode(character, content, mode);
-  const natural = highestSet ?? base + addSum;
+  // Slice 799: the heavy-armor Strength-requirement penalty reduces the
+  // wearer's walking Speed by 10 (RAW: "the wearer's speed"). Folded into
+  // the natural base so a later multiplier (Haste ×2) doubles the already-
+  // reduced Speed, per the RAW reading; a `set` override (Phantom Steed)
+  // replaces the Speed and so ignores it. Walk mode only — other modes
+  // are separate Speed entries the rule doesn't name.
+  const armorStrPenalty = mode === 'walk' ? armorStrSpeedPenalty(input) : 0;
+  const natural = highestSet ?? base + addSum + armorStrPenalty;
   const scaled = Math.floor(natural * highestMultiplier);
   // Slice 569: RAW PHB 2024 Exhaustion: -5 ft per level on all Speeds.
   // Applied after all other modifiers (set / add / multiply) so a

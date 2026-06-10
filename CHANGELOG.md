@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Fix (slice 799): heavy-armor Strength-requirement speed penalty**
+RAW: armor whose entry lists a Strength score (Chain Mail 13, Splint/Plate 15) reduces the wearer's speed by 10 ft unless their Strength meets it. The `strRequirement` field was authored but `getEffectiveSpeed` never read it — an under-STR character in Plate kept full speed. `getEffectiveSpeedForMode` now applies the -10 walk penalty using EFFECTIVE Strength (a STR ASI / floor / Gauntlets of Ogre Power count), built only when such armor is worn; folded into the natural base so Haste doubles the reduced speed, walk-mode only, stacks with the exhaustion penalty. No new schema or content. **Closes the [L7 audit](docs/l7-completion-audit.md) Area 6 divergence `armor-str-requirement-speed`.** New 5-test slice-799; fast suite green (no movement test regressed).
+Detail: [slice-799.md](docs/changelog/slice-799.md).
+
 **Fix (slice 798): armor Stealth disadvantage**
 Every armor carried a `stealthDisadvantage` flag (RAW: Padded, Scale Mail, Half Plate, Ring Mail, Splint, Chain Mail, Plate) but nothing read it — a Rogue in Splint rolled Stealth at full proficiency. `computeAbilityCheck` now resolves the equipped armor (the same instance→definition path `computeAC` uses) and OR-s its `stealthDisadvantage` into Stealth checks (gated on `skill === 'stealth'`; Acrobatics/raw-DEX unaffected; flows through passive Stealth). No new schema or content — purely reading a field that was already there. **Closes the [L7 audit](docs/l7-completion-audit.md) Area 6 divergence `armor-stealth-disadvantage`.** New 6-test slice-798; fast suite green (no existing Stealth assertion regressed).
 Detail: [slice-798.md](docs/changelog/slice-798.md).
