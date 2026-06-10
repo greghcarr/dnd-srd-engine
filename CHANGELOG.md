@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Fix (slice 803): Grapple / Shove RAW gates**
+`planGrapple`/`planShove` rolled the save but skipped the RAW preconditions — a Stunned Medium PC could grapple a Gargantuan dragon two-handed. Added three gates (reusing existing helpers): `assertActorCanAct` (both); a size gate (`SIZES` rank diff ≤ 1 — target no more than one size larger, both); and a free-hand gate (grapple only — a two-handed weapon, or main-hand + off-hand/shield, leaves no free hand). Shove keeps no free-hand requirement per RAW. **Closes the [L7 audit](docs/l7-completion-audit.md) Area 4 divergence `grapple-shove-missing-gates`.** New 6-test slice-803; fast suite green.
+Detail: [slice-803.md](docs/changelog/slice-803.md).
+
 **Feat (slice 802): Surprise gives Disadvantage on Initiative**
 SRD 2024 surprise = Disadvantage on the Initiative roll, but `RollInitiativeIntent` had no surprise channel — an ambushee rolled straight. Added a consumer-coordinated `RollInitiativeIntent.surprisedCombatantIds?` (the engine has no awareness model, same shape as positions/LoS); `planRollInitiative` OR-s it into the combatant's initiative disadvantage, and advantage + surprise cancel to a straight roll. Omitting it is byte-unchanged. **Closes the [L7 audit](docs/l7-completion-audit.md) Area 4 divergence `surprise-not-in-initiative`** (the Incapacitated→disadvantage / Invisible→advantage glossary arms are a separate condition-driven follow-up). New 2-test slice-802; fast suite green.
 Detail: [slice-802.md](docs/changelog/slice-802.md).

@@ -10,7 +10,11 @@ import { nowIso } from '../../internal/clock.js';
 import { invariant } from '../../internal/invariants.js';
 import { abilityModifier, proficiencyBonus } from '../../derive/ability.js';
 import { computeTotalLevel } from '../../schemas/runtime/character.js';
+import type { Character } from '../../schemas/runtime/character.js';
 import { computeAbilityCheck } from '../../derive/ability-check.js';
+import { creatureSize } from '../../derive/creature-size.js';
+import { SIZES } from '../../schemas/primitives.js';
+import { assertActorCanAct } from './_actor-state.js';
 import type { ULID } from '../ids-utils.js';
 import type {
   ActionEconomyConsumedEvent,
@@ -29,6 +33,40 @@ const unarmedSaveDC = (character: { abilityScores: { STR: number }; classes: Arr
   const str = abilityModifier(character.abilityScores.STR);
   const prof = proficiencyBonus(computeTotalLevel(character as never));
   return UNARMED_DC_BASE + str + prof;
+};
+
+// RAW (rules-glossary.md "Unarmed Strike"): a Grapple / Shove "is
+// possible only if the target is no more than one size larger than you".
+const MAX_GRAPPLE_SIZE_DIFF = 1;
+const assertTargetNotTooLarge = (
+  content: ResolvedContent,
+  attacker: Character,
+  target: Character,
+  verb: string,
+): void => {
+  const diff = SIZES.indexOf(creatureSize(target, content)) - SIZES.indexOf(creatureSize(attacker, content));
+  if (diff > MAX_GRAPPLE_SIZE_DIFF) {
+    throw new Error(`${attacker.name} can't ${verb} ${target.name}: it is more than one size larger`);
+  }
+};
+
+// RAW Grapple: "you have a hand free to grab it." A two-handed weapon in
+// the main hand occupies both hands; otherwise a hand is free unless the
+// main hand AND (an off-hand item or a shield) are both occupied. (Shove
+// has no free-hand requirement.) Monsters with empty equip slots — or a
+// single natural weapon — keep a free appendage.
+const attackerHasFreeHand = (
+  state: CampaignState,
+  content: ResolvedContent,
+  attacker: Character,
+): boolean => {
+  const { mainHand, offHand, shield } = attacker.equipped;
+  if (mainHand !== undefined) {
+    const def = content.items.get(state.itemInstances[mainHand]?.definitionId ?? '');
+    if (def?.itemKind === 'weapon' && def.properties.includes('two-handed')) return false;
+  }
+  const handsUsed = (mainHand !== undefined ? 1 : 0) + (offHand !== undefined ? 1 : 0) + (shield !== undefined ? 1 : 0);
+  return handsUsed < 2;
 };
 
 const consumeActionIfEncountered = (
@@ -68,6 +106,14 @@ export const planGrapple = (
   invariant(attacker !== undefined, `Attacker ${intent.attackerId} not found`);
   const target = state.characters[intent.targetId];
   invariant(target !== undefined, `Target ${intent.targetId} not found`);
+  // Slice 803: RAW gates the planner skipped — the grappler must be able
+  // to act, the target must be no more than one size larger, and the
+  // grappler must have a hand free to grab.
+  assertActorCanAct(attacker, 'grapple');
+  assertTargetNotTooLarge(content, attacker, target, 'grapple');
+  if (!attackerHasFreeHand(state, content, attacker)) {
+    throw new Error(`${attacker.name} needs a free hand to grapple`);
+  }
   const at = intent.at ?? nowIso();
   const ability = intent.targetAbility ?? 'STR';
   const dc = unarmedSaveDC(attacker);
@@ -124,6 +170,11 @@ export const planShove = (
   invariant(attacker !== undefined, `Attacker ${intent.attackerId} not found`);
   const target = state.characters[intent.targetId];
   invariant(target !== undefined, `Target ${intent.targetId} not found`);
+  // Slice 803: RAW gates — the shover must be able to act and the target
+  // must be no more than one size larger. (Shove, unlike Grapple, has no
+  // free-hand requirement.)
+  assertActorCanAct(attacker, 'shove');
+  assertTargetNotTooLarge(content, attacker, target, 'shove');
   const at = intent.at ?? nowIso();
   const dc = unarmedSaveDC(attacker);
   const rolls: number[] = [rollDie(D20_SIDES, rng)];
