@@ -351,6 +351,13 @@ export interface RollInitiativeIntent {
   readonly type: 'RollInitiative';
   readonly encounterId: string;
   readonly at?: string;
+  // Slice 802: combatant ids the consumer designates as Surprised
+  // (caught unawares at the start of combat). RAW 2024 (rules-glossary
+  // "Surprise"): a Surprised creature has Disadvantage on its Initiative
+  // roll. The engine has no stealth / awareness model, so the consumer
+  // supplies who's surprised (same consumer-coordinated-fact shape as
+  // positions / line of sight). Omitted → nobody surprised (unchanged).
+  readonly surprisedCombatantIds?: ReadonlyArray<string>;
 }
 
 export const planRollInitiative = (
@@ -379,13 +386,20 @@ export const planRollInitiative = (
         pendingChoices: state.pendingChoices,
       });
       const adv = effects.advantageFor('initiative');
+      // Slice 802: a Surprised combatant rolls Initiative with
+      // Disadvantage (RAW 2024). OR it into the effect-stack disadvantage;
+      // advantage + surprise cancel to a straight roll per the normal
+      // advantage/disadvantage interaction.
+      const surprised = intent.surprisedCombatantIds?.includes(c.combatantId) === true;
+      const hasAdvantage = adv.advantage;
+      const hasDisadvantage = adv.disadvantage || surprised;
       const rolls: number[] = [];
-      if (adv.advantage && !adv.disadvantage) {
+      if (hasAdvantage && !hasDisadvantage) {
         const a = rollDie(D20_SIDES, rng);
         const b = rollDie(D20_SIDES, rng);
         rolls.push(a, b);
         d20 = Math.max(a, b);
-      } else if (adv.disadvantage && !adv.advantage) {
+      } else if (hasDisadvantage && !hasAdvantage) {
         const a = rollDie(D20_SIDES, rng);
         const b = rollDie(D20_SIDES, rng);
         rolls.push(a, b);

@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Feat (slice 802): Surprise gives Disadvantage on Initiative**
+SRD 2024 surprise = Disadvantage on the Initiative roll, but `RollInitiativeIntent` had no surprise channel — an ambushee rolled straight. Added a consumer-coordinated `RollInitiativeIntent.surprisedCombatantIds?` (the engine has no awareness model, same shape as positions/LoS); `planRollInitiative` OR-s it into the combatant's initiative disadvantage, and advantage + surprise cancel to a straight roll. Omitting it is byte-unchanged. **Closes the [L7 audit](docs/l7-completion-audit.md) Area 4 divergence `surprise-not-in-initiative`** (the Incapacitated→disadvantage / Invisible→advantage glossary arms are a separate condition-driven follow-up). New 2-test slice-802; fast suite green.
+Detail: [slice-802.md](docs/changelog/slice-802.md).
+
 **Fix (slice 801): distinct picks on multi-select choices (ASI back-door)**
 The ASI "+1 to two ability scores" menu (`asi-plus1-abilities`, oneOf:2) accepted `['str','str']` — two +1s stacking into an illegal +2 to one ability, the back-door the separate +2-to-one choice exists for. Added a distinctness check (`new Set(ids).size === ids.length`) to both the planner gate (`planResolveChoice`) and the replay invariant (`applyChoiceResolved`), after the existing count + membership checks. One fix covers every multi-select `oneOf:N` choice (Skilled, Magic Initiate, …); single-select choices (the +2-to-one path) are unaffected. **Closes the [L7 audit](docs/l7-completion-audit.md) Area 5 divergence `asi-distinctness`.** New 3-test slice-801 (driving the real level-up cascade); fast suite green.
 Detail: [slice-801.md](docs/changelog/slice-801.md).
