@@ -581,6 +581,63 @@ const buildL1 = (
   return { character, weaponInstance, armorInstance, shieldInstance, potionInstance, build };
 };
 
+// Slice 778: wrap a caller-supplied character (e.g. a saved dndbnb sheet)
+// as a BuiltCharacter so the turn loop can drive it. Unlike buildL1,
+// nothing is rolled and no choice is resolved — the character and its item
+// instances are used verbatim (it arrives already built, leveled, and
+// armed). The derived `build` is the per-character snapshot pickIntent
+// reads: only `classId` is consulted in the turn loop (the action-branch
+// dispatch + the MASTERY_CLASSES gate), so primary/secondary default off
+// the matching CLASS_POOLS entry and are otherwise cosmetic. `weaponInstance`
+// points at the character's equipped main hand (already among
+// `itemInstances`), so Attack intents reference a real in-state instance and
+// weapon-mastery lookup resolves off the pack. `potionInstance` points at a
+// healing potion in inventory if present; otherwise a placeholder that is
+// never emitted and never in state, so the low-HP ConsumeItem branch is
+// naturally skipped.
+const buildFromPlayerCharacter = (
+  character: Character,
+  itemInstances: ReadonlyArray<ItemInstance>,
+  pack: Pack,
+): BuiltCharacter => {
+  const classId = character.classes[0]?.classId ?? 'fighter';
+  const poolDefaults = CLASS_POOLS.find((p) => p.classId === classId);
+  const isWeapon = (inst: ItemInstance): boolean => {
+    const item = pack.items.find((p) => p.id === inst.definitionId);
+    return item !== undefined && item.itemKind === 'weapon';
+  };
+  const mainHandId = character.equipped.mainHand;
+  const weaponInstance: ItemInstance =
+    itemInstances.find((inst) => inst.id === mainHandId)
+    ?? itemInstances.find(isWeapon)
+    ?? itemInstances[0]
+    ?? {
+      id: newItemInstanceId(),
+      definitionId: 'unarmed-strike',
+      quantity: 1,
+      attuned: false,
+      identifiedByCharacterIds: [],
+    };
+  const potionInstance: ItemInstance =
+    itemInstances.find((inst) => inst.definitionId === 'healing-potion')
+    ?? {
+      id: newItemInstanceId(),
+      definitionId: 'healing-potion',
+      quantity: 1,
+      attuned: false,
+      identifiedByCharacterIds: [],
+    };
+  const build: ClassBuild = {
+    classId,
+    primary: poolDefaults?.primary ?? 'STR',
+    secondary: poolDefaults?.secondary ?? 'CON',
+    weaponId: weaponInstance.definitionId,
+    cantrips: [],
+    l1Spells: [],
+  };
+  return { character, weaponInstance, potionInstance, build };
+};
+
 export interface Combatant {
   readonly built: BuiltCharacter;
   firstTurnBuffTried?: boolean;
@@ -964,6 +1021,20 @@ export interface FuzzBattleOptions {
    *  combatants are byte-identical whether or not a class is pinned —
    *  class is an independent axis from the seed. */
   readonly playerClass?: string;
+  /** Slice 778: drop a caller-supplied character (a saved dndbnb sheet)
+   *  into team A[0] verbatim — its own id, class, level, and gear —
+   *  bypassing buildL1 + levelUpTo for that slot. Its `itemInstances` are
+   *  emitted as ItemAcquired, then the `character` snapshot as
+   *  CharacterCreated (it's already armed; no auto-equip). Like playerClass
+   *  it's an INDEPENDENT axis from the seed: the opponent + other
+   *  combatants + map are seed-deterministic and built at `level` (the
+   *  caller passes level = the character's total level so they match), so
+   *  the rest of the battle is byte-identical to a normal battle at that
+   *  level. When set, `playerClass` is ignored for A[0]. */
+  readonly playerCharacter?: {
+    readonly character: Character;
+    readonly itemInstances: ReadonlyArray<ItemInstance>;
+  };
   readonly rest?: FuzzRest;
   readonly teamSize?: number;
   readonly vs?: FuzzVs;
@@ -1079,12 +1150,29 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
     pinCursor = (pinCursor * 9301 + 49297) % 233280;
     return pinCursor / 233280;
   };
+  // Slice 778: a caller-supplied character (a saved dndbnb sheet) takes
+  // team A[0] verbatim — own id, class, level, gear — bypassing buildL1 +
+  // levelUpTo for that slot, and (when present) overriding any playerClass
+  // pin. Like the class pin it's an INDEPENDENT axis from the seed: A[0]'s
+  // shared-cursor random build is still drawn-and-discarded below, so the
+  // seed-driven opponent + other combatants + map advance identically with
+  // or without it.
+  const playerCharacter = opts.playerCharacter;
+  const playerCharacterBuilt: BuiltCharacter | undefined =
+    playerCharacter !== undefined
+      ? buildFromPlayerCharacter(playerCharacter.character, playerCharacter.itemInstances, pack)
+      : undefined;
   // Slice 751: arcane casters prepare Counterspell only under 'auto' at
   // L5+ (when they have 3rd-level slots), so the 'none' / sub-L5 builds —
   // and their CharacterCreated snapshots — stay byte-identical.
   const includeCounterspell = reactions === 'auto' && level >= COUNTERSPELL_MIN_LEVEL;
   const teamA: BuiltCharacter[] = teamNames('Aria').map((n, i) => {
     const built = buildL1(n, rngFloat, pack, undefined, includeCounterspell); // always consume the shared draws
+    if (i === 0 && playerCharacterBuilt !== undefined) {
+      // Verbatim caller character; the discarded shared draw above keeps the
+      // seed stream aligned, so the opponent + map stay seed-deterministic.
+      return playerCharacterBuilt;
+    }
     return i === 0 && pinnedClass !== undefined
       ? buildL1(n, pinRngFloat, pack, pinnedClass, includeCounterspell) // isolated rebuild as the pinned class
       : built;
@@ -1102,6 +1190,12 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
     ({ id: newEventId(), at: nextAt(), type: 'ItemAcquired', instance }) as Event;
   const setupEvents: Event[] = [];
   for (const pc of [...teamA, ...teamB]) {
+    // Slice 778: the drop-in player character emits its own item instances
+    // verbatim (it's already armed; no weapon/armor/shield/potion synthesis).
+    if (playerCharacter !== undefined && pc === playerCharacterBuilt) {
+      for (const inst of playerCharacter.itemInstances) setupEvents.push(acquire(inst));
+      continue;
+    }
     setupEvents.push(acquire(pc.weaponInstance));
     if (pc.armorInstance) setupEvents.push(acquire(pc.armorInstance));
     if (pc.shieldInstance) setupEvents.push(acquire(pc.shieldInstance));
@@ -1118,6 +1212,10 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
       // levels — skip them. Class PCs level via the shared path; any failure
       // now propagates (loud) instead of silently leaving the PC at L1.
       if (pc.character.statblockId !== undefined) continue;
+      // Slice 778: the drop-in player character arrives at its own level and
+      // is never re-leveled — its level is independent of opts.level, which
+      // sizes only the opponent + other combatants.
+      if (pc === playerCharacterBuilt) continue;
       campaign = levelUpTo(engine, campaign, pc.character.id, pc.build.classId, level);
     }
   }

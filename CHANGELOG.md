@@ -10,6 +10,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 Fixes the 4 test-suite failures a fresh Windows checkout hit (4614 passed, 4 failed) — all `/`-vs-`\` or CRLF assumptions in test infra, not product code (engine untouched). Two classes: POSIX path assumptions (`doc-links`/`doc-examples` `SKIP_PREFIXES` matched forward-slash prefixes against `\`-separated `path.relative` output, so frozen archive changelogs weren't skipped and their stale links re-flagged; `slice-581` movement-gate resolved a source file via a POSIX `__dirname.replace` that no-ops on Windows → ENOENT) and CRLF-fragile SRD-markdown parsing (the submodule checks out CRLF under `core.autocrlf`; `\n`-anchored regexes parsed 0 sections). A pattern-check fixed the same classes latent in 6 more audit files. Test-only; the existing Linux/macOS behavior is unchanged.
 Detail: [slice-779.md](docs/changelog/slice-779.md).
 
+**Feat (slice 778): fuzz harness — drop-in player character (`playerCharacter`)**
+`FuzzBattleOptions.playerCharacter?: { character; itemInstances }` drops a saved (dndbnb) character into team A[0] verbatim — own id, class, level, gear — bypassing `buildL1` + `levelUpTo` and overriding `playerClass` for that slot. Its `itemInstances` emit as `ItemAcquired`, then the `CharacterCreated` (already armed, no auto-equip). Like `playerClass` it's an independent axis: the opponent + other combatants + map stay seed-deterministic and are built at `opts.level`, so the rest of the battle is byte-identical to a normal battle at that level; `teamACharacterIds[0]` is the character's id and the result shape is unchanged.
+Detail: [slice-778.md](docs/changelog/slice-778.md).
+
 ## 0.11.0-alpha.0 - 2026-06-09
 
 **Release (slice 777): bump to 0.11.0-alpha.0**
