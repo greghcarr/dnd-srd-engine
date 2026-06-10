@@ -3,3 +3,9 @@
 # narrowly (not `* text=auto`) to avoid renormalizing the rest of the tree.
 *.sh text eol=lf
 .githooks/** text eol=lf
+
+# Vitest writes snapshot files with LF. Pin them LF so a Windows checkout
+# (core.autocrlf=true) doesn't show every .snap as modified after each run
+# (the churn slice 779 worked around by hand-reverting). Still narrowly
+# scoped — only generated snapshots, not the rest of the tree.
+*.snap text eol=lf
