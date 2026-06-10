@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Feat (slice 785): `planSpendHitDie` — the short rest's defining heal**
+The short rest's main benefit had no API: `HitDieSpentEvent` + `applyHitDieSpent` existed, but there was no planner, so a consumer couldn't heal on a short rest through the engine (the RNG roll went uncaptured if hand-built). New `engine.plan.spendHitDie({ characterId })` emits one `HitDieSpent`: rolls the spent class's Hit Die (the first enrollment with dice remaining, matching the reducer), adds the **effective**-CON modifier, applies the RAW minimum-1, and gates no-dice / 0-HP. Closes the [L7 audit](docs/l7-completion-audit.md) structural blocker `no-hit-die-spend-planner` (Area 8); the multiclass die-size *choice* is the only deferred remainder (engine spends in class-array order). New 8-test slice-785; no schema/reducer/barrel change.
+Detail: [slice-785.md](docs/changelog/slice-785.md).
+
 **Fix (slice 784): edition drift — Color Spray is the SRD 5.2.1 CON-save Blinded cone**
 Color Spray shipped the 2014 `hp-pool-knockout` (6d10); SRD 5.2.1 is a 15-ft cone, CON save → Blinded until the end of the caster's next turn (Instantaneous, no Concentration). Now `{ kind: 'save', ability: 'CON', conditionOnFail: 'color-sprayed-blinded-active' }` — a new Blinded variant carrying the base Blinded effects + `autoExpiry { afterRounds: 1, turnEnd }` (lifts at the end of the source caster's next turn). The cone target-selection reuses the consumer `targetIds` seam (the true rasterizer is the separate Area-3 blocker). Closes the last [L7 audit](docs/l7-completion-audit.md) Area 1 row (`color-spray-hp-pool`) — **edition-drift sweep complete (781–784)**. New 4-test slice-784 + spell-coverage update.
 Detail: [slice-784.md](docs/changelog/slice-784.md).

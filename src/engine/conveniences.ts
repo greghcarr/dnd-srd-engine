@@ -53,6 +53,7 @@ export const planIntent = (
     DragonbornBreath: (i) => plan.dragonbornBreath(state, i),
     ConsumeHeroicInspiration: (i) => plan.consumeHeroicInspiration(state, i),
     SecondWind: (i) => plan.secondWind(state, i),
+    SpendHitDie: (i) => plan.spendHitDie(state, i),
     UseHealersKit: (i) => plan.useHealersKit(state, i),
     Rage: (i) => plan.rage(state, i),
     Help: (i) => plan.help(state, i),

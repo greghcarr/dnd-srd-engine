@@ -48,7 +48,7 @@ Every planner returns `{ events: Event[] }` (or `{ events, ...outcome }` for the
 
 **Resurrection**: `resurrect({characterId, spellId, via})`. Supports `via: 'spell-slot' | 'scroll' | 'special'` so scroll consumption and special revivals can skip caster validation.
 
-**Resting & resources**: `shortRest`, `longRest`, `rest` (generic dispatcher on rest kind).
+**Resting & resources**: `shortRest`, `longRest`, `rest` (generic dispatcher on rest kind), `spendHitDie({characterId})` (slice 785: the short rest's defining heal — rolls one Hit Die + CON modifier, minimum 1; spends the first class enrollment with dice remaining).
 
 **Inventory**: `equip` (enforces two-handed-vs-shield arbitration before stamping `ItemEquipped`).
 

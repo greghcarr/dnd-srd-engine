@@ -27,12 +27,12 @@
 | 5. Build & leveling validation | 10 | 1\* | 6 | 3 | Engine |
 | 6. Base equipment mechanics | 9 | 1\* | 4 | 4 | Engine |
 | 7. Monster runtime (DM side) | 12 | 3 | 5 | 4 | Engine (schema+content) |
-| 8. Exploration / non-combat | 14 | 1 | 4 | 9 | Engine |
+| 8. Exploration / non-combat | 14 | 0 | 4 | 9 | Engine |
 | 9. Consumer duties & docs | 8 | 0 | 3 | 5 | Consumer + Docs |
 
 \* Pending an ownership/canon confirm (see the row's `[verify]` tag) before it's firmly a blocker.
 
-**Recommended order:** Area 1 (cheap, flatly-wrong, highest expert-visibility) → the structural blockers (`aoe-shape-coverage`, `no-actions-field` + `multiattack`, `no-hit-die-spend-planner`, `background-ability-bonus`) → remaining divergences by area → quirks. Consumer items (Area 9 + the consumer half of Area 3) bundle into a hand-off note for the dnd-web session.
+**Recommended order:** Area 1 (cheap, flatly-wrong, highest expert-visibility) → the structural blockers (`aoe-shape-coverage`, `no-actions-field` + `multiattack`, ~~`no-hit-die-spend-planner`~~ *(closed by slice 785)*, `background-ability-bonus`) → remaining divergences by area → quirks. Consumer items (Area 9 + the consumer half of Area 3) bundle into a hand-off note for the dnd-web session.
 
 ---
 
@@ -202,7 +202,7 @@ Cross-ref: `lightlevel-packtactics-underfire` (Sunlight Sensitivity / Pack Tacti
 
 | ID | Sev | Owner | Fix | Finding |
 |---|---|---|---|---|
-| `no-hit-die-spend-planner` | **BLOCKER** | Engine | M | The short rest's main benefit has no API: `HitDieSpentEvent` + reducer exist but there's no `planSpendHitDie`. A consumer can't heal on a short rest through the engine; the roll is uncaptured if hand-built. `src/engine/reducers/resources.ts:44-55`; absent in `src/engine/plan/index.ts`. |
+| ~~`no-hit-die-spend-planner`~~ | **BLOCKER** | Engine | M | The short rest's main benefit had no API: `HitDieSpentEvent` + reducer existed but there was no `planSpendHitDie`. A consumer couldn't heal on a short rest through the engine; the roll was uncaptured if hand-built. `src/engine/reducers/resources.ts:44-55`; absent in `src/engine/plan/index.ts`. **Closed by slice 785** (`planSpendHitDie` / `engine.plan.spendHitDie`: rolls the first-with-dice enrollment's Hit Die + effective-CON modifier, RAW minimum 1; gates 0-HP and no-dice; the multiclass die-size *choice* is the only deferred remainder — the engine spends in class-array order). |
 | `exhaustion-6-not-fatal` | DIVERGENCE | Engine | S | (See Area 4.) Reaching exhaustion 6 doesn't kill. |
 | `encumbrance-variant-2014` | DIVERGENCE | Engine | M | The character sheet reports 2014 variant encumbrance tiers (encumbered > 5×STR, etc.); SRD 5.2.1 has no variant — only carry = STR×15 and Speed ≤ 5 over capacity. `src/derive/encumbrance.ts:5-45`; `src/query/character-sheet.ts:314`. |
 | `falling-no-prone` | DIVERGENCE | Engine | S | Falling applies damage but not the Prone-on-landing condition. `src/engine/plan/falling.ts:125-146`. |

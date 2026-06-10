@@ -85,6 +85,7 @@ import {
   planDragonbornBreath,
   planConsumeHeroicInspiration,
   planSecondWind,
+  planSpendHitDie,
   planUseHealersKit,
   planRage,
   planHelp,
@@ -255,6 +256,7 @@ import {
   type DragonbornBreathIntent,
   type ConsumeHeroicInspirationIntent,
   type SecondWindIntent,
+  type SpendHitDieIntent,
   type UseHealersKitIntent,
   type RageIntent,
   type HelpIntent,
@@ -574,6 +576,7 @@ export interface Engine {
     dragonbornBreath(state: CampaignState, intent: Omit<DragonbornBreathIntent, 'type'>): PlanResult;
     consumeHeroicInspiration(state: CampaignState, intent: Omit<ConsumeHeroicInspirationIntent, 'type'>): PlanResult;
     secondWind(state: CampaignState, intent: Omit<SecondWindIntent, 'type'>): PlanResult;
+    spendHitDie(state: CampaignState, intent: Omit<SpendHitDieIntent, 'type'>): PlanResult;
     useHealersKit(state: CampaignState, intent: Omit<UseHealersKitIntent, 'type'>): PlanResult;
     rage(state: CampaignState, intent: Omit<RageIntent, 'type'>): PlanResult;
     help(state: CampaignState, intent: Omit<HelpIntent, 'type'>): PlanResult;
@@ -1115,6 +1118,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     secondWind(state, intent) {
       return { events: planSecondWind(state, content, rng, { type: 'SecondWind', ...intent }) };
+    },
+    spendHitDie(state, intent) {
+      return { events: planSpendHitDie(state, content, rng, { type: 'SpendHitDie', ...intent }) };
     },
     useHealersKit(state, intent) {
       return { events: planUseHealersKit(state, content, { type: 'UseHealersKit', ...intent }) };

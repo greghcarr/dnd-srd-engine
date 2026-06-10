@@ -5,6 +5,7 @@ export {
   type LongRestIntent,
   type RestIntent,
 } from './rest.js';
+export { planSpendHitDie, type SpendHitDieIntent } from './spend-hit-die.js';
 export {
   planAttack,
   planAttackRoll,
