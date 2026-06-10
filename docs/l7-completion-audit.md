@@ -22,7 +22,7 @@
 |---|---|---|---|---|---|
 | 1. Edition drift | 4 | 0 | 4 | 0 | Engine |
 | 2. Spell mechanics (L0-4) | 23 | 0 | 16 | 7 | Engine |
-| 3. Targeting / AoE seam | 14 | 1 | 6 | 7 | Seam + Consumer |
+| 3. Targeting / AoE seam | 14 | 0 | 6 | 7 | Seam + Consumer |
 | 4. Core combat correctness | 11 | 0 | 6 | 5 | Engine |
 | 5. Build & leveling validation | 10 | 1\* | 6 | 3 | Engine |
 | 6. Base equipment mechanics | 9 | 1\* | 4 | 4 | Engine |
@@ -32,7 +32,7 @@
 
 \* Pending an ownership/canon confirm (see the row's `[verify]` tag) before it's firmly a blocker.
 
-**Recommended order:** Area 1 (cheap, flatly-wrong, highest expert-visibility) → the structural blockers (`aoe-shape-coverage`, `no-actions-field` + `multiattack`, ~~`no-hit-die-spend-planner`~~ *(closed by slice 785)*, `background-ability-bonus`) → remaining divergences by area → quirks. Consumer items (Area 9 + the consumer half of Area 3) bundle into a hand-off note for the dnd-web session.
+**Recommended order:** Area 1 (cheap, flatly-wrong, highest expert-visibility) → the structural blockers (~~`aoe-shape-coverage`~~ *(closed by slices 786–787)*, `no-actions-field` + `multiattack`, ~~`no-hit-die-spend-planner`~~ *(closed by slice 785)*, `background-ability-bonus`) → remaining divergences by area → quirks. Consumer items (Area 9 + the consumer half of Area 3) bundle into a hand-off note for the dnd-web session.
 
 ---
 
@@ -101,7 +101,7 @@ Where "zero divergences in targeting" actually lives. `Seam` = the engine must g
 
 | ID | Sev | Owner | Fix | Finding |
 |---|---|---|---|---|
-| `aoe-shape-coverage` | **BLOCKER** | Seam | L | No shared cone/sphere/line/cube → covered-creatures rasterizer. `cast-spell` applies damage/saves to exactly the `targetIds` it's handed (per-target range gate only); every consumer hand-rolls geometry and *will* disagree with an expert's template (corner inclusion, cone width, diagonals). A Fireball hitting the wrong squares is the single likeliest expert-caught error. `src/engine/plan/cast-spell.ts` (targetIds trusted); `src/query/affordances.ts:433-515` (returns aim cells, not covered cells). **Seam delivered by slice 786** — the canonical rasterizer (`coveredCells` + `creaturesInSpellArea` / `engine.query.creaturesInSpellArea`, all six RAW shapes incl. the new `emanation`, line-of-effect filtered). Cast-spell `aim` enforcement (engine owns membership) lands in slice 787; struck through then. |
+| ~~`aoe-shape-coverage`~~ | **BLOCKER** | Seam | L | No shared cone/sphere/line/cube → covered-creatures rasterizer. `cast-spell` applied damage/saves to exactly the `targetIds` it was handed; every consumer hand-rolled geometry and would disagree with an expert's template (corner inclusion, cone width, diagonals). `src/engine/plan/cast-spell.ts`; `src/query/affordances.ts:433-515`. **Closed by slices 786 + 787.** 786 shipped the canonical rasterizer (`coveredCells` + `creaturesInSpellArea` / `engine.query.creaturesInSpellArea`, all six RAW shapes incl. the new `emanation`, line-of-effect filtered, cell-center template model). 787 wired the opt-in `CastSpellIntent.aim`: the engine derives membership from the rasterizer and owns it (skipping the per-target range gate, since RAW range is to the origin). Aim *placement*-range validation is the separate `positionless-range-los-trusts-consumer` seam. |
 | `aoe-save-ignores-cover` | DIVERGENCE | Seam | M | `CastSpellIntent` has no `cover` field; the AoE save block ignores cover even though single-target saves honor it (`_save-roll.ts` `coverDexSaveBonus`). A creature in half cover gets no +2 Dex save vs Fireball. `src/engine/plan/cast-spell.ts` save block. |
 | `unseen-attacker-general-rule` | DIVERGENCE | Seam | M | The general "can't see target → Disadvantage / can't be seen → attackers have Advantage" rule is modeled only for the Invisible *condition*; there's no `attackerCanSeeTarget` fact for darkness/obscurement/blindness. `src/engine/plan/attack.ts` fact slots. |
 | `positionless-range-los-trusts-consumer` | DIVERGENCE | Consumer | S | Range/LoS is enforced only when both combatants are positioned AND the location has a map; positionless mode accepts any target. dnd-web MUST populate positions + a map or all range/LoS silently disables. `src/engine/plan/_spatial-gates.ts`. |

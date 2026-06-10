@@ -73,6 +73,7 @@ import {
   enforceableSpellRangeFeet,
   parseSpellRange,
 } from './_spatial-gates.js';
+import { creaturesInSpellArea } from './_spell-area.js';
 import { parseSpellDurationMinutes } from '../../internal/spell-duration.js';
 import {
   CANTRIP_LEVEL,
@@ -156,6 +157,15 @@ export interface CastSpellIntent {
   // is Evocation; the count is capped at 1 + the slot level. Each id must
   // be among `targetIds`.
   readonly sculptedTargetIds?: ReadonlyArray<string>;
+  // Slice 787: opt-in area enforcement. When set on an area spell (one with
+  // an authored `targeting` shape/size), the engine runs the canonical AoE
+  // rasterizer from this aim point (in feet) and uses the creatures it
+  // covers — with line of effect from the point of origin — as the target
+  // set, IGNORING `targetIds`. The per-target range gate is skipped for this
+  // path (RAW: an area spell's range is to its point of origin, not to each
+  // creature, so a foe on the far edge of the blast can be past the range
+  // and still caught). Without `aim`, the cast trusts `targetIds` unchanged.
+  readonly aim?: { readonly x: number; readonly y: number };
   readonly at?: string;
 }
 
@@ -2034,13 +2044,33 @@ export const planCastSpell = (
   state: CampaignState,
   content: ResolvedContent,
   rng: RNG,
-  intent: CastSpellIntent,
+  rawIntent: CastSpellIntent,
 ): ReadonlyArray<Event> => {
-  const character = state.characters[intent.characterId];
-  if (!character) throw new Error(`Unknown character ${intent.characterId}`);
+  const character = state.characters[rawIntent.characterId];
+  if (!character) throw new Error(`Unknown character ${rawIntent.characterId}`);
   assertActorCanAct(character, 'cast a spell');
-  const spell = content.spells.get(intent.spellId);
-  if (!spell) throw new Error(`Unknown spell ${intent.spellId}`);
+  const spell = content.spells.get(rawIntent.spellId);
+  if (!spell) throw new Error(`Unknown spell ${rawIntent.spellId}`);
+
+  // Slice 787: opt-in area enforcement. When the caller supplies an `aim`
+  // and the spell has an area, the engine derives WHO the template covers
+  // (the canonical rasterizer + line of effect) and uses that as the target
+  // set — the engine owns membership instead of trusting consumer targetIds.
+  // Everything downstream reads `intent`, so this single rebinding is the
+  // whole switch; the per-target range gate keys off `areaEnforced` below.
+  const areaEnforced = rawIntent.aim !== undefined && spell.targeting !== undefined;
+  const intent: CastSpellIntent = areaEnforced
+    ? {
+        ...rawIntent,
+        targetIds: creaturesInSpellArea(state, content, {
+          encounterId: state.activeEncounterId ?? '',
+          casterId: rawIntent.characterId,
+          spellId: rawIntent.spellId,
+          aim: rawIntent.aim!,
+        }),
+      }
+    : rawIntent;
+
   if (intent.ignorePreparation !== true && !characterKnowsSpell(state, content, character, intent.spellId)) {
     throw new Error(`Character does not know or prepare spell ${intent.spellId}`);
   }
@@ -2229,7 +2259,12 @@ export const planCastSpell = (
   // 'unenforced' — 'Special', 'Sight', '1 mile') skip enforcement.
   const spellRangeKind = parseSpellRange(spell.range);
   const enforcedRangeFeet = enforceableSpellRangeFeet(spellRangeKind);
-  if (enforcedRangeFeet !== undefined) {
+  // The per-target range gate is for single-target casts. For an aim-
+  // enforced area cast the rasterizer already constrained membership, and
+  // RAW the range is to the point of origin (a far-edge creature may be past
+  // it) — so skip it here. (Validating the aim's own placement-range is the
+  // separate `positionless-range-los-trusts-consumer` seam.)
+  if (enforcedRangeFeet !== undefined && !areaEnforced) {
     for (const targetId of intent.targetIds) {
       if (targetId === intent.characterId) continue;
       const targetName = state.characters[targetId]?.name ?? targetId;

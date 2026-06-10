@@ -356,7 +356,7 @@ import { actionOptions as queryActionOptions, actionTargets as queryActionTarget
 import type { ActionOption, ActionTarget } from '../query/action-options.js';
 import { postHitOptions as queryPostHitOptions } from '../query/post-hit.js';
 import type { PostHitOption } from '../query/post-hit.js';
-import { creaturesInSpellArea as queryCreaturesInSpellArea } from '../query/aoe.js';
+import { creaturesInSpellArea as queryCreaturesInSpellArea } from './plan/_spell-area.js';
 import type { AttackRolledEvent } from '../schemas/events/attack.js';
 import type { BonusActionOption, BonusActionTarget } from '../query/bonus-actions.js';
 import { HANDLER_API_VERSION } from '../handlers/index.js';
