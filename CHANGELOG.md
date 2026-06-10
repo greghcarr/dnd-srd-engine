@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Content (slice 797): cantrip on-hit riders — Ray of Frost slow + Chill Touch anti-heal**
+Two damage cantrips dropped their RAW on-hit rider. Ray of Frost now applies `ray-of-frost-slowed` (ModifySpeed -10, autoExpiry 1-round/turnStart = "until the start of your next turn"); Chill Touch now applies `chill-touched-no-heal` (BlockHealing, autoExpiry 1-round/turnEnd = "until the end of your next turn"). Both ride the attack mechanic's `conditionOnHit` on the slice-796 autoExpiry path, each reusing a pre-existing effect primitive. Shocking Grasp ("can't make Opportunity Attacks") is deferred — no OA-prevention effect primitive exists (re-tagged M, kept open). **Closes the [L7 audit](docs/l7-completion-audit.md) Area 2 quirks `ray-of-frost-no-slow` + `chill-touch-no-anti-heal`.** New 4-test slice-797; coverage snapshot +2; conditions 161 → 163; fast suite green.
+Detail: [slice-797.md](docs/changelog/slice-797.md).
+
 **Feat (slice 796): Guiding Bolt's advantage grant**
 Guiding Bolt was a flat 4d6 radiant attack, missing its defining rider: RAW, on a hit the next attack roll against the target before the end of your next turn has Advantage. New `guiding-bolt-glow` condition (`GrantAdvantageToAttackers` + autoExpiry { afterRounds 1, turnEnd } — the Color Spray window shape) applied via the attack mechanic's `conditionOnHit`. One-spot engine fix: the attack-mechanic on-hit path now stamps the rider's declarative autoExpiry (it previously only stamped the save/buff paths), so a non-concentration on-hit rider actually lifts. Pattern-check: added `conditionOnHit` to the `pack-integrity` reachability walker (it was under-walking — `enfeebled` only passed incidentally). RAW "next attack only" is modeled as a 1-round window (no consume-on-first-attack machinery), noted on the condition. **Closes the [L7 audit](docs/l7-completion-audit.md) Area 2 divergence `guiding-bolt-no-advantage-grant`.** New 4-test slice-796; coverage snapshot +1; conditions 160 → 161; fast suite green.
 Detail: [slice-796.md](docs/changelog/slice-796.md).

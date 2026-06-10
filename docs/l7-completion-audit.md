@@ -21,7 +21,7 @@
 | Area | Items | Blockers | Divergences | Quirks | Owner mix |
 |---|---|---|---|---|---|
 | 1. Edition drift | 4 | 0 | 4 | 0 | Engine |
-| 2. Spell mechanics (L0-4) | 23 | 0 | 15 | 7 | Engine |
+| 2. Spell mechanics (L0-4) | 23 | 0 | 15 | 5 | Engine |
 | 3. Targeting / AoE seam | 14 | 0 | 6 | 7 | Seam + Consumer |
 | 4. Core combat correctness | 11 | 0 | 6 | 5 | Engine |
 | 5. Build & leveling validation | 10 | 0 | 6 | 3 | Engine |
@@ -85,9 +85,9 @@ A level-7 caster's whole repertoire. "Cast does nothing" and "missing a defining
 
 | ID | Sev | Owner | Fix | Finding |
 |---|---|---|---|---|
-| `ray-of-frost-no-slow` | QUIRK | Engine | S | Missing the -10 ft speed on hit (a near-identical `frosts-chill-slowed` condition already exists). |
-| `chill-touch-no-anti-heal` | QUIRK | Engine | S | Missing "target can't regain HP until end of caster's next turn." |
-| `shocking-grasp-no-oa-denial` | QUIRK | Engine | S | Missing "target can't make Opportunity Attacks" (an `isOpportunityAttack` fact already exists). |
+| ~~`ray-of-frost-no-slow`~~ | QUIRK | Engine | S | Missing the -10 ft speed on hit. **Closed by slice 797** — new `ray-of-frost-slowed` condition (ModifySpeed -10, autoExpiry { afterRounds 1, turnStart }) via the attack mechanic's `conditionOnHit` (the slice-796 on-hit path stamps the autoExpiry). |
+| ~~`chill-touch-no-anti-heal`~~ | QUIRK | Engine | S | Missing "target can't regain HP until end of caster's next turn." **Closed by slice 797** — new `chill-touched-no-heal` condition (BlockHealing, autoExpiry { afterRounds 1, turnEnd }) via `conditionOnHit`. |
+| `shocking-grasp-no-oa-denial` | QUIRK | Engine | M | Missing "target can't make Opportunity Attacks until the start of its next turn." Deferred from the slice-797 cantrip-rider sweep: unlike the slow / anti-heal riders, there is **no** "prevent opportunity attacks" effect primitive (the `isOpportunityAttack` fact only *gates* other arms; nothing suppresses the bearer's OA reaction). Needs a new effect kind + a gate in the OA reaction planner — so M, not S. |
 | `chromatic-orb-no-leap` | QUIRK | Engine | M | Missing the leap-to-new-target-on-matching-d8s arm (distinct from Sorcerous Burst's explode). |
 | `blindness-deafness-no-choice-no-saveends` | QUIRK | Engine | M | Hardwired to Blinded (no Deafened choice); the shared `blinded` condition has `recurringSave:null`, so the end-of-turn CON save to end never fires. |
 | `l4-locate-creature` | QUIRK | Engine/Consumer | M | Directional sense unmodeled (leans divination/DM). `spell-coverage.test.ts:317`. |
