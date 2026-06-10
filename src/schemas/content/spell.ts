@@ -416,7 +416,11 @@ const SpellTrapMechanicSchema = z.object({
   label: z.string(),
 });
 
-export const SPELL_AREA_SHAPES = ['cone', 'cube', 'line', 'sphere', 'cylinder'] as const;
+// The six SRD 5.2.1 area-of-effect shapes (rules-glossary "Area of Effect").
+// `emanation` is the 2024 addition (an area extending from a creature/object
+// in all directions, moving with it) — added in slice 786 so the AoE
+// rasterizer covers all six RAW shapes; no starter-pack spell authors it yet.
+export const SPELL_AREA_SHAPES = ['cone', 'cube', 'line', 'sphere', 'cylinder', 'emanation'] as const;
 export const SpellAreaShapeSchema = z.enum(SPELL_AREA_SHAPES);
 export type SpellAreaShape = z.infer<typeof SpellAreaShapeSchema>;
 

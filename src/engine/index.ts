@@ -356,6 +356,7 @@ import { actionOptions as queryActionOptions, actionTargets as queryActionTarget
 import type { ActionOption, ActionTarget } from '../query/action-options.js';
 import { postHitOptions as queryPostHitOptions } from '../query/post-hit.js';
 import type { PostHitOption } from '../query/post-hit.js';
+import { creaturesInSpellArea as queryCreaturesInSpellArea } from '../query/aoe.js';
 import type { AttackRolledEvent } from '../schemas/events/attack.js';
 import type { BonusActionOption, BonusActionTarget } from '../query/bonus-actions.js';
 import { HANDLER_API_VERSION } from '../handlers/index.js';
@@ -737,6 +738,19 @@ export interface Engine {
       spellId: string,
       slotLevel: number,
     ): LegalSpellTargets;
+    /**
+     * Slice 786: the combatant ids an area spell covers when aimed at
+     * `aim` (in feet) — the canonical cone/sphere/line/cube/cylinder/
+     * emanation rasterizer, filtered by line of effect. Empty when the
+     * spell has no area or the scene isn't positioned.
+     */
+    creaturesInSpellArea(
+      state: CampaignState,
+      encounterId: string,
+      casterId: string,
+      spellId: string,
+      aim: { readonly x: number; readonly y: number },
+    ): string[];
     bonusActions(
       state: CampaignState,
       encounterId: string,
@@ -1422,6 +1436,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     legalSpellTargets(state, encounterId, casterId, spellId, slotLevel) {
       return affordances.legalSpellTargets(state, content, encounterId, casterId, spellId, slotLevel);
+    },
+    creaturesInSpellArea(state, encounterId, casterId, spellId, aim) {
+      return queryCreaturesInSpellArea(state, content, { encounterId, casterId, spellId, aim });
     },
     bonusActions(state, encounterId, combatantId) {
       return queryBonusActions(state, content, encounterId, combatantId);

@@ -325,6 +325,8 @@ export {
   actionIntent,
   postHitOptions,
   postHitIntent,
+  creaturesInSpellArea,
+  type SpellAreaQuery,
 } from './query/index.js';
 // Slice 706 (A3): tactical enemy AI policy, graduated from scripts/ so
 // consumers can import it from the package.
@@ -435,11 +437,13 @@ export {
   isInRangeFeet,
   hasLineOfSight,
   hasLineOfEffect,
+  coveredCells,
   runtimeMultiattackFromStatblock,
   getEffectiveFeatIds,
 } from './derive/index.js';
 export type {
   ACResult,
+  AreaOfEffectSpec,
   AttackResult,
   WeaponDamage,
   WeaponDamageResult,

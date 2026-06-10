@@ -198,6 +198,7 @@ engine.query.availableActions(state, encounterId, combatantId);       // -> Avai
 engine.query.legalTargets(state, encounterId, combatantId, 'attack'); // -> TargetCandidate[]  (in reach + LoS, nearest first)
 engine.query.castableSpells(state, characterId);                      // -> CastableSpell[]
 engine.query.legalSpellTargets(state, encounterId, casterId, spellId, slotLevel); // -> LegalSpellTargets
+engine.query.creaturesInSpellArea(state, encounterId, casterId, spellId, aim);     // -> string[]  (slice 786: the cone/sphere/line/cube/cylinder/emanation rasterizer — combatant ids the template covers + with line of effect; aim in feet)
 engine.query.bonusActions(state, encounterId, combatantId);           // -> BonusActionOption[]  ({ id, label, target, enabled, reason?, requiresAmount, maxAmount? })
 engine.query.bonusActionTargets(state, encounterId, combatantId, optionId); // -> BonusActionTarget[]  (legal targets for a creature-target option)
 engine.plan.useOption(state, { combatantId, optionId, targetId?, amount?, weaponInstanceId? }); // -> PlanResult  (perform an enumerated bonus action by id)

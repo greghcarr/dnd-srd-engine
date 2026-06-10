@@ -79,4 +79,5 @@ export {
   hasLineOfSight,
   hasLineOfEffect,
 } from './terrain.js';
+export { coveredCells, type AreaOfEffectSpec } from './aoe.js';
 export { runtimeMultiattackFromStatblock } from './multiattack.js';

@@ -2502,8 +2502,14 @@ export const planCastSpell = (
     if (intent.targetPosition === undefined) {
       throw new Error(`Spell ${spell.id} has a zone mechanic and requires intent.targetPosition`);
     }
+    // A zone is positioned at a point; an Emanation moves with its creature
+    // and so is never a stationary zone (and ZoneShapeSchema excludes it).
+    const zoneShape = spell.targeting.shape;
+    if (zoneShape === 'emanation') {
+      throw new Error(`Spell ${spell.id} has a zone mechanic but an emanation shape, which can't be a positioned zone`);
+    }
     zoneField = {
-      shape: spell.targeting.shape,
+      shape: zoneShape,
       size: spell.targeting.size,
       center: { x: intent.targetPosition.x, y: intent.targetPosition.y },
     };

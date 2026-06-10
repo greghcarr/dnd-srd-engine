@@ -34,6 +34,10 @@ export {
   type CombatantConditionView,
   type CombatantTurnView,
 } from './encounter-view.js';
+// Slice 786: the canonical AoE rasterizer query — "who's in the cone/
+// sphere/line/cube/cylinder/emanation?" — so consumers stop hand-rolling
+// geometry. Pairs with the pure `coveredCells` derivation.
+export { creaturesInSpellArea, type SpellAreaQuery } from './aoe.js';
 // Slice 705 (A1): intent-shaped affordance queries ("what can this
 // combatant legally do right now?"), surfaced on the engine as
 // engine.query.*.

@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Feat (slice 786): the AoE rasterizer — one canonical "who's in the cone/sphere?"**
+There was no shared cone/sphere/line/cube → covered-creatures rasterizer, so every consumer hand-rolled AoE geometry and would disagree with an expert's template (a Fireball hitting the wrong squares is the likeliest expert-caught error). New pure `coveredCells(spec)` (`src/derive/aoe.ts`) maps an SRD area (shape + size + origin/aim) to grid cells using the "cell-center within the continuous shape" template model + the RAW per-shape origin-inclusion rules (cone width = distance; cube = n×n block; cylinder ≡ its circular base). New `creaturesInSpellArea(...)` query (`engine.query.creaturesInSpellArea`) layers state + line-of-effect on top — returns the combatant ids an area spell covers when aimed at a point (friend and foe alike, RAW). Adds the sixth 2024 shape `emanation` to `SPELL_AREA_SHAPES`. The seam half of the [L7 audit](docs/l7-completion-audit.md) `aoe-shape-coverage` blocker (Area 3); slice 787 wires the opt-in `aim` enforcement into cast-spell. New 18-test geometry + 8-test query suites; +4 public exports.
+Detail: [slice-786.md](docs/changelog/slice-786.md).
+
 **Feat (slice 785): `planSpendHitDie` — the short rest's defining heal**
 The short rest's main benefit had no API: `HitDieSpentEvent` + `applyHitDieSpent` existed, but there was no planner, so a consumer couldn't heal on a short rest through the engine (the RNG roll went uncaptured if hand-built). New `engine.plan.spendHitDie({ characterId })` emits one `HitDieSpent`: rolls the spent class's Hit Die (the first enrollment with dice remaining, matching the reducer), adds the **effective**-CON modifier, applies the RAW minimum-1, and gates no-dice / 0-HP. Closes the [L7 audit](docs/l7-completion-audit.md) structural blocker `no-hit-die-spend-planner` (Area 8); the multiclass die-size *choice* is the only deferred remainder (engine spends in class-array order). New 8-test slice-785; no schema/reducer/barrel change.
 Detail: [slice-785.md](docs/changelog/slice-785.md).
