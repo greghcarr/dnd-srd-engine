@@ -3566,6 +3566,7 @@
     },
     {
       "id": "commoner",
+      "actions": [{ "name": "Club", "weaponId": "club" }],
       "name": "Commoner",
       "size": "Medium",
       "type": "Humanoid",
@@ -3600,6 +3601,7 @@
     },
     {
       "id": "noble",
+      "actions": [{ "name": "Rapier", "weaponId": "rapier" }],
       "name": "Noble",
       "size": "Medium",
       "type": "Humanoid",
@@ -3636,6 +3638,7 @@
     },
     {
       "id": "spy",
+      "actions": [{ "name": "Shortsword", "weaponId": "spy-shortsword" }, { "name": "Hand Crossbow", "weaponId": "spy-hand-crossbow" }],
       "name": "Spy",
       "size": "Medium",
       "type": "Humanoid",
@@ -3674,6 +3677,7 @@
     },
     {
       "id": "tough",
+      "actions": [{ "name": "Mace", "weaponId": "mace" }, { "name": "Heavy Crossbow", "weaponId": "crossbow-heavy" }],
       "name": "Tough",
       "size": "Medium",
       "type": "Humanoid",
@@ -3862,6 +3866,7 @@
     },
     {
       "id": "dire-wolf",
+      "actions": [{ "name": "Bite", "weaponId": "dire-wolf-bite" }],
       "name": "Dire Wolf",
       "size": "Large",
       "type": "Beast",
@@ -4242,6 +4247,7 @@
     },
     {
       "id": "quasit",
+      "actions": [{ "name": "Rend", "weaponId": "quasit-rend" }],
       "name": "Quasit",
       "size": "Tiny",
       "type": "Fiend",
@@ -7136,6 +7142,7 @@
     },
     {
       "id": "sphinx-of-wonder",
+      "actions": [{ "name": "Rend", "weaponId": "sphinx-of-wonder-rend" }],
       "name": "Sphinx of Wonder",
       "size": "Tiny",
       "type": "Celestial",
@@ -7295,6 +7302,7 @@
     },
     {
       "id": "goblin-minion",
+      "actions": [{ "name": "Dagger", "weaponId": "dagger" }],
       "name": "Goblin Minion",
       "size": "Small",
       "type": "Fey",
@@ -7316,6 +7324,8 @@
     },
     {
       "id": "goblin-boss",
+      "actions": [{ "name": "Scimitar", "weaponId": "scimitar" }, { "name": "Shortbow", "weaponId": "shortbow" }],
+      "multiattack": { "name": "Goblin Boss Multiattack", "attacks": [{ "weaponId": "scimitar", "count": 2 }] },
       "name": "Goblin Boss",
       "size": "Small",
       "type": "Fey",
