@@ -68,7 +68,9 @@ const normalize = (name: string): string => name.toLowerCase().trim();
 
 describe.runIf(SRD_AVAILABLE)('SRD weapon conformance (ground-truth, parsed from equipment.md)', () => {
   const content = resolveContent([loadStarterPack()]);
-  const md = SRD_AVAILABLE ? readFileSync(EQUIPMENT_MD, 'utf8') : '';
+  // CRLF → LF so the markdown-table parse is robust on a Windows
+  // (core.autocrlf) checkout of the submodule markdown (slice 779).
+  const md = SRD_AVAILABLE ? readFileSync(EQUIPMENT_MD, 'utf8').replace(/\r\n/g, '\n') : '';
   const weapons = parseWeaponTable(md);
 
   // Base weapons only: exclude magic weapons (rarity / attackBonus) and the

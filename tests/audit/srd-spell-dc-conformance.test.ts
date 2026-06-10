@@ -76,8 +76,10 @@ const parseClassAbilities = (md: string): ReadonlyArray<{ classId: string; abili
 
 describe.runIf(SRD_AVAILABLE)('SRD spell save DC / attack conformance (ground-truth, parsed from SRD)', () => {
   const content = resolveContent([loadStarterPack()]);
-  const dcBase = SRD_AVAILABLE ? parseDcBase(readFileSync(SPELLS_MD, 'utf8')) : 0;
-  const classAbilities = SRD_AVAILABLE ? parseClassAbilities(readFileSync(CLASSES_MD, 'utf8')) : [];
+  // CRLF → LF so the parse is robust on a Windows (core.autocrlf) checkout
+  // of the submodule markdown (slice 779).
+  const dcBase = SRD_AVAILABLE ? parseDcBase(readFileSync(SPELLS_MD, 'utf8').replace(/\r\n/g, '\n')) : 0;
+  const classAbilities = SRD_AVAILABLE ? parseClassAbilities(readFileSync(CLASSES_MD, 'utf8').replace(/\r\n/g, '\n')) : [];
   const pb = proficiencyBonus(LEVEL);
 
   it('parses the SRD DC base and all caster abilities (sanity, not vacuous)', () => {

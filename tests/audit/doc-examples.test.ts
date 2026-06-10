@@ -30,7 +30,7 @@
 import { describe, expect, it } from 'vitest';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
@@ -119,9 +119,12 @@ const modulesIn = (docPath: string): DocModule[] => {
 };
 
 describe('doc-examples audit (slice 434): marked runnable doc code compiles', () => {
-  const docs = markdownFiles(REPO_ROOT).filter(
-    (f) => !SKIP_PREFIXES.some((p) => relative(REPO_ROOT, f).startsWith(p)),
-  );
+  const docs = markdownFiles(REPO_ROOT).filter((f) => {
+    // Forward-slash SKIP_PREFIXES must match Windows `\`-separated paths too
+    // (slice 779; same portability fix as doc-links).
+    const rel = relative(REPO_ROOT, f).split(sep).join('/');
+    return !SKIP_PREFIXES.some((p) => rel.startsWith(p));
+  });
   const modules = docs.flatMap(modulesIn);
 
   it('finds the marked runnable examples (sanity, not vacuous)', () => {

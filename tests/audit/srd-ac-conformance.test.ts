@@ -90,7 +90,9 @@ const normalize = (name: string): string => name.toLowerCase().replace(/\s+armor
 
 describe.runIf(SRD_AVAILABLE)('SRD AC conformance (ground-truth, parsed from equipment.md)', () => {
   const content = resolveContent([loadStarterPack()]);
-  const md = SRD_AVAILABLE ? readFileSync(EQUIPMENT_MD, 'utf8') : '';
+  // CRLF → LF so the markdown-table parse is robust on a Windows
+  // (core.autocrlf) checkout of the submodule markdown (slice 779).
+  const md = SRD_AVAILABLE ? readFileSync(EQUIPMENT_MD, 'utf8').replace(/\r\n/g, '\n') : '';
   const { armors, shieldBonus } = parseArmorTable(md);
 
   const packArmorByName = new Map<string, string>(); // normalized name -> definition id

@@ -57,7 +57,7 @@ interface SrdSpell {
 const SCHOOL_PATTERN = /^_(?:Level (\d+)\s+(\w+)|(\w+) Cantrip)\s+\(([^)]+)\)_$/m;
 
 function parseSrdSpells(): Map<string, SrdSpell> {
-  const text = readFileSync(SPELLS_MD, 'utf8');
+  const text = readFileSync(SPELLS_MD, 'utf8').replace(/\r\n/g, '\n'); // CRLF→LF for Windows checkout (slice 779)
   const blocks = text.split('\n#### ').slice(1);
   const out = new Map<string, SrdSpell>();
   for (const b of blocks) {
@@ -135,7 +135,7 @@ interface SrdMonster {
 }
 
 function parseSrdMonsters(): Map<string, SrdMonster> {
-  const text = readFileSync(MONSTERS_MD, 'utf8');
+  const text = readFileSync(MONSTERS_MD, 'utf8').replace(/\r\n/g, '\n'); // CRLF→LF for Windows checkout (slice 779)
   const blocks = text.split('\n### ').slice(1);
   const out = new Map<string, SrdMonster>();
   for (const b of blocks) {
@@ -178,7 +178,7 @@ interface SrdItem {
 }
 
 function parseSrdItems(): Map<string, SrdItem> {
-  const text = readFileSync(ITEMS_MD, 'utf8');
+  const text = readFileSync(ITEMS_MD, 'utf8').replace(/\r\n/g, '\n'); // CRLF→LF for Windows checkout (slice 779)
   const blocks = text.split('\n#### ').slice(1);
   const out = new Map<string, SrdItem>();
   for (const b of blocks) {
@@ -234,7 +234,7 @@ const CLASS_NAMES = [
 ] as const;
 
 function parseSrdClassTables(): Map<string, Map<number, SrdClassLevel>> {
-  const text = readFileSync(CLASSES_MD, 'utf8');
+  const text = readFileSync(CLASSES_MD, 'utf8').replace(/\r\n/g, '\n'); // CRLF→LF for Windows checkout (slice 779)
   const out = new Map<string, Map<number, SrdClassLevel>>();
   for (const name of CLASS_NAMES) {
     const marker = `**${name} Features**`;

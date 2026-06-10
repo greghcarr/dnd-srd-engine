@@ -130,8 +130,12 @@ describe('Frightened movement-gate behavior (slice 581 — audit-clarification)'
     // a behavior so it pins the structural presence rather than the
     // outcome — the audit test covers the outcome.
     const { readFileSync } = require('node:fs') as typeof import('node:fs');
+    const { resolve } = require('node:path') as typeof import('node:path');
+    // Resolve via path segments rather than a string-replace of a POSIX path,
+    // so this smoke check finds the planner on Windows too, where __dirname is
+    // `\`-separated (slice 779).
     const src = readFileSync(
-      `${__dirname.replace('/tests/unit/engine', '/src/engine/plan')}/movement.ts`,
+      resolve(__dirname, '../../../src/engine/plan/movement.ts'),
       'utf8',
     );
     // The block contains a comment block referencing RAW + a

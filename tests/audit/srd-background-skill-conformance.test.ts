@@ -66,7 +66,9 @@ const parseBackgroundSkills = (
 
 describe.runIf(SRD_AVAILABLE)('SRD background skill conformance (ground-truth, parsed from character-origins.md)', () => {
   const content = resolveContent([loadStarterPack()]);
-  const md = SRD_AVAILABLE ? readFileSync(ORIGINS_MD, 'utf8') : '';
+  // CRLF → LF so the `\n`-anchored section/name regexes match a Windows
+  // (core.autocrlf) checkout of the submodule markdown too (slice 779).
+  const md = SRD_AVAILABLE ? readFileSync(ORIGINS_MD, 'utf8').replace(/\r\n/g, '\n') : '';
   const backgrounds = parseBackgroundSkills(md, (id) => content.backgrounds.has(id));
   const pb = proficiencyBonus(LEVEL);
   const mod = abilityModifier(UNIFORM_SCORE);

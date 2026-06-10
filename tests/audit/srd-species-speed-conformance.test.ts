@@ -63,7 +63,9 @@ const buildSpeciesCharacter = (speciesId: string) =>
 
 describe.runIf(SRD_AVAILABLE)('SRD species speed conformance (ground-truth, parsed from character-origins.md)', () => {
   const content = resolveContent([loadStarterPack()]);
-  const md = SRD_AVAILABLE ? readFileSync(ORIGINS_MD, 'utf8') : '';
+  // CRLF → LF so the `\n`-anchored section/name regexes match a Windows
+  // (core.autocrlf) checkout of the submodule markdown too (slice 779).
+  const md = SRD_AVAILABLE ? readFileSync(ORIGINS_MD, 'utf8').replace(/\r\n/g, '\n') : '';
   const speeds = parseSpeciesSpeeds(md, (id) => content.species.has(id));
 
   it('parses a speed for every pack species (sanity, not vacuous)', () => {

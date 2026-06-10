@@ -92,9 +92,14 @@ const resolveWithCase = (target: string): CaseResult => {
 };
 
 describe('doc-links audit (slice 432): internal markdown links resolve from their file', () => {
-  const files = markdownFiles(REPO_ROOT).filter(
-    (f) => !SKIP_PREFIXES.some((p) => relative(REPO_ROOT, f).startsWith(p)),
-  );
+  const files = markdownFiles(REPO_ROOT).filter((f) => {
+    // Normalize to forward slashes so the `/`-form SKIP_PREFIXES match on
+    // Windows too (path.relative yields `\`-separated paths there). Without
+    // this the frozen archive changelogs aren't skipped and their
+    // intentionally-stale links re-flag (slice 779).
+    const rel = relative(REPO_ROOT, f).split(sep).join('/');
+    return !SKIP_PREFIXES.some((p) => rel.startsWith(p));
+  });
 
   it('discovers the doc set (sanity, not vacuous)', () => {
     expect(files.length).toBeGreaterThan(20);

@@ -72,7 +72,9 @@ const parseClassSaves = (
 
 describe.runIf(SRD_AVAILABLE)('SRD saving-throw conformance (ground-truth, parsed from classes.md)', () => {
   const content = resolveContent([loadStarterPack()]);
-  const md = SRD_AVAILABLE ? readFileSync(CLASSES_MD, 'utf8') : '';
+  // CRLF → LF so the parse is robust on a Windows (core.autocrlf) checkout
+  // of the submodule markdown (slice 779).
+  const md = SRD_AVAILABLE ? readFileSync(CLASSES_MD, 'utf8').replace(/\r\n/g, '\n') : '';
   const classSaves = parseClassSaves(md, (id) => content.classes.has(id));
   const pb = proficiencyBonus(LEVEL);
   const mod = abilityModifier(UNIFORM_SCORE);

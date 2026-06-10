@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Infra (slice 779): Windows test-portability — the full `npm test` gate goes green on Windows**
+Fixes the 4 test-suite failures a fresh Windows checkout hit (4614 passed, 4 failed) — all `/`-vs-`\` or CRLF assumptions in test infra, not product code (engine untouched). Two classes: POSIX path assumptions (`doc-links`/`doc-examples` `SKIP_PREFIXES` matched forward-slash prefixes against `\`-separated `path.relative` output, so frozen archive changelogs weren't skipped and their stale links re-flagged; `slice-581` movement-gate resolved a source file via a POSIX `__dirname.replace` that no-ops on Windows → ENOENT) and CRLF-fragile SRD-markdown parsing (the submodule checks out CRLF under `core.autocrlf`; `\n`-anchored regexes parsed 0 sections). A pattern-check fixed the same classes latent in 6 more audit files. Test-only; the existing Linux/macOS behavior is unchanged.
+Detail: [slice-779.md](docs/changelog/slice-779.md).
+
 ## 0.11.0-alpha.0 - 2026-06-09
 
 **Release (slice 777): bump to 0.11.0-alpha.0**
