@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Fix (slice 800): Exhaustion level 6 is fatal**
+RAW "You die if your Exhaustion level is 6" — but the reducer clamped exhaustion at 6 and never killed, leaving a ground-down character alive with a −12 to all D20 Tests. Extracted a shared `markCreatureDead` helper (HP 0 + death-save failures at the kill threshold + Concentration dropped — the slice-323 instant-death shape) and call it from both exhaustion mutation paths (`ConditionApplied`'s exhaustion branch + `ExhaustionChanged`) when exhaustion lands on `EXHAUSTION_MAX`; `applyCreatureDestroyed` now delegates to the same helper (DRY, no behavior change). **Closes the [L7 audit](docs/l7-completion-audit.md) Area 4 divergence `exhaustion-6-not-fatal`.** New 5-test slice-800; fast suite green.
+Detail: [slice-800.md](docs/changelog/slice-800.md).
+
 **Fix (slice 799): heavy-armor Strength-requirement speed penalty**
 RAW: armor whose entry lists a Strength score (Chain Mail 13, Splint/Plate 15) reduces the wearer's speed by 10 ft unless their Strength meets it. The `strRequirement` field was authored but `getEffectiveSpeed` never read it — an under-STR character in Plate kept full speed. `getEffectiveSpeedForMode` now applies the -10 walk penalty using EFFECTIVE Strength (a STR ASI / floor / Gauntlets of Ogre Power count), built only when such armor is worn; folded into the natural base so Haste doubles the reduced speed, walk-mode only, stacks with the exhaustion penalty. No new schema or content. **Closes the [L7 audit](docs/l7-completion-audit.md) Area 6 divergence `armor-str-requirement-speed`.** New 5-test slice-799; fast suite green (no movement test regressed).
 Detail: [slice-799.md](docs/changelog/slice-799.md).

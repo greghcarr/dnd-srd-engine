@@ -158,6 +158,21 @@ export const applyTempHPGranted = (
   }
 };
 
+// Slice 800: mark a creature dead the engine's canonical way — HP 0 +
+// death-save failures at the kill threshold (every "is dead" derivation
+// reads death saves) + Concentration dropped (RAW: "Your Concentration
+// ends if you ... die"). Shared by instant-death (CreatureDestroyed) and
+// Exhaustion level 6 ("You die if your Exhaustion level is 6").
+const markCreatureDead = (state: Draft<CampaignState>, character: Draft<Character>): void => {
+  character.hp.current = 0;
+  character.deathSaves.failures = DEATH_SAVE_FAILURES_TO_DIE;
+  character.deathSaves.successes = 0;
+  character.deathSaves.stable = false;
+  if (character.concentrationEffectId !== undefined) {
+    clearConcentrationEffect(state, character.concentrationEffectId);
+  }
+};
+
 export const applyConditionApplied = (
   state: Draft<CampaignState>,
   event: ConditionAppliedEvent,
@@ -166,6 +181,10 @@ export const applyConditionApplied = (
   if (event.conditionId === 'exhaustion') {
     const level = event.level ?? EXHAUSTION_DEFAULT_LEVEL;
     character.exhaustion = Math.min(EXHAUSTION_MAX, character.exhaustion + level);
+    // RAW (rules-glossary.md "Exhaustion"): "You die if your Exhaustion
+    // level is 6." The clamp tops out at EXHAUSTION_MAX (6), so reaching
+    // it is lethal.
+    if (character.exhaustion >= EXHAUSTION_MAX) markCreatureDead(state, character);
     return;
   }
   const existing = character.appliedConditions.find(
@@ -251,6 +270,10 @@ export const applyExhaustionChanged = (
     `Exhaustion mismatch on ${event.targetId}: expected ${event.fromLevel}, was ${character.exhaustion}`,
   );
   character.exhaustion = event.toLevel;
+  // Slice 800: RAW "You die if your Exhaustion level is 6" — the same
+  // lethal threshold the ConditionApplied path enforces, so an
+  // ExhaustionChanged that lands on 6 also kills.
+  if (character.exhaustion >= EXHAUSTION_MAX) markCreatureDead(state, character);
 };
 
 export const applyDeathSaveRolled = (
@@ -308,13 +331,7 @@ export const applyCreatureDestroyed = (
   event: CreatureDestroyedEvent,
 ): void => {
   const character = requireCharacter(state, event.targetId);
-  character.hp.current = 0;
-  character.deathSaves.failures = DEATH_SAVE_FAILURES_TO_DIE;
-  character.deathSaves.successes = 0;
-  character.deathSaves.stable = false;
-  if (character.concentrationEffectId !== undefined) {
-    clearConcentrationEffect(state, character.concentrationEffectId);
-  }
+  markCreatureDead(state, character);
 };
 
 export const applyHPMaxBonusChanged = (

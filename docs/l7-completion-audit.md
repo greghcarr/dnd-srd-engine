@@ -20,10 +20,10 @@
 
 | Area | Items | Blockers | Divergences | Quirks | Owner mix |
 |---|---|---|---|---|---|
-| 1. Edition drift | 4 | 0 | 4 | 0 | Engine |
+| 1. Edition drift | 4 | 0 | 0 | 0 | Engine — **fully closed** |
 | 2. Spell mechanics (L0-4) | 23 | 0 | 15 | 5 | Engine |
 | 3. Targeting / AoE seam | 14 | 0 | 6 | 7 | Seam + Consumer |
-| 4. Core combat correctness | 11 | 0 | 6 | 5 | Engine |
+| 4. Core combat correctness | 11 | 0 | 5 | 5 | Engine |
 | 5. Build & leveling validation | 10 | 0 | 6 | 3 | Engine |
 | 6. Base equipment mechanics | 9 | 1\* | 2 | 4 | Engine |
 | 7. Monster runtime (DM side) | 14 | 0 | 5 | 6 | Engine (schema+content) |
@@ -129,7 +129,7 @@ The combat loop itself, independent of specific spells/items. (Engine targets SR
 | `bonus-action-spell-restriction` | DIVERGENCE | Engine | M | Missing the 2024 rule: cast a spell with a Bonus Action → your Action spell that turn can only be a cantrip with an action casting time. A caster can cast two leveled spells in a turn. `src/engine/plan/cast-spell.ts:2123-2192`. |
 | `grapple-shove-missing-gates` | DIVERGENCE | Engine | S | `planGrapple`/`planShove` skip the size (≤ one larger), free-hand, and `assertActorCanAct` gates; a stunned Medium PC can grapple a Gargantuan dragon. `src/engine/plan/contested.ts:61-194`. |
 | `charmed-harmful-target-arm` | DIVERGENCE | Engine/Consumer | M | "Can't attack the charmer" is hardcoded for *weapon* attacks only; the "can't target the charmer with harmful abilities/magic" arm + the charmer's social-check Advantage are unenforced (the `charmed` condition has 0 effects). `src/engine/plan/attack.ts:1844-1855`. |
-| `exhaustion-6-not-fatal` | DIVERGENCE | Engine | S | Exhaustion clamps to 6 but never kills; SRD = death at level 6. (Also Area 8.) `src/engine/reducers/combat.ts:165`. |
+| ~~`exhaustion-6-not-fatal`~~ | DIVERGENCE | Engine | S | Exhaustion clamps to 6 but never kills; SRD = death at level 6. (Also Area 8.) **Closed by slice 800** — both exhaustion mutation paths (`ConditionApplied`'s exhaustion branch + `ExhaustionChanged`) now call a shared `markCreatureDead` helper (HP 0 + death-save failures at the kill threshold + Concentration dropped) when exhaustion lands on `EXHAUSTION_MAX`; the slice-323 instant-death reducer delegates to the same helper. `src/engine/reducers/combat.ts`. |
 | `auto-crit-reach-overgrant` | QUIRK | Engine | S | Auto-crit vs Paralyzed/Unconscious uses `attackKind === 'melee'` as the "within 5 ft" proxy → a 10-ft reach weapon auto-crits, which RAW forbids. `src/engine/plan/attack.ts:1113-1121`. |
 | `reaction-reset-timing` | QUIRK | Engine | S | `reactionUsedThisRound` resets at round end, not at the combatant's own `TurnStarted`; edge cases (initiative swap, extra turn) refresh a beat early/late. `src/engine/reducers/encounter.ts:233-236`. |
 | `prone-cant-crawl` | QUIRK | Engine | M | Any move while Prone forces a stand-up (charges half-speed, removes the condition); no crawl modality, and crawl's +1 ft/ft cost is unmodeled. `src/engine/plan/movement.ts:225-282`. |
