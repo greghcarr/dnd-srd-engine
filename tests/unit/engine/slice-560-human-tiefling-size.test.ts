@@ -14,8 +14,10 @@
 // consumer (UI / VTT / character builder) reads the resolved choice
 // and sets `character.sizeOverride` before committing the character.
 // Documented as consumer-managed; this slice verifies the schema +
-// derive + downstream Heavy-weapon disadvantage gate all honor the
-// override.
+// derive honor the override. (The "downstream Heavy-weapon disadvantage"
+// the size choice once fed was the 2014 Small-creature-Heavy rule, which
+// 2024 removed — slice 782; the block below now asserts size is decoupled
+// from Heavy and only the STR/DEX-13 rule applies.)
 
 import { describe, expect, it } from 'vitest';
 import { createEngine } from '../../../src/engine/index.js';
@@ -118,8 +120,8 @@ describe('Human / Tiefling Medium-or-Small size choice (slice 560)', () => {
     });
   });
 
-  describe('Small-size attack disadvantage on Heavy weapons (downstream)', () => {
-    it('Small Human attacking with Greatsword (Heavy): disadvantage on attack roll', () => {
+  describe('Small size no longer affects Heavy-weapon attacks (2024 — slice 782)', () => {
+    it('Small Human + Greatsword (STR 16): no disadvantage — 2024 decoupled size from Heavy', () => {
       const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(1) });
       const greatsword = makeItemInstance('greatsword');
       const human = CharacterSchema.parse({
@@ -147,7 +149,7 @@ describe('Human / Tiefling Medium-or-Small size choice (slice 560)', () => {
       });
       const attack = events.find((e): e is AttackRolledEvent =>
         (e as { type: string }).type === 'AttackRolled');
-      expect(attack?.used).toBe('disadvantage');
+      expect(attack?.used).toBe('none');
     });
 
     it('Medium Human attacking with Greatsword: no disadvantage (control)', () => {
@@ -181,7 +183,7 @@ describe('Human / Tiefling Medium-or-Small size choice (slice 560)', () => {
       expect(attack?.used).toBe('none');
     });
 
-    it('Small Tiefling attacking with Greatsword: disadvantage (same as Human)', () => {
+    it('Small Tiefling + Greatsword (STR 16): no disadvantage (same as Human, 2024)', () => {
       const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(3) });
       const greatsword = makeItemInstance('greatsword');
       const tiefling = CharacterSchema.parse({
@@ -209,7 +211,7 @@ describe('Human / Tiefling Medium-or-Small size choice (slice 560)', () => {
       });
       const attack = events.find((e): e is AttackRolledEvent =>
         (e as { type: string }).type === 'AttackRolled');
-      expect(attack?.used).toBe('disadvantage');
+      expect(attack?.used).toBe('none');
     });
   });
 });

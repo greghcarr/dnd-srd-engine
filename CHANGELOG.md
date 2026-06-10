@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Fix (slice 782): edition drift — Heavy-weapon disadvantage is the 2024 STR/DEX-13 rule**
+The attack planner imposed the 2014 "Small creatures have Disadvantage with Heavy weapons" rule (`heavyForSmall`) and never implemented the 2024 replacement. Now `heavyWeaponBelowThreshold`: a Heavy weapon gives Disadvantage if it's Melee and effective STR < 13, or Ranged and effective DEX < 13 (canon-confirmed against `equipment.md`); size no longer factors in. Effective-score aware (a Belt of Giant Strength lifts the wielder past the threshold). Closes two [L7 audit](docs/l7-completion-audit.md) rows — `small-creature-heavy-disadvantage` (Area 1) + the `heavy-property-str-dex` blocker (Area 6). New slice-782 test covers both arms + thresholds; the raw-compliance / slice-560 / slice-561 tests that locked the 2014 behavior were updated.
+Detail: [slice-782.md](docs/changelog/slice-782.md).
+
 **Fix (slice 781): edition drift — Long Rest restores ALL spent Hit Dice**
 `applyLongRestEnded` regained only `max(1, floor(totalHD/2))` Hit Dice (the 2014 rule); SRD 5.2.1 restores **all** spent HD ("Regain All HP. You regain all lost Hit Points and all spent Hit Point Dice"). Each enrollment's `hitDiceRemaining` now resets to its level; the 2014 half-budget loop + its `halfRoundedDown`/`oneMin` helpers were removed. Short Rest unaffected. First of the [L7 audit](docs/l7-completion-audit.md) Area 1 (edition-drift) sweep. Tests: the rest-reducer + `s1-long-rest` golden assertions updated (golden transcript unchanged — rendered from events).
 Detail: [slice-781.md](docs/changelog/slice-781.md).

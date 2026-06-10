@@ -45,7 +45,7 @@ The most damning class for an expert: not missing, just wrong. All quick.
 | ~~`long-rest-half-hd`~~ | DIVERGENCE | Engine | S | `[canon-verified]` Long rest restored only `halfRoundedDown(totalHitDice)` Hit Dice; SRD 5.2.1 restores **all** spent HD. `src/engine/reducers/rest.ts`; canon `references/srd-markdown/rules-glossary.md` "Long Rest". **Closed by slice 781** (each enrollment's `hitDiceRemaining` resets to its level; the 2014 half-budget + its `halfRoundedDown`/`oneMin` helpers were removed). |
 | `sleep-hp-pool` | DIVERGENCE | Engine | M | `[canon-verified]` Sleep uses the 2014 `hp-pool-knockout` (5d8 +2d8/slot); SRD 5.2.1 is a WIS save → Incapacitated, second-fail → Unconscious. No HP pool, no save in the engine. `src/content/packs/starter-pack.json:2190`; `tests/unit/engine/spell-coverage.test.ts:99` locks the 2014 shape. |
 | `color-spray-hp-pool` | DIVERGENCE | Engine | M | `[canon-verified]` Color Spray uses `hp-pool-knockout` (6d10); SRD 5.2.1 is a 15-ft cone, CON save → Blinded. `src/content/packs/starter-pack.json:2358`. |
-| `small-creature-heavy-disadvantage` | DIVERGENCE | Engine | S | Engine imposes the 2014 "Small creatures have Disadvantage with Heavy weapons" rule, removed in 2024 (replaced by the STR/DEX-13 rule — see `heavy-property-str-dex` in Area 6). `src/engine/plan/attack.ts:802-810` (`heavyForSmall`). |
+| ~~`small-creature-heavy-disadvantage`~~ | DIVERGENCE | Engine | S | Engine imposed the 2014 "Small creatures have Disadvantage with Heavy weapons" rule, removed in 2024 (replaced by the STR/DEX-13 rule — see `heavy-property-str-dex` in Area 6). `src/engine/plan/attack.ts` (`heavyForSmall`). **Closed by slice 782** (removed; replaced with the 2024 STR/DEX-13 check). |
 
 Cross-ref: the 2014 encumbrance tiers (`encumbrance-variant-2014`) live in Area 8.
 
@@ -163,7 +163,7 @@ Every character uses weapons/armor, so base-equipment bugs are high-frequency.
 
 | ID | Sev | Owner | Fix | Finding |
 |---|---|---|---|---|
-| `heavy-property-str-dex` | **BLOCKER** `[verify]` | Engine | S | The 2024 Heavy rule (Disadvantage on attacks if melee-Heavy & STR < 13, or ranged-Heavy & DEX < 13) appears unimplemented. *Re-confirm the exact SRD 5.2.1 Heavy text before treating as a blocker.* `src/engine/plan/attack.ts` (no STR/DEX-13 check); pairs with removing `small-creature-heavy-disadvantage` (Area 1). |
+| ~~`heavy-property-str-dex`~~ | **BLOCKER** `[verify]` | Engine | S | The 2024 Heavy rule (Disadvantage on attacks if melee-Heavy & STR < 13, or ranged-Heavy & DEX < 13) was unimplemented. Canon-confirmed against `references/srd-markdown/equipment.md` ("Disadvantage on attack rolls with a Heavy weapon if it's a Melee weapon and your Strength score isn't at least 13, or if it's a Ranged weapon and your Dexterity score isn't at least 13"). **Closed by slice 782** (`heavyWeaponBelowThreshold`, effective-score aware, paired with removing the 2014 Small rule). |
 | `armor-stealth-disadvantage` | DIVERGENCE | Engine | S | `stealthDisadvantage` is authored on every armor entry but never read; plate-wearers roll Stealth normally. `src/content/packs/starter-pack.json`; `src/derive/ability-check.ts`. |
 | `armor-str-requirement-speed` | DIVERGENCE | Engine | M | `strRequirement` (chain 13 / splint+plate 15) is never read; under-STR heavy-armor wearers keep full speed (RAW -10 ft). `src/derive/speed.ts`. |
 | `ammunition-not-consumed` | DIVERGENCE | Engine | M | Firing an Ammunition-property weapon doesn't consume or require ammo (no recover-half). `src/engine/plan/attack.ts`. |

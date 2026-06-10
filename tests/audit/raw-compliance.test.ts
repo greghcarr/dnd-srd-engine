@@ -1273,14 +1273,16 @@ describe('Tier 2 — Sneak Attack eligibility', () => {
 });
 
 // ---------------------------------------------------------------------
-// Heavy weapon disadvantage for Small creatures: RAW PHB Equipment:
-// "Small creatures have Disadvantage with Heavy weapons." Probe by
-// building a Small character wielding a Heavy weapon.
+// Heavy-weapon disadvantage (SRD 5.2.1 Equipment): "Disadvantage on attack
+// rolls with a Heavy weapon if it's a Melee weapon and your Strength score
+// isn't at least 13, or if it's a Ranged weapon and your Dexterity score
+// isn't at least 13." Probe with a STR-10 wielder of a Heavy melee weapon.
+// (2024 removed the 2014 Small-creature-Heavy rule — slice 782.)
 // ---------------------------------------------------------------------
 
-describe('Tier 2 — Heavy weapon Small disadvantage', () => {
-  it('A Small character attacking with a Heavy weapon rolls with disadvantage', () => {
-    // Build a halfling fighter with a greataxe (heavy, two-handed).
+describe('Tier 2 — Heavy weapon STR/DEX-13 disadvantage (2024)', () => {
+  it('A STR < 13 character attacking with a Heavy melee weapon rolls with disadvantage', () => {
+    // Build a fighter with STR 10 wielding a greataxe (Heavy, melee).
     const engine = createEngine({ contentPacks: [TEST_PACK], rng: seededRNG(7) });
     const greataxe = { id: newItemInstanceId(), definitionId: 'greataxe', quantity: 1, attuned: false, identifiedByCharacterIds: [] };
     const small = CharacterSchema.parse({
@@ -1290,7 +1292,7 @@ describe('Tier 2 — Heavy weapon Small disadvantage', () => {
       speciesId: 'halfling',
       backgroundId: 'soldier',
       classes: [{ classId: 'fighter', level: 3, hitDiceRemaining: 3 }],
-      abilityScores: { STR: 16, DEX: 12, CON: 14, INT: 10, WIS: 10, CHA: 10 },
+      abilityScores: { STR: 10, DEX: 12, CON: 14, INT: 10, WIS: 10, CHA: 10 },
       hp: { current: 28, max: 28, temp: 0 },
       inventory: [greataxe.id],
       equipped: { mainHand: greataxe.id, attuned: [] },
@@ -1367,7 +1369,7 @@ describe('Tier 2 — Heavy weapon Small disadvantage', () => {
     const used = (ar as unknown as { used: string }).used;
     expect(
       used,
-      `Small attacker + Heavy weapon must roll with disadvantage; got used=${used}`,
+      `STR<13 attacker + Heavy melee weapon must roll with disadvantage; got used=${used}`,
     ).toBe('disadvantage');
   });
 });

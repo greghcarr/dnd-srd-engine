@@ -82,10 +82,12 @@ describe('Druid Magician cantrip choice (slice 561)', () => {
 });
 
 describe('Audit-clarification: Heavy weapon + Loading were already wired (slice 561)', () => {
-  it('attack.ts still contains the heavyForSmall block', () => {
-    expect(ATTACK_TS).toMatch(/const heavyForSmall = \(\(\): boolean =>/);
-    // After slice 560 the lookup goes through creatureSize derive.
-    expect(ATTACK_TS).toMatch(/creatureSize\(attacker, content\) === 'Small'/);
+  it('attack.ts contains the 2024 Heavy-weapon STR/DEX-13 disadvantage block', () => {
+    // Slice 782 replaced the 2014 Small-creature-Heavy rule (heavyForSmall)
+    // with the 2024 effective-STR/DEX < 13 check.
+    expect(ATTACK_TS).toMatch(/const heavyWeaponBelowThreshold = \(\(\): boolean =>/);
+    expect(ATTACK_TS).toMatch(/HEAVY_WEAPON_MIN_ABILITY/);
+    expect(ATTACK_TS).not.toMatch(/heavyForSmall/);
   });
 
   it('attack.ts still contains the weaponIsLoading block + per-turn cap', () => {

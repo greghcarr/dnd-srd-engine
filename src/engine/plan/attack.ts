@@ -799,15 +799,6 @@ export const resolveAttackRollPhase = (input: ResolveAttackInput): AttackRollRes
     const cb = enc.combatants.find((c) => c.combatantId === input.attackerId);
     return cb?.turnUsage.steadyAimActive === true;
   })();
-  // RAW PHB Equipment: "Small creatures have Disadvantage with Heavy
-  // weapons." Look up the attacker's effective size (via creatureSize
-  // derive — picks up slice-560's `sizeOverride` for Human/Tiefling
-  // Medium-or-Small choices, plus monster statblock sizes for NPCs);
-  // if Small AND weapon has the `heavy` property, contribute disadvantage.
-  const heavyForSmall = ((): boolean => {
-    if (!weaponDef.properties.includes('heavy')) return false;
-    return creatureSize(attacker, content) === 'Small';
-  })();
   // RAW PHB ch.1 "Ranged Attacks in Close Combat": ranged attacks have
   // disadvantage if a hostile creature who isn't Incapacitated is
   // within 5 ft of the attacker. The engine has no hostility model, so
@@ -1000,10 +991,28 @@ export const resolveAttackRollPhase = (input: ResolveAttackInput): AttackRollRes
     // fact name as the trigger-dispatch map and targetSideAttackerFacts.
     ['event.attackKind', weaponDef.attackKind],
   ]);
+  // SRD 5.2.1 Equipment, Heavy property: "You have Disadvantage on attack
+  // rolls with a Heavy weapon if it's a Melee weapon and your Strength score
+  // isn't at least 13, or if it's a Ranged weapon and your Dexterity score
+  // isn't at least 13." This replaced the 2014 Small-creature-Heavy rule,
+  // which 2024 removed (slice 782). Uses the EFFECTIVE score, so a Belt of
+  // Giant Strength (a STR floor) lifts the wielder past the threshold the
+  // same way it lifts the damage modifier.
+  const HEAVY_WEAPON_MIN_ABILITY = 13;
+  const heavyWeaponBelowThreshold = ((): boolean => {
+    if (!weaponDef.properties.includes('heavy')) return false;
+    const ability: 'STR' | 'DEX' = weaponDef.attackKind === 'ranged' ? 'DEX' : 'STR';
+    const effective = effectiveAbilityScore(
+      attacker.abilityScores[ability],
+      attackerEffects.effectiveAbilityScoreFloor(ability)?.value,
+      attackerEffects.effectiveAbilityScoreIncrease(ability),
+    );
+    return effective < HEAVY_WEAPON_MIN_ABILITY;
+  })();
   const targetImposesDisadvantage =
     targetEffects.imposesDisadvantageOnAttackers(attackerFacts)
     || rangedInMelee
-    || heavyForSmall
+    || heavyWeaponBelowThreshold
     || attackerVsTargetAdvantage.disadvantage
     || attackerVsMarkedTargetAdvantage.disadvantage
     || attackerSelfAdvantage.disadvantage;
