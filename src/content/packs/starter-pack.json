@@ -7154,6 +7154,7 @@
     },
     {
       "id": "djinni",
+      "saveActions": [{"id":"create-whirlwind","name":"Create Whirlwind","saveAbility":"STR","saveDC":17,"reachFeet":20,"onFail":{"damage":[],"applyConditionIds":["djinni-whirlwind-caught"]}}],
       "actions": [{"name":"Storm Blade","weaponId":"djinni-storm-blade"},{"name":"Storm Bolt","weaponId":"djinni-storm-bolt"}],
       "multiattack": {"name":"Djinni Multiattack","attacks":[{"weaponId":"djinni-storm-blade","count":3}]},
       "name": "Djinni",
@@ -8863,6 +8864,49 @@
     }
   ],
   "conditions": [
+    {
+      "id": "djinni-whirlwind-caught",
+      "name": "Caught in the Whirlwind",
+      "description": "Caught in a djinni's conjured whirlwind. While caught, the creature has the Restrained condition and moves with the whirlwind. At the start of each of its turns it takes 21 (6d6) Thunder damage; at the end of each of its turns it repeats a DC 17 Strength saving throw, ending the effect on itself on a success.",
+      "engineNotes": "Slice 830: the per-creature effect of the Djinni Create Whirlwind (SRD 5.2.1 Djinni, CR 11). Applied via the djinni create-whirlwind save-action (STR DC 17 when a creature enters/starts in the whirlwind, once per turn). Carries Restrained's effects directly + recurringDamage {6d6 thunder, turnStart} (consumer ticks engine.plan.tickRecurringDamage at the bearer's turn-start) + recurringSave {STR fixedDC 17, turnEnd, removeCondition} (consumer ticks engine.plan.tickRecurringSave at the bearer's turn-end; a success ends the whole effect). No autoExpiry: the whirlwind lasts until the djinni's Concentration on it ends — consumer/DM-managed (the engine does not model non-spell monster Concentration), as are the conjure point, the 20-ft-radius / 60-ft-high cylinder, its 20-ft/turn move, area membership, and the moves-with-the-whirlwind forced movement (all positional).",
+      "stackable": false,
+      "endsOn": [],
+      "recurringDamage": {
+        "dice": "6d6",
+        "damageType": "thunder",
+        "trigger": "turnStart"
+      },
+      "recurringSave": {
+        "ability": "STR",
+        "fixedDC": 17,
+        "trigger": "turnEnd",
+        "onSuccess": "removeCondition"
+      },
+      "effects": [
+        {
+          "kind": "ModifySpeed",
+          "mode": "walk",
+          "op": "set",
+          "value": 0
+        },
+        {
+          "kind": "SetAdvantage",
+          "on": "attack",
+          "mode": "disadvantage"
+        },
+        {
+          "kind": "SetAdvantage",
+          "on": {
+            "kind": "save",
+            "ability": "DEX"
+          },
+          "mode": "disadvantage"
+        },
+        {
+          "kind": "GrantAdvantageToAttackers"
+        }
+      ]
+    },
     {
       "id": "infernal-wound",
       "name": "Infernal Wound",

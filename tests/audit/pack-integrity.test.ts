@@ -239,7 +239,15 @@ describe('pack integrity: conditions with effects are reachable', () => {
             typeof v === 'string'
           ) {
             referenced.add(v);
-          } else if (k === 'eligibleConditionIds' && Array.isArray(v)) {
+          } else if (
+            (k === 'eligibleConditionIds' ||
+              // Slice 828 save-action / 830 Djinni: monster save-actions
+              // reference conditions via the `onFail.applyConditionIds`
+              // array (plural). The Djinni whirlwind-caught condition is the
+              // first reachable ONLY this way — walk it or it false-orphans.
+              k === 'applyConditionIds') &&
+            Array.isArray(v)
+          ) {
             for (const id of v) if (typeof id === 'string') referenced.add(id);
           }
           walk(v);
