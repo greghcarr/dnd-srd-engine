@@ -40,6 +40,7 @@ import type { AttackRolledEvent } from '../schemas/events/attack.js';
 import type { DamageAppliedEvent } from '../schemas/events/combat.js';
 import type { SpellCastDeclaredEvent } from '../schemas/events/spellcasting.js';
 import type { ShieldIntent, CounterspellIntent, UncannyDodgeIntent, ProtectionIntent } from '../engine/plan/reactive-spells.js';
+import type { ParryIntent } from '../engine/plan/parry.js';
 import type { CuttingWordsIntent } from '../engine/plan/cutting-words.js';
 import type { StonesEnduranceIntent } from '../engine/plan/stones-endurance.js';
 import type { OpportunityAttackIntent } from '../engine/plan/opportunity-attack.js';
@@ -117,7 +118,8 @@ export type ReactionIntent =
   | StonesEnduranceIntent
   | OpportunityAttackIntent
   | DeflectAttacksIntent
-  | CountercharmIntent;
+  | CountercharmIntent
+  | ParryIntent;
 
 /**
  * A reaction correlated to a trigger event — its params pre-filled and ready
@@ -191,6 +193,24 @@ const grantedReactionAvailable = (
 ): boolean =>
   character.statblockId !== undefined &&
   perDayFreeCastAvailable(state, content, character.id, spellId);
+
+// Slice 831: the monster Parry reaction's AC bonus (Knight / Bandit Captain /
+// Gladiator / Noble / Warrior Veteran carry the `GrantParry` trait). Gated on
+// `statblockId` (a monster) — Parry is monster content, so the effect-stack
+// build is skipped for the common player path, mirroring grantedReactionAvailable.
+const parryBonusFor = (
+  character: Character,
+  state: CampaignState,
+  content: ResolvedContent,
+): number | undefined =>
+  character.statblockId === undefined
+    ? undefined
+    : buildEffectStack({
+        character,
+        content,
+        itemInstances: state.itemInstances,
+        pendingChoices: state.pendingChoices,
+      }).parryBonus();
 
 // Protection: a shield-bearer with the Fighting Style (the gates planProtection
 // enforces). buildEffectStack is only reached for shield-bearers (cheap guard).
@@ -296,6 +316,33 @@ const REGISTRY: ReadonlyArray<ReactionDescriptor> = [
         originalAC: e.targetAC,
         slotLevel: SHIELD_SLOT_LEVEL,
         ...(freeCast ? { useFreeCast: true } : {}),
+      };
+    },
+  },
+  {
+    id: 'parry',
+    label: 'Parry',
+    trigger: 'attack-roll',
+    // Slice 831: a monster carrying the GrantParry trait (read off the effect
+    // stack). Players don't Parry today, so this is monster-gated.
+    owns: (c, state, content) => parryBonusFor(c, state, content) !== undefined,
+    correlate: (reactorId, event, reactor, state, content) => {
+      const e = event as AttackRolledEvent;
+      // RAW trigger: hit by a MELEE attack roll. (See-attacker / wielding-a-
+      // melee-weapon are consumer-side, like Shield's see-attacker.)
+      if (e.targetId !== reactorId || e.hit !== true || e.attackKind !== 'melee') return undefined;
+      const acBonus = parryBonusFor(reactor, state, content);
+      if (acBonus === undefined) return undefined;
+      // Only offer when +N could turn the hit into a miss (the planner is
+      // authoritative on the reaction economy; this is the structural filter,
+      // mirroring Shield's monster path).
+      if (e.total >= e.targetAC + acBonus) return undefined;
+      return {
+        type: 'Parry',
+        characterId: reactorId,
+        triggeringAttackEventId: e.id,
+        triggeringAttackTotal: e.total,
+        originalAC: e.targetAC,
       };
     },
   },

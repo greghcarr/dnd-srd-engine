@@ -218,6 +218,7 @@ import {
   SaveActionExpendedEventSchema,
   SaveActionRechargedEventSchema,
 } from './save-action.js';
+import { ParryUsedEventSchema } from './parry.js';
 import { MirrorImageDeflectedEventSchema } from './mirror-image.js';
 
 export const EventSchema = z.discriminatedUnion('type', [
@@ -376,6 +377,7 @@ export const EventSchema = z.discriminatedUnion('type', [
   BreathWeaponRechargedEventSchema,
   SaveActionExpendedEventSchema,
   SaveActionRechargedEventSchema,
+  ParryUsedEventSchema,
   CampaignSettingsChangedEventSchema,
   HeroPointGrantedEventSchema,
   HeroPointSpentEventSchema,
@@ -1049,5 +1051,7 @@ export type {
   SaveActionExpendedEvent,
   SaveActionRechargedEvent,
 } from './save-action.js';
+export { ParryUsedEventSchema } from './parry.js';
+export type { ParryUsedEvent } from './parry.js';
 export { MirrorImageDeflectedEventSchema } from './mirror-image.js';
 export type { MirrorImageDeflectedEvent } from './mirror-image.js';

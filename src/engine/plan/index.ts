@@ -243,6 +243,11 @@ export {
   type SaveActionIntent,
 } from './save-action.js';
 export {
+  planParry,
+  type ParryIntent,
+  type ParryOutcome,
+} from './parry.js';
+export {
   planCounterspell,
   planDispelMagic,
   planRemoveCurse,

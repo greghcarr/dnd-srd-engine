@@ -269,6 +269,12 @@ export type Effect =
   // teleport). The `planTreeStride` planner checks `hasTreeStride()`; the
   // tree-adjacency constraints are consumer-managed terrain.
   | { kind: 'GrantTreeStride' }
+  // Slice 831: the monster Parry reaction (Knight / Bandit Captain / Gladiator
+  // / Noble / Warrior Veteran). When hit by a melee attack roll while holding
+  // a weapon, the creature adds `acBonus` to its AC against that attack,
+  // possibly turning the hit into a miss. `planParry` reads `parryBonus()`;
+  // the see-attacker / wielding-a-melee-weapon gates are consumer-side.
+  | { kind: 'GrantParry'; acBonus: number }
   | { kind: 'OverrideACFormula'; base: number | 'dex' | 'con' | 'wis'; abilityModifiers: AbilityScore[]; dexCap?: number; priority?: number }
   // Sets a floor on the target's AC: after the natural AC is computed
   // from armor + DEX + modifiers, the result is bumped up to `value`
@@ -703,6 +709,10 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       kind: z.literal('GrantTreeStride'),
     }),
     z.object({
+      kind: z.literal('GrantParry'),
+      acBonus: z.number().int().min(1),
+    }),
+    z.object({
       kind: z.literal('OverrideACFormula'),
       base: z.union([z.number(), z.literal('dex'), z.literal('con'), z.literal('wis')]),
       abilityModifiers: z.array(AbilityScoreSchema),
@@ -1070,6 +1080,7 @@ export const EFFECT_KINDS = [
   'GrantConditionImmunity',
   'GrantMagicResistance',
   'GrantTreeStride',
+  'GrantParry',
   'OverrideACFormula',
   'OverrideAbilityScore',
   'IncreaseAbilityScore',

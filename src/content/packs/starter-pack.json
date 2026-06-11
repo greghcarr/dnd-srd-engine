@@ -3694,6 +3694,7 @@
     },
     {
       "id": "bandit-captain",
+      "traits": [{"kind":"GrantParry","acBonus":2}],
       "actions": [{"name":"Scimitar","weaponId":"scimitar"},{"name":"Pistol","weaponId":"pistol"}],
       "multiattack": {"name":"Bandit Captain Multiattack","attacks":[{"weaponId":"scimitar","count":2}]},
       "name": "Bandit Captain",
@@ -3811,6 +3812,7 @@
     },
     {
       "id": "noble",
+      "traits": [{"kind":"GrantParry","acBonus":2}],
       "actions": [{ "name": "Rapier", "weaponId": "rapier" }],
       "name": "Noble",
       "size": "Medium",
@@ -3923,6 +3925,7 @@
     },
     {
       "id": "warrior-veteran",
+      "traits": [{"kind":"GrantParry","acBonus":2}],
       "actions": [{"name":"Greatsword","weaponId":"greatsword"},{"name":"Heavy Crossbow","weaponId":"warrior-veteran-heavy-crossbow"}],
       "multiattack": {"name":"Warrior Veteran Multiattack","attacks":[{"weaponId":"greatsword","count":2}]},
       "name": "Warrior Veteran",
@@ -3942,6 +3945,7 @@
     },
     {
       "id": "knight",
+      "traits": [{"kind":"GrantParry","acBonus":2}],
       "actions": [{"name":"Greatsword","weaponId":"knight-greatsword"},{"name":"Heavy Crossbow","weaponId":"knight-heavy-crossbow"}],
       "multiattack": {"name":"Knight Multiattack","attacks":[{"weaponId":"knight-greatsword","count":2}]},
       "name": "Knight",
@@ -5852,6 +5856,7 @@
     },
     {
       "id": "gladiator",
+      "traits": [{"kind":"GrantParry","acBonus":3}],
       "actions": [{"name":"Spear","weaponId":"gladiator-spear"}],
       "multiattack": {"name":"Gladiator Multiattack","attacks":[{"weaponId":"gladiator-spear","count":3}]},
       "name": "Gladiator",

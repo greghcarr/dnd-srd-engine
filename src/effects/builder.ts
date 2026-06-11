@@ -695,6 +695,22 @@ export class EffectAccumulator {
     return this.treeStrideFlag;
   }
 
+  // Slice 831: the monster Parry reaction's AC bonus. Holds the largest
+  // GrantParry.acBonus contributed (a creature carries one; max is the safe
+  // fold). `planParry` + the reaction registry read `parryBonus()`; undefined
+  // = the creature can't Parry.
+  private parryBonusValue: number | undefined = undefined;
+
+  addParry(acBonus: number): void {
+    this.parryBonusValue = this.parryBonusValue === undefined
+      ? acBonus
+      : Math.max(this.parryBonusValue, acBonus);
+  }
+
+  parryBonus(): number | undefined {
+    return this.parryBonusValue;
+  }
+
   grantSense(sense: Sense, range: number): void {
     const existing = this.senseGrants.get(sense) ?? 0;
     if (range > existing) this.senseGrants.set(sense, range);
@@ -1171,6 +1187,9 @@ export const applyEffectToBuilder = (
       return;
     case 'GrantTreeStride':
       acc.markTreeStride();
+      return;
+    case 'GrantParry':
+      acc.addParry(effect.acBonus);
       return;
     case 'OverrideACFormula':
       acc.addACOverride({

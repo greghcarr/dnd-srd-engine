@@ -547,6 +547,11 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
         // to compute the disadvantaged outcome (lower of the two).
         // ActionEconomyConsumed handles the reaction bookkeeping.
         break;
+      case 'ParryUsed':
+        // Slice 831: pure notification — the AC bump is resolved into
+        // `preventedHit`, and the consumer drops the damage chain when it's
+        // true. ActionEconomyConsumed handles the reaction bookkeeping.
+        break;
       case 'GuidanceUsed':
         // Pure notification — the 'guided' condition is lifted by the
         // ConcentrationBroken(reason='used') that the planner emits

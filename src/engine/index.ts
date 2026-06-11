@@ -150,6 +150,7 @@ import {
   planDismissIllusion,
   planBreathWeapon,
   planSaveAction,
+  planParry,
   planIdentify,
   planShield,
   planSanctuaryWardSave,
@@ -191,6 +192,8 @@ import {
   type DismissIllusionIntent,
   type BreathWeaponIntent,
   type SaveActionIntent,
+  type ParryIntent,
+  type ParryOutcome,
   type IdentifyIntent,
   type ShieldIntent,
   type ShieldOutcome,
@@ -656,6 +659,7 @@ export interface Engine {
     saveAction(state: CampaignState, intent: Omit<SaveActionIntent, 'type'>): PlanResult;
     identify(state: CampaignState, intent: Omit<IdentifyIntent, 'type'>): PlanResult;
     shield(state: CampaignState, intent: Omit<ShieldIntent, 'type'>): ShieldOutcome;
+    parry(state: CampaignState, intent: Omit<ParryIntent, 'type'>): ParryOutcome;
     sanctuaryWardSave(
       state: CampaignState,
       intent: Omit<SanctuaryWardSaveIntent, 'type'>,
@@ -1344,6 +1348,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     identify(state, intent) {
       return { events: planIdentify(state, content, rng, { type: 'Identify', ...intent }) };
+    },
+    parry(state, intent) {
+      return planParry(state, content, { type: 'Parry', ...intent });
     },
     shield(state, intent) {
       return planShield(state, content, { type: 'Shield', ...intent });

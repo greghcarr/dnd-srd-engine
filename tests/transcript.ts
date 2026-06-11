@@ -896,6 +896,10 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       const who = characterName(stateBefore, event.monsterId);
       return `**${who}**'s ${event.saveActionId} recharges (rolled ${event.roll}).`;
     }
+    case 'ParryUsed': {
+      const who = characterName(stateBefore, event.characterId);
+      return `**${who}** parries (+${event.acBonus} AC)${event.preventedHit ? ' — the hit becomes a miss!' : '.'}`;
+    }
   }
 };
 
