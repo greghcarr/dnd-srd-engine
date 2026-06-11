@@ -308,7 +308,7 @@ export type Effect =
   | { kind: 'Regeneration'; perTurn: number; suppressedBy: DamageType[] }
   | { kind: 'GrantResource'; resourceId: string; max: number | Formula; recharge: Recharge; diceSize?: number }
   | { kind: 'GrantSpellSlots'; level: SpellLevel; count: number; source: 'full' | 'half' | 'third' | 'pact' }
-  | { kind: 'GrantSpell'; spellId: string; preparation: 'always-prepared' | 'prepared' | 'known' | 'at-will' | 'oncePerLongRest' | 'oncePerShortRest' | 'perLongRest'; spellcastingAbility?: AbilityScore; usesPerLongRest?: number; freeCastResourceId?: string }
+  | { kind: 'GrantSpell'; spellId: string; preparation: 'always-prepared' | 'prepared' | 'known' | 'at-will' | 'oncePerLongRest' | 'oncePerShortRest' | 'perLongRest'; spellcastingAbility?: AbilityScore; usesPerLongRest?: number; freeCastResourceId?: string; perDayPoolId?: string; castAsBonusAction?: boolean }
   // Slice 794: the SRD 5.2.1 NPC "Spellcasting" action header — a fixed
   // spell save DC / attack bonus + ability for a creature with no
   // spellcasting class. See the schema literal below for the full note.
@@ -776,6 +776,24 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       // GrantResource pumps the resource's max (2 at L1, 3/4/5/6 at
       // L5/9/13/17) under the SAME `recharge: 'longRest'` policy.
       freeCastResourceId: z.string().optional(),
+      // Slice 818: shared "N/Day" pool across several `perLongRest` grants.
+      // The Priest's "Divine Aid (3/Day)" casts one of Bless / Dispel Magic
+      // / Healing Word / Lesser Restoration — 3 uses TOTAL, not 3 each. Each
+      // grant carries the same `perDayPoolId`; the cast path sums every pool
+      // member's `perDayCastsUsed` counter against the shared `usesPerLongRest`
+      // budget (vs the default per-spell budget). Long rest clears the
+      // counters as usual.
+      perDayPoolId: z.string().optional(),
+      // Slice 818: cast-time override for an NPC bonus-action spell group.
+      // Some statblocks expose a named Bonus Action that casts one of
+      // several spells regardless of those spells' printed casting time —
+      // the Priest's "Divine Aid (3/Day)" casts Bless / Dispel Magic (both
+      // Action spells) as a Bonus Action. When true, a `useFreeCast` cast
+      // of `spellId` through this grant consumes the Bonus Action instead
+      // of the spell's normal Action (the cast-spell planner overrides
+      // `castingTimeKind`). Scoped to the grant, so a normal slot cast of
+      // the same spell is unaffected.
+      castAsBonusAction: z.boolean().optional(),
     }),
     // Slice 794: the SRD 5.2.1 NPC "Spellcasting" action header —
     // "casts one of the following spells, using <ability> (spell save

@@ -1045,6 +1045,8 @@ export class EffectAccumulator {
     spellcastingAbility?: AbilityScore;
     freeCastResourceId?: string;
     usesPerLongRest?: number;
+    perDayPoolId?: string;
+    castAsBonusAction?: boolean;
   }): void {
     this.grantedSpellEntries.push(entry);
   }
@@ -1054,6 +1056,8 @@ export class EffectAccumulator {
     readonly spellcastingAbility?: AbilityScore;
     readonly freeCastResourceId?: string;
     readonly usesPerLongRest?: number;
+    readonly perDayPoolId?: string;
+    readonly castAsBonusAction?: boolean;
   }> {
     return this.grantedSpellEntries;
   }
@@ -1319,6 +1323,12 @@ export const applyEffectToBuilder = (
           : {}),
         ...(effect.usesPerLongRest !== undefined
           ? { usesPerLongRest: effect.usesPerLongRest }
+          : {}),
+        ...(effect.perDayPoolId !== undefined
+          ? { perDayPoolId: effect.perDayPoolId }
+          : {}),
+        ...(effect.castAsBonusAction !== undefined
+          ? { castAsBonusAction: effect.castAsBonusAction }
           : {}),
       });
       return;

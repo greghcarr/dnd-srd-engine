@@ -4137,7 +4137,11 @@
         { "kind": "SetSpellcastingProfile", "ability": "WIS", "saveDC": 13 },
         { "kind": "GrantSpell", "spellId": "light", "preparation": "at-will" },
         { "kind": "GrantSpell", "spellId": "thaumaturgy", "preparation": "at-will" },
-        { "kind": "GrantSpell", "spellId": "spirit-guardians", "preparation": "perLongRest", "usesPerLongRest": 1 }
+        { "kind": "GrantSpell", "spellId": "spirit-guardians", "preparation": "perLongRest", "usesPerLongRest": 1 },
+        { "kind": "GrantSpell", "spellId": "bless", "preparation": "perLongRest", "usesPerLongRest": 3, "perDayPoolId": "divine-aid", "spellcastingAbility": "WIS", "castAsBonusAction": true },
+        { "kind": "GrantSpell", "spellId": "dispel-magic", "preparation": "perLongRest", "usesPerLongRest": 3, "perDayPoolId": "divine-aid", "spellcastingAbility": "WIS", "castAsBonusAction": true },
+        { "kind": "GrantSpell", "spellId": "healing-word", "preparation": "perLongRest", "usesPerLongRest": 3, "perDayPoolId": "divine-aid", "spellcastingAbility": "WIS" },
+        { "kind": "GrantSpell", "spellId": "lesser-restoration", "preparation": "perLongRest", "usesPerLongRest": 3, "perDayPoolId": "divine-aid", "spellcastingAbility": "WIS" }
       ]
     },
     {

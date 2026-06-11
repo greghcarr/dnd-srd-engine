@@ -2164,6 +2164,10 @@ export const planCastSpell = (
   // "N/Day Each" per-long-rest budget (a perLongRest GrantSpell); the
   // emit block below records the use via PerDayCastUsed.
   let perDayCastSpellId: string | undefined;
+  // Slice 818: when the matched free-cast grant carries `castAsBonusAction`
+  // (an NPC bonus-action spell group like the Priest's Divine Aid), the
+  // cast consumes the Bonus Action instead of the spell's printed Action.
+  let castAsBonusActionOverride = false;
   if (useFreeCast) {
     const effects = buildEffectStack({
       character,
@@ -2193,7 +2197,21 @@ export const planCastSpell = (
       freeCastPoolResourceId = resourceId;
     } else if (perDayGrant !== undefined) {
       const budget = perDayGrant.usesPerLongRest ?? 1;
-      const used = character.perDayCastsUsed[intent.spellId] ?? 0;
+      // Slice 818: a `perDayPoolId` shares one "N/Day" budget across every
+      // granted spell tagged with the same pool (the Priest's Divine Aid:
+      // Bless / Dispel Magic / Healing Word / Lesser Restoration, 3/Day
+      // total). Sum each member's per-spell counter; otherwise meter the
+      // single spell as before. Each cast still increments its own spell's
+      // counter (so PerDayCastUsed.spellId stays accurate); the long rest
+      // clears them all.
+      const poolId = perDayGrant.perDayPoolId;
+      const used =
+        poolId !== undefined
+          ? effects
+              .grantedSpells()
+              .filter((g) => g.perDayPoolId === poolId)
+              .reduce((sum, g) => sum + (character.perDayCastsUsed[g.spellId] ?? 0), 0)
+          : character.perDayCastsUsed[intent.spellId] ?? 0;
       if (used >= budget) {
         throw new Error(
           `${character.name} has no remaining daily uses of ${spell.name} (${budget}/day)`,
@@ -2205,6 +2223,8 @@ export const planCastSpell = (
         `${character.name} cannot use a free cast for ${spell.name}: no oncePerLongRest, per-day, or pool-based grant for this spell`,
       );
     }
+    castAsBonusActionOverride =
+      (onceGrant ?? poolGrant ?? perDayGrant)?.castAsBonusAction === true;
   }
   // Slice 513: a spell granted to this character with `preparation: 'at-will'`
   // (Warlock invocations like Armor of Shadows, Fiendish Vigor, Mask of
@@ -2255,6 +2275,10 @@ export const planCastSpell = (
   // Out-of-encounter casts skip both the check and the event, matching
   // how planShield / planCounterspell already do this.
   const castingTimeKind = ((): 'action' | 'bonusAction' | 'reaction' | 'long' => {
+    // Slice 818: an NPC bonus-action spell group (the Priest's Divine Aid)
+    // overrides the printed casting time — Bless / Dispel Magic are cast as
+    // a Bonus Action through the grant.
+    if (castAsBonusActionOverride) return 'bonusAction';
     const ct = spell.castingTime.trim().toLowerCase();
     if (ct === 'action') return 'action';
     if (ct === 'bonus action') return 'bonusAction';
