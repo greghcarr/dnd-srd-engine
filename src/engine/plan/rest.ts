@@ -7,6 +7,7 @@ import type {
   ShortRestStartedEvent,
 } from '../../schemas/events/rest.js';
 import type { HeroicInspirationGrantedEvent } from '../../schemas/events/heroic-inspiration.js';
+import type { ConditionRemovedEvent } from '../../schemas/events/combat.js';
 import type { Event } from '../../schemas/events/index.js';
 import type { Effect } from '../../schemas/effects.js';
 import type { Formula } from '../../schemas/formula.js';
@@ -170,7 +171,37 @@ export const planLongRest = (
     type: 'LongRestEnded',
     causedByEventId: start.id,
   };
-  const events: Event[] = [start, end];
+  // Slice 832: restore undead Life Drain (Specter / Wraith) on a Long Rest.
+  // The `life-drained` condition carries a negative hpMaxBonusDelta; a
+  // ConditionRemoved reverses it (applyConditionRemoved), emitted BEFORE
+  // LongRestEnded resets current HP so the maximum is whole again. Precise
+  // gate — endsOn `longRest` AND a non-zero hpMaxBonusDelta — so exhaustion /
+  // rage / other longRest-metadata conditions (no max-HP delta) are untouched.
+  // Needs content for the condition def; older content-less callers skip it.
+  const drainRemovals: Event[] = [];
+  if (content !== undefined) {
+    for (const participantId of intent.participantIds) {
+      const character = state.characters[participantId];
+      if (!character) continue;
+      const seen = new Set<string>();
+      for (const applied of character.appliedConditions) {
+        if (applied.hpMaxBonusDelta === undefined || applied.hpMaxBonusDelta === 0) continue;
+        if (seen.has(applied.conditionId)) continue;
+        const def = content.conditions.get(applied.conditionId);
+        if (def === undefined) continue;
+        if (!(def.endsOn ?? []).some((e) => e.kind === 'longRest')) continue;
+        seen.add(applied.conditionId);
+        drainRemovals.push({
+          id: newEventId() as ULID,
+          at,
+          type: 'ConditionRemoved',
+          targetId: participantId as ULID,
+          conditionId: applied.conditionId,
+        } satisfies ConditionRemovedEvent);
+      }
+    }
+  }
+  const events: Event[] = [start, ...drainRemovals, end];
   // Slice 542: auto-emit HeroicInspirationGranted for each
   // participant whose effect stack carries the
   // GrantHeroicInspirationOnLongRest marker (Human Resourceful,

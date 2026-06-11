@@ -2538,7 +2538,7 @@
     { "id": "transport-via-plants", "name": "Transport via Plants", "description": "This spell creates a magical link between a Large or larger inanimate plant within range and another plant, at any distance, on the same plane of existence. You must have seen or touched the destination plant at least once before. For the duration, any creature can step into the target plant and exit from the destination plant by using 5 feet of movement.", "level": 6, "school": "conjuration", "castingTime": "Action", "range": "10 feet", "components": { "verbal": true, "somatic": true }, "duration": "1 minute", "concentration": false, "ritual": false, "classes": ["druid"], "mechanicalEffects": [] },
     { "id": "vitriolic-sphere", "name": "Vitriolic Sphere", "description": "You point at a location within range, and a glowing, 1-foot-diameter ball of acid streaks there and explodes in a 20-foot-radius Sphere. Each creature in that area makes a Dexterity saving throw. On a failed save, a creature takes 10d4 Acid damage and another 5d4 Acid damage at the end of its next turn. On a successful save, a creature takes half the initial damage only. Using a Higher-Level Spell Slot. The initial damage increases by 2d4 for each spell slot level above 4.", "level": 4, "school": "evocation", "castingTime": "Action", "range": "150 feet", "components": { "verbal": true, "somatic": true, "material": "a drop of bile" }, "duration": "Instantaneous", "concentration": false, "ritual": false, "classes": ["sorcerer", "wizard"], "targeting": { "shape": "sphere", "size": 20 }, "mechanicalEffects": [{ "kind": "save", "ability": "DEX", "damageDice": "10d4", "damageType": "acid", "halfOnSuccess": true, "extraDicePerSlotLevel": 2 }] }
   ],
-  "items": [
+  "items": [{"id":"specter-life-drain","itemKind":"weapon","name":"Specter Life Drain","category":"simple","attackKind":"melee","damageType":"necrotic","damageDice":"2d6","properties":[],"noAbilityModifierDamage":true,"drainsMaxHp":true,"description":"Life Drain natural weapon (SRD 5.2.1 Specter, CR 1). 7 (2d6) Necrotic; the damage also reduces the target's Hit Point maximum by the amount taken (drainsMaxHp), restored on a Long Rest. Flat dice (noAbilityModifierDamage) match the SRD line."},{"id":"wraith-life-drain","itemKind":"weapon","name":"Wraith Life Drain","category":"simple","attackKind":"melee","damageType":"necrotic","damageDice":"4d8+3","properties":[],"noAbilityModifierDamage":true,"drainsMaxHp":true,"description":"Life Drain natural weapon (SRD 5.2.1 Wraith, CR 5). 21 (4d8+3) Necrotic; the damage also reduces the target's Hit Point maximum by the amount taken (drainsMaxHp), restored on a Long Rest. Flat dice (noAbilityModifierDamage) bake the +3 DEX mod to match the SRD line."},
     {
       "id": "longsword",
       "itemKind": "weapon",
@@ -4350,6 +4350,7 @@
     },
     {
       "id": "specter",
+      "actions": [{"name":"Life Drain","weaponId":"specter-life-drain"}],
       "name": "Specter",
       "size": "Medium",
       "type": "Undead",
@@ -4421,6 +4422,7 @@
     },
     {
       "id": "wraith",
+      "actions": [{"name":"Life Drain","weaponId":"wraith-life-drain"}],
       "name": "Wraith",
       "size": "Medium",
       "type": "Undead",
@@ -8869,6 +8871,19 @@
     }
   ],
   "conditions": [
+    {
+      "id": "life-drained",
+      "name": "Life Drained",
+      "description": "The creature's Hit Point maximum has been reduced by an undead's Life Drain, by an amount equal to the damage taken. The reduction returns to normal when the creature finishes a Long Rest.",
+      "engineNotes": "Slice 832: applied by a weapon with drainsMaxHp (Specter / Wraith Life Drain). Carries a NEGATIVE hpMaxBonusDelta equal to the cumulative damage taken (the ConditionApplied reducer lowers hp.maxBonus by it). The attack planner keeps a single cumulative entry (remove-then-readd) because applyConditionApplied dedupes by conditionId; the in-scope drainers strike once per turn. endsOn longRest: planLongRest emits a ConditionRemoved (reversing the delta) before LongRestEnded resets current HP, restoring the maximum — the 2024 default (the Mummy / Death Dog entries are the exceptions that say the reduction does NOT return on a Long Rest). RAW a creature whose Hit Point maximum drops to 0 dies; that clamp is consumer/DM-managed. effects: [] — the hpMaxBonusDelta does the work.",
+      "stackable": false,
+      "endsOn": [
+        {
+          "kind": "longRest"
+        }
+      ],
+      "effects": []
+    },
     {
       "id": "djinni-whirlwind-caught",
       "name": "Caught in the Whirlwind",

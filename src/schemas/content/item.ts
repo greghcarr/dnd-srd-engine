@@ -183,6 +183,15 @@ export const WeaponSchema = ItemBaseSchema.extend({
   // Default (omitted/false) preserves the normal RAW path of adding
   // STR / DEX to damage.
   noAbilityModifierDamage: z.boolean().optional(),
+  // Slice 832: undead Life Drain. When true, the damage this weapon deals
+  // also reduces the target's Hit Point maximum by an amount equal to the
+  // damage taken (post-mitigation), modeled as a stacking `life-drained`
+  // condition the attack planner applies after the hit's damage. RAW (SRD
+  // 5.2.1 Specter / Wraith Life Drain): "its Hit Point maximum decreases by
+  // an amount equal to the damage taken." The reduction returns to normal on
+  // a Long Rest (the 2024 default — the Mummy / Death Dog entries are the
+  // exceptions that say it doesn't). Default (omitted/false) = no drain.
+  drainsMaxHp: z.boolean().optional(),
   // Slice 316: optional magic-weapon fields. A magic weapon with a
   // single base (Sun Blade = Longsword) ships as itemKind 'weapon' with
   // the base stats + these fields, so the attack planner wields it and
