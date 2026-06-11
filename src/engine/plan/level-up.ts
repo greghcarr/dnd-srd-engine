@@ -11,11 +11,11 @@ import type {
 import type { RNG } from '../../rng/index.js';
 import { rollDie } from '../../rng/dice.js';
 import { newChoiceId, newEventId } from '../../ids.js';
-import { abilityModifier } from '../../derive/ability.js';
+import { abilityModifier, effectiveAbilityScore } from '../../derive/ability.js';
 import { nowIso } from '../../internal/clock.js';
 import type { ULID } from '../ids-utils.js';
 import type { Effect } from '../../schemas/effects.js';
-import { expandGrantFeatEffects } from '../../derive/effect-stack.js';
+import { expandGrantFeatEffects, buildEffectStack } from '../../derive/effect-stack.js';
 
 const HP_AVERAGE_BY_DIE: Record<number, number> = { 6: 4, 8: 5, 10: 6, 12: 7 };
 
@@ -77,6 +77,31 @@ export const planLevelUp = (
 
   const newLevelEntry = cls.levelTable[String(newClassLevel)];
   if (newLevelEntry !== undefined) {
+    // Slice 809: feat-menu eligibility. RAW: the L4+ improvement offers
+    // "an Ability Score Improvement or a feat for which you qualify." An
+    // option whose GrantFeat references a feat with an unmet ability
+    // prerequisite (Grappler: STR or DEX 13, on the EFFECTIVE score) is
+    // dropped. The level prereq is satisfied by reaching this choice;
+    // options without a GrantFeat (the ASI option) are always kept.
+    const prereqEffects = buildEffectStack({
+      character, content, itemInstances: state.itemInstances, pendingChoices: state.pendingChoices,
+    });
+    const meetsAbilityPrereq = (featId: string): boolean => {
+      const prereq = content.feats.get(featId)?.abilityPrerequisite;
+      if (prereq === undefined) return true;
+      return prereq.abilities.some(
+        (a) =>
+          effectiveAbilityScore(
+            character.abilityScores[a],
+            prereqEffects.effectiveAbilityScoreFloor(a)?.value,
+            prereqEffects.effectiveAbilityScoreIncrease(a),
+          ) >= prereq.min,
+      );
+    };
+    const optionEligible = (o: { effects: ReadonlyArray<Effect> }): boolean => {
+      const grant = o.effects.find((e) => e.kind === 'GrantFeat');
+      return grant === undefined || meetsAbilityPrereq((grant as Extract<Effect, { kind: 'GrantFeat' }>).featId);
+    };
     for (const feature of newLevelEntry.features) {
       for (const effect of feature.effects) {
         if (effect.kind === 'OfferChoice' && effect.when !== 'onLongRest') {
@@ -88,7 +113,7 @@ export const planLevelUp = (
             characterId: intent.characterId,
             promptKey: effect.choiceId,
             prompt: effect.prompt,
-            options: effect.options.map((o) => ({
+            options: effect.options.filter(optionEligible).map((o) => ({
               id: o.id,
               label: o.label,
               effects: o.effects as Effect[],

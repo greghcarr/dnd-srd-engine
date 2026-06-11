@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { EffectSchema } from '../effects.js';
+import { AbilityScoreSchema } from '../primitives.js';
 
 export const FeatSchema = z.object({
   id: z.string(),
@@ -10,6 +11,17 @@ export const FeatSchema = z.object({
   category: z.enum(['origin', 'general', 'fighting-style', 'epic-boon', 'invocation']),
   repeatable: z.boolean().default(false),
   prerequisites: z.array(z.string()).default([]),
+  // Slice 809: the machine-checkable ability-score prerequisite (the
+  // free-text `prerequisites` array is display-only). A character
+  // qualifies when at least one listed ability's effective score meets
+  // `min` (RAW Grappler: "Strength or Dexterity 13+"). Read by the feat-
+  // menu eligibility filter in planLevelUp; absent → no ability gate.
+  abilityPrerequisite: z
+    .object({
+      abilities: z.array(AbilityScoreSchema).min(1),
+      min: z.number().int().min(1),
+    })
+    .optional(),
   effects: z.array(EffectSchema).default([]),
 });
 export type Feat = z.infer<typeof FeatSchema>;
