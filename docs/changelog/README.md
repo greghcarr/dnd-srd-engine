@@ -2,6 +2,8 @@
 
 Per-slice detail and per-cohort archives, split out of the live [CHANGELOG.md](../../CHANGELOG.md) to keep every file within the single-Read ceiling. The live CHANGELOG carries only compact 3-line pointers per Unreleased slice (post-slice-628 convention) plus a "Older releases" pointer block; everything below is the per-slice detail or historical record.
 
+When the **Unreleased** section itself approaches the ceiling before a release is cut, its oldest pointers are evicted to a per-cohort `archive-slices-NNN-MMM.md` here and the live file keeps a one-line reference (the slice-812 release-eviction pattern, applied to un-tagged pointers). Evicted Unreleased-pointer cohorts: [archive-slices-778-802.md](archive-slices-778-802.md) (slices 778-802, evicted in slice 827).
+
 ## Per-slice files (slice 622 onward)
 
 Slice 628 adopted the pointer-per-slice + detail-per-file convention. Each slice's full Files / Tests / Audit / Open-follow-ups blocks live in its own file here. The live CHANGELOG carries only a 3-line pointer; growth is ~150 bytes per slice instead of 4-9 KB, so the live file no longer hits the 60 KB ceiling on a 5-6 slice cadence.
