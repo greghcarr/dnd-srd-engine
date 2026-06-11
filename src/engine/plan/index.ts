@@ -142,6 +142,7 @@ export { planStudy, type StudyIntent } from './study.js';
 export { planInfluence, type InfluenceIntent } from './influence.js';
 export { planUtilize, type UtilizeIntent } from './utilize.js';
 export { planCloudsJaunt, type CloudsJauntIntent } from './clouds-jaunt.js';
+export { planTreeStride, type TreeStrideIntent } from './tree-stride.js';
 export { planStonesEndurance, type StonesEnduranceIntent, type StonesEnduranceOutcome } from './stones-endurance.js';
 export { planStormsThunder, type StormsThunderIntent, type StormsThunderOutcome } from './storms-thunder.js';
 export { planNimbleEscape, type NimbleEscapeIntent, type NimbleEscapeMode } from './nimble-escape.js';

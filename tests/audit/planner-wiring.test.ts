@@ -102,8 +102,10 @@ const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
   // action invoked by the target or an adjacent ally to remove the
   // attachment.
   'stirgeDrain', 'detachStirge',
-  // Special-cast / placed-entity / multi-arg spell planners:
-  'magicWeapon', 'removeCurse', 'mistyStep', 'thunderStep', 'dimensionDoor',
+  // Special-cast / placed-entity / multi-arg spell planners (and the Dryad's
+  // Tree Stride monster teleport ability, slice 820 — consumer-orchestrated
+  // like mistyStep, not its own dispatched intent):
+  'magicWeapon', 'removeCurse', 'mistyStep', 'thunderStep', 'dimensionDoor', 'treeStride',
   'silentImage', 'majorImage', 'clairvoyance', 'scrying', 'arcaneEye', 'divineIntervention',
   // Slice 762: innateSorcery moved to the performIntent dispatch (it's now a
   // bonusActions menu option routed via useOption), so it's no longer here.

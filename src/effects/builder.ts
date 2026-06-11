@@ -683,6 +683,18 @@ export class EffectAccumulator {
     return this.magicResistanceFlag;
   }
 
+  // Slice 820: the Dryad's Tree Stride Bonus Action (tree-to-tree teleport).
+  // Marker-only; `planTreeStride` checks `hasTreeStride()`.
+  private treeStrideFlag = false;
+
+  markTreeStride(): void {
+    this.treeStrideFlag = true;
+  }
+
+  hasTreeStride(): boolean {
+    return this.treeStrideFlag;
+  }
+
   grantSense(sense: Sense, range: number): void {
     const existing = this.senseGrants.get(sense) ?? 0;
     if (range > existing) this.senseGrants.set(sense, range);
@@ -1156,6 +1168,9 @@ export const applyEffectToBuilder = (
       return;
     case 'GrantMagicResistance':
       acc.markMagicResistance();
+      return;
+    case 'GrantTreeStride':
+      acc.markTreeStride();
       return;
     case 'OverrideACFormula':
       acc.addACOverride({

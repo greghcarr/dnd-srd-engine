@@ -265,6 +265,10 @@ export type Effect =
   // sourceIsMagical fact is true. Canonical across most CR 5+
   // Fiends / Fey / Dragons / spellcaster monsters.
   | { kind: 'GrantMagicResistance' }
+  // Slice 820: marker for the Dryad's Tree Stride Bonus Action (a tree-to-tree
+  // teleport). The `planTreeStride` planner checks `hasTreeStride()`; the
+  // tree-adjacency constraints are consumer-managed terrain.
+  | { kind: 'GrantTreeStride' }
   | { kind: 'OverrideACFormula'; base: number | 'dex' | 'con' | 'wis'; abilityModifiers: AbilityScore[]; dexCap?: number; priority?: number }
   // Sets a floor on the target's AC: after the natural AC is computed
   // from armor + DEX + modifiers, the result is bumped up to `value`
@@ -696,6 +700,9 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       kind: z.literal('GrantMagicResistance'),
     }),
     z.object({
+      kind: z.literal('GrantTreeStride'),
+    }),
+    z.object({
       kind: z.literal('OverrideACFormula'),
       base: z.union([z.number(), z.literal('dex'), z.literal('con'), z.literal('wis')]),
       abilityModifiers: z.array(AbilityScoreSchema),
@@ -1062,6 +1069,7 @@ export const EFFECT_KINDS = [
   'GrantVulnerability',
   'GrantConditionImmunity',
   'GrantMagicResistance',
+  'GrantTreeStride',
   'OverrideACFormula',
   'OverrideAbilityScore',
   'IncreaseAbilityScore',

@@ -5164,6 +5164,7 @@
       "traits": [
         { "kind": "GrantMagicResistance" },
         { "kind": "SetSpellcastingProfile", "ability": "CHA", "saveDC": 14 },
+        { "kind": "GrantTreeStride" },
         { "kind": "GrantSpell", "spellId": "animal-friendship", "preparation": "at-will", "spellcastingAbility": "CHA" },
         { "kind": "GrantSpell", "spellId": "charm-monster", "preparation": "at-will", "spellcastingAbility": "CHA" },
         { "kind": "GrantSpell", "spellId": "druidcraft", "preparation": "at-will", "spellcastingAbility": "CHA" },

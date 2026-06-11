@@ -97,6 +97,7 @@ import {
   planInfluence,
   planUtilize,
   planCloudsJaunt,
+  planTreeStride,
   planStonesEndurance,
   planStormsThunder,
   planNimbleEscape,
@@ -268,6 +269,7 @@ import {
   type InfluenceIntent,
   type UtilizeIntent,
   type CloudsJauntIntent,
+  type TreeStrideIntent,
   type StonesEnduranceIntent,
   type StonesEnduranceOutcome,
   type StormsThunderIntent,
@@ -589,6 +591,7 @@ export interface Engine {
     influence(state: CampaignState, intent: Omit<InfluenceIntent, 'type'>): PlanResult;
     utilize(state: CampaignState, intent: Omit<UtilizeIntent, 'type'>): PlanResult;
     cloudsJaunt(state: CampaignState, intent: Omit<CloudsJauntIntent, 'type'>): PlanResult;
+    treeStride(state: CampaignState, intent: Omit<TreeStrideIntent, 'type'>): PlanResult;
     stonesEndurance(
       state: CampaignState,
       intent: Omit<StonesEnduranceIntent, 'type'>,
@@ -1168,6 +1171,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     cloudsJaunt(state, intent) {
       return { events: planCloudsJaunt(state, content, { type: 'CloudsJaunt', ...intent }) };
+    },
+    treeStride(state, intent) {
+      return { events: planTreeStride(state, content, { type: 'TreeStride', ...intent }) };
     },
     stonesEndurance(state, intent) {
       return planStonesEndurance(state, content, rng, { type: 'StonesEndurance', ...intent });
