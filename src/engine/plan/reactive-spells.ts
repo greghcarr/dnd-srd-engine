@@ -26,6 +26,7 @@ import type {
   UncannyDodgeUsedEvent,
 } from '../../schemas/events/reactive-spells.js';
 import { buildEffectStack } from '../../derive/effect-stack.js';
+import { resolvePerDayFreeCast } from './_per-day-free-cast.js';
 import type { Character } from '../../schemas/runtime/character.js';
 import { computeSavingThrow } from '../../derive/save.js';
 import { rollSaveBonusDice } from './_bonus-dice.js';
@@ -96,6 +97,10 @@ export interface CounterspellIntent {
   // spell was a cantrip. Required so the engine can emit the original
   // caster's SpellSlotConsumed and the transcript reflects the loss.
   readonly originalSpellLevel: number;
+  // Slice 819: cast from an NPC "N/Day" pool (the Mage/Archmage "Protective
+  // Magic 3/Day" reaction) instead of a spell slot. The counter-caster's
+  // slot is replaced by a PerDayCastUsed against the shared pool.
+  readonly useFreeCast?: boolean;
   readonly at?: string;
 }
 
@@ -144,13 +149,19 @@ export const planCounterspell = (
       slotLevel: intent.originalSpellLevel,
     } satisfies SpellSlotConsumedEvent);
   }
-  events.push({
-    id: newEventId() as ULID,
-    at,
-    type: 'SpellSlotConsumed',
-    characterId: intent.counterCasterId,
-    slotLevel,
-  } satisfies SpellSlotConsumedEvent);
+  // Slice 819: a slot-less NPC caster (Mage/Archmage "Protective Magic
+  // 3/Day") meters via the shared per-day pool instead of expending a slot.
+  events.push(
+    intent.useFreeCast === true
+      ? resolvePerDayFreeCast(state, content, intent.counterCasterId, 'counterspell', at)
+      : ({
+          id: newEventId() as ULID,
+          at,
+          type: 'SpellSlotConsumed',
+          characterId: intent.counterCasterId,
+          slotLevel,
+        } satisfies SpellSlotConsumedEvent),
+  );
   events.push({
     id: newEventId() as ULID,
     at,
@@ -391,6 +402,9 @@ export interface ShieldIntent {
   // Consumers extract this from the AttackRolledEvent.
   readonly originalAC: number;
   readonly slotLevel?: number;
+  // Slice 819: cast from an NPC "N/Day" pool (the Mage/Archmage "Protective
+  // Magic 3/Day" reaction) instead of a spell slot.
+  readonly useFreeCast?: boolean;
   readonly at?: string;
 }
 
@@ -416,7 +430,7 @@ export interface ShieldOutcome {
  */
 export const planShield = (
   state: CampaignState,
-  _content: ResolvedContent,
+  content: ResolvedContent,
   intent: ShieldIntent,
 ): ShieldOutcome => {
   const caster = state.characters[intent.casterId];
@@ -429,13 +443,19 @@ export const planShield = (
   const events: Event[] = [];
   const reaction = economyConsumedIfEncountered(state, intent.casterId, at, 'reaction');
   if (reaction !== undefined) events.push(reaction);
-  events.push({
-    id: newEventId() as ULID,
-    at,
-    type: 'SpellSlotConsumed',
-    characterId: intent.casterId,
-    slotLevel,
-  } satisfies SpellSlotConsumedEvent);
+  // Slice 819: Protective Magic 3/Day — a slot-less NPC caster meters via the
+  // shared per-day pool instead of expending a slot.
+  events.push(
+    intent.useFreeCast === true
+      ? resolvePerDayFreeCast(state, content, intent.casterId, 'shield', at)
+      : ({
+          id: newEventId() as ULID,
+          at,
+          type: 'SpellSlotConsumed',
+          characterId: intent.casterId,
+          slotLevel,
+        } satisfies SpellSlotConsumedEvent),
+  );
   const shieldedApplied: ConditionAppliedEvent = {
     id: newEventId() as ULID,
     at,

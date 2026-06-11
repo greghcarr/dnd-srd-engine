@@ -29,6 +29,7 @@ import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { applyAll } from '../apply.js';
 import { buildEffectStack } from '../../derive/effect-stack.js';
+import { resolvePerDayFreeCast } from './_per-day-free-cast.js';
 import { planConcentrationOnDamage } from './concentration.js';
 import { newAppliedConditionId } from '../../ids.js';
 import { newEventId } from '../../ids.js';
@@ -501,25 +502,6 @@ export const planMistyStep = (
     );
   }
 
-  // Slice 817: per-day budget gate for the free-cast path. Requires a
-  // `perLongRest` ("N/Day") grant and meters against perDayCastsUsed —
-  // mirroring castSpell's slice-794 free-cast check.
-  if (useFreeCast) {
-    const perDayGrant = grantedMistyStep.find((g) => g.preparation === 'perLongRest');
-    if (perDayGrant === undefined) {
-      throw new Error(
-        `${caster.name} cannot free-cast Misty Step: no per-day grant for this spell`,
-      );
-    }
-    const budget = perDayGrant.usesPerLongRest ?? 1;
-    const used = caster.perDayCastsUsed['misty-step'] ?? 0;
-    if (used >= budget) {
-      throw new Error(
-        `${caster.name} has no remaining daily uses of Misty Step (${budget}/day)`,
-      );
-    }
-  }
-
   const at = intent.at ?? nowIso();
   const declared: SpellCastDeclaredEvent = {
     id: newEventId() as ULID,
@@ -532,16 +514,11 @@ export const planMistyStep = (
     targetIds: [intent.casterId],
     castAsRitual: false,
   };
-  // Slice 817: meter via the per-day bucket (PerDayCastUsed, no slot) for a
-  // free cast, else expend a spell slot as before.
+  // Slice 817/819: meter via the per-day bucket (PerDayCastUsed, no slot) for
+  // a free cast — shared helper, which validates the budget — else expend a
+  // spell slot as before.
   const meterEvent: PerDayCastUsedEvent | SpellSlotConsumedEvent = useFreeCast
-    ? {
-        id: newEventId() as ULID,
-        at,
-        type: 'PerDayCastUsed',
-        characterId: intent.casterId as ULID,
-        spellId: 'misty-step',
-      }
+    ? resolvePerDayFreeCast(state, content, intent.casterId, 'misty-step', at)
     : {
         id: newEventId() as ULID,
         at,
