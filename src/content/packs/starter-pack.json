@@ -2559,7 +2559,8 @@
       "attackKind": "melee",
       "damageType": "slashing",
       "damageDice": "2d6",
-      "properties": []
+      "properties": [],
+      "onHit": [{ "dice": "1d6", "damageType": "fire" }]
     },
     {
       "id": "greatclub",
