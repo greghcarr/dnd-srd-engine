@@ -4622,6 +4622,7 @@
       "proficiencyBonus": 4,
       "languages": ["common", "giant"],
       "traits": [
+        { "kind": "SetSpellcastingProfile", "ability": "CHA", "saveDC": 15 },
         { "kind": "GrantSpell", "spellId": "detect-magic", "preparation": "at-will", "spellcastingAbility": "CHA" },
         { "kind": "GrantSpell", "spellId": "fog-cloud", "preparation": "at-will", "spellcastingAbility": "CHA" },
         { "kind": "GrantSpell", "spellId": "light", "preparation": "at-will", "spellcastingAbility": "CHA" }
@@ -4647,6 +4648,7 @@
       "proficiencyBonus": 5,
       "languages": ["common", "giant"],
       "traits": [
+        { "kind": "SetSpellcastingProfile", "ability": "WIS", "saveDC": 18 },
         { "kind": "GrantSpell", "spellId": "detect-magic", "preparation": "at-will", "spellcastingAbility": "WIS" },
         { "kind": "GrantSpell", "spellId": "light", "preparation": "at-will", "spellcastingAbility": "WIS" }
       ]
@@ -5153,9 +5155,12 @@
       "languages": ["elvish", "sylvan"],
       "traits": [
         { "kind": "GrantMagicResistance" },
+        { "kind": "SetSpellcastingProfile", "ability": "CHA", "saveDC": 14 },
         { "kind": "GrantSpell", "spellId": "animal-friendship", "preparation": "at-will", "spellcastingAbility": "CHA" },
         { "kind": "GrantSpell", "spellId": "charm-monster", "preparation": "at-will", "spellcastingAbility": "CHA" },
-        { "kind": "GrantSpell", "spellId": "druidcraft", "preparation": "at-will", "spellcastingAbility": "CHA" }
+        { "kind": "GrantSpell", "spellId": "druidcraft", "preparation": "at-will", "spellcastingAbility": "CHA" },
+        { "kind": "GrantSpell", "spellId": "entangle", "preparation": "perLongRest", "usesPerLongRest": 1, "spellcastingAbility": "CHA" },
+        { "kind": "GrantSpell", "spellId": "pass-without-trace", "preparation": "perLongRest", "usesPerLongRest": 1, "spellcastingAbility": "CHA" }
       ]
     },
     {
@@ -5250,6 +5255,7 @@
       "proficiencyBonus": 2,
       "languages": ["all languages", "telepathy 120 ft"],
       "traits": [
+        { "kind": "SetSpellcastingProfile", "ability": "WIS", "saveDC": 15 },
         { "kind": "GrantSpell", "spellId": "detect-evil-and-good", "preparation": "at-will", "spellcastingAbility": "WIS" },
         { "kind": "GrantSpell", "spellId": "detect-magic", "preparation": "at-will", "spellcastingAbility": "WIS" },
         { "kind": "GrantSpell", "spellId": "detect-thoughts", "preparation": "at-will", "spellcastingAbility": "WIS" }
@@ -5276,6 +5282,7 @@
       "languages": ["celestial", "elvish", "sylvan", "telepathy 60 ft"],
       "traits": [
         { "kind": "GrantMagicResistance" },
+        { "kind": "SetSpellcastingProfile", "ability": "CHA", "saveDC": 14 },
         { "kind": "GrantSpell", "spellId": "detect-evil-and-good", "preparation": "at-will", "spellcastingAbility": "CHA" },
         { "kind": "GrantSpell", "spellId": "druidcraft", "preparation": "at-will", "spellcastingAbility": "CHA" }
       ]
@@ -5303,6 +5310,7 @@
       "languages": ["all languages", "telepathy 120 ft"],
       "traits": [
         { "kind": "GrantMagicResistance" },
+        { "kind": "SetSpellcastingProfile", "ability": "CHA", "saveDC": 17 },
         { "kind": "GrantSpell", "spellId": "detect-evil-and-good", "preparation": "at-will", "spellcastingAbility": "CHA" }
       ]
     },
@@ -5327,6 +5335,7 @@
       "languages": ["all languages", "telepathy 120 ft"],
       "traits": [
         { "kind": "GrantMagicResistance" },
+        { "kind": "SetSpellcastingProfile", "ability": "CHA", "saveDC": 20 },
         { "kind": "GrantSpell", "spellId": "detect-evil-and-good", "preparation": "at-will", "spellcastingAbility": "CHA" }
       ]
     },
@@ -5350,6 +5359,7 @@
       "languages": ["all languages", "telepathy 120 ft"],
       "traits": [
         { "kind": "GrantMagicResistance" },
+        { "kind": "SetSpellcastingProfile", "ability": "CHA", "saveDC": 25 },
         { "kind": "GrantSpell", "spellId": "detect-evil-and-good", "preparation": "at-will", "spellcastingAbility": "CHA" }
       ]
     },
@@ -8814,7 +8824,24 @@
       "xp": 8000,
       "proficiencyBonus": 4,
       "languages": ["common"],
-      "traits": [{ "kind": "GrantMagicResistance" }]
+      "traits": [
+        { "kind": "GrantMagicResistance" },
+        { "kind": "SetSpellcastingProfile", "ability": "INT", "saveDC": 17 },
+        { "kind": "GrantSpell", "spellId": "detect-magic", "preparation": "at-will" },
+        { "kind": "GrantSpell", "spellId": "detect-thoughts", "preparation": "at-will" },
+        { "kind": "GrantSpell", "spellId": "disguise-self", "preparation": "at-will" },
+        { "kind": "GrantSpell", "spellId": "invisibility", "preparation": "at-will" },
+        { "kind": "GrantSpell", "spellId": "light", "preparation": "at-will" },
+        { "kind": "GrantSpell", "spellId": "mage-armor", "preparation": "at-will" },
+        { "kind": "GrantSpell", "spellId": "mage-hand", "preparation": "at-will" },
+        { "kind": "GrantSpell", "spellId": "prestidigitation", "preparation": "at-will" },
+        { "kind": "GrantSpell", "spellId": "fly", "preparation": "perLongRest", "usesPerLongRest": 2 },
+        { "kind": "GrantSpell", "spellId": "lightning-bolt", "preparation": "perLongRest", "usesPerLongRest": 2 },
+        { "kind": "GrantSpell", "spellId": "cone-of-cold", "preparation": "perLongRest", "usesPerLongRest": 1 },
+        { "kind": "GrantSpell", "spellId": "mind-blank", "preparation": "perLongRest", "usesPerLongRest": 1 },
+        { "kind": "GrantSpell", "spellId": "scrying", "preparation": "perLongRest", "usesPerLongRest": 1 },
+        { "kind": "GrantSpell", "spellId": "teleport", "preparation": "perLongRest", "usesPerLongRest": 1 }
+      ]
     }
   ],
   "conditions": [
