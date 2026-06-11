@@ -84,6 +84,19 @@ const SpellAttackMechanicSchema = z
     // `sourceEffectInstanceId` when the cast is a concentration spell,
     // so concentration-drop / save-ends mechanics clean it up.
     conditionOnHit: z.string().optional(),
+    // Slice 816: does making this attack cost a separate Magic action?
+    // Some Bonus-Action spells create a persistent effect on the cast and
+    // then attack from it via a SEPARATE Magic action on this or a later
+    // turn — RAW Produce Flame ("take a Magic action to hurl fire") and
+    // Flame Blade ("As a Magic action, you can make a melee spell attack").
+    // For those, the cast-spell planner consumes BOTH the Bonus Action
+    // (the cast) and the Action (the hurl) when a target is supplied. When
+    // unset/false, a Bonus-Action spell's attack is made IMMEDIATELY as
+    // part of the cast and costs no extra action — RAW Spiritual Weapon
+    // ("you can immediately make one melee spell attack"). Without this
+    // flag the planner used a `duration !== instantaneous` heuristic that
+    // wrongly charged Spiritual Weapon the Action too.
+    requiresMagicAction: z.boolean().optional(),
   })
   // Slice 371: `.strict()` so a future authored-but-unsupported field
   // fails to parse loudly instead of being silently dropped by Zod (the

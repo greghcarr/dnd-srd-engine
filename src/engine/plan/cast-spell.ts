@@ -2261,33 +2261,36 @@ export const planCastSpell = (
     if (ct === 'reaction') return 'reaction';
     return 'long';
   })();
-  // Slice 603: RAW Produce Flame / Spiritual Weapon shape. The spell's
+  // Slice 603 / 816: RAW Produce Flame / Flame Blade shape. The spell's
   // castingTime says "Bonus Action" — that BA produces the persistent
-  // effect (flame in hand / floating weapon). To actually MAKE THE
-  // ATTACK on the same turn, RAW requires a separate Magic Action:
-  // "Until the spell ends, you can take a Magic action to hurl fire at
-  // a creature." Pre-slice the engine collapsed BA cast + Magic-action
-  // hurl into one BA, letting Druids effectively get a free spell
-  // attack alongside their full Action.
+  // effect (flame in hand / fiery blade). To actually MAKE THE ATTACK,
+  // RAW requires a SEPARATE Magic action: Produce Flame ("you can take a
+  // Magic action to hurl fire at a creature"), Flame Blade ("As a Magic
+  // action, you can make a melee spell attack"). Pre-slice-603 the engine
+  // collapsed BA cast + Magic-action hurl into one BA, letting Druids get
+  // a free spell attack alongside their full Action.
   //
-  // The fix detects this shape by content shape — BA cast + attack
-  // mechanic + non-instantaneous duration — and treats the cast as
-  // consuming BOTH a BA AND an Action (when targets are supplied so
-  // the planner is actually firing the hurl). This is a stopgap that
-  // gets the action economy right without splitting the cast into two
-  // separate planners (proper RAW would be: cast emits a persistent
-  // effect, a follow-up `MagicAction` intent rolls the hurl).
+  // The fix treats casting such a spell at a target as consuming BOTH a
+  // BA (the cast) AND an Action (the hurl). This is a stopgap that gets
+  // the action economy right without splitting the cast into two separate
+  // planners (proper RAW would be: cast emits a persistent effect, a
+  // follow-up `MagicAction` intent rolls the hurl).
+  //
+  // Slice 816: this is keyed on the attack mechanic's explicit
+  // `requiresMagicAction` flag — NOT the old `duration !== instantaneous`
+  // heuristic, which wrongly caught Spiritual Weapon. RAW Spiritual Weapon
+  // ("you can IMMEDIATELY make one melee spell attack") makes its attack
+  // as part of the Bonus-Action cast, so it costs no extra Action.
   //
   // Casters who want to cast PF purely for the light (no attack) can
   // still do so by supplying no targetIds — the targets check below
   // gates the implicit Action consumption.
-  const hasAttackMechanic = spell.mechanicalEffects.some((m) => m.kind === 'attack');
-  const hasNonInstantaneousDuration =
-    spell.duration.trim().toLowerCase() !== 'instantaneous';
+  const attackRequiresMagicAction = spell.mechanicalEffects.some(
+    (m) => m.kind === 'attack' && m.requiresMagicAction === true,
+  );
   const consumesImplicitMagicAction =
     castingTimeKind === 'bonusAction'
-    && hasAttackMechanic
-    && hasNonInstantaneousDuration
+    && attackRequiresMagicAction
     && intent.targetIds.length > 0;
   const encounter = state.activeEncounterId ? state.encounters[state.activeEncounterId] : undefined;
   const casterCombatant =

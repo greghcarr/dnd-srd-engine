@@ -142,15 +142,13 @@ describe('npc-caster-bonus-action-groups: Cultist Fanatic Spiritual Weapon (slic
     expect(s.turnUsage(after).actionUsed).toBe(false);
   });
 
-  // Characterization: casting Spiritual Weapon AT a target also spends the
-  // implicit "Magic action" for the immediate attack (cast-spell.ts
-  // `consumesImplicitMagicAction`). RAW (spells.md) the immediate attack is
-  // part of the Bonus-Action cast and arguably should NOT also cost the
-  // Action — that predicate was built for Produce Flame (whose hurl is a
-  // separate Magic action) and over-fires here. Tracked as the engine
-  // follow-up `spiritual-weapon-immediate-attack-action-cost`; this test
-  // pins today's behavior so a fix flips it deliberately.
-  it('attacking on cast also spends the implicit Magic action (current engine behavior)', () => {
+  // Slice 816 fixed the over-broad `consumesImplicitMagicAction` predicate:
+  // RAW (spells.md) Spiritual Weapon's attack is made IMMEDIATELY as part of
+  // the Bonus-Action cast (no separate Magic action), so casting it AT a
+  // target spends only the bonus action — NOT the Action. (Produce Flame /
+  // Flame Blade, whose attack IS a separate Magic action, still spend both;
+  // see slice-816-spiritual-weapon-magic-action.test.ts.)
+  it('attacking on cast spends ONLY the bonus action (slice 816 — not the Action)', () => {
     const s = seedCultistEncounter(8152);
     const events = s.engine.plan.castSpell(s.campaign.state, {
       characterId: s.cultistId, spellId: 'spiritual-weapon', slotLevel: 2,
@@ -158,6 +156,6 @@ describe('npc-caster-bonus-action-groups: Cultist Fanatic Spiritual Weapon (slic
     }).events;
     const after = commit(s.campaign, events);
     expect(s.turnUsage(after).bonusActionUsed).toBe(true);
-    expect(s.turnUsage(after).actionUsed).toBe(true);
+    expect(s.turnUsage(after).actionUsed).toBe(false);
   });
 });
