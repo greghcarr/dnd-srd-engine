@@ -86,6 +86,10 @@ export {
   type TickRecurringSaveIntent,
 } from './recurring-save.js';
 export {
+  planTickRecurringDamage,
+  type TickRecurringDamageIntent,
+} from './recurring-damage.js';
+export {
   planMove,
   planDash,
   planDisengage,

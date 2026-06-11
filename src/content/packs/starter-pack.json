@@ -3324,7 +3324,7 @@
     {"id":"unicorn-radiant-horn","itemKind":"weapon","name":"Unicorn Radiant Horn","category":"simple","attackKind":"melee","damageType":"radiant","damageDice":"1d10","properties":[],"description":"Radiant Horn natural weapon (SRD 5.2.1, slice 791). Base 1d10 radiant. The +N attack/damage come from the wielder's ability + PB."},
     {"id":"shambling-mound-charged-tendril","itemKind":"weapon","name":"Shambling Mound Charged Tendril","category":"simple","attackKind":"melee","damageType":"bludgeoning","damageDice":"1d6","properties":["reach"],"onHit":[{"dice":"2d4","damageType":"lightning"}],"description":"Charged Tendril natural weapon (SRD 5.2.1, slice 791). Base 1d6 bludgeoning + 2d4 lightning. The +N attack/damage come from the wielder's ability + PB."},
     {"id":"bearded-devil-beard","itemKind":"weapon","name":"Bearded Devil Beard","category":"simple","attackKind":"melee","damageType":"piercing","damageDice":"1d8","properties":[],"description":"Beard natural weapon (SRD 5.2.1, slice 791). Base 1d8 piercing. The +N attack/damage come from the wielder's ability + PB. Deferred (rider pass): the on-hit condition/save (gate not expressible in the bulk sweep)."},
-    {"id":"bearded-devil-infernal-glaive","itemKind":"weapon","name":"Bearded Devil Infernal Glaive","category":"simple","attackKind":"melee","damageType":"slashing","damageDice":"1d10","properties":["reach"],"description":"Infernal Glaive natural weapon (SRD 5.2.1, slice 791). Base 1d10 slashing. The +N attack/damage come from the wielder's ability + PB. Deferred (rider pass): the on-hit condition/save (gate not expressible in the bulk sweep)."},
+    {"id":"bearded-devil-infernal-glaive","itemKind":"weapon","name":"Bearded Devil Infernal Glaive","category":"simple","attackKind":"melee","damageType":"slashing","damageDice":"1d10","properties":["reach"],"onHit":[{"save":{"ability":"CON","dc":12,"conditionOnFail":"infernal-wound"}}],"description":"Infernal Glaive natural weapon (SRD 5.2.1, slice 791). Base 1d10 slashing. The +N attack/damage come from the wielder's ability + PB. On a hit, the target must succeed on a DC 12 Constitution saving throw or receive an infernal wound, losing 1d10 Hit Points at the start of each of its turns until the wound closes."},
     {"id":"barbed-devil-claws","itemKind":"weapon","name":"Barbed Devil Claws","category":"simple","attackKind":"melee","damageType":"piercing","damageDice":"2d6","properties":[],"description":"Claws natural weapon (SRD 5.2.1, slice 791). Base 2d6 piercing. The +N attack/damage come from the wielder's ability + PB. Deferred (rider pass): the on-hit condition/save (gate not expressible in the bulk sweep)."},
     {"id":"barbed-devil-tail","itemKind":"weapon","name":"Barbed Devil Tail","category":"simple","attackKind":"melee","damageType":"slashing","damageDice":"2d10","properties":["reach"],"description":"Tail natural weapon (SRD 5.2.1, slice 791). Base 2d10 slashing. The +N attack/damage come from the wielder's ability + PB."},
     {"id":"barbed-devil-hurl-flame","itemKind":"weapon","name":"Barbed Devil Hurl Flame","category":"simple","attackKind":"ranged","damageType":"fire","damageDice":"5d6","properties":[],"noAbilityModifierDamage":true,"description":"Hurl Flame natural weapon (SRD 5.2.1, slice 791). Base 5d6 fire. The +N attack/damage come from the wielder's ability + PB."},
@@ -8858,6 +8858,17 @@
     }
   ],
   "conditions": [
+    {
+      "id": "infernal-wound",
+      "name": "Infernal Wound",
+      "description": "A grievous wound that won't close on its own. The creature loses 1d10 Hit Points at the start of each of its turns. The wound closes after 1 minute, when the creature regains any Hit Points, or when the creature or an ally within 5 feet takes an action to stanch it (a DC 12 Wisdom (Medicine) check).",
+      "engineNotes": "Slice 825: the Bearded Devil's Infernal Glaive wound, applied via the glaive's onHit CON DC 12 save (conditionOnFail). recurringDamage {1d10 necrotic, turnStart} — the consumer ticks engine.plan.tickRecurringDamage at the bearer's turn-start; autoExpiry {10 rounds, turnStart, bearer-keyed} closes the wound after 1 minute. RAW the loss is UNTYPED Hit Point loss; necrotic is the closest typed approximation (only necrotic-resistant bearers differ). Deferred (consumer/DM-managed): the wound also closes when the bearer regains Hit Points and via the DC 12 Medicine-check stanch action — neither is auto-modeled (no heal->remove-condition hook); the consumer removes the condition on those events.",
+      "stackable": false,
+      "endsOn": [],
+      "recurringDamage": { "dice": "1d10", "damageType": "necrotic", "trigger": "turnStart" },
+      "autoExpiry": { "afterRounds": 10, "trigger": "turnStart", "expirySourceFromBearer": true },
+      "effects": []
+    },
     {
       "id": "lycanthropy-cursed",
       "name": "Cursed with Lycanthropy",

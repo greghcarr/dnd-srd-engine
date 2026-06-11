@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { EffectSchema } from '../effects.js';
-import { AbilityScoreSchema } from '../primitives.js';
+import { AbilityScoreSchema, DamageTypeSchema, DiceExpressionSchema } from '../primitives.js';
 
 // Recurring saving-throw metadata. When set, the consumer calls
 // `engine.plan.tickRecurringSave` at the indicated trigger moment on
@@ -69,6 +69,24 @@ export const RecurringSaveSchema = z
   );
 export type RecurringSave = z.infer<typeof RecurringSaveSchema>;
 
+// Slice 825: recurring damage at the bearer's turn boundary (no save). The
+// consumer calls `engine.plan.tickRecurringDamage` at the indicated trigger
+// for any condition that declares `recurringDamage`. RAW user: the Bearded
+// Devil's infernal wound ("the target loses 5 (1d10) Hit Points at the start
+// of each of its turns"). Like `recurringSave`, the engine doesn't track turn
+// moments — this is metadata the consumer reads to drive the tick; the
+// condition's `autoExpiry` bounds the duration (the wound closes after 1
+// minute). The damage is sourced to the condition's `sourceCharacterId` and
+// runs the normal mitigation / fatal-intercept / concentration-on-damage
+// pipeline. (RAW the loss is untyped Hit Point loss; `damageType` is the
+// closest typed approximation — `necrotic` for the infernal wound.)
+export const RecurringDamageSchema = z.object({
+  dice: DiceExpressionSchema,
+  damageType: DamageTypeSchema,
+  trigger: z.enum(['turnStart', 'turnEnd']).default('turnStart'),
+});
+export type RecurringDamage = z.infer<typeof RecurringDamageSchema>;
+
 // Declarative auto-expiry metadata. When a planner that applies this
 // condition runs inside an active encounter, it stamps `expiresOnRound`
 // (= currentRound + afterRounds) and `expiryTrigger` on the emitted
@@ -132,6 +150,7 @@ export const ConditionSchema = z.object({
     )
     .default([]),
   recurringSave: RecurringSaveSchema.optional(),
+  recurringDamage: RecurringDamageSchema.optional(),
   autoExpiry: AutoExpirySchema.optional(),
   category: ConditionCategorySchema.optional(),
   // "Next attack roll" one-shot conditions (weapon-mastery Sap / Vex):

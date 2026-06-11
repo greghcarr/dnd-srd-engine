@@ -96,7 +96,7 @@ const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
   // augmented ability check / saving throw (Hero Points shape).
   'darkOnesOwnLuck',
   // Per-moment ticks / duration sweeps (called at turn boundaries / on movement):
-  'expireSpellDurations', 'tickAura', 'tickMovementDamage', 'tickRecurring', 'tickRecurringSave', 'triggerTrap',
+  'expireSpellDurations', 'tickAura', 'tickMovementDamage', 'tickRecurring', 'tickRecurringSave', 'tickRecurringDamage', 'triggerTrap',
   // Stirge Blood Drain (slice 490): drain fires at the stirge's turn-start
   // (consumer-driven, mirrors tickRecurringSave); detachStirge is an
   // action invoked by the target or an adjacent ally to remove the
