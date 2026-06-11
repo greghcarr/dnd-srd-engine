@@ -52,6 +52,8 @@ import { findActorBlockingCondition } from '../engine/plan/_actor-state.js';
 import { findGoliathAncestryChoice } from '../engine/plan/_giant-ancestry.js';
 import { chebyshevDistance } from '../engine/plan/movement.js';
 import { buildEffectStack } from '../derive/effect-stack.js';
+import { perDayFreeCastAvailable } from '../engine/plan/_per-day-free-cast.js';
+import { SHIELD_AC_BONUS } from '../ai/reaction-constants.js';
 import {
   shouldShield,
   shouldCuttingWords,
@@ -176,6 +178,20 @@ const hasCounterspellSlot = (character: Character, content: ResolvedContent): bo
 const arcaneClassId = (character: Character): string | undefined =>
   character.classes.find((c) => ARCANE_CLASS_IDS.includes(c.classId))?.classId;
 
+// Slice 821: a monster reaction spell granted as an "N/Day" pool with budget
+// remaining — the Mage/Archmage "Protective Magic" (Counterspell/Shield).
+// Players cast Shield/Counterspell from prepared spells + slots, so this is
+// gated on `statblockId` (a monster) to skip the effect-stack build for the
+// common player path; the cast meters via the pool (slice 819's `useFreeCast`).
+const grantedReactionAvailable = (
+  character: Character,
+  state: CampaignState,
+  content: ResolvedContent,
+  spellId: string,
+): boolean =>
+  character.statblockId !== undefined &&
+  perDayFreeCastAvailable(state, content, character.id, spellId);
+
 // Protection: a shield-bearer with the Fighting Style (the gates planProtection
 // enforces). buildEffectStack is only reached for shield-bearers (cheap guard).
 const hasProtectionStyle = (character: Character, state: CampaignState, content: ResolvedContent): boolean =>
@@ -253,11 +269,25 @@ const REGISTRY: ReadonlyArray<ReactionDescriptor> = [
     id: 'shield',
     label: 'Shield',
     trigger: 'attack-roll',
-    owns: (c) => c.preparedSpells.includes(SHIELD_SPELL_ID),
-    correlate: (reactorId, event, reactor) => {
+    // Player: Shield prepared. Monster: a granted Protective Magic pool with
+    // budget (slice 821).
+    owns: (c, state, content) =>
+      c.preparedSpells.includes(SHIELD_SPELL_ID) ||
+      grantedReactionAvailable(c, state, content, SHIELD_SPELL_ID),
+    correlate: (reactorId, event, reactor, state, content) => {
       const e = event as AttackRolledEvent;
       if (e.targetId !== reactorId || e.hit !== true) return undefined;
-      if (!shouldShield(reactor, e.total, e.targetAC)) return undefined;
+      const freeCast = grantedReactionAvailable(reactor, state, content, SHIELD_SPELL_ID);
+      if (reactor.preparedSpells.includes(SHIELD_SPELL_ID)) {
+        // Player path: class + prepared + the +5 would flip the hit.
+        if (!shouldShield(reactor, e.total, e.targetAC)) return undefined;
+      } else if (freeCast) {
+        // Monster path: only the structural "+5 flips the hit" filter (the
+        // pool budget + reaction economy are enforced by planShield).
+        if (e.total >= e.targetAC + SHIELD_AC_BONUS) return undefined;
+      } else {
+        return undefined;
+      }
       return {
         type: 'Shield',
         casterId: reactorId,
@@ -265,6 +295,7 @@ const REGISTRY: ReadonlyArray<ReactionDescriptor> = [
         triggeringAttackTotal: e.total,
         originalAC: e.targetAC,
         slotLevel: SHIELD_SLOT_LEVEL,
+        ...(freeCast ? { useFreeCast: true } : {}),
       };
     },
   },
@@ -294,26 +325,38 @@ const REGISTRY: ReadonlyArray<ReactionDescriptor> = [
     id: 'counterspell',
     label: 'Counterspell',
     trigger: 'spell-cast',
-    owns: (c) => c.preparedSpells.includes(COUNTERSPELL_SPELL_ID),
-    correlate: (reactorId, event, reactor, _state, content) => {
+    // Player: Counterspell prepared. Monster: a granted Protective Magic pool
+    // with budget (slice 821).
+    owns: (c, state, content) =>
+      c.preparedSpells.includes(COUNTERSPELL_SPELL_ID) ||
+      grantedReactionAvailable(c, state, content, COUNTERSPELL_SPELL_ID),
+    correlate: (reactorId, event, reactor, state, content) => {
       const e = event as SpellCastDeclaredEvent;
       if (e.characterId === reactorId) return undefined; // don't counter your own cast
-      if (!shouldCounterspell(reactor, e.slotLevel)) return undefined;
-      if (!hasCounterspellSlot(reactor, content)) return undefined;
-      const castingClassId = arcaneClassId(reactor);
-      if (castingClassId === undefined) return undefined;
-      return {
-        type: 'Counterspell',
+      if (e.slotLevel < 1) return undefined; // leveled spells only (a cantrip isn't worth it)
+      const base = {
+        type: 'Counterspell' as const,
         counterCasterId: reactorId,
         targetCasterId: e.characterId,
         originalSpellEventId: e.id,
         spellId: e.spellId,
-        castingClassId,
         slotLevelToConsume: COUNTERSPELL_SLOT_LEVEL,
         // 0 so Counterspell does NOT re-emit the countered spell's level (the
         // slot is consumed via slotLevelToConsume) — see reactive-spells.ts.
         originalSpellLevel: 0,
       };
+      if (reactor.preparedSpells.includes(COUNTERSPELL_SPELL_ID)) {
+        // Player path: arcane class (for the save DC) + a 3rd-level slot.
+        if (!shouldCounterspell(reactor, e.slotLevel)) return undefined;
+        if (!hasCounterspellSlot(reactor, content)) return undefined;
+        const castingClassId = arcaneClassId(reactor);
+        if (castingClassId === undefined) return undefined;
+        return { ...base, castingClassId };
+      }
+      // Monster path: a granted pool with budget; the flat statblock save DC
+      // comes from the SetSpellcastingProfile (castingClassId '' → profile).
+      if (!grantedReactionAvailable(reactor, state, content, COUNTERSPELL_SPELL_ID)) return undefined;
+      return { ...base, castingClassId: '', useFreeCast: true };
     },
   },
   {
