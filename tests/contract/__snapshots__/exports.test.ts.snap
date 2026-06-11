@@ -125,6 +125,7 @@ exports[`public API contract: src/index.ts > runtime exports match the locked sn
   "LongRestEndedEventSchema",
   "LongRestStartedEventSchema",
   "MILESTONE_KINDS",
+  "MULTICLASS_MIN_ABILITY",
   "MagicItemSchema",
   "MilestoneAwardedEventSchema",
   "MilestoneKindSchema",
@@ -388,6 +389,7 @@ exports[`public API contract: src/index.ts > runtime exports match the locked sn
   "undo",
   "validateBackgroundAbilityIncrease",
   "validateCrossReferences",
+  "validateMulticlass",
   "validatePacks",
   "withRollProvider",
 ]
@@ -659,6 +661,7 @@ exports[`public API contract: src/index.ts > source-level exports (runtime + typ
   "LongRestIntent",
   "LongRestStartedEventSchema",
   "MILESTONE_KINDS",
+  "MULTICLASS_MIN_ABILITY",
   "MagicItemSchema",
   "MilestoneAwardedEvent",
   "MilestoneAwardedEventSchema",
@@ -1050,6 +1053,7 @@ exports[`public API contract: src/index.ts > source-level exports (runtime + typ
   "undo",
   "validateBackgroundAbilityIncrease",
   "validateCrossReferences",
+  "validateMulticlass",
   "validatePacks",
   "withRollProvider",
 ]

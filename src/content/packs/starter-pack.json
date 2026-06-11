@@ -237,6 +237,7 @@
       "name": "Fighter",
       "hitDie": 10,
       "primaryAbility": ["STR", "DEX"],
+      "multiclassAbilityMode": "any",
       "savingThrowProficiencies": ["STR", "CON"],
       "armorProficiencies": ["light", "medium", "heavy", "shield"],
       "weaponProficiencies": ["simple", "martial"],

@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Feat (slice 810): multiclass ability prerequisites (`validateMulticlass`)**
+Nothing enforced the 13+ ability prereq for multiclassing (an INT 8 character could carry a Wizard level). Multiclass entry is snapshot-only (no planner gate), so — like slice 793's `validateBackgroundAbilityIncrease` — the engine ships a consumer validator: new exported `validateMulticlass(character, content, options?)` returns one issue per class whose `primaryAbility` 13+ prereq is unmet (effective score). New `Class.multiclassAbilityMode` ('any'/'all', default 'all') resolves the or/and from the SRD "Primary Ability" phrasing (Fighter "Strength OR Dexterity" = any; Monk/Paladin/Ranger "X AND Y" = all). **Closes the [L7 audit](docs/l7-completion-audit.md) Area 5 divergence `multiclass-prereqs`.** New 5-test slice-810; +2 public exports; fast suite green.
+Detail: [slice-810.md](docs/changelog/slice-810.md).
+
 **Fix (slice 809): L4 feat-menu eligibility filter**
 The L4 ASI/feat choice offered a static {ASI, Grappler} to everyone, ignoring Grappler's STR/DEX-13 prereq — feat `prerequisites` was free-text strings, not machine-checkable. New structured `Feat.abilityPrerequisite` ({abilities, min}, the display-text stays); `planLevelUp` drops feat-options whose `GrantFeat`'s ability prereq is unmet (effective score, "or" semantics). Authored on Grappler. The Fighting-Style-injection arm (offering Fighting Style feats to feature-bearing classes) is split out as the tracked `l4-menu-no-fighting-style-feats` quirk — a missing option, not a wrong outcome. **Closes the [L7 audit](docs/l7-completion-audit.md) Area 5 divergence `l4-feat-menu-eligibility`.** New 4-test slice-809; fast suite green.
 Detail: [slice-809.md](docs/changelog/slice-809.md).

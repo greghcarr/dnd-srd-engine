@@ -440,6 +440,8 @@ export {
   hasLineOfEffect,
   coveredCells,
   validateBackgroundAbilityIncrease,
+  validateMulticlass,
+  MULTICLASS_MIN_ABILITY,
   runtimeMultiattackFromStatblock,
   getEffectiveFeatIds,
 } from './derive/index.js';

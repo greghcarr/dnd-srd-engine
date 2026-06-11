@@ -35,6 +35,13 @@ export const ClassSchema = z.object({
   name: z.string(),
   hitDie: HitDieSchema,
   primaryAbility: z.array(AbilityScoreSchema).min(1),
+  // Slice 810: how the 13+ multiclass prerequisite reads `primaryAbility`
+  // when the class lists two. RAW 2024 multiclass prerequisites mirror the
+  // class's "Primary Ability" phrasing: Fighter is "Strength OR Dexterity"
+  // (`any`), while Monk / Paladin / Ranger are "X AND Y" (`all`). Single-
+  // ability classes are unaffected (any === all of one). Default `all`;
+  // only Fighter overrides to `any`. Read by `validateMulticlass`.
+  multiclassAbilityMode: z.enum(['any', 'all']).default('all'),
   savingThrowProficiencies: z.array(AbilityScoreSchema).length(2),
   armorProficiencies: z.array(z.string()).default([]),
   weaponProficiencies: z.array(z.string()).default([]),
