@@ -105,6 +105,70 @@ export const MonsterAttackActionSchema = z.object({
 });
 export type MonsterAttackAction = z.infer<typeof MonsterAttackActionSchema>;
 
+// Slice 828: a monster "save-action" — an auto-hit action with NO attack
+// roll, resolved by a saving throw, where a FAILED save deals damage
+// and/or applies condition(s). The Constrict family is the canonical user
+// (SRD 5.2.1):
+//   Behir Constrict: STR DC 18, one Large-or-smaller creature within 5 ft.
+//     Failure: 28 (5d8+6) bludgeoning, Grappled (escape DC 16) + Restrained
+//     until the grapple ends.
+//   Couatl / Salamander / Constrictor Snake: same shape, different DC /
+//     size / dice (Salamander adds a 2d6 Fire component).
+// Because there is no attack roll, the slice-321 weapon on-hit-rider
+// machinery (which hangs the rider off a *hit*) cannot express these.
+//
+// Distinct from `breathWeapon` (also auto-hit save-or-effect): a breath
+// weapon is an AREA action with recharge whose payload is damage halved on
+// a success; a save-action is SINGLE-target, has no recharge, and its
+// primary payload is the condition(s) on a FAILED save (damage optional,
+// nothing on a success). The `halfDamageOnSuccess` field is present so the
+// shape generalizes to the half-on-success save-actions (the Air Elemental
+// Whirlwind) without a schema break — though those also need recharge +
+// forced-push and stay deferred.
+//
+// Action economy is NOT modeled here. Constrict is bundled into the
+// Multiattack action for the Behir / Salamander (whose Multiattack "uses
+// Constrict") yet is a standalone action for the Constrictor Snake, and the
+// MonsterMultiattack schema can't express "uses Constrict". So the consumer
+// owns whether a save-action costs part of a Multiattack or a full action;
+// the planner only resolves the save + payload (mirroring how the runtime
+// multiattack pattern is already consumer-sequenced).
+export const SaveActionDamageSchema = z.object({
+  dice: DiceExpressionSchema,
+  type: DamageTypeSchema,
+});
+export type SaveActionDamage = z.infer<typeof SaveActionDamageSchema>;
+
+export const SaveActionSpecSchema = z.object({
+  // Stable id for consumer display + the SaveAction intent ("constrict").
+  id: z.string(),
+  name: z.string(),
+  saveAbility: z.enum(['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA']),
+  saveDC: z.number().int().min(1),
+  // RAW "one creature ... within N feet" — reach for consumer display /
+  // targeting. The engine doesn't model positions; like every reach value
+  // it's data the consumer enforces.
+  reachFeet: z.number().int().min(1),
+  // RAW "one Large or smaller creature": the largest size the action can
+  // target. Omitted = no size restriction. Enforced by the planner (it
+  // throws when handed a too-large target, matching the input-validation
+  // posture for illegal single-target input).
+  maxTargetSize: SizeSchema.optional(),
+  // Resolved on a FAILED save. Each damage component is rolled and applied
+  // with its own type (Salamander Constrict: bludgeoning + fire); the
+  // condition ids are applied with the monster stamped as their source (so
+  // a Grappled condition's grappler resolves) plus any autoExpiry.
+  onFail: z.object({
+    damage: z.array(SaveActionDamageSchema).default([]),
+    applyConditionIds: z.array(z.string()).default([]),
+  }),
+  // RAW most save-actions do nothing on a success; the half-damage exception
+  // (Air Elemental Whirlwind) is deferred. Damage components are halved (each
+  // floored) on a successful save when true.
+  halfDamageOnSuccess: z.boolean().default(false),
+});
+export type SaveActionSpec = z.infer<typeof SaveActionSpecSchema>;
+
 export const MonsterStatblockSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -134,5 +198,9 @@ export const MonsterStatblockSchema = z.object({
   breathWeapon: BreathWeaponSpecSchema.optional(),
   multiattack: MonsterMultiattackSchema.optional(),
   actions: z.array(MonsterAttackActionSchema).default([]),
+  // Slice 828: auto-hit save-or-effect actions (Constrict). Array (a
+  // monster could print more than one) defaulting to [] so every existing
+  // statblock is byte-unchanged.
+  saveActions: z.array(SaveActionSpecSchema).default([]),
 });
 export type MonsterStatblock = z.infer<typeof MonsterStatblockSchema>;

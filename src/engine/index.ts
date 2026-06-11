@@ -149,6 +149,7 @@ import {
   planInvestigateIllusion,
   planDismissIllusion,
   planBreathWeapon,
+  planSaveAction,
   planIdentify,
   planShield,
   planSanctuaryWardSave,
@@ -189,6 +190,7 @@ import {
   type InvestigateIllusionIntent,
   type DismissIllusionIntent,
   type BreathWeaponIntent,
+  type SaveActionIntent,
   type IdentifyIntent,
   type ShieldIntent,
   type ShieldOutcome,
@@ -651,6 +653,7 @@ export interface Engine {
     investigateIllusion(state: CampaignState, intent: Omit<InvestigateIllusionIntent, 'type'>): PlanResult;
     dismissIllusion(state: CampaignState, intent: Omit<DismissIllusionIntent, 'type'>): PlanResult;
     breathWeapon(state: CampaignState, intent: Omit<BreathWeaponIntent, 'type'>): PlanResult;
+    saveAction(state: CampaignState, intent: Omit<SaveActionIntent, 'type'>): PlanResult;
     identify(state: CampaignState, intent: Omit<IdentifyIntent, 'type'>): PlanResult;
     shield(state: CampaignState, intent: Omit<ShieldIntent, 'type'>): ShieldOutcome;
     sanctuaryWardSave(
@@ -1335,6 +1338,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     breathWeapon(state, intent) {
       return { events: planBreathWeapon(state, content, rng, { type: 'BreathWeapon', ...intent }) };
+    },
+    saveAction(state, intent) {
+      return { events: planSaveAction(state, content, rng, { type: 'SaveAction', ...intent }) };
     },
     identify(state, intent) {
       return { events: planIdentify(state, content, rng, { type: 'Identify', ...intent }) };

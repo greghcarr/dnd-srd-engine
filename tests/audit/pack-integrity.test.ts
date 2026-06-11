@@ -413,6 +413,35 @@ describe('pack integrity: monster attack weaponIds resolve to weapons', () => {
   });
 });
 
+describe('pack integrity: monster save-action conditions resolve to conditions', () => {
+  // Slice 828: every `saveActions[].onFail.applyConditionIds[]` (Constrict's
+  // Grappled / Restrained) must name a condition definition in the pack —
+  // a typo would silently emit a ConditionApplied the reducer can't resolve.
+  // Sibling of the weaponId guard above.
+  interface SaveActionMonster {
+    readonly id: string;
+    readonly saveActions?: ReadonlyArray<{
+      readonly id: string;
+      readonly onFail: { readonly applyConditionIds: ReadonlyArray<string> };
+    }>;
+  }
+  const monsters = (pack as unknown as { monsters: SaveActionMonster[] }).monsters;
+  const conditionIds = new Set(
+    (pack as unknown as { conditions: Array<{ id: string }> }).conditions.map((c) => c.id),
+  );
+  it('every save-action applyConditionId names a pack condition', () => {
+    const dangling = monsters
+      .flatMap((m) =>
+        (m.saveActions ?? []).flatMap((s) =>
+          s.onFail.applyConditionIds.map((c) => `${m.id}:${s.id}:${c}`),
+        ),
+      )
+      .filter((ref) => !conditionIds.has(ref.split(':')[2]!))
+      .sort();
+    expect(dangling).toEqual([]);
+  });
+});
+
 describe('pack integrity: wired spells do not apply effect-less conditions', () => {
   // A spell that ships mechanicalEffects (i.e. is "wired") but applies a
   // condition whose own `effects: []` is empty does nothing mechanically

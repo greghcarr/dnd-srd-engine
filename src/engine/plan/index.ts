@@ -238,6 +238,10 @@ export {
   type BreathWeaponIntent,
 } from './breath-weapon.js';
 export {
+  planSaveAction,
+  type SaveActionIntent,
+} from './save-action.js';
+export {
   planCounterspell,
   planDispelMagic,
   planRemoveCurse,

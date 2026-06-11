@@ -78,6 +78,11 @@ const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
   // several return a derived outcome the consumer branches on):
   'dodge', 'shield', 'sanctuaryWardSave', 'protection', 'consumeGuidance',
   'consumeResistance', 'cuttingWords', 'uncannyDodge', 'superiorDefense', 'paladinsSmite', 'breathWeapon',
+  // Slice 828: monster save-action (Constrict). Auto-hit save-or-effect
+  // action the consumer dispatches directly (like breathWeapon); action
+  // economy is consumer-owned since Constrict bundles into a Multiattack
+  // for some monsters and is standalone for others.
+  'saveAction',
   // Slice 648: Monk L3 Deflect Attacks. Reaction-style planner that
   // returns DeflectAttacksOutcome (reduction + remainingDamage) the
   // consumer subtracts from a pending DamageApplied. Consumer

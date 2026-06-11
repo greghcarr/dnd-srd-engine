@@ -4250,6 +4250,7 @@
     },
     {
       "id": "constrictor-snake",
+      "saveActions": [{"id":"constrict","name":"Constrict","saveAbility":"STR","saveDC":12,"reachFeet":5,"maxTargetSize":"Medium","onFail":{"damage":[{"dice":"3d4","type":"bludgeoning"}],"applyConditionIds":["grappled"]}}],
       "name": "Constrictor Snake",
       "size": "Large",
       "type": "Beast",
@@ -5248,6 +5249,7 @@
     },
     {
       "id": "couatl",
+      "saveActions": [{"id":"constrict","name":"Constrict","saveAbility":"STR","saveDC":15,"reachFeet":5,"maxTargetSize":"Medium","onFail":{"damage":[{"dice":"1d6+5","type":"bludgeoning"}],"applyConditionIds":["grappled","restrained"]}}],
       "name": "Couatl",
       "size": "Medium",
       "type": "Celestial",
@@ -7369,6 +7371,7 @@
     },
     {
       "id": "behir",
+      "saveActions": [{"id":"constrict","name":"Constrict","saveAbility":"STR","saveDC":18,"reachFeet":5,"maxTargetSize":"Large","onFail":{"damage":[{"dice":"5d8+6","type":"bludgeoning"}],"applyConditionIds":["grappled","restrained"]}}],
       "actions": [{"name":"Bite","weaponId":"behir-bite"}],
       "multiattack": {"name":"Behir Multiattack","attacks":[{"weaponId":"behir-bite","count":1}]},
       "name": "Behir",
@@ -8297,6 +8300,7 @@
     },
     {
       "id": "salamander",
+      "saveActions": [{"id":"constrict","name":"Constrict","saveAbility":"STR","saveDC":15,"reachFeet":10,"maxTargetSize":"Large","onFail":{"damage":[{"dice":"2d6+4","type":"bludgeoning"},{"dice":"2d6","type":"fire"}],"applyConditionIds":["grappled","restrained"]}}],
       "actions": [{"name":"Flame Spear","weaponId":"salamander-flame-spear"}],
       "multiattack": {"name":"Salamander Multiattack","attacks":[{"weaponId":"salamander-flame-spear","count":2}]},
       "name": "Salamander",
