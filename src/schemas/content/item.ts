@@ -17,6 +17,11 @@ const ItemBaseSchema = z.object({
   // on Consumable / Gear, so weapon / armor / tool / magic items had their
   // authored `description` silently stripped at parse — slice 373).
   description: z.string().optional(),
+  // Slice 811: dev-only engineering annotation (slice history, RAW
+  // citation, wiring rationale). NOT player-facing — `description` is now
+  // shown verbatim to players (the dnd-web rules popup), so it carries only
+  // clean SRD-style rules text; the implementation notes live here.
+  engineNotes: z.string().optional(),
   weight: z.number().nonnegative().optional(),
   cost: z
     .object({

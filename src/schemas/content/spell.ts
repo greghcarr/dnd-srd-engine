@@ -615,6 +615,10 @@ export const SpellSchema = z.object({
   ritual: z.boolean().default(false),
   classes: z.array(z.string()).default([]),
   description: z.string().optional(),
+  // Slice 811: dev-only engineering annotation (not player-facing); see
+  // the note in item.ts ItemBaseSchema. `description` carries clean
+  // SRD-style rules text; implementation notes live here.
+  engineNotes: z.string().optional(),
   mechanicalEffects: z.array(SpellMechanicSchema).default([]),
   targeting: SpellTargetingSchema.optional(),
 })
