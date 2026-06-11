@@ -28,6 +28,7 @@ import { nowIso } from '../../internal/clock.js';
 import type { ULID } from '../ids-utils.js';
 import type { Character } from '../../schemas/runtime/character.js';
 import { planBreathWeaponRechargeAtTurnStart } from './breath-weapon.js';
+import { planSaveActionRechargeAtTurnStart } from './save-action.js';
 import { applyHalflingLuckFromFlag, applyHalflingLuckForCharacter } from './_halfling-luck.js';
 import { planRegenerationAtTurnStart } from './regeneration.js';
 
@@ -600,8 +601,9 @@ export const planAdvanceTurn = (
       first.combatantId,
       at,
     );
+    const saveRecharge = planSaveActionRechargeAtTurnStart(state, content, rng, first.combatantId, at);
     const regen = planRegenerationAtTurnStart(state, content, first.combatantId, at);
-    return [turnEnd, ...endTurnExpired, roundEnd, nextTurn, ...deathSave, ...expired, ...recharge, ...regen];
+    return [turnEnd, ...endTurnExpired, roundEnd, nextTurn, ...deathSave, ...expired, ...recharge, ...saveRecharge, ...regen];
   }
   const next = encounter.combatants[encounter.activeIndex + 1];
   if (!next) throw new Error('Bad combatant index');
@@ -636,8 +638,9 @@ export const planAdvanceTurn = (
     next.combatantId,
     at,
   );
+  const saveRecharge = planSaveActionRechargeAtTurnStart(state, content, rng, next.combatantId, at);
   const regen = planRegenerationAtTurnStart(state, content, next.combatantId, at);
-  return [turnEnd, ...endTurnExpired, nextTurn, ...deathSave, ...expired, ...recharge, ...regen];
+  return [turnEnd, ...endTurnExpired, nextTurn, ...deathSave, ...expired, ...recharge, ...saveRecharge, ...regen];
 };
 
 export interface BeginFirstTurnIntent {
@@ -680,8 +683,9 @@ export const planBeginFirstTurn = (
     first.combatantId,
     at,
   );
+  const saveRecharge = planSaveActionRechargeAtTurnStart(state, content, rng, first.combatantId, at);
   const regen = planRegenerationAtTurnStart(state, content, first.combatantId, at);
-  return [turnStart, ...deathSave, ...recharge, ...regen];
+  return [turnStart, ...deathSave, ...recharge, ...saveRecharge, ...regen];
 };
 
 export interface EndEncounterIntent {

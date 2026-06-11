@@ -239,6 +239,7 @@ export {
 } from './breath-weapon.js';
 export {
   planSaveAction,
+  planSaveActionRechargeAtTurnStart,
   type SaveActionIntent,
 } from './save-action.js';
 export {

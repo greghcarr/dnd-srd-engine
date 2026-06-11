@@ -241,6 +241,14 @@ export const CharacterSchema = z.object({
   // false (action available). Persists across encounters per RAW
   // (recharge resolves by die roll, not by rest).
   breathWeaponExpended: z.boolean().default(false),
+  // Slice 829: ids of the bearer's Recharge-gated `MonsterStatblock.save
+  // Actions` (Air Elemental Whirlwind) currently expended. A save-action
+  // id is added when `planSaveAction` fires a recharge-gated action and
+  // removed at turn-start when a d6 ≥ its `recharge.rechargeMin`. The
+  // per-id list (vs breathWeapon's single boolean) lets a monster carry
+  // more than one recharge action. Persists across encounters per RAW
+  // (recharge resolves by die roll, not by rest). Defaults empty.
+  expendedSaveActionIds: z.array(z.string()).default([]),
   // Slice 232: damage types taken since the bearer's last turn-start.
   // Populated by the damage reducer (deduped append per DamageApplied).
   // Consumed by the turn-start Regeneration hook: at the start of the

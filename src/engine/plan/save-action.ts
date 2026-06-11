@@ -2,12 +2,20 @@ import type { CampaignState } from '../../schemas/runtime/campaign.js';
 import type { ResolvedContent } from '../../content/pack.js';
 import type { Event } from '../../schemas/events/index.js';
 import type { RNG } from '../../rng/index.js';
-import type { DamageAppliedEvent, ConditionAppliedEvent } from '../../schemas/events/combat.js';
+import type {
+  DamageAppliedEvent,
+  ConditionAppliedEvent,
+  CreaturePushedEvent,
+} from '../../schemas/events/combat.js';
+import type {
+  SaveActionExpendedEvent,
+  SaveActionRechargedEvent,
+} from '../../schemas/events/save-action.js';
 import { SIZES } from '../../schemas/primitives.js';
 import { creatureSize } from '../../derive/creature-size.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
-import { rollExpression } from '../../rng/dice.js';
+import { rollExpression, rollDie } from '../../rng/dice.js';
 import { rollSaveAgainstDC } from './_save-roll.js';
 import { applyAll } from '../apply.js';
 import { planConcentrationOnDamage } from './concentration.js';
@@ -61,6 +69,15 @@ export const planSaveAction = (
     `Monster ${monster.statblockId} has no save-action '${intent.saveActionId}'`,
   );
 
+  // Slice 829: Recharge gate (Air Elemental Whirlwind). A recharge-gated
+  // action is unusable while its id sits on the bearer's expended list.
+  // Checked before the target resolves — availability is target-independent.
+  if (spec.recharge !== undefined && monster.expendedSaveActionIds.includes(spec.id)) {
+    throw new Error(
+      `${monster.name}'s ${spec.name} is expended (awaiting recharge)`,
+    );
+  }
+
   const target = state.characters[intent.targetId];
   invariant(target !== undefined, `Target ${intent.targetId} not found`);
 
@@ -78,6 +95,18 @@ export const planSaveAction = (
   const at = intent.at ?? nowIso();
   const events: Event[] = [];
 
+  // Mark a recharge-gated action expended up front (mirrors the breath
+  // weapon's BreathWeaponFired marker); recharge clears it at turn-start.
+  if (spec.recharge !== undefined) {
+    events.push({
+      id: newEventId() as ULID,
+      at,
+      type: 'SaveActionExpended',
+      monsterId: intent.monsterId as ULID,
+      saveActionId: spec.id,
+    } satisfies SaveActionExpendedEvent);
+  }
+
   const saveResult = rollSaveAgainstDC({
     state,
     content,
@@ -92,7 +121,7 @@ export const planSaveAction = (
   const save = saveResult.event;
   const success = saveResult.success;
   events.push(save);
-  let stagedState = applyAll(state, [save]);
+  let stagedState = applyAll(state, events);
 
   // On a success the action does nothing unless it halves damage (the
   // deferred Whirlwind shape); the failure path carries the whole payload.
@@ -184,7 +213,59 @@ export const planSaveAction = (
         ...expiryFields,
       } satisfies ConditionAppliedEvent);
     }
+    // Slice 829: forced push on failure (Whirlwind: "pushed up to 20 feet
+    // straight away"). Position-less informational event — the consumer
+    // applies the displacement, as with every forced move.
+    if (spec.onFail.pushFeet !== undefined && spec.onFail.pushFeet > 0) {
+      events.push({
+        id: newEventId() as ULID,
+        at,
+        type: 'CreaturePushed',
+        targetId: intent.targetId as ULID,
+        distanceFeet: spec.onFail.pushFeet,
+        sourceCharacterId: intent.monsterId as ULID,
+        source: `save-action:${spec.id}`,
+      } satisfies CreaturePushedEvent);
+    }
   }
 
+  return events;
+};
+
+/**
+ * Slice 829: turn-start Recharge for save-actions — the sibling of
+ * `planBreathWeaponRechargeAtTurnStart`. For each Recharge-gated save-action
+ * the bearer has expended, rolls a d6; on a roll ≥ its `recharge.rechargeMin`
+ * the action returns to ready (a `SaveActionRecharged` clears its id). Called
+ * from the turn-start flow alongside the breath-weapon recharge.
+ */
+export const planSaveActionRechargeAtTurnStart = (
+  state: CampaignState,
+  content: ResolvedContent,
+  rng: RNG,
+  combatantId: string,
+  at: string,
+): ReadonlyArray<Event> => {
+  const monster = state.characters[combatantId];
+  if (monster === undefined) return [];
+  if (monster.expendedSaveActionIds.length === 0) return [];
+  if (monster.statblockId === undefined) return [];
+  const statblock = content.monsters.get(monster.statblockId);
+  if (statblock === undefined) return [];
+  const events: Event[] = [];
+  for (const saveActionId of monster.expendedSaveActionIds) {
+    const spec = statblock.saveActions.find((s) => s.id === saveActionId);
+    if (spec?.recharge === undefined) continue;
+    const roll = rollDie(6, rng);
+    if (roll < spec.recharge.rechargeMin) continue;
+    events.push({
+      id: newEventId() as ULID,
+      at,
+      type: 'SaveActionRecharged',
+      monsterId: combatantId as ULID,
+      saveActionId,
+      roll,
+    } satisfies SaveActionRechargedEvent);
+  }
   return events;
 };

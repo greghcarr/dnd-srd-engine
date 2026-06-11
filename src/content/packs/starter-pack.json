@@ -4665,6 +4665,7 @@
     },
     {
       "id": "air-elemental",
+      "saveActions": [{"id":"whirlwind","name":"Whirlwind","saveAbility":"STR","saveDC":13,"reachFeet":5,"maxTargetSize":"Medium","onFail":{"damage":[{"dice":"4d10+2","type":"thunder"}],"applyConditionIds":["prone"],"pushFeet":20},"halfDamageOnSuccess":true,"recharge":{"rechargeMin":4}}],
       "actions": [{"name":"Thunderous Slam","weaponId":"air-elemental-thunderous-slam"}],
       "multiattack": {"name":"Air Elemental Multiattack","attacks":[{"weaponId":"air-elemental-thunderous-slam","count":2}]},
       "name": "Air Elemental",

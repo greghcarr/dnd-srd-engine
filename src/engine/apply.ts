@@ -147,6 +147,10 @@ import {
   applyBreathWeaponFired,
   applyBreathWeaponRecharged,
 } from './reducers/breath-weapon.js';
+import {
+  applySaveActionExpended,
+  applySaveActionRecharged,
+} from './reducers/save-action.js';
 import { applyWeaponMasteryActivated, applyWeaponMasteriesChosen } from './reducers/weapon-mastery.js';
 import {
   applyMounted,
@@ -690,6 +694,12 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
         break;
       case 'BreathWeaponRecharged':
         applyBreathWeaponRecharged(draft, event);
+        break;
+      case 'SaveActionExpended':
+        applySaveActionExpended(draft, event);
+        break;
+      case 'SaveActionRecharged':
+        applySaveActionRecharged(draft, event);
         break;
       case 'CampaignSettingsChanged':
         applyCampaignSettingsChanged(draft, event);

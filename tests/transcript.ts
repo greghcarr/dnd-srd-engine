@@ -888,6 +888,14 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       const who = characterName(stateBefore, event.monsterId);
       return `**${who}**'s ${event.breathWeaponId} recharges (rolled ${event.roll}).`;
     }
+    case 'SaveActionExpended': {
+      const who = characterName(stateBefore, event.monsterId);
+      return `**${who}**'s ${event.saveActionId} is expended (awaiting recharge).`;
+    }
+    case 'SaveActionRecharged': {
+      const who = characterName(stateBefore, event.monsterId);
+      return `**${who}**'s ${event.saveActionId} recharges (rolled ${event.roll}).`;
+    }
   }
 };
 

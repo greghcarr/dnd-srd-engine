@@ -157,15 +157,28 @@ export const SaveActionSpecSchema = z.object({
   // Resolved on a FAILED save. Each damage component is rolled and applied
   // with its own type (Salamander Constrict: bludgeoning + fire); the
   // condition ids are applied with the monster stamped as their source (so
-  // a Grappled condition's grappler resolves) plus any autoExpiry.
+  // a Grappled condition's grappler resolves) plus any autoExpiry. `pushFeet`
+  // (Air Elemental Whirlwind: "pushed up to 20 feet straight away") emits an
+  // informational `CreaturePushed` — the engine doesn't model positions, so
+  // the consumer applies the displacement (as it does every forced move).
   onFail: z.object({
     damage: z.array(SaveActionDamageSchema).default([]),
     applyConditionIds: z.array(z.string()).default([]),
+    pushFeet: z.number().int().min(0).optional(),
   }),
-  // RAW most save-actions do nothing on a success; the half-damage exception
-  // (Air Elemental Whirlwind) is deferred. Damage components are halved (each
-  // floored) on a successful save when true.
+  // RAW most save-actions do nothing on a success; the Air Elemental
+  // Whirlwind's "Success: Half damage only" is the exception. Damage
+  // components are halved (each floored) on a successful save when true; the
+  // failure-only payload (conditions, push) never applies on a success.
   halfDamageOnSuccess: z.boolean().default(false),
+  // Slice 829: optional Recharge gating (Air Elemental Whirlwind is
+  // "Recharge 4–6"). When present, the action expends on use and returns to
+  // ready at the bearer's turn-start on a d6 ≥ rechargeMin — the same
+  // economy as `breathWeapon`, tracked per save-action id on the bearer's
+  // `expendedSaveActionIds`. Absent (Constrict) = always available.
+  recharge: z
+    .object({ rechargeMin: z.number().int().min(2).max(6) })
+    .optional(),
 });
 export type SaveActionSpec = z.infer<typeof SaveActionSpecSchema>;
 

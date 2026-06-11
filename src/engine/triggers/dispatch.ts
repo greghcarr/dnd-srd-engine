@@ -571,6 +571,7 @@ const fireSpawnCreature = (
       featsTaken: [],
       pendingChoiceIds: [],
       breathWeaponExpended: false,
+      expendedSaveActionIds: [],
       heroicInspiration: false,
       damageTypesTakenThisTurn: [],
       heroPoints: 0,

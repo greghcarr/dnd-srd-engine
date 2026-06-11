@@ -214,6 +214,10 @@ import {
   BreathWeaponFiredEventSchema,
   BreathWeaponRechargedEventSchema,
 } from './breath-weapon.js';
+import {
+  SaveActionExpendedEventSchema,
+  SaveActionRechargedEventSchema,
+} from './save-action.js';
 import { MirrorImageDeflectedEventSchema } from './mirror-image.js';
 
 export const EventSchema = z.discriminatedUnion('type', [
@@ -370,6 +374,8 @@ export const EventSchema = z.discriminatedUnion('type', [
   IllusionDismissedEventSchema,
   BreathWeaponFiredEventSchema,
   BreathWeaponRechargedEventSchema,
+  SaveActionExpendedEventSchema,
+  SaveActionRechargedEventSchema,
   CampaignSettingsChangedEventSchema,
   HeroPointGrantedEventSchema,
   HeroPointSpentEventSchema,
@@ -1035,5 +1041,13 @@ export type {
   BreathWeaponFiredEvent,
   BreathWeaponRechargedEvent,
 } from './breath-weapon.js';
+export {
+  SaveActionExpendedEventSchema,
+  SaveActionRechargedEventSchema,
+} from './save-action.js';
+export type {
+  SaveActionExpendedEvent,
+  SaveActionRechargedEvent,
+} from './save-action.js';
 export { MirrorImageDeflectedEventSchema } from './mirror-image.js';
 export type { MirrorImageDeflectedEvent } from './mirror-image.js';
