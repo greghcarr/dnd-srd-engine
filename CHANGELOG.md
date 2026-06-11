@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Fix (slice 806): one spell slot per turn**
+The audit row described the 2014 rule ("Bonus-Action spell → Action must be a cantrip"), which 2024 removed; the real SRD 5.2.1 rule (spells.md) is "you can expend only one spell slot to cast a spell" per turn — so a slot spell + a cantrip is fine, but two slots (e.g. Bonus Action Spiritual Weapon + Action Fireball) isn't. New `TurnUsage.spellSlotExpendedThisTurn` flag, set when a `SpellSlotConsumed`/`PactSlotConsumed` lands in an encounter (reset at TurnStarted); `planCastSpell` blocks a second slot-expending cast that turn (cantrips/rituals/free casts exempt; pact slots count). Implementing the row's literal 2014 wording would have introduced edition drift — the audit row is corrected. **Closes the [L7 audit](docs/l7-completion-audit.md) Area 4 divergence `bonus-action-spell-restriction`.** New 4-test slice-806; fast suite green.
+Detail: [slice-806.md](docs/changelog/slice-806.md).
+
 **Fix (slice 805): synthetic-Unconscious arms on a 0-HP drop**
 A creature at 0 HP got the within-5-ft auto-crit (keyed on `hp <= 0`) but not the Unconscious condition's "attackers have Advantage" or "auto-fail STR/DEX saves" arms — those live on the condition's effects, which the HP-drop path never applies, so a downed creature was attacked without Advantage (and the dragon's killing blow in the showcase transcript actually *missed*). Made both arms synthetic on `hp.current <= 0` too: `targetGrantsAdvantage` in attack.ts and `hasAutoFail` (STR/DEX) in save.ts. Keeps `hp <= 0` the single source of truth (no dual-tracked condition to desync on heal); composes with the explicit `unconscious` condition (Sleep). Prone / drop-items stay deferred. **Closes the [L7 audit](docs/l7-completion-audit.md) Area 4 divergence `drop-to-0-no-unconscious-arms`.** New 4-test slice-805; showcase golden updated (the downed-PC attack now lands with Advantage → auto-crit); fast suite green.
 Detail: [slice-805.md](docs/changelog/slice-805.md).

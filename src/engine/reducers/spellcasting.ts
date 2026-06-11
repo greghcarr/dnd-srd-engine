@@ -27,6 +27,19 @@ export const applySpellCastDeclared = (
   // (slot consumption, damage, etc.) come via subsequent events.
 };
 
+// Slice 806: RAW (spells.md) "On a turn, you can expend only one spell
+// slot to cast a spell." Flag the active combatant when a slot (standard
+// or pact) is expended so the cast planner can block a second this turn.
+// No-op outside an active encounter (no turn structure to limit).
+const markSpellSlotExpended = (state: Draft<CampaignState>, characterId: string): void => {
+  const encounterId = state.activeEncounterId;
+  if (encounterId === undefined) return;
+  const combatant = state.encounters[encounterId]?.combatants.find(
+    (c) => c.combatantId === characterId,
+  );
+  if (combatant !== undefined) combatant.turnUsage.spellSlotExpendedThisTurn = true;
+};
+
 export const applySpellSlotConsumed = (
   state: Draft<CampaignState>,
   event: SpellSlotConsumedEvent,
@@ -35,6 +48,7 @@ export const applySpellSlotConsumed = (
   const key = String(event.slotLevel);
   const previous = character.spellSlotsUsed[key] ?? 0;
   character.spellSlotsUsed[key] = previous + 1;
+  markSpellSlotExpended(state, event.characterId);
 };
 
 export const applyPactSlotConsumed = (
@@ -43,6 +57,7 @@ export const applyPactSlotConsumed = (
 ): void => {
   const character = requireCharacter(state, event.characterId);
   character.pactSlotsUsed += 1;
+  markSpellSlotExpended(state, event.characterId);
 };
 
 // Slice 637: Magical Cunning (Warlock L2) regains expended Pact Magic

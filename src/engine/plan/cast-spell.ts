@@ -2289,6 +2289,18 @@ export const planCastSpell = (
         `${character.name} cannot cast ${spell.name}: reaction already used this round`,
       );
     }
+    // Slice 806: RAW (spells.md) "On a turn, you can expend only one spell
+    // slot to cast a spell." Block a second slot-expending cast this turn
+    // (e.g. a Bonus Action Spiritual Weapon then an Action Fireball);
+    // cantrips, rituals, and free / at-will casts (no slot) are exempt.
+    if (
+      spell.level > CANTRIP_LEVEL && !noSlotCost &&
+      casterCombatant.turnUsage.spellSlotExpendedThisTurn
+    ) {
+      throw new Error(
+        `${character.name} cannot cast ${spell.name}: a spell slot was already expended this turn (RAW: one slot per turn)`,
+      );
+    }
     if (consumesImplicitMagicAction && casterCombatant.turnUsage.actionUsed) {
       throw new Error(
         `${character.name} cannot hurl ${spell.name}: action already used this turn (RAW: a BA cast + Magic action hurl requires both unspent)`,

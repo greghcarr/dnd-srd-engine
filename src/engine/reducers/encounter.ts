@@ -57,6 +57,7 @@ export const applyEncounterCreated = (
         noProvokeMovementUpToFeet: 0,
         steadyAimActive: false,
         speedZeroUntilEndOfTurn: false,
+        spellSlotExpendedThisTurn: false,
       },
       ...(p.position !== undefined ? { position: { x: p.position.x, y: p.position.y } } : {}),
     })),
@@ -188,6 +189,8 @@ export const applyTurnStarted = (
   active.turnUsage.stunningStrikeUsedThisTurn = false;
   active.turnUsage.savageAttackerUsedThisTurn = false;
   active.turnUsage.noProvokeMovementUpToFeet = 0;
+  // Slice 806: a fresh turn restores the one-spell-slot-per-turn budget.
+  active.turnUsage.spellSlotExpendedThisTurn = false;
   // Slice 572: a readied action expires at the start of the next
   // turn (RAW: "lets you act using your Reaction before the start of
   // your next turn"). Clearing on TurnStarted matches the RAW

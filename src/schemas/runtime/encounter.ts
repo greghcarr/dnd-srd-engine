@@ -64,6 +64,11 @@ export const TurnUsageSchema = z.object({
   // intents while this is true. RAW: "after you use it, your Speed
   // is 0 until the end of the current turn." Cleared at TurnStarted.
   speedZeroUntilEndOfTurn: z.boolean().default(false),
+  // Slice 806: RAW (spells.md): "On a turn, you can expend only one spell
+  // slot to cast a spell." Set when a SpellSlotConsumed / PactSlotConsumed
+  // lands while the caster is the active combatant; the cast planner
+  // blocks a second slot-expending cast this turn. Reset at TurnStarted.
+  spellSlotExpendedThisTurn: z.boolean().default(false),
 });
 export type TurnUsage = z.infer<typeof TurnUsageSchema>;
 
@@ -82,6 +87,7 @@ export const EMPTY_TURN_USAGE: TurnUsage = {
   noProvokeMovementUpToFeet: 0,
   steadyAimActive: false,
   speedZeroUntilEndOfTurn: false,
+  spellSlotExpendedThisTurn: false,
 };
 
 export const CombatantSchema = z.object({
