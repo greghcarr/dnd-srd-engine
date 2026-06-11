@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Content (slice 813): player-facing rules text for every spell (`description`)**
+Spells carried no `description` at all — the structured mechanics ran, but dnd-web's tap-to-read panel (the surface slice 811 cleaned for items/conditions) rendered blank for any spell. Closes that explicitly-tracked gap: a scripted, verify-after extraction pulled clean rules prose for **all 339 spells** from `references/srd-markdown/spells.md` (the CC-BY-4.0 SRD 5.2.1 clone — matched by name, 0 misses), dropping the school/metadata lines and stripping markdown (`**`, `_…_`, `<br>`, `&emsp;`, table pipes). Additive display field only — no mechanic/planner/event/DC change, and the event log doesn't embed `description`, so no golden transcript moves; the text is 2024-faithful by construction (e.g. Sleep = WIS-save/Incapacitated, Color Spray = CON-save/Blinded, per slices 783/784). New `spell-descriptions` guard (fails on a missing or `<40`-char description); the slice-811 lint now walks spells too (0 artifacts). `tsc` clean; fast suite green.
+Detail: [slice-813.md](docs/changelog/slice-813.md).
+
 **Infra (slice 812): CHANGELOG size discipline — evict the `0.11.0-alpha.0` release narrative**
 The live CHANGELOG crossed the 60 KB single-Read ceiling (60,638 B), tripping the `doc-size` audit. Per the active-cycle invariant (the live file holds only the active cycle plus the newest release until doc-size pressure evicts it — the same trigger slice 754 used on 0.10.0), the tagged `0.11.0-alpha.0` cohort (slices 749-777) moves verbatim to [docs/changelog/released-versions-0.11.0-alpha.0.md](docs/changelog/released-versions-0.11.0-alpha.0.md), with a pointer added to "Older releases." Live file 60.6 KB → ~36 KB. Doc/infra only — no engine, content, or test-behavior change; per-slice detail files are untouched.
 Detail: [slice-812.md](docs/changelog/slice-812.md).
