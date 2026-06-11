@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Feat (slice 808): Grappler feat + Savage Attacker audit correction**
+The Grappler feat was inert (`effects: []`); now authored to RAW — an ASI `OfferChoice` (STR/DEX +1) + Attack Advantage (`SetAdvantage` gated on a new `event.targetGrappledByAttacker` attack-planner fact); Punch-and-Grab / Fast-Wrestler arms deferred. Separately, `savage-attacker-feat-inert` is a **stale audit false-positive**: slice 467 already implemented Savage Attacker (tested) via `useSavageAttacker` + the effective-feat-list check — its empty `effects` is correct. **Closes the [L7 audit](docs/l7-completion-audit.md) Area 5 divergence `grappler-feat-inert` and reclassifies `savage-attacker-feat-inert`** (Area 5 divergences 5 → 3). New 3-test slice-808; coverage snapshot +`general:grappler`; fast suite green.
+Detail: [slice-808.md](docs/changelog/slice-808.md).
+
 **Fix (slice 807): Charmed — can't harm the charmer (spells) + social advantage**
 The `charmed` condition carried 0 effects: the engine blocked weapon attacks on the charmer but a Charmed caster could still fire a harmful spell at them, and the charmer's social-check advantage was unmodeled. `planCastSpell` now blocks a harmful spell (attack/save mechanic) that explicitly targets the charmer (AoE membership exempt — an area the charmer stands in isn't "targeting" them); beneficial spells (Mage Armor, heals) on the charmer are fine. The social-advantage arm ships as a consumer fact `ComputeAbilityCheckInput.socialCheckTargetId` (Advantage on a Persuasion/Deception/Intimidation/Performance check vs a creature charmed by the checker). Both key on `sourceCharacterId`, so the condition stays effect-less. **Closes the [L7 audit](docs/l7-completion-audit.md) Area 4 divergence `charmed-harmful-target-arm` — Area 4 is now divergence-free.** New 3-test slice-807; fast suite green.
 Detail: [slice-807.md](docs/changelog/slice-807.md).

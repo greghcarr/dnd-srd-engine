@@ -24,7 +24,7 @@
 | 2. Spell mechanics (L0-4) | 23 | 0 | 15 | 5 | Engine |
 | 3. Targeting / AoE seam | 14 | 0 | 6 | 7 | Seam + Consumer |
 | 4. Core combat correctness | 11 | 0 | 0 | 5 | Engine — divergence-free |
-| 5. Build & leveling validation | 10 | 0 | 5 | 3 | Engine |
+| 5. Build & leveling validation | 10 | 0 | 3 | 3 | Engine |
 | 6. Base equipment mechanics | 9 | 1\* | 1 | 4 | Engine |
 | 7. Monster runtime (DM side) | 14 | 0 | 5 | 6 | Engine (schema+content) |
 | 8. Exploration / non-combat | 14 | 0 | 4 | 9 | Engine |
@@ -149,8 +149,8 @@ Where the floor audits (feature *presence*) don't exercise choice-validation or 
 | `l4-feat-menu-eligibility` | DIVERGENCE | Engine | M | The L4 feat choice lists a static {ASI, Grappler} regardless of character: ignores Grappler's STR/DEX-13 prereq and omits Fighting-Style feats for classes with the Fighting Style feature. `src/engine/plan/level-up.ts:78-103`. |
 | `multiclass-prereqs` | DIVERGENCE | Engine | M | No 13+-in-primary-ability check on entering a class; an INT 8 character can take a Wizard level. `src/engine/plan/level-up.ts:36-45`. |
 | `multiclass-entry-proficiencies` | DIVERGENCE | Engine | M | No first-class-vs-multiclass-entry proficiency branch; leveling into a second class grants none of the reduced entry proficiencies. (Slot math is correct.) `src/engine/plan/level-up.ts`. |
-| `grappler-feat-inert` | DIVERGENCE | Engine | M | `effects: []`; RAW grants +1 STR/DEX, advantage vs grappled, etc. — nothing fires. `starter-pack.json` grappler. |
-| `savage-attacker-feat-inert` | DIVERGENCE | Engine | M | `effects: []`; RAW once-per-turn weapon-damage reroll never fires (granted by the Soldier background). |
+| ~~`grappler-feat-inert`~~ | DIVERGENCE | Engine | M | `effects: []`; RAW grants +1 STR/DEX, advantage vs grappled, etc. — nothing fires. **Closed by slice 808** — authored the ASI (`OfferChoice` STR/DEX +1) + the Attack Advantage (`SetAdvantage` gated on a new `event.targetGrappledByAttacker` fact). Punch-and-Grab / Fast-Wrestler arms deferred. `starter-pack.json` grappler; `src/engine/plan/attack.ts`. |
+| ~~`savage-attacker-feat-inert`~~ | ~~DIVERGENCE~~ → **NOT A BUG** | Engine | — | `effects: []`; RAW once-per-turn weapon-damage reroll. **Stale finding (false positive)** — **slice 467 implemented this** (tested in `slice-467-savage-attacker.test.ts`). It works via `AttackIntent.useSavageAttacker` + the effective-feat-list check + the `savageAttackerUsedThisTurn` gate; the empty `effects` array is correct (it's a per-attack reroll, not an effect-stack contribution). Confirmed correct by slice 808. |
 | `half-caster-l1-slot` | QUIRK | Engine | S | A single-class L1 Paladin/Ranger shows a 1st-level slot (`ceil(1/2)=1`); RAW spellcasting starts at L2 (third-casters are guarded, half-casters aren't). `src/derive/spell-slots.ts:59-63`. |
 | `alert-initiative-swap` | QUIRK | Engine | S | The Initiative-Proficiency arm is wired; the swap-initiative-with-an-ally arm isn't (likely intentional). |
 | `ki-sorcery-point-undercount` | QUIRK `[verify]` | Engine | S | Possible off-milestone undercount of Monk Ki / Sorcery Points at L6-7 if the per-level formula isn't applied (the L4 audit suggests it now is — verify L6-7). |

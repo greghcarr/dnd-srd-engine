@@ -302,6 +302,7 @@ exports[`feature-coverage matrix: feats > wired feats catalog is stable 1`] = `
   "fighting-style:fighting-style-protection",
   "fighting-style:fighting-style-two-weapon",
   "general:ability-score-improvement",
+  "general:grappler",
   "invocation:agonizing-blast-chill-touch",
   "invocation:agonizing-blast-eldritch-blast",
   "invocation:agonizing-blast-poison-spray",

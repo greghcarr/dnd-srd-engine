@@ -931,6 +931,12 @@ export const resolveAttackRollPhase = (input: ResolveAttackInput): AttackRollRes
     // same fact name so a consumer populates it once per intent.
     ['bearer.lightLevel', input.lightLevel],
     ['bearer.bloodied', attackerBloodied],
+    // Slice 808: Grappler feat "Attack Advantage" — "You have Advantage
+    // on attack rolls against a creature Grappled by you." True iff the
+    // target carries a Grappled condition whose source is this attacker.
+    ['event.targetGrappledByAttacker', target.appliedConditions.some(
+      (c) => c.conditionId === 'grappled' && c.sourceCharacterId === attacker.id,
+    )],
     // Slice 568: Grappled's "Disadvantage on attacks against any
     // target other than the grappler" arm. True iff the attacker is
     // currently Grappled AND the attack's target is NOT the grappler

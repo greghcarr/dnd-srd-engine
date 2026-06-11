@@ -198,7 +198,13 @@
     { "id": "boon-of-spell-recall", "name": "Boon of Spell Recall", "category": "epic-boon", "repeatable": false, "prerequisites": ["Level 19+", "Spellcasting Feature"], "effects": [] },
     { "id": "boon-of-the-night-spirit", "name": "Boon of the Night Spirit", "category": "epic-boon", "repeatable": false, "prerequisites": ["Level 19+"], "effects": [] },
     { "id": "boon-of-truesight", "name": "Boon of Truesight", "category": "epic-boon", "repeatable": false, "prerequisites": ["Level 19+"], "effects": [{ "kind": "GrantSense", "sense": "truesight", "range": 60 }] },
-    { "id": "grappler", "name": "Grappler", "category": "general", "repeatable": false, "prerequisites": ["Level 4+", "Strength or Dexterity 13+"], "effects": [] },
+    { "id": "grappler", "name": "Grappler", "category": "general", "repeatable": false, "prerequisites": ["Level 4+", "Strength or Dexterity 13+"], "effects": [
+      { "kind": "OfferChoice", "choiceId": "grappler-asi", "prompt": "Increase your Strength or Dexterity by 1 (maximum 20).", "oneOf": 1, "when": "onAcquire", "options": [
+        { "id": "str", "label": "Strength", "effects": [{ "kind": "IncreaseAbilityScore", "ability": "STR", "amount": 1, "max": 20 }] },
+        { "id": "dex", "label": "Dexterity", "effects": [{ "kind": "IncreaseAbilityScore", "ability": "DEX", "amount": 1, "max": 20 }] }
+      ] },
+      { "kind": "SetAdvantage", "on": "attack", "mode": "advantage", "condition": { "kind": "eq", "path": "event.targetGrappledByAttacker", "value": true } }
+    ] },
     { "id": "ability-score-improvement", "name": "Ability Score Improvement", "category": "general", "repeatable": true, "prerequisites": ["Level 4+"], "effects": [
       { "kind": "OfferChoice", "choiceId": "ability-score-improvement", "prompt": "Increase one ability score by 2, or two ability scores by 1 each (maximum 20).", "oneOf": 1, "when": "onAcquire", "options": [
         { "id": "plus-2-one", "label": "+2 to one ability score", "effects": [
