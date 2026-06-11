@@ -106,6 +106,15 @@ export interface ComputeAbilityCheckInput {
   // the condition the check ends, and gated effects fire only when
   // it matches. Generic checks leave this undefined.
   readonly endingCondition?: string;
+  // Slice 807: RAW Charmed Social Advantage — "the charmer has Advantage
+  // on any ability check to interact with you socially." The engine has
+  // no social-interaction model (an ability check carries no target
+  // creature), so the consumer designates the creature this social check
+  // is directed at; when that creature is Charmed by the checker and the
+  // skill is a social one (Persuasion / Deception / Intimidation /
+  // Performance), the check gains Advantage. Resolved against
+  // `characters`. Omitted → no such advantage.
+  readonly socialCheckTargetId?: string;
 }
 
 const exhaustionPenalty = (level: number): number =>
@@ -221,8 +230,17 @@ export const computeAbilityCheck = (input: ComputeAbilityCheckInput): AbilityChe
   const untrainedArmorStrDexDisadvantage =
     (input.ability === 'STR' || input.ability === 'DEX') &&
     wearsUntrainedBodyArmor(input.character, input.content, input.itemInstances, effects);
+  // Slice 807: the Charmer's Advantage on a social ability check directed
+  // at a creature Charmed by them (consumer-designated target).
+  const SOCIAL_SKILLS: ReadonlySet<Skill> = new Set(['persuasion', 'deception', 'intimidation', 'performance']);
+  const charmerSocialAdvantage =
+    input.socialCheckTargetId !== undefined &&
+    input.skill !== undefined && SOCIAL_SKILLS.has(input.skill) &&
+    input.characters?.[input.socialCheckTargetId]?.appliedConditions.some(
+      (c) => c.conditionId === 'charmed' && c.sourceCharacterId === input.character.id,
+    ) === true;
   const adv = {
-    advantage: skillAdv.advantage || checkAdv.advantage,
+    advantage: skillAdv.advantage || checkAdv.advantage || charmerSocialAdvantage,
     disadvantage: skillAdv.disadvantage || checkAdv.disadvantage || armorStealthDisadvantage || untrainedArmorStrDexDisadvantage,
     autoCrit: skillAdv.autoCrit || checkAdv.autoCrit,
     autoFail: skillAdv.autoFail || checkAdv.autoFail,

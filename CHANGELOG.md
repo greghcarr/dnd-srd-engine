@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Fix (slice 807): Charmed — can't harm the charmer (spells) + social advantage**
+The `charmed` condition carried 0 effects: the engine blocked weapon attacks on the charmer but a Charmed caster could still fire a harmful spell at them, and the charmer's social-check advantage was unmodeled. `planCastSpell` now blocks a harmful spell (attack/save mechanic) that explicitly targets the charmer (AoE membership exempt — an area the charmer stands in isn't "targeting" them); beneficial spells (Mage Armor, heals) on the charmer are fine. The social-advantage arm ships as a consumer fact `ComputeAbilityCheckInput.socialCheckTargetId` (Advantage on a Persuasion/Deception/Intimidation/Performance check vs a creature charmed by the checker). Both key on `sourceCharacterId`, so the condition stays effect-less. **Closes the [L7 audit](docs/l7-completion-audit.md) Area 4 divergence `charmed-harmful-target-arm` — Area 4 is now divergence-free.** New 3-test slice-807; fast suite green.
+Detail: [slice-807.md](docs/changelog/slice-807.md).
+
 **Fix (slice 806): one spell slot per turn**
 The audit row described the 2014 rule ("Bonus-Action spell → Action must be a cantrip"), which 2024 removed; the real SRD 5.2.1 rule (spells.md) is "you can expend only one spell slot to cast a spell" per turn — so a slot spell + a cantrip is fine, but two slots (e.g. Bonus Action Spiritual Weapon + Action Fireball) isn't. New `TurnUsage.spellSlotExpendedThisTurn` flag, set when a `SpellSlotConsumed`/`PactSlotConsumed` lands in an encounter (reset at TurnStarted); `planCastSpell` blocks a second slot-expending cast that turn (cantrips/rituals/free casts exempt; pact slots count). Implementing the row's literal 2014 wording would have introduced edition drift — the audit row is corrected. **Closes the [L7 audit](docs/l7-completion-audit.md) Area 4 divergence `bonus-action-spell-restriction`.** New 4-test slice-806; fast suite green.
 Detail: [slice-806.md](docs/changelog/slice-806.md).

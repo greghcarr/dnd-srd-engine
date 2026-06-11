@@ -2102,6 +2102,25 @@ export const planCastSpell = (
       }
     : rawIntent;
 
+  // Slice 807: RAW Charmed — "you can't attack the charmer or target the
+  // charmer with damaging abilities or magical effects." A harmful spell
+  // (one carrying an attack or save mechanic) can't TARGET a creature the
+  // caster is Charmed by. Gated on explicit targets — an AoE the charmer
+  // happens to stand in (area-enforced membership) isn't "targeting" them.
+  // Weapon attacks are gated the same way in planAttack.
+  if (!areaEnforced && spell.mechanicalEffects.some((m) => m.kind === 'attack' || m.kind === 'save')) {
+    for (const targetId of intent.targetIds) {
+      const charmedByTarget = character.appliedConditions.some(
+        (c) => c.conditionId === 'charmed' && c.sourceCharacterId === targetId,
+      );
+      if (charmedByTarget) {
+        throw new Error(
+          `${character.name} is Charmed by ${state.characters[targetId]?.name ?? targetId} and cannot target them with ${spell.name}`,
+        );
+      }
+    }
+  }
+
   if (intent.ignorePreparation !== true && !characterKnowsSpell(state, content, character, intent.spellId)) {
     throw new Error(`Character does not know or prepare spell ${intent.spellId}`);
   }
