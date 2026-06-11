@@ -4198,7 +4198,8 @@
         { "kind": "GrantSpell", "spellId": "fireball", "preparation": "perLongRest", "usesPerLongRest": 2 },
         { "kind": "GrantSpell", "spellId": "invisibility", "preparation": "perLongRest", "usesPerLongRest": 2 },
         { "kind": "GrantSpell", "spellId": "cone-of-cold", "preparation": "perLongRest", "usesPerLongRest": 1 },
-        { "kind": "GrantSpell", "spellId": "fly", "preparation": "perLongRest", "usesPerLongRest": 1 }
+        { "kind": "GrantSpell", "spellId": "fly", "preparation": "perLongRest", "usesPerLongRest": 1 },
+        { "kind": "GrantSpell", "spellId": "misty-step", "preparation": "perLongRest", "usesPerLongRest": 3 }
       ]
     },
     {
@@ -8841,7 +8842,8 @@
         { "kind": "GrantSpell", "spellId": "cone-of-cold", "preparation": "perLongRest", "usesPerLongRest": 1 },
         { "kind": "GrantSpell", "spellId": "mind-blank", "preparation": "perLongRest", "usesPerLongRest": 1 },
         { "kind": "GrantSpell", "spellId": "scrying", "preparation": "perLongRest", "usesPerLongRest": 1 },
-        { "kind": "GrantSpell", "spellId": "teleport", "preparation": "perLongRest", "usesPerLongRest": 1 }
+        { "kind": "GrantSpell", "spellId": "teleport", "preparation": "perLongRest", "usesPerLongRest": 1 },
+        { "kind": "GrantSpell", "spellId": "misty-step", "preparation": "perLongRest", "usesPerLongRest": 3 }
       ]
     }
   ],

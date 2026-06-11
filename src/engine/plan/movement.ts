@@ -10,7 +10,11 @@ import type {
   OpportunityAvailableEvent,
 } from '../../schemas/events/movement.js';
 import type { ActionEconomyConsumedEvent } from '../../schemas/events/action-economy.js';
-import type { SpellCastDeclaredEvent, SpellSlotConsumedEvent } from '../../schemas/events/spellcasting.js';
+import type {
+  PerDayCastUsedEvent,
+  SpellCastDeclaredEvent,
+  SpellSlotConsumedEvent,
+} from '../../schemas/events/spellcasting.js';
 import type { ConditionAppliedEvent, DamageAppliedEvent } from '../../schemas/events/combat.js';
 import type { SaveRolledEvent } from '../../schemas/events/checks.js';
 import type { Character } from '../../schemas/runtime/character.js';
@@ -24,6 +28,7 @@ import { computeSpellSaveDC } from '../../derive/spell-dc.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { applyAll } from '../apply.js';
+import { buildEffectStack } from '../../derive/effect-stack.js';
 import { planConcentrationOnDamage } from './concentration.js';
 import { newAppliedConditionId } from '../../ids.js';
 import { newEventId } from '../../ids.js';
@@ -410,6 +415,11 @@ export interface MistyStepIntent {
   readonly casterId: string;
   readonly to: Position;
   readonly slotLevel?: number;
+  // Slice 817: cast from an NPC "N/Day" GrantSpell bucket (a `perLongRest`
+  // grant) instead of a spell slot — the slot-less monster path. Meters
+  // `perDayCastsUsed` + emits PerDayCastUsed (no SpellSlotConsumed),
+  // mirroring castSpell's slice-794 free-cast path.
+  readonly useFreeCast?: boolean;
   readonly at?: string;
 }
 
@@ -420,21 +430,44 @@ export interface MistyStepIntent {
  * occupancy checks are the consumer's responsibility (the engine doesn't
  * model line-of-sight beyond the locations grid).
  *
- * Emits SpellCastDeclared, SpellSlotConsumed(2+), ActionEconomyConsumed
- * (bonus), and CombatantMoved.
+ * Emits SpellCastDeclared, then either SpellSlotConsumed(2+) or — for a
+ * `useFreeCast` per-day cast (slice 817) — PerDayCastUsed, then
+ * ActionEconomyConsumed (bonus) and CombatantMoved.
  */
 export const planMistyStep = (
   state: CampaignState,
-  _content: ResolvedContent,
+  content: ResolvedContent,
   intent: MistyStepIntent,
 ): ReadonlyArray<Event> => {
   const caster = state.characters[intent.casterId];
   invariant(caster !== undefined, `Caster ${intent.casterId} not found`);
   const slotLevel = intent.slotLevel ?? MISTY_STEP_MIN_SLOT_LEVEL;
   invariant(slotLevel >= MISTY_STEP_MIN_SLOT_LEVEL, 'Misty Step is a 2nd-level spell');
-  const knowsSpell =
+
+  // Slice 817: a granted Misty Step (effect-stack GrantSpell — e.g. an NPC
+  // statblock's "Misty Step (3/Day)") satisfies the "knows the spell"
+  // check too, and a `perLongRest` grant lets a slot-less caster meter it
+  // per day. The effect stack is built lazily — only for a free cast or a
+  // caster who doesn't know Misty Step via known/prepared — so the common
+  // player slot cast pays nothing extra.
+  const useFreeCast = intent.useFreeCast === true;
+  const knownOrPrepared =
     caster.knownSpells.includes('misty-step') || caster.preparedSpells.includes('misty-step');
-  invariant(knowsSpell, `Caster ${intent.casterId} does not know Misty Step`);
+  const grantedMistyStep =
+    useFreeCast || !knownOrPrepared
+      ? buildEffectStack({
+          character: caster,
+          content,
+          itemInstances: state.itemInstances,
+          pendingChoices: state.pendingChoices,
+        })
+          .grantedSpells()
+          .filter((g) => g.spellId === 'misty-step')
+      : [];
+  invariant(
+    knownOrPrepared || grantedMistyStep.length > 0,
+    `Caster ${intent.casterId} does not know Misty Step`,
+  );
 
   const { encounterId, combatant, isActive } = findCombatant(state, intent.casterId);
   if (!isActive) {
@@ -468,6 +501,25 @@ export const planMistyStep = (
     );
   }
 
+  // Slice 817: per-day budget gate for the free-cast path. Requires a
+  // `perLongRest` ("N/Day") grant and meters against perDayCastsUsed —
+  // mirroring castSpell's slice-794 free-cast check.
+  if (useFreeCast) {
+    const perDayGrant = grantedMistyStep.find((g) => g.preparation === 'perLongRest');
+    if (perDayGrant === undefined) {
+      throw new Error(
+        `${caster.name} cannot free-cast Misty Step: no per-day grant for this spell`,
+      );
+    }
+    const budget = perDayGrant.usesPerLongRest ?? 1;
+    const used = caster.perDayCastsUsed['misty-step'] ?? 0;
+    if (used >= budget) {
+      throw new Error(
+        `${caster.name} has no remaining daily uses of Misty Step (${budget}/day)`,
+      );
+    }
+  }
+
   const at = intent.at ?? nowIso();
   const declared: SpellCastDeclaredEvent = {
     id: newEventId() as ULID,
@@ -480,13 +532,23 @@ export const planMistyStep = (
     targetIds: [intent.casterId],
     castAsRitual: false,
   };
-  const slotConsumed: SpellSlotConsumedEvent = {
-    id: newEventId() as ULID,
-    at,
-    type: 'SpellSlotConsumed',
-    characterId: intent.casterId,
-    slotLevel,
-  };
+  // Slice 817: meter via the per-day bucket (PerDayCastUsed, no slot) for a
+  // free cast, else expend a spell slot as before.
+  const meterEvent: PerDayCastUsedEvent | SpellSlotConsumedEvent = useFreeCast
+    ? {
+        id: newEventId() as ULID,
+        at,
+        type: 'PerDayCastUsed',
+        characterId: intent.casterId as ULID,
+        spellId: 'misty-step',
+      }
+    : {
+        id: newEventId() as ULID,
+        at,
+        type: 'SpellSlotConsumed',
+        characterId: intent.casterId,
+        slotLevel,
+      };
   const bonusConsumed: ActionEconomyConsumedEvent = {
     id: newEventId() as ULID,
     at,
@@ -506,7 +568,7 @@ export const planMistyStep = (
     // RAW: teleportation doesn't consume the caster's normal movement.
     feetTraveled: 0,
   };
-  return [declared, slotConsumed, bonusConsumed, moved];
+  return [declared, meterEvent, bonusConsumed, moved];
 };
 
 const THUNDER_STEP_RANGE_FEET = 90;
