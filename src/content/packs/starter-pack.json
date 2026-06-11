@@ -3752,7 +3752,8 @@
         { "kind": "GrantSpell", "spellId": "light", "preparation": "at-will" },
         { "kind": "GrantSpell", "spellId": "thaumaturgy", "preparation": "at-will" },
         { "kind": "GrantSpell", "spellId": "command", "preparation": "perLongRest", "usesPerLongRest": 2 },
-        { "kind": "GrantSpell", "spellId": "hold-person", "preparation": "perLongRest", "usesPerLongRest": 1 }
+        { "kind": "GrantSpell", "spellId": "hold-person", "preparation": "perLongRest", "usesPerLongRest": 1 },
+        { "kind": "GrantSpell", "spellId": "spiritual-weapon", "preparation": "perLongRest", "usesPerLongRest": 2 }
       ]
     },
     {
