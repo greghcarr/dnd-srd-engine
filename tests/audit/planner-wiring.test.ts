@@ -88,6 +88,11 @@ const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
   // damage events and calls it; the spawns' placement + initiative are
   // consumer-managed (positions / encounter are out of engine scope).
   'oozeSplit',
+  // Slice 839: Legendary Resistance (Aboleth / Sphinx of Lore / Unicorn).
+  // Consumer-driven (the Shield preventedHit shape): the consumer sees a
+  // legendary creature fail a save and calls it; the engine confirms the
+  // budgeted spend, the consumer treats the save as a success.
+  'legendaryResistance',
   // Slice 648: Monk L3 Deflect Attacks. Reaction-style planner that
   // returns DeflectAttacksOutcome (reduction + remainingDamage) the
   // consumer subtracts from a pending DamageApplied. Consumer

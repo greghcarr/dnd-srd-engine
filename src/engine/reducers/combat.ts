@@ -4,6 +4,7 @@ import type {
   ConditionAppliedEvent,
   ConditionRemovedEvent,
   AbilityScoreDrainedEvent,
+  LegendaryResistanceUsedEvent,
   CreaturePushedEvent,
   CreatureDestroyedEvent,
   DamageAppliedEvent,
@@ -272,6 +273,16 @@ export const applyAbilityScoreDrained = (
   const current = character.abilityDrain ?? {};
   current[event.ability] = (current[event.ability] ?? 0) + event.amount;
   character.abilityDrain = current;
+};
+
+// Slice 839: spend one Legendary Resistance use (counts up; a Long Rest resets
+// it to 0). The planner has already verified a use remains.
+export const applyLegendaryResistanceUsed = (
+  state: Draft<CampaignState>,
+  event: LegendaryResistanceUsedEvent,
+): void => {
+  const character = requireCharacter(state, event.creatureId);
+  character.legendaryResistanceUsed = (character.legendaryResistanceUsed ?? 0) + 1;
 };
 
 export const applyExhaustionChanged = (

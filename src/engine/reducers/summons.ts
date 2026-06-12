@@ -64,6 +64,7 @@ export const applyCompanionSummoned = (
     pendingChoiceIds: [],
     breathWeaponExpended: false,
     expendedSaveActionIds: [],
+    legendaryResistanceUsed: 0,
     heroicInspiration: false,
     damageTypesTakenThisTurn: [],
     heroPoints: 0,

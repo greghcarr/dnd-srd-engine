@@ -256,6 +256,10 @@ export const CharacterSchema = z.object({
   // more than one recharge action. Persists across encounters per RAW
   // (recharge resolves by die roll, not by rest). Defaults empty.
   expendedSaveActionIds: z.array(z.string()).default([]),
+  // Slice 839: Legendary Resistance uses spent since the last Long Rest
+  // (counts up, like perDayCastsUsed). Remaining = the statblock's usesPerDay
+  // (or usesPerDayInLair) minus this. Reset to 0 on a Long Rest. Defaults 0.
+  legendaryResistanceUsed: z.number().int().min(0).default(0),
   // Slice 232: damage types taken since the bearer's last turn-start.
   // Populated by the damage reducer (deduped append per DamageApplied).
   // Consumed by the turn-start Regeneration hook: at the start of the

@@ -5088,6 +5088,7 @@
     },
     {
       "id": "aboleth",
+      "legendaryResistance": {"usesPerDay":3,"usesPerDayInLair":4},
       "actions": [{"name":"Tentacle","weaponId":"aboleth-tentacle"}],
       "multiattack": {"name":"Aboleth Multiattack","attacks":[{"weaponId":"aboleth-tentacle","count":2}]},
       "name": "Aboleth",
@@ -5287,6 +5288,7 @@
     },
     {
       "id": "unicorn",
+      "legendaryResistance": {"usesPerDay":3},
       "actions": [{"name":"Hooves","weaponId":"unicorn-hooves"},{"name":"Radiant Horn","weaponId":"unicorn-radiant-horn"}],
       "multiattack": {"name":"Unicorn Multiattack","attacks":[{"weaponId":"unicorn-hooves","count":1},{"weaponId":"unicorn-radiant-horn","count":1}]},
       "name": "Unicorn",
@@ -7601,6 +7603,7 @@
     },
     {
       "id": "sphinx-of-lore",
+      "legendaryResistance": {"usesPerDay":3,"usesPerDayInLair":4},
       "actions": [{"name":"Claw","weaponId":"sphinx-of-lore-claw"}],
       "multiattack": {"name":"Sphinx of Lore Multiattack","attacks":[{"weaponId":"sphinx-of-lore-claw","count":3}]},
       "name": "Sphinx of Lore",

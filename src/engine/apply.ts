@@ -6,6 +6,7 @@ import {
   applyConditionApplied,
   applyConditionRemoved,
   applyAbilityScoreDrained,
+  applyLegendaryResistanceUsed,
   applyCreaturePushed,
   applyDamageApplied,
   applyDeathSaveRolled,
@@ -232,6 +233,9 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
         break;
       case 'AbilityScoreDrained':
         applyAbilityScoreDrained(draft, event);
+        break;
+      case 'LegendaryResistanceUsed':
+        applyLegendaryResistanceUsed(draft, event);
         break;
       case 'CreaturePushed':
         applyCreaturePushed(draft, event);

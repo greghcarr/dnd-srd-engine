@@ -204,6 +204,21 @@ export const OozeSplitSpecSchema = z.object({
 });
 export type OozeSplitSpec = z.infer<typeof OozeSplitSpecSchema>;
 
+// Slice 839: Legendary Resistance (SRD 5.2.1). "If the creature fails a saving
+// throw, it can choose to succeed instead." A per-day budget (3/Day; some
+// creatures 4/Day, or +1 In Lair). Consumer-driven, the Shield `preventedHit`
+// shape: the consumer (which orchestrates the encounter + sees the failed save)
+// calls `engine.plan.legendaryResistance`, the engine confirms the budgeted
+// spend (throwing when exhausted) and emits `LegendaryResistanceUsed`, and the
+// consumer treats the triggering save as a success (drops the fail
+// consequences). `inLair` is a consumer fact (positional). The budget resets on
+// a Long Rest (the 2024 X/Day default).
+export const LegendaryResistanceSpecSchema = z.object({
+  usesPerDay: z.number().int().min(1),
+  usesPerDayInLair: z.number().int().min(1).optional(),
+});
+export type LegendaryResistanceSpec = z.infer<typeof LegendaryResistanceSpecSchema>;
+
 export const MonsterStatblockSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -240,5 +255,8 @@ export const MonsterStatblockSchema = z.object({
   // Slice 836: the ooze Split trait (Black Pudding / Ochre Jelly). Optional —
   // absent for every non-ooze statblock.
   split: OozeSplitSpecSchema.optional(),
+  // Slice 839: Legendary Resistance (Aboleth / Sphinx of Lore / Unicorn).
+  // Optional — absent for non-legendary statblocks.
+  legendaryResistance: LegendaryResistanceSpecSchema.optional(),
 });
 export type MonsterStatblock = z.infer<typeof MonsterStatblockSchema>;

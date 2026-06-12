@@ -252,6 +252,10 @@ export {
   type OozeSplitIntent,
 } from './ooze-split.js';
 export {
+  planLegendaryResistance,
+  type LegendaryResistanceIntent,
+} from './legendary-resistance.js';
+export {
   planCounterspell,
   planDispelMagic,
   planRemoveCurse,

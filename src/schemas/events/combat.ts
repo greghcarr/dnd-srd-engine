@@ -109,6 +109,19 @@ export const AbilityScoreDrainedEventSchema = EventEnvelopeSchema.extend({
 });
 export type AbilityScoreDrainedEvent = z.infer<typeof AbilityScoreDrainedEventSchema>;
 
+// Slice 839: Legendary Resistance spent — a legendary creature turned a failed
+// saving throw into a success. Increments `character.legendaryResistanceUsed`
+// (a per-day budget reset on a Long Rest). The consumer treats the triggering
+// save as a success (drops the fail consequences); this event records the
+// spend for the transcript + the budget.
+export const LegendaryResistanceUsedEventSchema = EventEnvelopeSchema.extend({
+  type: z.literal('LegendaryResistanceUsed'),
+  creatureId: ULIDSchema,
+  // The SaveRolled the creature is converting to a success (informational).
+  triggeringSaveEventId: ULIDSchema.optional(),
+});
+export type LegendaryResistanceUsedEvent = z.infer<typeof LegendaryResistanceUsedEventSchema>;
+
 // Forced movement: the named source attempted to push a creature
 // `distanceFeet` away from the source's position. The engine
 // doesn't model positions, so this event is purely informational

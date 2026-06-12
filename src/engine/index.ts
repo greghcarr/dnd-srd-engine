@@ -152,6 +152,7 @@ import {
   planSaveAction,
   planParry,
   planOozeSplit,
+  planLegendaryResistance,
   planIdentify,
   planShield,
   planSanctuaryWardSave,
@@ -196,6 +197,7 @@ import {
   type ParryIntent,
   type ParryOutcome,
   type OozeSplitIntent,
+  type LegendaryResistanceIntent,
   type IdentifyIntent,
   type ShieldIntent,
   type ShieldOutcome,
@@ -663,6 +665,7 @@ export interface Engine {
     shield(state: CampaignState, intent: Omit<ShieldIntent, 'type'>): ShieldOutcome;
     parry(state: CampaignState, intent: Omit<ParryIntent, 'type'>): ParryOutcome;
     oozeSplit(state: CampaignState, intent: Omit<OozeSplitIntent, 'type'>): PlanResult;
+    legendaryResistance(state: CampaignState, intent: Omit<LegendaryResistanceIntent, 'type'>): PlanResult;
     sanctuaryWardSave(
       state: CampaignState,
       intent: Omit<SanctuaryWardSaveIntent, 'type'>,
@@ -1354,6 +1357,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     oozeSplit(state, intent) {
       return { events: planOozeSplit(state, content, { type: 'OozeSplit', ...intent }) };
+    },
+    legendaryResistance(state, intent) {
+      return { events: planLegendaryResistance(state, content, { type: 'LegendaryResistance', ...intent }) };
     },
     parry(state, intent) {
       return planParry(state, content, { type: 'Parry', ...intent });

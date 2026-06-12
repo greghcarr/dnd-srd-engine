@@ -147,6 +147,9 @@ export const applyLongRestEnded = (
     // restored on a Long Rest — the 2024 default. Reset only when present so
     // an undrained participant stays byte-unchanged (abilityDrain absent).
     if (character.abilityDrain !== undefined) character.abilityDrain = {};
+    // Slice 839: Legendary Resistance is an X/Day budget — refresh on a Long
+    // Rest. Reset only when spent so an unspent participant is byte-unchanged.
+    if (character.legendaryResistanceUsed > 0) character.legendaryResistanceUsed = 0;
     // Slice 293. Reset per-long-rest item time budgets (Boots of
     // Speed's 10-min/LR cumulative activation pool). The field is
     // optional; only instances that have been activated since the
