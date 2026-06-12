@@ -9422,7 +9422,7 @@
     {
       "id": "searing-smite-active",
       "name": "Searing Smite Active",
-      "description": "Caster's next weapon hit deals +1d6 fire damage; the spell ends after that hit.",
+      "description": "Caster's next weapon hit deals +1d6 fire damage and ignites the target (searing-smite-burning): the target takes 1d6 fire and makes a Constitution save at the start of each of its turns until it succeeds or the spell ends (1 minute).",
       "stackable": false,
       "endsOn": [],
       "effects": [
@@ -9433,10 +9433,21 @@
             "eventType": "AttackRolled",
             "filter": { "kind": "all", "terms": [{ "kind": "eq", "path": "event.attackerIsSelf", "value": true }, { "kind": "eq", "path": "event.hit", "value": true }] }
           },
-          "actions": [{ "kind": "AddDamage", "dice": "1d6", "damageType": "fire" }],
+          "actions": [{ "kind": "AddDamage", "dice": "1d6", "damageType": "fire" }, { "kind": "ApplyCondition", "conditionId": "searing-smite-burning" }],
           "consumeOnTrigger": true
         }
       ]
+    },
+    {
+      "id": "searing-smite-burning",
+      "name": "Searing Smite (Burning)",
+      "description": "Ignited by Searing Smite. At the start of each of its turns the creature takes 1d6 fire damage and then makes a Constitution saving throw against the caster's spell save DC; on a success the spell ends on it. Lasts up to 1 minute.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [],
+      "recurringDamage": { "dice": "1d6", "damageType": "fire", "trigger": "turnStart" },
+      "recurringSave": { "ability": "CON", "trigger": "turnStart", "onSuccess": "removeCondition" },
+      "autoExpiry": { "afterRounds": 10, "trigger": "turnEnd" }
     },
     {
       "id": "divine-smite-active",

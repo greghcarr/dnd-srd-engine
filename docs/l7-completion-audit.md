@@ -23,7 +23,7 @@ Current state — open vs. closed rows, with the open count's severity split (BL
 | Area | Open | Closed | Open B/D/Q | Owner of open work | Status |
 |---|---|---|---|---|---|
 | 1. Edition drift | 0 | 4 | — | — | ✅ **fully closed** |
-| 2. Spell mechanics (L0-4) | 20 | 3 | 0 / 15 / 5 | Engine | open — largest engine block |
+| 2. Spell mechanics (L0-4) | 19 | 4 | 0 / 14 / 5 | Engine | open — largest engine block |
 | 3. Targeting / AoE seam | 13 | 1 | 0 / 6 / 7 | Seam + Consumer | open — consumer-correctness frontier |
 | 4. Core combat correctness | 5 | 6 | 0 / 0 / 5 | Engine | open — divergence-free (quirks only) |
 | 5. Build & leveling validation | 5 | 6 | 0 / 1 / 4 | Engine | open |
@@ -31,7 +31,7 @@ Current state — open vs. closed rows, with the open count's severity split (BL
 | 7. Monster runtime (DM side) | 0 | 21 | — | — | ✅ **fully closed** |
 | 8. Exploration / non-combat | 13 | 1 | 0 / 3 / 10 | Engine | open |
 | 9. Consumer duties & docs | 8 | 0 | 0 / 3 / 5 | Consumer + Docs | hand-off — not engine slices |
-| **Total** | **69** | **46** | **0 / 29 / 40** | — | 115 rows |
+| **Total** | **68** | **47** | **0 / 28 / 40** | — | 115 rows |
 
 **Recommended order:** The structural blockers are all closed (~~`aoe-shape-coverage`~~ 786–787, ~~`no-actions-field`~~ 788, ~~`multiattack-unpopulated`~~ 789–792, ~~`no-hit-die-spend-planner`~~ 785, ~~`background-ability-bonus`~~), and Areas 1 + 7 are done. Remaining engine work by leverage: **Area 2** (spell mechanical arms — 20, the largest block) and **Area 8** (the exploration pillar — 13), then the smaller Area 4 / 5 / 6 divergence-and-quirk cleanups and the engine half of Area 3. Consumer items (Area 9 + the consumer half of Area 3) bundle into a hand-off note for the dnd-web session.
 
@@ -74,7 +74,7 @@ A level-7 caster's whole repertoire. "Cast does nothing" and "missing a defining
 | ID | Sev | Owner | Fix | Finding |
 |---|---|---|---|---|
 | `heat-metal-save-on-wrong-arm` | DIVERGENCE | Engine | M | Engine gates the 2d8 fire behind a CON save (no damage on success). RAW: damage is automatic; the save only decides drop-the-object / disadvantage. `starter-pack.json` heat-metal. |
-| `searing-smite-no-recurring-burn` | DIVERGENCE | Engine | M | Only the one-time +1d6 fire fires; RAW repeats 1d6 + CON save at the start of each of the target's turns. `searing-smite-active` condition (single `consumeOnTrigger`). |
+| ~~`searing-smite-no-recurring-burn`~~ | DIVERGENCE | Engine | M | Only the one-time +1d6 fire fires; RAW repeats 1d6 + CON save at the start of each of the target's turns. `searing-smite-active` condition (single `consumeOnTrigger`). **Closed by slice 845** — pure content reusing shipped machinery: the `searing-smite-active` on-hit rider now also fires an `ApplyCondition` (the slice-115 trigger action) stamping a new **`searing-smite-burning`** condition on the target (sourced to the caster), carrying `recurringDamage` (1d6 fire, turnStart — slice 825) + `recurringSave` (CON, turnStart, `onSuccess: removeCondition`, **no `fixedDC`** so it falls back to the caster's spell DC — the Hold Person path) + `autoExpiry` (10 rounds = the 1-minute cap). The consumer ticks `tickRecurringDamage` + `tickRecurringSave` at the target's turn-start: 1d6 fire then a CON save that ends the spell on a success. No engine change. Upcast (+1d6/slot) stays deferred (static condition dice, as with every smite). |
 | `acid-arrow-no-delayed-or-miss` | DIVERGENCE | Engine | M | Wired as flat 4d4 on hit; RAW adds 2d4 at end of target's next turn and half on a miss. `starter-pack.json` acid-arrow. |
 | ~~`guiding-bolt-no-advantage-grant`~~ | DIVERGENCE | Engine | S | Wired as flat 4d6; RAW grants the next attacker Advantage vs the target. **Closed by slice 796** — new `guiding-bolt-glow` condition (`GrantAdvantageToAttackers` + autoExpiry { afterRounds 1, turnEnd }) applied via the attack mechanic's `conditionOnHit`; the on-hit path now stamps the rider's autoExpiry (it previously only stamped the save/buff paths). RAW "next attack only" is modeled as a 1-round window (no consume-on-first-attack machinery) — noted on the condition. |
 | `heroism-no-recurring-temp-hp` | DIVERGENCE | Engine | M | `heroic-active` grants only Frightened immunity; RAW also grants temp HP = spell mod at the start of each of the target's turns. |
