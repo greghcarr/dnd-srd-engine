@@ -260,6 +260,11 @@ export const CharacterSchema = z.object({
   // (counts up, like perDayCastsUsed). Remaining = the statblock's usesPerDay
   // (or usesPerDayInLair) minus this. Reset to 0 on a Long Rest. Defaults 0.
   legendaryResistanceUsed: z.number().int().min(0).default(0),
+  // Slice 840: Legendary Action uses spent this round (counts up). Remaining =
+  // the statblock's `legendaryActions.uses` (or `usesInLair`) minus this. RAW
+  // the pool refreshes at the START of the creature's turn (reset in
+  // applyTurnStarted). Defaults 0.
+  legendaryActionsUsed: z.number().int().min(0).default(0),
   // Slice 232: damage types taken since the bearer's last turn-start.
   // Populated by the damage reducer (deduped append per DamageApplied).
   // Consumed by the turn-start Regeneration hook: at the start of the

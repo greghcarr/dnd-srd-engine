@@ -219,6 +219,25 @@ export const LegendaryResistanceSpecSchema = z.object({
 });
 export type LegendaryResistanceSpec = z.infer<typeof LegendaryResistanceSpecSchema>;
 
+// Slice 840: Legendary Actions (SRD 5.2.1). "Legendary Action Uses: N (M in
+// Lair). Immediately after another creature's turn, the creature can expend a
+// use to take one of the following actions. It regains all expended uses at the
+// start of each of its turns." `uses` is the pool; `actions` is the menu (each
+// `name` + a `cost` in uses, default 1). The engine owns the BUDGET (the pool +
+// the turn-start refresh + the validated spend via `engine.plan.legendaryAction`,
+// emitting `LegendaryActionUsed`); the "after another creature's turn" timing is
+// consumer-orchestrated and the underlying game action (a Tentacle attack, a
+// save-action) is dispatched separately by the consumer. `usesInLair` raises the
+// pool (a consumer `inLair` fact).
+export const LegendaryActionsSpecSchema = z.object({
+  uses: z.number().int().min(1),
+  usesInLair: z.number().int().min(1).optional(),
+  actions: z
+    .array(z.object({ name: z.string(), cost: z.number().int().min(1).default(1) }))
+    .min(1),
+});
+export type LegendaryActionsSpec = z.infer<typeof LegendaryActionsSpecSchema>;
+
 export const MonsterStatblockSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -258,5 +277,7 @@ export const MonsterStatblockSchema = z.object({
   // Slice 839: Legendary Resistance (Aboleth / Sphinx of Lore / Unicorn).
   // Optional — absent for non-legendary statblocks.
   legendaryResistance: LegendaryResistanceSpecSchema.optional(),
+  // Slice 840: Legendary Actions (the Aboleth in scope). Optional.
+  legendaryActions: LegendaryActionsSpecSchema.optional(),
 });
 export type MonsterStatblock = z.infer<typeof MonsterStatblockSchema>;

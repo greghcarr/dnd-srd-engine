@@ -177,6 +177,10 @@ export const applyTurnStarted = (
   const character = state.characters[event.combatantId];
   if (character !== undefined) {
     character.damageTypesTakenThisTurn = [];
+    // Slice 840: a legendary creature "regains all expended uses at the start of
+    // each of its turns." Reset only when spent so a non-legendary combatant
+    // (always 0) is byte-unchanged.
+    if (character.legendaryActionsUsed > 0) character.legendaryActionsUsed = 0;
   }
   active.turnUsage.actionUsed = false;
   active.turnUsage.bonusActionUsed = false;

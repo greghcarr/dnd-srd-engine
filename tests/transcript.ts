@@ -225,6 +225,8 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       return `**${characterName(stateBefore, event.targetId)}**'s ${event.ability} is drained by ${event.amount}.`;
     case 'LegendaryResistanceUsed':
       return `**${characterName(stateBefore, event.creatureId)}** uses Legendary Resistance to succeed on the save.`;
+    case 'LegendaryActionUsed':
+      return `**${characterName(stateBefore, event.creatureId)}** takes a Legendary Action: ${event.actionName}.`;
     case 'ExhaustionChanged':
       return `**${characterName(stateBefore, event.targetId)}** exhaustion ${event.fromLevel} -> ${event.toLevel}.`;
     case 'DeathSaveRolled': {

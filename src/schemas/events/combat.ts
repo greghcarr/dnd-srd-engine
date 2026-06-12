@@ -122,6 +122,19 @@ export const LegendaryResistanceUsedEventSchema = EventEnvelopeSchema.extend({
 });
 export type LegendaryResistanceUsedEvent = z.infer<typeof LegendaryResistanceUsedEventSchema>;
 
+// Slice 840: a Legendary Action was taken — the creature spent `cost` use(s)
+// from its pool (incrementing `character.legendaryActionsUsed`, refreshed at the
+// creature's turn-start). The underlying game action (a Tentacle attack, a
+// save-action) is dispatched separately by the consumer; this event records the
+// budget spend + which action, for the transcript.
+export const LegendaryActionUsedEventSchema = EventEnvelopeSchema.extend({
+  type: z.literal('LegendaryActionUsed'),
+  creatureId: ULIDSchema,
+  actionName: z.string(),
+  cost: z.number().int().min(1),
+});
+export type LegendaryActionUsedEvent = z.infer<typeof LegendaryActionUsedEventSchema>;
+
 // Forced movement: the named source attempted to push a creature
 // `distanceFeet` away from the source's position. The engine
 // doesn't model positions, so this event is purely informational

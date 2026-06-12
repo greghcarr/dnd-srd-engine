@@ -61,6 +61,7 @@ export const buildSpawnedCharacter = (
     breathWeaponExpended: false,
     expendedSaveActionIds: [],
     legendaryResistanceUsed: 0,
+    legendaryActionsUsed: 0,
     heroicInspiration: false,
     damageTypesTakenThisTurn: [],
     heroPoints: 0,

@@ -5088,6 +5088,7 @@
     },
     {
       "id": "aboleth",
+      "legendaryActions": {"uses":3,"usesInLair":4,"actions":[{"name":"Lash"},{"name":"Psychic Drain"}]},
       "legendaryResistance": {"usesPerDay":3,"usesPerDayInLair":4},
       "actions": [{"name":"Tentacle","weaponId":"aboleth-tentacle"}],
       "multiattack": {"name":"Aboleth Multiattack","attacks":[{"weaponId":"aboleth-tentacle","count":2}]},

@@ -256,6 +256,10 @@ export {
   type LegendaryResistanceIntent,
 } from './legendary-resistance.js';
 export {
+  planLegendaryAction,
+  type LegendaryActionIntent,
+} from './legendary-action.js';
+export {
   planCounterspell,
   planDispelMagic,
   planRemoveCurse,

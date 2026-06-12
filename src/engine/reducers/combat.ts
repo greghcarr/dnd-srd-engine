@@ -5,6 +5,7 @@ import type {
   ConditionRemovedEvent,
   AbilityScoreDrainedEvent,
   LegendaryResistanceUsedEvent,
+  LegendaryActionUsedEvent,
   CreaturePushedEvent,
   CreatureDestroyedEvent,
   DamageAppliedEvent,
@@ -283,6 +284,16 @@ export const applyLegendaryResistanceUsed = (
 ): void => {
   const character = requireCharacter(state, event.creatureId);
   character.legendaryResistanceUsed = (character.legendaryResistanceUsed ?? 0) + 1;
+};
+
+// Slice 840: spend `cost` Legendary Action use(s). The planner has verified the
+// pool has room; applyTurnStarted refreshes it at the creature's turn-start.
+export const applyLegendaryActionUsed = (
+  state: Draft<CampaignState>,
+  event: LegendaryActionUsedEvent,
+): void => {
+  const character = requireCharacter(state, event.creatureId);
+  character.legendaryActionsUsed = (character.legendaryActionsUsed ?? 0) + event.cost;
 };
 
 export const applyExhaustionChanged = (

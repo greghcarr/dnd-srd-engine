@@ -93,6 +93,10 @@ const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
   // legendary creature fail a save and calls it; the engine confirms the
   // budgeted spend, the consumer treats the save as a success.
   'legendaryResistance',
+  // Slice 840: Legendary Actions (Aboleth). Consumer-driven — spent "after
+  // another creature's turn" (a reaction-like timing); the engine owns the
+  // budget + turn-start refresh, the consumer dispatches the underlying action.
+  'legendaryAction',
   // Slice 648: Monk L3 Deflect Attacks. Reaction-style planner that
   // returns DeflectAttacksOutcome (reduction + remainingDamage) the
   // consumer subtracts from a pending DamageApplied. Consumer
