@@ -106,7 +106,9 @@ export const computeSavingThrow = (input: ComputeSaveInput): SaveResult => {
     const baseScore = input.character.abilityScores[input.ability];
     const floor = effects.effectiveAbilityScoreFloor(input.ability)?.value;
     const increase = effects.effectiveAbilityScoreIncrease(input.ability);
-    const abilityMod = abilityModifier(effectiveAbilityScore(baseScore, floor, increase));
+    // Slice 835: a drained ability lowers the save (the Shadow's STR drain).
+    const drain = input.character.abilityDrain?.[input.ability];
+    const abilityMod = abilityModifier(effectiveAbilityScore(baseScore, floor, increase, drain));
     breakdown.push({ source: `${input.ability}-mod`, value: abilityMod });
 
     const totalLevel = computeTotalLevel(input.character);

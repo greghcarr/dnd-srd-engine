@@ -143,6 +143,10 @@ export const applyLongRestEnded = (
     // Slice 794: clear the NPC "N/Day Each" per-spell cast counters
     // (Mage Fireball 2/Day, etc.) so the budget refreshes on a Long Rest.
     character.perDayCastsUsed = {};
+    // Slice 835: ability-score drain (the Shadow's Draining Swipe) is
+    // restored on a Long Rest — the 2024 default. Reset only when present so
+    // an undrained participant stays byte-unchanged (abilityDrain absent).
+    if (character.abilityDrain !== undefined) character.abilityDrain = {};
     // Slice 293. Reset per-long-rest item time budgets (Boots of
     // Speed's 10-min/LR cumulative activation pool). The field is
     // optional; only instances that have been activated since the

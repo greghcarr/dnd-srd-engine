@@ -192,6 +192,17 @@ export const WeaponSchema = ItemBaseSchema.extend({
   // a Long Rest (the 2024 default — the Mummy / Death Dog entries are the
   // exceptions that say it doesn't). Default (omitted/false) = no drain.
   drainsMaxHp: z.boolean().optional(),
+  // Slice 835: undead ability-score drain (the Shadow's Draining Swipe: "the
+  // target's Strength score decreases by 1d4"). On a hit, roll `dice` and
+  // reduce the target's `ability` by that much (cumulative on
+  // `character.abilityDrain`, restored on a Long Rest); RAW the target dies if
+  // the drain reduces the score to 0. Default (omitted) = no ability drain.
+  drainsAbility: z
+    .object({
+      ability: z.enum(['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA']),
+      dice: DiceExpressionSchema,
+    })
+    .optional(),
   // Slice 316: optional magic-weapon fields. A magic weapon with a
   // single base (Sun Blade = Longsword) ships as itemKind 'weapon' with
   // the base stats + these fields, so the attack planner wields it and

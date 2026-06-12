@@ -221,6 +221,8 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       return `**${characterName(stateBefore, event.targetId)}** is no longer ${conditionName(content, event.conditionId)}.`;
     case 'CreaturePushed':
       return `**${characterName(stateBefore, event.targetId)}** is pushed ${event.distanceFeet} ft (${event.source ?? 'source unknown'}).`;
+    case 'AbilityScoreDrained':
+      return `**${characterName(stateBefore, event.targetId)}**'s ${event.ability} is drained by ${event.amount}.`;
     case 'ExhaustionChanged':
       return `**${characterName(stateBefore, event.targetId)}** exhaustion ${event.fromLevel} -> ${event.toLevel}.`;
     case 'DeathSaveRolled': {

@@ -125,7 +125,9 @@ export const computeAbilityCheck = (input: ComputeAbilityCheckInput): AbilityChe
   const baseScore = input.character.abilityScores[input.ability];
   const floor = effects.effectiveAbilityScoreFloor(input.ability)?.value;
   const increase = effects.effectiveAbilityScoreIncrease(input.ability);
-  const abilityMod = abilityModifier(effectiveAbilityScore(baseScore, floor, increase));
+  // Slice 835: a drained ability lowers the check (Athletics off a drained STR).
+  const drain = input.character.abilityDrain?.[input.ability];
+  const abilityMod = abilityModifier(effectiveAbilityScore(baseScore, floor, increase, drain));
   const breakdown: AbilityCheckBreakdownEntry[] = [
     { source: `${input.ability}-mod`, value: abilityMod },
   ];

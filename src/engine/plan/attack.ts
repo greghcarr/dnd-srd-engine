@@ -12,11 +12,12 @@ import type {
   ConditionRemovedEvent,
   ConditionAppliedEvent,
   CreatureDestroyedEvent,
+  AbilityScoreDrainedEvent,
 } from '../../schemas/events/combat.js';
 import type { MirrorImageDeflectedEvent } from '../../schemas/events/mirror-image.js';
 import type { ItemTemporaryBuff } from '../../schemas/runtime/item-instance.js';
 import type { RNG } from '../../rng/index.js';
-import { rollDie, parseDiceExpression } from '../../rng/dice.js';
+import { rollDie, parseDiceExpression, rollExpression } from '../../rng/dice.js';
 import { newEventId, newAppliedConditionId } from '../../ids.js';
 import { computeAttackBonus, martialArtsApplies } from '../../derive/attack.js';
 import type { Weapon } from '../../schemas/content/item.js';
@@ -1021,6 +1022,8 @@ export const resolveAttackRollPhase = (input: ResolveAttackInput): AttackRollRes
       attacker.abilityScores[ability],
       attackerEffects.effectiveAbilityScoreFloor(ability)?.value,
       attackerEffects.effectiveAbilityScoreIncrease(ability),
+      // Slice 835: a drained STR/DEX can drop below the heavy-weapon threshold.
+      attacker.abilityDrain?.[ability],
     );
     return effective < HEAVY_WEAPON_MIN_ABILITY;
   })();
@@ -1270,7 +1273,8 @@ export const resolveAttackDamage = (ctx: RollContext): ReadonlyArray<Event> => {
   // honor the same flag below.
   const damageAbilityMod = weaponDef.noAbilityModifierDamage === true
     ? 0
-    : abilityModifier(effectiveAbilityScore(damageBaseScore, damageScoreFloor, damageScoreIncrease));
+    // Slice 835: a drained attack ability lowers weapon damage.
+    : abilityModifier(effectiveAbilityScore(damageBaseScore, damageScoreFloor, damageScoreIncrease, attacker.abilityDrain?.[damageAbility]));
   // Flex mastery: a versatile weapon wielded two-handed (off-hand empty)
   // uses the larger versatileDice instead of damageDice. RAW 2024.
   const wieldedTwoHanded =
@@ -1779,6 +1783,38 @@ export const resolveAttackDamage = (ctx: RollContext): ReadonlyArray<Event> => {
       )
     : [];
 
+  // Slice 835: undead ability-score drain (the Shadow's Draining Swipe). On a
+  // hit, roll the drain dice and reduce the target's ability; RAW the target
+  // DIES if the drain reduces the score to 0 (base score − cumulative drain).
+  // Only a `drainsAbility` weapon (the Shadow) reaches this, so existing
+  // attacks consume no extra RNG and are byte-unchanged.
+  const abilityDrainEvents: Event[] = ((): Event[] => {
+    const spec = weaponDef.drainsAbility;
+    if (spec === undefined) return [];
+    const rolled = rollExpression(spec.dice, rng).total;
+    if (rolled <= 0) return [];
+    const events: Event[] = [{
+      id: newEventId() as ULID,
+      at,
+      type: 'AbilityScoreDrained',
+      targetId: input.targetId as ULID,
+      ability: spec.ability,
+      amount: rolled,
+      sourceCharacterId: input.attackerId as ULID,
+    } satisfies AbilityScoreDrainedEvent];
+    const existingDrain = target.abilityDrain?.[spec.ability] ?? 0;
+    if (target.abilityScores[spec.ability] - (existingDrain + rolled) <= 0) {
+      events.push({
+        id: newEventId() as ULID,
+        at,
+        type: 'CreatureDestroyed',
+        targetId: input.targetId as ULID,
+        sourceCharacterId: input.attackerId as ULID,
+      } satisfies CreatureDestroyedEvent);
+    }
+    return events;
+  })();
+
   return [
     damageRolled,
     ...savageAttackerEvent,
@@ -1789,6 +1825,7 @@ export const resolveAttackDamage = (ctx: RollContext): ReadonlyArray<Event> => {
     ...damageTriggers,
     ...onHitRiderEvents,
     ...lifeDrainEvents,
+    ...abilityDrainEvents,
     ...intercept.extraEvents,
     ...concentrationBreak,
   ];
@@ -2100,7 +2137,8 @@ export const planCleave = (
   const cleaveBaseScore = attacker.abilityScores[damageAbility];
   const cleaveScoreFloor = cleaveAttackerEffects.effectiveAbilityScoreFloor(damageAbility)?.value;
   const cleaveScoreIncrease = cleaveAttackerEffects.effectiveAbilityScoreIncrease(damageAbility);
-  const abilityMod = abilityModifier(effectiveAbilityScore(cleaveBaseScore, cleaveScoreFloor, cleaveScoreIncrease));
+  // Slice 835: a drained attack ability lowers cleave damage too.
+  const abilityMod = abilityModifier(effectiveAbilityScore(cleaveBaseScore, cleaveScoreFloor, cleaveScoreIncrease, attacker.abilityDrain?.[damageAbility]));
   // Slice 450: if the weapon already suppresses the ability fold on
   // its base damage, there's nothing to strip on the cleave (otherwise
   // we'd over-subtract and drive damage negative).

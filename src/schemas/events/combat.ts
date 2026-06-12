@@ -95,6 +95,20 @@ export const ConditionRemovedEventSchema = EventEnvelopeSchema.extend({
 });
 export type ConditionRemovedEvent = z.infer<typeof ConditionRemovedEventSchema>;
 
+// Slice 835: undead ability-score drain (the Shadow's Draining Swipe reduces a
+// target's Strength by 1d4). Accumulates onto `character.abilityDrain[ability]`,
+// which effectiveAbilityScore subtracts at the combat/derived consumers; reset
+// on a Long Rest. `amount` is the (post-roll) reduction this hit applied.
+export const AbilityScoreDrainedEventSchema = EventEnvelopeSchema.extend({
+  type: z.literal('AbilityScoreDrained'),
+  targetId: ULIDSchema,
+  ability: z.enum(['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA']),
+  amount: z.number().int().min(1),
+  // The creature that inflicted the drain (the Shadow), for the transcript.
+  sourceCharacterId: ULIDSchema.optional(),
+});
+export type AbilityScoreDrainedEvent = z.infer<typeof AbilityScoreDrainedEventSchema>;
+
 // Forced movement: the named source attempted to push a creature
 // `distanceFeet` away from the source's position. The engine
 // doesn't model positions, so this event is purely informational

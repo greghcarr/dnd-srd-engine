@@ -174,7 +174,8 @@ export const planDeflectAttacks = (
   // effective-score path the engine uses elsewhere (honors floors +
   // increases set by feats / species).
   const dexScore = monk.abilityScores.DEX;
-  const dexMod = abilityModifier(effectiveAbilityScore(dexScore));
+  // Slice 835: a drained DEX lowers the deflect reduction.
+  const dexMod = abilityModifier(effectiveAbilityScore(dexScore, undefined, undefined, monk.abilityDrain?.DEX));
   const die = rollDie(DEFLECT_ATTACKS_DIE, rng);
   const reduction = Math.max(0, die + dexMod + enrollment.level);
   const remainingDamage = Math.max(0, intent.incomingDamage - reduction);
@@ -242,7 +243,7 @@ export const planDeflectAttacks = (
 
       // Monk feature DC: 8 + WIS + PB (RAW: PHB 2024 Monk class
       // "Saving Throws" header).
-      const wisMod = abilityModifier(effectiveAbilityScore(monk.abilityScores.WIS));
+      const wisMod = abilityModifier(effectiveAbilityScore(monk.abilityScores.WIS, undefined, undefined, monk.abilityDrain?.WIS));
       const dc = MONK_FEATURE_DC_BASE + wisMod + proficiencyBonus(computeTotalLevel(monk));
 
       const saveResult = rollSaveAgainstDC({

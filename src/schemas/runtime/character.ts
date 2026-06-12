@@ -154,6 +154,13 @@ export const CharacterSchema = z.object({
   // Validate the allocation against the background's `abilityScoreIncreases`
   // (`options` / `pattern`) with `validateBackgroundAbilityIncrease`.
   backgroundAbilityIncrease: z.record(AbilityScoreSchema, z.number().int().min(1).max(2)).optional(),
+  // Slice 835: cumulative ability-score DRAIN per ability (the Shadow's
+  // Draining Swipe reduces a target's Strength by 1d4 each hit). Accumulated by
+  // AbilityScoreDrained; subtracted (last, clamped to 1) in effectiveAbilityScore
+  // at the combat/derived consumers — NOT the build-time validators. Reset on a
+  // Long Rest (the 2024 default). Absent / empty = no drain (byte-unchanged for
+  // every existing character).
+  abilityDrain: z.record(AbilityScoreSchema, z.number().int().min(0)).optional(),
   hp: HPSchema,
   deathSaves: DeathSavesSchema.default({ successes: 0, failures: 0, stable: false }),
   exhaustion: ExhaustionLevelSchema.default(0),

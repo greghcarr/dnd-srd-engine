@@ -37,6 +37,8 @@ const computeArmorAC = (
       character.abilityScores.DEX,
       effects.effectiveAbilityScoreFloor('DEX')?.value,
       effects.effectiveAbilityScoreIncrease('DEX'),
+      // Slice 835: a drained DEX lowers AC.
+      character.abilityDrain?.DEX,
     ),
   );
 
@@ -107,7 +109,8 @@ const computeUnarmoredOverrideAC = (
     const baseScore = character.abilityScores[ability];
     const floor = effects.effectiveAbilityScoreFloor(ability)?.value;
     const increase = effects.effectiveAbilityScoreIncrease(ability);
-    return abilityModifier(effectiveAbilityScore(baseScore, floor, increase));
+    // Slice 835: a drained ability lowers an ability-override AC.
+    return abilityModifier(effectiveAbilityScore(baseScore, floor, increase, character.abilityDrain?.[ability]));
   };
   const baseValue =
     typeof override.base === 'number'

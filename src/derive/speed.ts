@@ -35,6 +35,8 @@ const armorStrSpeedPenalty = (input: GetEffectiveSpeedInput): number => {
     character.abilityScores.STR,
     effects.effectiveAbilityScoreFloor('STR')?.value,
     effects.effectiveAbilityScoreIncrease('STR'),
+    // Slice 835: a drained STR can drop below the armor's requirement.
+    character.abilityDrain?.STR,
   );
   return effStr < armorDef.strRequirement ? ARMOR_STR_SPEED_PENALTY : 0;
 };

@@ -20,15 +20,30 @@ export const PROFICIENCY_BONUS_LEVEL_MAX = 20;
 // Stone +2 reaches 20). The increase only raises: it never lowers a
 // score that already exceeds its `max`, so it can't clamp a higher
 // floor down to the cap.
+// Slice 835. Optional ability-score `drain` (the Shadow's Draining Swipe
+// reduces a target's Strength by 1d4, cumulative). Applied LAST — after the
+// floor + increase — so it reduces the final score, and clamped to
+// ABILITY_SCORE_MIN (1) so `abilityModifier` stays in range (a creature whose
+// score is fully drained to 0 dies, a gate the on-hit rider enforces; the
+// clamped 1 only keeps the modifier math valid for the brief dead state).
+// Threaded only through the COMBAT / derived consumers (attack, damage, save,
+// check, AC, speed, spell-DC, hit-die heal, the sheet) — NOT the build-time
+// validators (multiclass prereq, level-up eligibility), which read the innate
+// score. Drain is the `character.abilityDrain[ability]` accumulator, reset on
+// a Long Rest.
 export const effectiveAbilityScore = (
   baseScore: number,
   floor?: number,
   increase?: { readonly amount: number; readonly max: number },
+  drain?: number,
 ): number => {
   let score = baseScore;
   if (floor !== undefined) score = Math.max(score, floor);
   if (increase !== undefined) {
     score = Math.max(score, Math.min(score + increase.amount, increase.max));
+  }
+  if (drain !== undefined && drain > 0) {
+    score = Math.max(ABILITY_SCORE_MIN, score - drain);
   }
   return score;
 };

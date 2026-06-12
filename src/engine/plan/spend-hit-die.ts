@@ -80,6 +80,8 @@ export const planSpendHitDie = (
     character.abilityScores.CON,
     effects.effectiveAbilityScoreFloor('CON')?.value,
     effects.effectiveAbilityScoreIncrease('CON'),
+    // Slice 835: a drained CON heals less on a Hit Die spend.
+    character.abilityDrain?.CON,
   );
   const conMod = abilityModifier(con);
 

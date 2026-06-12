@@ -73,6 +73,8 @@ export const computeDerivedCharacter = (
         input.character.abilityScores[a],
         effects.effectiveAbilityScoreFloor(a)?.value,
         effects.effectiveAbilityScoreIncrease(a),
+        // Slice 835: the sheet shows the drained score.
+        input.character.abilityDrain?.[a],
       ),
     ]),
   ) as Record<AbilityScore, number>;

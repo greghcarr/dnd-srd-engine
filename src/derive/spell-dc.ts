@@ -77,7 +77,9 @@ export const computeSpellSaveDC = (input: ComputeSpellDCInput): SpellDCResult =>
   const baseScore = input.character.abilityScores[ability];
   const floor = effects.effectiveAbilityScoreFloor(ability)?.value;
   const increase = effects.effectiveAbilityScoreIncrease(ability);
-  const abilityMod = abilityModifier(effectiveAbilityScore(baseScore, floor, increase));
+  // Slice 835: a drained spellcasting ability lowers the save DC.
+  const drain = input.character.abilityDrain?.[ability];
+  const abilityMod = abilityModifier(effectiveAbilityScore(baseScore, floor, increase, drain));
   const breakdown: SpellDCBreakdownEntry[] = [
     { source: 'base', value: SPELL_DC_BASE },
     { source: 'proficiency', value: proficiencyBonus(computeTotalLevel(input.character)) },
@@ -104,7 +106,9 @@ export const computeSpellAttackBonus = (input: ComputeSpellDCInput): SpellDCResu
   const baseScore = input.character.abilityScores[ability];
   const floor = effects.effectiveAbilityScoreFloor(ability)?.value;
   const increase = effects.effectiveAbilityScoreIncrease(ability);
-  const abilityMod = abilityModifier(effectiveAbilityScore(baseScore, floor, increase));
+  // Slice 835: a drained spellcasting ability lowers the spell attack bonus.
+  const drain = input.character.abilityDrain?.[ability];
+  const abilityMod = abilityModifier(effectiveAbilityScore(baseScore, floor, increase, drain));
   const breakdown: SpellDCBreakdownEntry[] = [
     { source: 'proficiency', value: proficiencyBonus(computeTotalLevel(input.character)) },
     { source: `${ability}-mod`, value: abilityMod },

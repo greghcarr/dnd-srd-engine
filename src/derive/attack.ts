@@ -152,7 +152,9 @@ const attackAbility = (
   const baseScore = character.abilityScores[ability];
   const floor = effects.effectiveAbilityScoreFloor(ability)?.value;
   const increase = effects.effectiveAbilityScoreIncrease(ability);
-  return { ability, mod: abilityModifier(effectiveAbilityScore(baseScore, floor, increase)) };
+  // Slice 835: a drained attack ability lowers the to-hit (the Shadow's STR drain).
+  const drain = character.abilityDrain?.[ability];
+  return { ability, mod: abilityModifier(effectiveAbilityScore(baseScore, floor, increase, drain)) };
 };
 
 export const computeAttackBonus = (input: ComputeAttackInput): AttackResult => {

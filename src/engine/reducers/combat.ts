@@ -3,6 +3,7 @@ import type { CampaignState } from '../../schemas/runtime/campaign.js';
 import type {
   ConditionAppliedEvent,
   ConditionRemovedEvent,
+  AbilityScoreDrainedEvent,
   CreaturePushedEvent,
   CreatureDestroyedEvent,
   DamageAppliedEvent,
@@ -258,6 +259,19 @@ export const applyCreaturePushed = (
   // No-op: positions are consumer state. The event is a log entry
   // the consumer reads to apply the position change. Same shape as
   // TriggerFired — informational, not state-mutating.
+};
+
+// Slice 835: accumulate an ability-score drain (the Shadow's Draining Swipe).
+// effectiveAbilityScore subtracts `character.abilityDrain[ability]` at the
+// combat/derived consumers; a Long Rest clears it (applyLongRestEnded).
+export const applyAbilityScoreDrained = (
+  state: Draft<CampaignState>,
+  event: AbilityScoreDrainedEvent,
+): void => {
+  const character = requireCharacter(state, event.targetId);
+  const current = character.abilityDrain ?? {};
+  current[event.ability] = (current[event.ability] ?? 0) + event.amount;
+  character.abilityDrain = current;
 };
 
 export const applyExhaustionChanged = (
