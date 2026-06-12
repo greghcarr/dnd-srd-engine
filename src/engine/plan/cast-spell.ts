@@ -1126,15 +1126,19 @@ const planSaveMechanic = (
         mechanic.ability === 'DEX' &&
         halvesOnSuccess;
       const outcomeAmount = (raw: number): number =>
-        evasionApplies
-          ? success
-            ? 0
-            : halveDamage(raw)
-          : success && halvesOnSuccess
-            ? halveDamage(raw)
-            : success
+        // Slice 846: Heat Metal's "damage regardless of the save" — full
+        // damage on success or failure; the save only governs conditionOnFail.
+        mechanic.damageIgnoresSave === true
+          ? raw
+          : evasionApplies
+            ? success
               ? 0
-              : raw;
+              : halveDamage(raw)
+            : success && halvesOnSuccess
+              ? halveDamage(raw)
+              : success
+                ? 0
+                : raw;
       // Slice 341: primary + each additional component, each taking the
       // same save / Evasion halving, merged into one DamageApplied so
       // per-type resistance is honored independently (Flame Strike's

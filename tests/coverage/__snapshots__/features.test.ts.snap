@@ -214,6 +214,7 @@ exports[`feature-coverage matrix: conditions > wired conditions catalog is stabl
   "guiding-bolt-glow",
   "hasted-active",
   "healing-blocked-active",
+  "heat-metal-gripped",
   "held-paralyzed-active",
   "helped-against-active",
   "helped-on-check-active",

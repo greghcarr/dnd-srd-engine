@@ -118,6 +118,17 @@ const SpellSaveMechanicSchema = z.object({
   damageDice: DiceExpressionSchema.optional(),
   damageType: DamageTypeSchema.optional(),
   halfOnSuccess: z.boolean().optional(),
+  // Slice 846: the damage is dealt in FULL regardless of the save result;
+  // the save governs ONLY `conditionOnFail` (applied on a failure). RAW
+  // shape: Heat Metal — "Any creature in physical contact with the object
+  // takes 2d8 Fire damage" (automatic), then "the creature must succeed on
+  // a Constitution saving throw or [drop the object /] has Disadvantage on
+  // attack rolls and ability checks." Distinct from `halfOnSuccess` (which
+  // gates the damage on the save); when set, the save neither negates nor
+  // halves the damage. Composes with `extraDicePerSlotLevel` (full upcast
+  // damage) and `additionalDamage`. Defaults to the historical
+  // save-gates-damage behavior when unset.
+  damageIgnoresSave: z.boolean().optional(),
   // Slice 341: additional damage components of a *different* type,
   // applied in the same save (Flame Strike: 5d6 Fire + 5d6 Radiant).
   // Each is rolled once for the spell (AOE), receives the same
