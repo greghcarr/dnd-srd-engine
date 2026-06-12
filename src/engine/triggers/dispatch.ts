@@ -17,6 +17,7 @@ import { applyAll } from '../apply.js';
 import { planConcentrationOnDamage } from '../plan/concentration.js';
 import type { AppliedCondition } from '../../schemas/runtime/character.js';
 import { newEventId } from '../../ids.js';
+import { buildSpawnedCharacter } from '../spawn.js';
 import type { ULID } from '../ids-utils.js';
 import type {
   ConditionAppliedEvent,
@@ -541,48 +542,13 @@ const fireSpawnCreature = (
   const count = action.count ?? 1;
   const events: Event[] = [];
   for (let i = 0; i < count; i++) {
-    const spawnId = newEventId() as ULID;
-    const snapshot: Character = {
-      id: spawnId as unknown as Character['id'],
-      kind: 'creature',
-      name: statblock.name,
-      speciesId: 'companion',
-      backgroundId: 'companion',
-      statblockId: statblock.id,
-      classes: [{ classId: 'companion', level: 1, hitDiceRemaining: 1 }],
-      abilityScores: statblock.abilityScores,
-      hp: { current: statblock.hp.average, max: statblock.hp.average, temp: 0, maxBonus: 0 },
-      deathSaves: { successes: 0, failures: 0, stable: false },
-      exhaustion: 0,
-      speedFeet: statblock.speed.walk ?? 30,
-      armorClass: statblock.ac,
-      inventory: [],
-      equipped: { attuned: [] },
-      resources: [],
-      appliedConditions: [],
-      knownSpells: [],
-      preparedSpells: [],
-      spellSlotsUsed: {},
-      pactSlotsUsed: 0,
-      usedFreeCastSpellIds: [],
-      perDayCastsUsed: {},
-      weaponMasteries: [],
-      triggerCounters: {},
-      featsTaken: [],
-      pendingChoiceIds: [],
-      breathWeaponExpended: false,
-      expendedSaveActionIds: [],
-      heroicInspiration: false,
-      damageTypesTakenThisTurn: [],
-      heroPoints: 0,
-      xp: 0,
-      moraleBroken: false,
-    };
+    // Slice 836: the full required-field snapshot moved to buildSpawnedCharacter
+    // (shared with the ooze Split). HP defaults to the statblock average here.
     events.push({
       id: newEventId() as ULID,
       at,
       type: 'CharacterCreated',
-      snapshot,
+      snapshot: buildSpawnedCharacter(statblock),
     });
   }
   return events;

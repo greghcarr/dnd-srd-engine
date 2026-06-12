@@ -4894,6 +4894,7 @@
     },
     {
       "id": "black-pudding",
+      "split": {"damageTypes":["slashing","lightning"],"minHp":10},
       "name": "Black Pudding",
       "size": "Large",
       "type": "Ooze",
@@ -4949,6 +4950,7 @@
     },
     {
       "id": "ochre-jelly",
+      "split": {"damageTypes":["slashing","lightning"],"minHp":10},
       "name": "Ochre Jelly",
       "size": "Large",
       "type": "Ooze",

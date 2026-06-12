@@ -248,6 +248,10 @@ export {
   type ParryOutcome,
 } from './parry.js';
 export {
+  planOozeSplit,
+  type OozeSplitIntent,
+} from './ooze-split.js';
+export {
   planCounterspell,
   planDispelMagic,
   planRemoveCurse,

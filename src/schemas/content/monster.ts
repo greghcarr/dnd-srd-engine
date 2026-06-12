@@ -187,6 +187,23 @@ export const SaveActionSpecSchema = z.object({
 });
 export type SaveActionSpec = z.infer<typeof SaveActionSpecSchema>;
 
+// Slice 836: the ooze Split trait (Black Pudding / Ochre Jelly). RAW (SRD
+// 5.2.1): "While the [ooze] is Large or Medium and has 10+ Hit Points, it
+// becomes Bloodied or is subjected to Lightning or Slashing damage [trigger];
+// the [ooze] splits into two new [oozes], each one size smaller, the original's
+// Hit Points divided evenly (round down)." The TRIGGER (took slashing/lightning,
+// or became bloodied) is consumer-detected — it has the DamageApplied events +
+// HP; the consumer then calls `engine.plan.oozeSplit`, which resolves the
+// mechanical split (two one-smaller copies at half HP, the original removed).
+// Placement + initiative insertion stay consumer-managed (positions / encounter
+// are out of engine scope). `damageTypes` is the trigger metadata the consumer
+// reads; `minHp` is the engine-validated floor.
+export const OozeSplitSpecSchema = z.object({
+  damageTypes: z.array(DamageTypeSchema).default(['slashing', 'lightning']),
+  minHp: z.number().int().min(1).default(10),
+});
+export type OozeSplitSpec = z.infer<typeof OozeSplitSpecSchema>;
+
 export const MonsterStatblockSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -220,5 +237,8 @@ export const MonsterStatblockSchema = z.object({
   // monster could print more than one) defaulting to [] so every existing
   // statblock is byte-unchanged.
   saveActions: z.array(SaveActionSpecSchema).default([]),
+  // Slice 836: the ooze Split trait (Black Pudding / Ochre Jelly). Optional —
+  // absent for every non-ooze statblock.
+  split: OozeSplitSpecSchema.optional(),
 });
 export type MonsterStatblock = z.infer<typeof MonsterStatblockSchema>;

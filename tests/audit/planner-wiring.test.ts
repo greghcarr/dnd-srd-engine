@@ -83,6 +83,11 @@ const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
   // economy is consumer-owned since Constrict bundles into a Multiattack
   // for some monsters and is standalone for others.
   'saveAction',
+  // Slice 836: ooze Split (Black Pudding / Ochre Jelly). Consumer-driven —
+  // the consumer detects the slashing/lightning/bloodied trigger from the
+  // damage events and calls it; the spawns' placement + initiative are
+  // consumer-managed (positions / encounter are out of engine scope).
+  'oozeSplit',
   // Slice 648: Monk L3 Deflect Attacks. Reaction-style planner that
   // returns DeflectAttacksOutcome (reduction + remainingDamage) the
   // consumer subtracts from a pending DamageApplied. Consumer
