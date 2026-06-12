@@ -4374,6 +4374,7 @@
     },
     {
       "id": "wight",
+      "saveActions": [{"id":"life-drain","name":"Life Drain","saveAbility":"CON","saveDC":13,"reachFeet":5,"onFail":{"damage":[{"dice":"1d8+2","type":"necrotic"}],"applyConditionIds":[],"drainMaxHp":true}}],
       "actions": [{"name":"Necrotic Sword","weaponId":"wight-necrotic-sword"},{"name":"Necrotic Bow","weaponId":"wight-necrotic-bow"}],
       "multiattack": {"name":"Wight Multiattack","attacks":[{"weaponId":"wight-necrotic-sword","count":2}]},
       "name": "Wight",

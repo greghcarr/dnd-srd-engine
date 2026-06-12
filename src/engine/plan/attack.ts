@@ -49,6 +49,7 @@ import {
   type MirrorImageState,
 } from '../../derive/mirror-image.js';
 import { planConcentrationOnDamage } from './concentration.js';
+import { planLifeDrainEvents } from './_life-drain.js';
 import { dispatchTriggers } from '../triggers/dispatch.js';
 import { applyAll } from '../apply.js';
 import { D20_SIDES, NAT_20, NAT_1 } from '../../internal/constants.js';
@@ -1765,41 +1766,18 @@ export const resolveAttackDamage = (ctx: RollContext): ReadonlyArray<Event> => {
     : [];
 
   // Slice 832: undead Life Drain (Specter / Wraith). The weapon's damage also
-  // reduces the target's Hit Point maximum by the amount taken (post-mitigation),
-  // modeled as a `life-drained` condition carrying a negative `hpMaxBonusDelta`
-  // (the ConditionApplied reducer lowers `hp.maxBonus`). The reducer dedupes a
-  // condition by id, so cross-turn accumulation keeps ONE cumulative entry:
-  // remove the existing one and re-apply the summed delta. The in-scope drainers
-  // strike once per turn, so there's no intra-attack prior entry to thread. The
-  // condition ends on a Long Rest (planLongRest), restoring the maximum.
-  const lifeDrainEvents: Event[] = ((): Event[] => {
-    if (weaponDef.drainsMaxHp !== true) return [];
-    const taken = intercept.components.reduce((sum, c) => sum + c.amount, 0);
-    if (taken <= 0) return [];
-    const existingDelta = state.characters[input.targetId]?.appliedConditions
-      .find((c) => c.conditionId === 'life-drained')?.hpMaxBonusDelta ?? 0;
-    const events: Event[] = [];
-    if (existingDelta !== 0) {
-      events.push({
-        id: newEventId() as ULID,
+  // reduces the target's Hit Point maximum by the amount taken (post-mitigation
+  // sum), via the shared `planLifeDrainEvents` helper (slice 834 extracted it
+  // for the Wight save-action's matching arm).
+  const lifeDrainEvents: Event[] = weaponDef.drainsMaxHp === true
+    ? planLifeDrainEvents(
+        state,
+        input.targetId,
+        input.attackerId,
+        intercept.components.reduce((sum, c) => sum + c.amount, 0),
         at,
-        type: 'ConditionRemoved',
-        targetId: input.targetId as ULID,
-        conditionId: 'life-drained',
-      } satisfies ConditionRemovedEvent);
-    }
-    events.push({
-      id: newEventId() as ULID,
-      at,
-      type: 'ConditionApplied',
-      targetId: input.targetId as ULID,
-      conditionId: 'life-drained',
-      appliedConditionId: newAppliedConditionId(),
-      sourceCharacterId: input.attackerId as ULID,
-      hpMaxBonusDelta: existingDelta - taken,
-    } satisfies ConditionAppliedEvent);
-    return events;
-  })();
+      )
+    : [];
 
   return [
     damageRolled,

@@ -17,6 +17,7 @@ import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { rollExpression, rollDie } from '../../rng/dice.js';
 import { rollSaveAgainstDC } from './_save-roll.js';
+import { planLifeDrainEvents } from './_life-drain.js';
 import { applyAll } from '../apply.js';
 import { planConcentrationOnDamage } from './concentration.js';
 import { newEventId, newAppliedConditionId } from '../../ids.js';
@@ -137,6 +138,9 @@ export const planSaveAction = (
     })
     .filter((c) => c.amount > 0);
 
+  // Slice 834: the post-mitigation damage taken, captured for an `onFail`
+  // Life Drain (Wight) — the HP-max reduction equals the damage taken.
+  let lifeDrainTaken = 0;
   if (rawComponents.length > 0) {
     const mitigated = mitigateDamage({
       character: target,
@@ -156,6 +160,7 @@ export const planSaveAction = (
       at,
       rng,
     });
+    lifeDrainTaken = intercept.components.reduce((sum, c) => sum + c.amount, 0);
     const damage: DamageAppliedEvent = {
       id: damageId,
       at,
@@ -226,6 +231,12 @@ export const planSaveAction = (
         sourceCharacterId: intent.monsterId as ULID,
         source: `save-action:${spec.id}`,
       } satisfies CreaturePushedEvent);
+    }
+    // Slice 834: undead Life Drain on a failed save (Wight) — reduce the
+    // target's Hit Point maximum by the damage taken, restored on a Long Rest.
+    // Shares the slice-832 `life-drained` mechanism with the weapon drainsMaxHp.
+    if (spec.onFail.drainMaxHp === true) {
+      events.push(...planLifeDrainEvents(state, intent.targetId, intent.monsterId, lifeDrainTaken, at));
     }
   }
 

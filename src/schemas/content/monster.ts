@@ -165,6 +165,11 @@ export const SaveActionSpecSchema = z.object({
     damage: z.array(SaveActionDamageSchema).default([]),
     applyConditionIds: z.array(z.string()).default([]),
     pushFeet: z.number().int().min(0).optional(),
+    // Slice 834: undead Life Drain on a save-action (Wight Life Drain). When
+    // true, a failed save reduces the target's Hit Point maximum by the
+    // post-mitigation damage taken (the same `life-drained` mechanism the
+    // slice-832 weapon `drainsMaxHp` flag uses), restored on a Long Rest.
+    drainMaxHp: z.boolean().optional(),
   }),
   // RAW most save-actions do nothing on a success; the Air Elemental
   // Whirlwind's "Success: Half damage only" is the exception. Damage
