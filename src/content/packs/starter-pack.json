@@ -4799,7 +4799,7 @@
       "xp": 450,
       "proficiencyBonus": 2,
       "languages": [],
-      "breathWeapon": { "id": "acid-spray", "name": "Acid Spray", "rechargeMin": 6, "area": { "shape": "line", "sizeFeet": 30 }, "saveAbility": "DEX", "saveDC": 13, "damageDice": "3d6", "damageType": "acid", "halfOnSuccess": true }
+      "breathWeapon": { "id": "acid-spray", "name": "Acid Spray", "rechargeMin": 6, "area": { "shape": "line", "sizeFeet": 30 }, "saveAbility": "DEX", "saveDC": 12, "damageDice": "4d6", "damageType": "acid", "halfOnSuccess": true }
     },
     {
       "id": "bulette",
@@ -5084,7 +5084,7 @@
       "proficiencyBonus": 5,
       "languages": [],
       "traits": [],
-      "breathWeapon": { "id": "poison-breath", "name": "Poison Breath", "rechargeMin": 6, "area": { "shape": "cone", "sizeFeet": 15 }, "saveAbility": "CON", "saveDC": 19, "damageDice": "10d8", "damageType": "poison", "halfOnSuccess": true }
+      "breathWeapon": { "id": "poison-breath", "name": "Poison Breath", "rechargeMin": 6, "area": { "shape": "cone", "sizeFeet": 60 }, "saveAbility": "CON", "saveDC": 18, "damageDice": "10d10", "damageType": "poison", "halfOnSuccess": true }
     },
     {
       "id": "aboleth",
@@ -5488,7 +5488,7 @@
       "xp": 2300,
       "proficiencyBonus": 3,
       "languages": ["common", "draconic"],
-      "breathWeapon": { "id": "cold-breath", "name": "Cold Breath", "rechargeMin": 5, "area": { "shape": "cone", "sizeFeet": 30 }, "saveAbility": "CON", "saveDC": 15, "damageDice": "10d8", "damageType": "cold", "halfOnSuccess": true }
+      "breathWeapon": { "id": "cold-breath", "name": "Cold Breath", "rechargeMin": 5, "area": { "shape": "cone", "sizeFeet": 30 }, "saveAbility": "CON", "saveDC": 15, "damageDice": "9d8", "damageType": "cold", "halfOnSuccess": true }
     },
     {
       "id": "young-black-dragon",
@@ -5510,7 +5510,7 @@
       "xp": 2900,
       "proficiencyBonus": 3,
       "languages": ["common", "draconic"],
-      "breathWeapon": { "id": "acid-breath", "name": "Acid Breath", "rechargeMin": 5, "area": { "shape": "line", "sizeFeet": 30 }, "saveAbility": "DEX", "saveDC": 14, "damageDice": "11d8", "damageType": "acid", "halfOnSuccess": true }
+      "breathWeapon": { "id": "acid-breath", "name": "Acid Breath", "rechargeMin": 5, "area": { "shape": "line", "sizeFeet": 30 }, "saveAbility": "DEX", "saveDC": 14, "damageDice": "14d6", "damageType": "acid", "halfOnSuccess": true }
     },
     {
       "id": "young-green-dragon",
@@ -5575,7 +5575,7 @@
       "xp": 10000,
       "proficiencyBonus": 5,
       "languages": ["common", "draconic"],
-      "breathWeapon": { "id": "cold-breath", "name": "Cold Breath", "rechargeMin": 5, "area": { "shape": "cone", "sizeFeet": 60 }, "saveAbility": "CON", "saveDC": 19, "damageDice": "16d8", "damageType": "cold", "halfOnSuccess": true }
+      "breathWeapon": { "id": "cold-breath", "name": "Cold Breath", "rechargeMin": 5, "area": { "shape": "cone", "sizeFeet": 60 }, "saveAbility": "CON", "saveDC": 19, "damageDice": "12d8", "damageType": "cold", "halfOnSuccess": true }
     },
     {
       "id": "adult-black-dragon",
@@ -5595,7 +5595,7 @@
       "xp": 11500,
       "proficiencyBonus": 5,
       "languages": ["common", "draconic"],
-      "breathWeapon": { "id": "acid-breath", "name": "Acid Breath", "rechargeMin": 5, "area": { "shape": "line", "sizeFeet": 60 }, "saveAbility": "DEX", "saveDC": 18, "damageDice": "14d8", "damageType": "acid", "halfOnSuccess": true }
+      "breathWeapon": { "id": "acid-breath", "name": "Acid Breath", "rechargeMin": 5, "area": { "shape": "line", "sizeFeet": 60 }, "saveAbility": "DEX", "saveDC": 18, "damageDice": "12d8", "damageType": "acid", "halfOnSuccess": true }
     },
     {
       "id": "adult-green-dragon",
@@ -5616,7 +5616,7 @@
       "xp": 13000,
       "proficiencyBonus": 5,
       "languages": ["common", "draconic"],
-      "breathWeapon": { "id": "poison-breath", "name": "Poison Breath", "rechargeMin": 5, "area": { "shape": "cone", "sizeFeet": 60 }, "saveAbility": "CON", "saveDC": 18, "damageDice": "22d6", "damageType": "poison", "halfOnSuccess": true }
+      "breathWeapon": { "id": "poison-breath", "name": "Poison Breath", "rechargeMin": 5, "area": { "shape": "cone", "sizeFeet": 60 }, "saveAbility": "CON", "saveDC": 18, "damageDice": "16d6", "damageType": "poison", "halfOnSuccess": true }
     },
     {
       "id": "adult-blue-dragon",
@@ -5636,7 +5636,7 @@
       "xp": 15000,
       "proficiencyBonus": 5,
       "languages": ["common", "draconic"],
-      "breathWeapon": { "id": "lightning-breath", "name": "Lightning Breath", "rechargeMin": 5, "area": { "shape": "line", "sizeFeet": 90 }, "saveAbility": "DEX", "saveDC": 19, "damageDice": "16d10", "damageType": "lightning", "halfOnSuccess": true }
+      "breathWeapon": { "id": "lightning-breath", "name": "Lightning Breath", "rechargeMin": 5, "area": { "shape": "line", "sizeFeet": 90 }, "saveAbility": "DEX", "saveDC": 19, "damageDice": "11d10", "damageType": "lightning", "halfOnSuccess": true }
     },
     {
       "id": "adult-red-dragon",
@@ -5656,7 +5656,7 @@
       "xp": 18000,
       "proficiencyBonus": 6,
       "languages": ["common", "draconic"],
-      "breathWeapon": { "id": "fire-breath", "name": "Fire Breath", "rechargeMin": 5, "area": { "shape": "cone", "sizeFeet": 60 }, "saveAbility": "DEX", "saveDC": 21, "damageDice": "18d6", "damageType": "fire", "halfOnSuccess": true }
+      "breathWeapon": { "id": "fire-breath", "name": "Fire Breath", "rechargeMin": 5, "area": { "shape": "cone", "sizeFeet": 60 }, "saveAbility": "DEX", "saveDC": 21, "damageDice": "17d6", "damageType": "fire", "halfOnSuccess": true }
     },
     {
       "id": "bearded-devil",
