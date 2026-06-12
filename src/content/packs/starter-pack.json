@@ -4029,6 +4029,7 @@
     },
     {
       "id": "giant-spider",
+      "saveActions": [{"id":"web","name":"Web","saveAbility":"DEX","saveDC":13,"reachFeet":60,"recharge":{"rechargeMin":5},"onFail":{"damage":[],"applyConditionIds":["restrained"]}}],
       "actions": [{ "name": "Bite", "weaponId": "giant-spider-bite" }],
       "name": "Giant Spider",
       "size": "Large",
