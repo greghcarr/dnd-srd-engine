@@ -1050,6 +1050,21 @@ export interface FuzzBattleOptions {
     readonly character: Character;
     readonly itemInstances: ReadonlyArray<ItemInstance>;
   };
+  /** Slice 833: the PvP mirror of `playerCharacter` — drop a second
+   *  caller-supplied character into team B[0] verbatim (its own id, class,
+   *  level, and gear), so the web app can run real-vs-real 1v1. Like
+   *  `playerCharacter` it's an INDEPENDENT axis from the seed: B[0]'s
+   *  shared-cursor random build is still drawn-and-discarded, so the rest of
+   *  team B + the other combatants + map stay seed-deterministic and built at
+   *  `level`. Its `itemInstances` are emitted as ItemAcquired, then the
+   *  `character` snapshot as CharacterCreated (it's already armed; no
+   *  auto-equip), and it arrives at its own level (never re-leveled — `level`
+   *  sizes only the map/other combatants). Only meaningful for the 'pc'
+   *  opponent team (vs !== 'monster'); ignored for vs='monster'. */
+  readonly opponentCharacter?: {
+    readonly character: Character;
+    readonly itemInstances: ReadonlyArray<ItemInstance>;
+  };
   readonly rest?: FuzzRest;
   readonly teamSize?: number;
   readonly vs?: FuzzVs;
@@ -1177,6 +1192,17 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
     playerCharacter !== undefined
       ? buildFromPlayerCharacter(playerCharacter.character, playerCharacter.itemInstances, pack)
       : undefined;
+  // Slice 833: the PvP opponent — a second caller-supplied character seats
+  // team B[0] verbatim (its own id / class / level / gear), the mirror of
+  // playerCharacterBuilt. An INDEPENDENT axis from the seed: B[0]'s
+  // shared-cursor random build is still drawn-and-discarded below, so the rest
+  // of team B + map advance identically with or without it. Only the 'pc' team
+  // consults it — for vs='monster' team B is monsters, so it's ignored.
+  const opponentCharacter = opts.opponentCharacter;
+  const opponentCharacterBuilt: BuiltCharacter | undefined =
+    opponentCharacter !== undefined
+      ? buildFromPlayerCharacter(opponentCharacter.character, opponentCharacter.itemInstances, pack)
+      : undefined;
   // Slice 751: arcane casters prepare Counterspell only under 'auto' at
   // L5+ (when they have 3rd-level slots), so the 'none' / sub-L5 builds —
   // and their CharacterCreated snapshots — stay byte-identical.
@@ -1194,7 +1220,13 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
   });
   const teamB: BuiltCharacter[] = vs === 'monster'
     ? teamNames('Beast').map((n) => buildMonster(n, pack, rngFloat))
-    : teamNames('Bran').map((n) => buildL1(n, rngFloat, pack, undefined, includeCounterspell));
+    : teamNames('Bran').map((n, i) => {
+      const built = buildL1(n, rngFloat, pack, undefined, includeCounterspell); // always consume the shared draws
+      // Slice 833: verbatim PvP opponent in B[0]; the discarded shared draw
+      // above keeps the seed stream aligned (the rest of team B + map stay
+      // seed-deterministic), exactly how teamA[0] seats playerCharacterBuilt.
+      return i === 0 && opponentCharacterBuilt !== undefined ? opponentCharacterBuilt : built;
+    });
 
   const now = (offsetSec = 0): string => new Date(Date.UTC(2026, 0, 1, 0, 0, offsetSec)).toISOString();
   let eventCounter = 0;
@@ -1209,6 +1241,12 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
     // verbatim (it's already armed; no weapon/armor/shield/potion synthesis).
     if (playerCharacter !== undefined && pc === playerCharacterBuilt) {
       for (const inst of playerCharacter.itemInstances) setupEvents.push(acquire(inst));
+      continue;
+    }
+    // Slice 833: the PvP opponent character does the same — its own instances
+    // verbatim, no synthesis.
+    if (opponentCharacter !== undefined && pc === opponentCharacterBuilt) {
+      for (const inst of opponentCharacter.itemInstances) setupEvents.push(acquire(inst));
       continue;
     }
     setupEvents.push(acquire(pc.weaponInstance));
@@ -1231,6 +1269,9 @@ export const runBattle = (opts: FuzzBattleOptions): FuzzBattleResult => {
       // is never re-leveled — its level is independent of opts.level, which
       // sizes only the opponent + other combatants.
       if (pc === playerCharacterBuilt) continue;
+      // Slice 833: the PvP opponent drop-in is likewise never re-leveled — it
+      // keeps its own level (opts.level sizes only the map/other combatants).
+      if (pc === opponentCharacterBuilt) continue;
       campaign = levelUpTo(engine, campaign, pc.character.id, pc.build.classId, level);
     }
   }
