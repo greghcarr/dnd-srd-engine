@@ -26,6 +26,14 @@ export interface TickRecurringSaveIntent {
   // Defaults to the caster's primary spellcasting class. Throws if no
   // spellcasting class is available.
   readonly castingClassId?: string;
+  // Slice 847: roll this tick's save with Advantage. RAW Hideous Laughter:
+  // "At the end of each of its turns AND each time it takes damage, it makes
+  // another Wisdom saving throw. The target has Advantage on the save if the
+  // save is triggered by damage." The condition's `recurringSave.trigger`
+  // names the end-of-turn tick (rolled flat); the consumer sets this flag
+  // when it instead fires the tick in response to the bearer taking damage.
+  // It nets against any disadvantage source per RAW (see _save-roll.ts).
+  readonly advantage?: boolean;
   readonly at?: string;
 }
 
@@ -60,6 +68,12 @@ const findPrimarySpellcastingClass = (
  * action-consume since action economy only exists inside initiative.
  * On success, if onSuccess is set, emits a `ConditionRemoved` for
  * the named condition on the bearer.
+ *
+ * Slice 847: when `intent.advantage` is set, the save rolls with an
+ * extra advantage source (netted against disadvantage per RAW). The
+ * consumer sets it for Hideous Laughter's damage-triggered repeat save
+ * ("Advantage on the save if the save is triggered by damage"); the
+ * end-of-turn tick leaves it unset (rolled flat).
  */
 export const planTickRecurringSave = (
   state: CampaignState,
@@ -162,6 +176,7 @@ export const planTickRecurringSave = (
     sourceIsMagical: true,
     rng,
     at,
+    ...(intent.advantage === true ? { advantage: true } : {}),
     ...(onSuccess === 'removeCondition'
       ? { savePreventsCondition: intent.conditionId }
       : {}),

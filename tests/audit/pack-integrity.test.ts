@@ -480,7 +480,8 @@ describe('pack integrity: wired spells do not apply effect-less conditions', () 
     // resolver / an id-keyed allowlist, not in the effects array):
     'guided', // consumed by planConsumeGuidance (rolls the d4)
     'mirror-image-active', // read in the attack planner; appliedConditionLevel = image count
-    'hideous-laughter-active', // slice 366: action-blocking (ACTION_BLOCKING_CONDITIONS) + recurringSave; Incapacitated/Prone are engine-coded base conditions
+    // (Slice 847 wired hideous-laughter-active's Prone effects directly, so it
+    // now carries mechanical effects and is no longer effect-less. Removed.)
     'sleep-drowsy-active', // slice 783: Sleep's Incapacitated phase — action-blocking (ACTION_BLOCKING_CONDITIONS) + escalating recurringSave (-> unconscious); Incapacitated is an engine-coded base condition
     'cursed-inert-active', // slice 368: recurringSave { onFail: 'dodge' } drives it (save-or-Dodge); the mechanic is the recurring save, not the effects array
     'resisted', // slice 369: consumer-invoked planConsumeResistance rolls the 1d4 reduction (mirrors Absorb Elements); the marker just says Resistance is active

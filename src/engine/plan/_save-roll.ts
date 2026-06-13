@@ -40,6 +40,11 @@ export interface RollSaveInput {
   // alone). Caller-supplied per save site since the engine doesn't
   // model positions; consumers (UI / VTT) determine cover and pass it.
   readonly cover?: CoverKind;
+  // Slice 847: force an extra advantage source on this save (RAW Hideous
+  // Laughter's damage-triggered repeat save). Threaded into
+  // computeSavingThrow so it nets against any disadvantage source per RAW;
+  // default (undefined / false) leaves the roll byte-identical.
+  readonly advantage?: boolean;
 }
 
 // Rolls a fixed-DC saving throw for `targetId` against `dc`, baking the
@@ -58,6 +63,7 @@ export const rollSaveAgainstDC = (input: RollSaveInput): SaveRollResult | undefi
     ability: input.ability,
     characters: input.state.characters,
     sourceIsMagical: input.sourceIsMagical,
+    ...(input.advantage === true ? { extraAdvantage: true } : {}),
     ...(input.savePreventsCondition !== undefined
       ? { savePreventsCondition: input.savePreventsCondition }
       : {}),

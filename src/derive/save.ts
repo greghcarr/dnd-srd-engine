@@ -75,6 +75,14 @@ export interface ComputeSaveInput {
   // (Stunning Strike CON, multiattack save, etc.) leave this
   // undefined and the gate evaluates false.
   readonly savePreventsCondition?: string;
+  // Slice 847: an extra advantage source supplied by the caller, folded
+  // into the RAW advantage/disadvantage netting alongside condition- and
+  // Magic-Resistance-derived advantage. Canonical user: Hideous Laughter's
+  // damage-triggered repeat save ("the target has Advantage on the save if
+  // the save is triggered by damage") — the recurring-save tick passes this
+  // when the consumer fires it in response to the bearer taking damage.
+  // Default (undefined / false) leaves every existing save byte-identical.
+  readonly extraAdvantage?: boolean;
 }
 
 const isSaveProficient = (character: Character, ability: AbilityScore, content: ResolvedContent): boolean => {
@@ -176,7 +184,10 @@ export const computeSavingThrow = (input: ComputeSaveInput): SaveResult => {
   // and a separate disadvantage source nets neither).
   const magicResistanceAdvantage =
     input.sourceIsMagical === true && effects.hasMagicResistance();
-  const effectiveAdvantage = adv.advantage || magicResistanceAdvantage;
+  // Slice 847: a caller-supplied advantage source (Hideous Laughter's
+  // damage-triggered repeat save) nets against disadvantage like any other.
+  const effectiveAdvantage =
+    adv.advantage || magicResistanceAdvantage || input.extraAdvantage === true;
   // Slice 804: untrained armor → Disadvantage on STR/DEX saves (RAW Armor
   // Training: "any D20 Test that involves Strength or Dexterity").
   const untrainedArmorDisadvantage =

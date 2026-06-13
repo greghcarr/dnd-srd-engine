@@ -18,12 +18,12 @@
 
 ## Rollup
 
-Current state — open vs. closed rows, with the open count's severity split (BLOCKER / DIVERGENCE / QUIRK) in the next column. Updated through slice 843. **Areas 1 and 7 are fully closed.** A row is not a slice: several rows fan out into multiple slices (e.g. the `drain-undead-arms` lineage → slices 832/834/835), so the open count is a floor on remaining engine slices, not an exact count.
+Current state — open vs. closed rows, with the open count's severity split (BLOCKER / DIVERGENCE / QUIRK) in the next column. Updated through slice 847. **Areas 1 and 7 are fully closed.** A row is not a slice: several rows fan out into multiple slices (e.g. the `drain-undead-arms` lineage → slices 832/834/835), so the open count is a floor on remaining engine slices, not an exact count.
 
 | Area | Open | Closed | Open B/D/Q | Owner of open work | Status |
 |---|---|---|---|---|---|
 | 1. Edition drift | 0 | 4 | — | — | ✅ **fully closed** |
-| 2. Spell mechanics (L0-4) | 18 | 5 | 0 / 13 / 5 | Engine | open — largest engine block |
+| 2. Spell mechanics (L0-4) | 17 | 6 | 0 / 12 / 5 | Engine | open — largest engine block |
 | 3. Targeting / AoE seam | 13 | 1 | 0 / 6 / 7 | Seam + Consumer | open — consumer-correctness frontier |
 | 4. Core combat correctness | 5 | 6 | 0 / 0 / 5 | Engine | open — divergence-free (quirks only) |
 | 5. Build & leveling validation | 5 | 6 | 0 / 1 / 4 | Engine | open |
@@ -31,7 +31,7 @@ Current state — open vs. closed rows, with the open count's severity split (BL
 | 7. Monster runtime (DM side) | 0 | 21 | — | — | ✅ **fully closed** |
 | 8. Exploration / non-combat | 13 | 1 | 0 / 3 / 10 | Engine | open |
 | 9. Consumer duties & docs | 8 | 0 | 0 / 3 / 5 | Consumer + Docs | hand-off — not engine slices |
-| **Total** | **67** | **48** | **0 / 27 / 40** | — | 115 rows |
+| **Total** | **66** | **49** | **0 / 26 / 40** | — | 115 rows |
 
 **Recommended order:** The structural blockers are all closed (~~`aoe-shape-coverage`~~ 786–787, ~~`no-actions-field`~~ 788, ~~`multiattack-unpopulated`~~ 789–792, ~~`no-hit-die-spend-planner`~~ 785, ~~`background-ability-bonus`~~), and Areas 1 + 7 are done. Remaining engine work by leverage: **Area 2** (spell mechanical arms — 20, the largest block) and **Area 8** (the exploration pillar — 13), then the smaller Area 4 / 5 / 6 divergence-and-quirk cleanups and the engine half of Area 3. Consumer items (Area 9 + the consumer half of Area 3) bundle into a hand-off note for the dnd-web session.
 
@@ -79,7 +79,7 @@ A level-7 caster's whole repertoire. "Cast does nothing" and "missing a defining
 | ~~`guiding-bolt-no-advantage-grant`~~ | DIVERGENCE | Engine | S | Wired as flat 4d6; RAW grants the next attacker Advantage vs the target. **Closed by slice 796** — new `guiding-bolt-glow` condition (`GrantAdvantageToAttackers` + autoExpiry { afterRounds 1, turnEnd }) applied via the attack mechanic's `conditionOnHit`; the on-hit path now stamps the rider's autoExpiry (it previously only stamped the save/buff paths). RAW "next attack only" is modeled as a 1-round window (no consume-on-first-attack machinery) — noted on the condition. |
 | `heroism-no-recurring-temp-hp` | DIVERGENCE | Engine | M | `heroic-active` grants only Frightened immunity; RAW also grants temp HP = spell mod at the start of each of the target's turns. |
 | `enlarge-reduce-no-damage-rider-or-save` | DIVERGENCE | Engine | M | Pure buff (STR adv/disadv only); RAW adds ±1d4 weapon damage and an unwilling-target CON save (auto-applies today). `enlarged-active` / `reduced-active`. |
-| `hideous-laughter-no-conditions` | DIVERGENCE | Engine | M | `hideous-laughter-active` projects no effects; RAW applies Prone + Incapacitated on a failed save (+ damage re-save). |
+| ~~`hideous-laughter-no-conditions`~~ | DIVERGENCE | Engine | M | `hideous-laughter-active` projected no effects; RAW applies Prone + Incapacitated on a failed save (+ a damage re-save with Advantage). **Closed by slice 847** — (a) **content**: the variant now carries Prone's three effect-stack arms (SetAdvantage attack:disadvantage; GrantAdvantageToAttackers when `event.attackKind` is melee; ImposeDisadvantageOnAttackers when ranged), so a laughing target is easier to hit in melee / harder at range; the Incapacitated half stays engine-coded via ACTION_BLOCKING_CONDITIONS (slice 366). (b) **engine**: a force-advantage flag threaded `tickRecurringSave` → `_save-roll` → `computeSavingThrow` (folded in *before* the RAW adv/disadv netting), so the consumer rolls the damage-triggered repeat save with Advantage by passing `advantage: true` (the end-of-turn tick stays flat). Flag is opt-in → every other save byte-unchanged; removed from the `EFFECT_LESS_OK` allowlist (now carries effects). |
 | `confusion-table-not-rolled` | DIVERGENCE | Engine | M | `confused-active` has empty effects; RAW is a per-turn 1d10 behavior table + no Bonus Actions/Reactions. |
 
 ### Cantrip / minor riders (quirks)
