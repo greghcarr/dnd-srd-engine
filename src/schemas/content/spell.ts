@@ -261,6 +261,17 @@ const SpellAutoHitMechanicSchema = z.object({
 // `appliedConditionLevel` (slice 124) stamps an initial `level` on the
 // emitted ConditionApplied. Lets a buff carry a pool count
 // (Mirror Image: 3 duplicates) at cast time. Omitted = no level.
+//
+// `unwillingSave` (slice 849) gates the buff behind a saving throw for
+// targets the caster names as unwilling. RAW (SRD 5.2.1 Enlarge/Reduce):
+// "If the target is an unwilling creature, it can make a Constitution
+// saving throw. On a successful save, the spell has no effect." The
+// engine doesn't model creature-vs-creature willingness, so the consumer
+// supplies which targets are unwilling via `intent.unwillingTargetIds`;
+// for each such target the planner rolls `ability` vs the caster's spell
+// save DC and skips the condition on a success. Willing targets (the
+// default — no `unwillingTargetIds`) bypass the save entirely, so every
+// existing buff spell is byte-unchanged.
 const SpellBuffMechanicSchema = z.object({
   kind: z.literal('buff'),
   conditionId: z.string().optional(),
@@ -277,6 +288,11 @@ const SpellBuffMechanicSchema = z.object({
     })
     .optional(),
   appliedConditionLevel: z.number().int().min(1).optional(),
+  unwillingSave: z
+    .object({
+      ability: AbilityScoreSchema,
+    })
+    .optional(),
 });
 
 // Strips one of a fixed list of conditions from each target (Lesser

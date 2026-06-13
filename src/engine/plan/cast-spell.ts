@@ -50,6 +50,7 @@ import {
 import type { ItemBuffAppliedEvent } from '../../schemas/events/inventory.js';
 import type { ResourceSpentEvent } from '../../schemas/events/resources.js';
 import { computeSpellSaveDC, computeSpellAttackBonus } from '../../derive/spell-dc.js';
+import { rollSaveAgainstDC } from './_save-roll.js';
 import { effectiveSpellList } from '../../derive/effective-spell-list.js';
 import { computeAvailableSpellSlots } from '../../derive/spell-slots.js';
 import { computeAC } from '../../derive/ac.js';
@@ -168,6 +169,15 @@ export interface CastSpellIntent {
   // creature, so a foe on the far edge of the blast can be past the range
   // and still caught). Without `aim`, the cast trusts `targetIds` unchanged.
   readonly aim?: { readonly x: number; readonly y: number };
+  // Slice 849: the targets the caster declares UNWILLING for a buff spell
+  // whose mechanic carries `unwillingSave` (Enlarge/Reduce). Each named
+  // target rolls the mechanic's save vs the caster's spell save DC; on a
+  // success the buff has no effect on it. The engine doesn't model
+  // willingness (creature-vs-creature relationships are consumer state),
+  // so this is a consumer-supplied seam like `cover` / `lightLevel`.
+  // Ids not listed are treated as willing → no save, buff applies. Ids
+  // here that aren't among `targetIds` are simply ignored.
+  readonly unwillingTargetIds?: ReadonlyArray<string>;
   readonly at?: string;
 }
 
@@ -1413,6 +1423,12 @@ const planBuffMechanic = (
   spell: Spell,
   declaredEventId: string,
   at: string,
+  // Slice 849: the casting class + ability resolve the spell save DC for
+  // the optional unwilling-target save; `rng` rolls it. Threaded from the
+  // dispatch site (already in scope there for the attack/save mechanics).
+  rng: RNG,
+  castingClassId: string | undefined,
+  castingAbility: 'INT' | 'WIS' | 'CHA',
 ): BuffOutcome => {
   // Buff spells (Bless, Aid, etc.) apply a beneficial condition to each
   // target. The condition holds the actual mechanical bonuses; this
@@ -1446,6 +1462,28 @@ const planBuffMechanic = (
         expiryTrigger: autoExpiry.trigger,
       }
     : {};
+  // Slice 849: unwilling-target save gate (Enlarge/Reduce). Only the
+  // targets the consumer named as unwilling roll a save; the DC is the
+  // caster's spell save DC, computed once here and reused per target. The
+  // set is empty (no save) unless the mechanic carries `unwillingSave`
+  // AND the intent lists unwilling targets — so every other buff spell
+  // takes neither branch and is byte-unchanged.
+  const unwillingSet = mechanic.unwillingSave !== undefined
+    ? new Set(intent.unwillingTargetIds ?? [])
+    : new Set<string>();
+  let unwillingSaveDC = 0;
+  if (mechanic.unwillingSave !== undefined && unwillingSet.size > 0) {
+    const caster = state.characters[intent.characterId];
+    if (!caster) throw new Error(`Unknown character ${intent.characterId}`);
+    unwillingSaveDC = computeSpellSaveDC({
+      character: caster,
+      itemInstances: state.itemInstances,
+      content,
+      classId: castingClassId ?? '',
+      characters: state.characters,
+      castingAbility,
+    }).total;
+  }
   for (const targetId of intent.targetIds) {
     if (isImmuneToCondition({
       state,
@@ -1455,6 +1493,28 @@ const planBuffMechanic = (
       sourceCharacterId: intent.characterId,
     })) {
       continue;
+    }
+    // RAW: "If the target is an unwilling creature, it can make a
+    // Constitution saving throw. On a successful save, the spell has no
+    // effect." Roll the named save; the SaveRolled event is emitted for
+    // transcript visibility whether it succeeds or fails, but a success
+    // skips the condition entirely (no effect on that target).
+    if (mechanic.unwillingSave !== undefined && unwillingSet.has(targetId)) {
+      const saveResult = rollSaveAgainstDC({
+        state,
+        content,
+        targetId,
+        ability: mechanic.unwillingSave.ability,
+        dc: unwillingSaveDC,
+        sourceIsMagical: true,
+        rng,
+        at,
+        causedByEventId: declaredEventId,
+      });
+      if (saveResult !== undefined) {
+        events.push(saveResult.event);
+        if (saveResult.success) continue;
+      }
     }
     const appliedConditionId = newAppliedConditionId();
     const cond: ConditionAppliedEvent = {
@@ -2578,7 +2638,7 @@ export const planCastSpell = (
     } else if (mechanic.kind === 'auto-hit') {
       events.push(...planAutoHitMechanic(state, content, rng, intent, spell, mechanic, declared.id, at));
     } else if (mechanic.kind === 'buff') {
-      const outcome = planBuffMechanic(state, intent, content, mechanic, spell, declared.id, at);
+      const outcome = planBuffMechanic(state, intent, content, mechanic, spell, declared.id, at, rng, castingClassId, castingAbility);
       events.push(...outcome.events);
       conditionsApplied.push(...outcome.conditionsApplied);
     } else if (mechanic.kind === 'remove-condition') {
