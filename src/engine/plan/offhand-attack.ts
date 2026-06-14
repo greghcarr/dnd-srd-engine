@@ -78,6 +78,20 @@ export const planOffHandAttack = (
   if (!weaponDef.properties.includes('light')) {
     throw new Error(`Off-hand attacks require a 'light' weapon; ${weaponDef.name} is not light`);
   }
+  // Slice 860: RAW Light property — "That extra attack must be made with a
+  // different Light weapon." The off-hand (extra) attack can't reuse the
+  // weapon the Attack action struck with, i.e. the one held in the main hand.
+  // The check is instance-level: two of the same weapon TYPE (e.g. two
+  // Shortswords) is RAW-legal — they are two distinct weapons — but the SAME
+  // weapon instance can't strike in both hands.
+  if (
+    attacker.equipped.mainHand !== undefined &&
+    intent.weaponInstanceId === attacker.equipped.mainHand
+  ) {
+    throw new Error(
+      `Off-hand attack must use a different Light weapon than the main hand (RAW: "a different Light weapon")`,
+    );
+  }
 
   const active = findActiveEncounter(state, intent.attackerId);
   if (active === undefined) {

@@ -733,16 +733,21 @@ describe('slice 762: Innate Sorcery + Off-Hand Attack', () => {
   });
 
   it('Off-Hand Attack appears only when wielding a light weapon; useOption strikes', () => {
-    const dagger = makeItemInstance('dagger'); // light
+    // RAW (slice 860): the off-hand (extra) attack must use a DIFFERENT Light
+    // weapon than the main hand, so dual-wield two daggers and strike with the
+    // off-hand one (using the main-hand instance is rejected by the planner).
+    const mainDagger = makeItemInstance('dagger'); // light
+    const offDagger = makeItemInstance('dagger'); // light, different instance
     const ftr = base({
       classes: [{ classId: 'fighter', level: 1, hitDiceRemaining: 1 }],
-      inventory: [dagger.id],
-      equipped: { mainHand: dagger.id, attuned: [] },
+      inventory: [mainDagger.id, offDagger.id],
+      equipped: { mainHand: mainDagger.id, offHand: offDagger.id, attuned: [] },
     });
     const foe = wizard();
     const s = setup([ftr, foe], ftr.id);
     s.campaign = commit(s.campaign, [
-      { id: eventId(), at: isoTimestamp(), type: 'ItemAcquired', instance: dagger },
+      { id: eventId(), at: isoTimestamp(), type: 'ItemAcquired', instance: mainDagger },
+      { id: eventId(), at: isoTimestamp(), type: 'ItemAcquired', instance: offDagger },
     ]);
     expect(byId(s, ftr.id)['off-hand-attack']).toMatchObject({ target: 'creature', enabled: true });
     const events = s.engine.plan
@@ -750,7 +755,7 @@ describe('slice 762: Innate Sorcery + Off-Hand Attack', () => {
         combatantId: ftr.id,
         optionId: 'off-hand-attack',
         targetId: foe.id,
-        weaponInstanceId: dagger.id,
+        weaponInstanceId: offDagger.id,
       })
       .events;
     expect(events.some((e) => e.type === 'AttackRolled')).toBe(true);
