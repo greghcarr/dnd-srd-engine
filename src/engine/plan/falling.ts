@@ -1,9 +1,9 @@
 import type { CampaignState } from '../../schemas/runtime/campaign.js';
 import type { ResolvedContent } from '../../content/pack.js';
 import type { Event } from '../../schemas/events/index.js';
-import type { DamageAppliedEvent } from '../../schemas/events/combat.js';
+import type { DamageAppliedEvent, ConditionAppliedEvent } from '../../schemas/events/combat.js';
 import type { ActionEconomyConsumedEvent } from '../../schemas/events/action-economy.js';
-import { newEventId } from '../../ids.js';
+import { newEventId, newAppliedConditionId } from '../../ids.js';
 import { nowIso } from '../../internal/clock.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
@@ -112,6 +112,13 @@ export const planFalling = (
     rawComponents: [{ amount: rawDamage, type: 'bludgeoning' }],
     characters: state.characters,
   });
+  // Slice 861: RAW (Falling) — "When the creature lands, it has the Prone
+  // condition unless it avoids taking any damage from the fall." The
+  // no-damage escapes (Feather Fall via GrantFallingProtection, Slow Fall
+  // reducing to 0) already returned above; here the creature lands Prone iff
+  // it actually took damage — i.e. the mitigated total is positive (full
+  // bludgeoning Immunity, leaving 0, avoids the damage and so the Prone).
+  const tookDamage = mitigated.reduce((sum, c) => sum + c.amount, 0) > 0;
   const at = intent.at ?? nowIso();
   const damageAppliedId = newEventId() as ULID;
   const intercept = interceptFatalDamage({
@@ -139,7 +146,17 @@ export const planFalling = (
     damageApplied.id,
     at,
   );
-  const tail = [damageApplied, ...intercept.extraEvents, ...concentrationBreak];
+  const landsProne: ConditionAppliedEvent[] = tookDamage
+    ? [{
+        id: newEventId() as ULID,
+        at,
+        type: 'ConditionApplied',
+        targetId: intent.characterId as ULID,
+        conditionId: 'prone',
+        appliedConditionId: newAppliedConditionId(),
+      }]
+    : [];
+  const tail = [damageApplied, ...intercept.extraEvents, ...concentrationBreak, ...landsProne];
   return slowFallReactionConsumed !== undefined
     ? [slowFallReactionConsumed, ...tail]
     : tail;

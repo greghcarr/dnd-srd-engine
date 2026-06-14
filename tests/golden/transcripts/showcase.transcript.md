@@ -328,6 +328,8 @@ Door "Iron portcullis" is now open by **Vex**.
 
 **Vex** takes 7 damage from falling 20 ft (7 bludgeoning). (HP 38 -> 31)
 
+**Vex** is now Prone.
+
 Item acquired: Greatclub (Ogre).
 
 **Slag the Ogre** appears (ogre, 68/68 HP).
@@ -344,15 +346,11 @@ _(Vex consumes action)_
 
 _(Vex consumes attack)_
 
-**Vex** attacks **Slag the Ogre** [advantage]: d20(6/6) + 7 = 13 vs AC 11 -> hit.
+**Vex** attacks **Slag the Ogre**: d20(6) + 7 = 13 vs AC 11 -> hit.
 
-_(sneak-attack triggers for Vex)_
+Damage rolled: 1d4=[2]+4 piercing.
 
-**Slag the Ogre** takes 12 damage (12 piercing). (HP 68 -> 56)
-
-Damage rolled: 1d4=[3]+4 piercing.
-
-**Slag the Ogre** takes 7 damage from **Vex** (7 piercing). (HP 56 -> 49)
+**Slag the Ogre** takes 6 damage from **Vex** (6 piercing). (HP 68 -> 62)
 
 End of Vex's turn.
 
@@ -362,7 +360,11 @@ _(Alyx consumes action)_
 
 _(Alyx consumes attack)_
 
-**Alyx** attacks **Slag the Ogre**: d20(2) + 7 = 9 vs AC 11 -> miss.
+**Alyx** attacks **Slag the Ogre**: d20(4) + 7 = 11 vs AC 11 -> hit.
+
+Damage rolled: 1d8=[7]+4 slashing.
+
+**Slag the Ogre** takes 11 damage from **Alyx** (11 slashing). (HP 62 -> 51)
 
 End of Alyx's turn.
 
@@ -392,15 +394,15 @@ _(Slag the Ogre consumes action)_
 
 **Slag the Ogre** attacks **Alyx**: d20(17) + 6 = 23 vs AC 12 -> hit.
 
+Damage rolled: 2d8=[6,1]+4 bludgeoning.
+
+**Alyx** takes 11 damage from **Slag the Ogre** (11 bludgeoning). (HP 168 -> 157)
+
+**Slag the Ogre** attacks **Alyx**: d20(17) + 6 = 23 vs AC 12 -> hit.
+
 Damage rolled: 2d8=[8,1]+4 bludgeoning.
 
-**Alyx** takes 13 damage from **Slag the Ogre** (13 bludgeoning). (HP 168 -> 155)
-
-**Slag the Ogre** attacks **Alyx**: d20(9) + 6 = 15 vs AC 12 -> hit.
-
-Damage rolled: 2d8=[4,7]+4 bludgeoning.
-
-**Alyx** takes 15 damage from **Slag the Ogre** (15 bludgeoning). (HP 155 -> 140)
+**Alyx** takes 13 damage from **Slag the Ogre** (13 bludgeoning). (HP 157 -> 144)
 
 End of Slag the Ogre's turn.
 
@@ -408,7 +410,7 @@ End of round 1.
 
 ### Round 2: Vex's turn
 
-**Vex** death save: d20(13) -> success.
+**Vex** death save: d20(9) -> failure.
 
 **Vex** death save: d20(11) -> success.
 
@@ -416,7 +418,7 @@ End of Vex's turn.
 
 ### Round 2: Alyx's turn
 
-**Slag the Ogre** takes 25 damage from **Alyx** (25 bludgeoning). (HP 49 -> 24)
+**Slag the Ogre** takes 25 damage from **Alyx** (25 bludgeoning). (HP 51 -> 26)
 
 End of Alyx's turn.
 
@@ -424,7 +426,7 @@ End of Alyx's turn.
 
 Wand of Magic Missiles loses 2 charge(s) by **Mira** for Magic Missile (3rd level).
 
-**Slag the Ogre** takes 20 damage from **Mira** (20 force). (HP 24 -> 4)
+**Slag the Ogre** takes 20 damage from **Mira** (20 force). (HP 26 -> 6)
 
 ## Encounter ends: victory.
 
@@ -450,15 +452,7 @@ _(Vex consumes action)_
 
 _(Vex consumes attack)_
 
-**Vex** attacks **Stoneheart, the Young Red** [advantage]: d20(12/5) + 7 = 19 vs AC 18 -> hit.
-
-_(sneak-attack triggers for Vex)_
-
-**Stoneheart, the Young Red** takes 10 damage (10 piercing). (HP 178 -> 168)
-
-Damage rolled: 1d4=[1]+4 piercing.
-
-**Stoneheart, the Young Red** takes 5 damage from **Vex** (5 piercing). (HP 168 -> 163)
+**Vex** attacks **Stoneheart, the Young Red**: d20(10) + 7 = 17 vs AC 18 -> miss.
 
 End of Vex's turn.
 
@@ -470,15 +464,15 @@ _(Mira consumes action)_
 
 Slot consumed: 3rd-level.
 
-**Stoneheart, the Young Red** takes 2 damage from **Mira** (2 force). (HP 163 -> 161)
+**Stoneheart, the Young Red** takes 5 damage from **Mira** (5 force). (HP 178 -> 173)
 
-**Stoneheart, the Young Red** takes 5 damage from **Mira** (5 force). (HP 161 -> 156)
+**Stoneheart, the Young Red** takes 4 damage from **Mira** (4 force). (HP 173 -> 169)
 
-**Stoneheart, the Young Red** takes 3 damage from **Mira** (3 force). (HP 156 -> 153)
+**Stoneheart, the Young Red** takes 4 damage from **Mira** (4 force). (HP 169 -> 165)
 
-**Stoneheart, the Young Red** takes 5 damage from **Mira** (5 force). (HP 153 -> 148)
+**Stoneheart, the Young Red** takes 2 damage from **Mira** (2 force). (HP 165 -> 163)
 
-**Stoneheart, the Young Red** takes 3 damage from **Mira** (3 force). (HP 148 -> 145)
+**Stoneheart, the Young Red** takes 3 damage from **Mira** (3 force). (HP 163 -> 160)
 
 End of Mira's turn.
 
@@ -492,11 +486,7 @@ _(Alyx consumes action)_
 
 _(Alyx consumes attack)_
 
-**Alyx** attacks **Stoneheart, the Young Red**: d20(20) + 7 = 27 vs AC 18 -> CRITICAL HIT!.
-
-Damage rolled (critical, doubled dice): 1d8=[5,8]+4 slashing.
-
-**Stoneheart, the Young Red** takes 17 damage from **Alyx** (17 slashing). (HP 145 -> 128)
+**Alyx** attacks **Stoneheart, the Young Red**: d20(2) + 7 = 9 vs AC 18 -> miss.
 
 End of Alyx's turn.
 
@@ -512,25 +502,17 @@ End of Alyx's turn.
 
 _(Stoneheart, the Young Red consumes action)_
 
-**Stoneheart, the Young Red** attacks **Alyx** [disadvantage]: d20(12/11) + 10 = 21 vs AC 15 -> hit.
+**Stoneheart, the Young Red** attacks **Alyx** [disadvantage]: d20(18/3) + 10 = 13 vs AC 15 -> miss.
 
 **Stoneheart, the Young Red** is no longer Sapped.
 
-Damage rolled: 2d6=[6,5]+6 slashing, 1d6=[2]+0 fire.
+**Stoneheart, the Young Red** attacks **Alyx**: d20(3) + 10 = 13 vs AC 15 -> miss.
 
-**Alyx** takes 19 damage from **Stoneheart, the Young Red** (17 slashing + 2 fire). (HP 19 -> 0)
+**Stoneheart, the Young Red** attacks **Alyx**: d20(17) + 10 = 27 vs AC 15 -> hit.
 
-**Stoneheart, the Young Red** attacks **Alyx** [advantage]: d20(18/2) + 10 = 28 vs AC 15 -> CRITICAL HIT!.
+Damage rolled: 2d6=[2,6]+6 slashing, 1d6=[3]+0 fire.
 
-Damage rolled (critical, doubled dice): 2d6=[1,4,6,5]+6 slashing, 1d6=[1,3]+0 fire.
-
-**Alyx** takes 26 damage from **Stoneheart, the Young Red** (22 slashing + 4 fire).
-
-**Stoneheart, the Young Red** attacks **Alyx** [advantage]: d20(11/5) + 10 = 21 vs AC 15 -> CRITICAL HIT!.
-
-Damage rolled (critical, doubled dice): 2d6=[6,2,3,5]+6 slashing, 1d6=[6,5]+0 fire.
-
-**Alyx** takes 33 damage from **Stoneheart, the Young Red** (22 slashing + 11 fire).
+**Alyx** takes 17 damage from **Stoneheart, the Young Red** (14 slashing + 3 fire). (HP 19 -> 2)
 
 End of Stoneheart, the Young Red's turn.
 
@@ -542,13 +524,17 @@ _(Brother Cassius consumes bonusAction)_
 
 Slot consumed: 1st-level.
 
-**Alyx** healed 6 from healing-word. (HP 0 -> 6)
+**Alyx** healed 8 from healing-word. (HP 2 -> 10)
 
 _(Brother Cassius consumes action)_
 
 _(Brother Cassius consumes attack)_
 
-**Brother Cassius** attacks **Stoneheart, the Young Red**: d20(10) + 6 = 16 vs AC 18 -> miss.
+**Brother Cassius** attacks **Stoneheart, the Young Red**: d20(19) + 6 = 25 vs AC 18 -> hit.
+
+Damage rolled: 1d8=[5]+3 slashing.
+
+**Stoneheart, the Young Red** takes 8 damage from **Brother Cassius** (8 slashing). (HP 160 -> 152)
 
 End of Brother Cassius's turn.
 
@@ -556,7 +542,7 @@ End of round 1.
 
 ### Round 2: Vex's turn
 
-**Stoneheart, the Young Red** takes 24 damage from **Vex** (24 piercing). (HP 128 -> 104)
+**Stoneheart, the Young Red** takes 24 damage from **Vex** (24 piercing). (HP 152 -> 128)
 
 End of Vex's turn.
 
@@ -564,13 +550,13 @@ End of Vex's turn.
 
 Wand of Magic Missiles loses 3 charge(s) by **Mira** for Magic Missile (3rd level).
 
-**Stoneheart, the Young Red** takes 22 damage from **Mira** (22 force). (HP 104 -> 82)
+**Stoneheart, the Young Red** takes 22 damage from **Mira** (22 force). (HP 128 -> 106)
 
 End of Mira's turn.
 
 ### Round 2: Alyx's turn
 
-**Stoneheart, the Young Red** takes 22 damage from **Alyx** (22 slashing). (HP 82 -> 60)
+**Stoneheart, the Young Red** takes 22 damage from **Alyx** (22 slashing). (HP 106 -> 84)
 
 End of Alyx's turn.
 
@@ -580,7 +566,7 @@ End of Stoneheart, the Young Red's turn.
 
 ### Round 2: Brother Cassius's turn
 
-**Stoneheart, the Young Red** takes 35 damage from **Brother Cassius** (35 radiant). (HP 60 -> 25)
+**Stoneheart, the Young Red** takes 35 damage from **Brother Cassius** (35 radiant). (HP 84 -> 49)
 
 ## Encounter ends: victory.
 
