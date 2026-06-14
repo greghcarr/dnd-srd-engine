@@ -18,20 +18,20 @@
 
 ## Rollup
 
-Current state — open vs. closed rows, with the open count's severity split (BLOCKER / DIVERGENCE / QUIRK) in the next column. Updated through slice 857. **Areas 1 and 7 are fully closed.** A row is not a slice: several rows fan out into multiple slices (e.g. the `drain-undead-arms` lineage → slices 832/834/835), so the open count is a floor on remaining engine slices, not an exact count.
+Current state — open vs. closed rows, with the open count's severity split (BLOCKER / DIVERGENCE / QUIRK) in the next column. Updated through slice 858. **Areas 1 and 7 are fully closed.** A row is not a slice: several rows fan out into multiple slices (e.g. the `drain-undead-arms` lineage → slices 832/834/835), so the open count is a floor on remaining engine slices, not an exact count.
 
 | Area | Open | Closed | Open B/D/Q | Owner of open work | Status |
 |---|---|---|---|---|---|
 | 1. Edition drift | 0 | 4 | — | — | ✅ **fully closed** |
 | 2. Spell mechanics (L0-4) | 13 | 11 | 0 / 9 / 4 | Engine | open — largest engine block |
 | 3. Targeting / AoE seam | 13 | 1 | 0 / 6 / 7 | Seam + Consumer | open — consumer-correctness frontier |
-| 4. Core combat correctness | 5 | 7 | 0 / 0 / 5 | Engine | open — divergence-free (quirks only) |
+| 4. Core combat correctness | 4 | 8 | 0 / 0 / 4 | Engine | open — divergence-free (quirks only) |
 | 5. Build & leveling validation | 4 | 7 | 0 / 1 / 3 | Engine | open |
 | 6. Base equipment mechanics | 3 | 6 | 0 / 1 / 2 | Engine | open |
 | 7. Monster runtime (DM side) | 0 | 21 | — | — | ✅ **fully closed** |
 | 8. Exploration / non-combat | 13 | 1 | 0 / 3 / 10 | Engine | open |
 | 9. Consumer duties & docs | 8 | 0 | 0 / 3 / 5 | Consumer + Docs | hand-off — not engine slices |
-| **Total** | **59** | **58** | **0 / 23 / 36** | — | 117 rows |
+| **Total** | **58** | **59** | **0 / 23 / 35** | — | 117 rows |
 
 **Recommended order:** The structural blockers are all closed (~~`aoe-shape-coverage`~~ 786–787, ~~`no-actions-field`~~ 788, ~~`multiattack-unpopulated`~~ 789–792, ~~`no-hit-die-spend-planner`~~ 785, ~~`background-ability-bonus`~~), and Areas 1 + 7 are done. Remaining engine work by leverage: **Area 2** (spell mechanical arms — 20, the largest block) and **Area 8** (the exploration pillar — 13), then the smaller Area 4 / 5 / 6 divergence-and-quirk cleanups and the engine half of Area 3. Consumer items (Area 9 + the consumer half of Area 3) bundle into a hand-off note for the dnd-web session.
 
@@ -132,7 +132,7 @@ The combat loop itself, independent of specific spells/items. (Engine targets SR
 | ~~`grapple-shove-missing-gates`~~ | DIVERGENCE | Engine | S | `planGrapple`/`planShove` skip the size (≤ one larger), free-hand, and `assertActorCanAct` gates; a stunned Medium PC can grapple a Gargantuan dragon. **Closed by slice 803** — added `assertActorCanAct`, the size gate (`SIZES` rank diff ≤ 1, both planners), and a free-hand gate (grapple only; two-handed weapon / main-hand + off-hand-or-shield = no free hand). `src/engine/plan/contested.ts`. |
 | ~~`charmed-harmful-target-arm`~~ | DIVERGENCE | Engine/Consumer | M | "Can't attack the charmer" is hardcoded for *weapon* attacks only; the "can't target the charmer with harmful abilities/magic" arm + the charmer's social-check Advantage are unenforced (the `charmed` condition has 0 effects). **Closed by slice 807** — `planCastSpell` blocks a harmful spell (attack/save mechanic) targeting the charmer (explicit targets; AoE membership exempt); the social-advantage arm ships as a consumer fact `ComputeAbilityCheckInput.socialCheckTargetId` (Advantage on a social skill check vs a creature charmed by the checker). `src/engine/plan/cast-spell.ts`; `src/derive/ability-check.ts`. |
 | ~~`exhaustion-6-not-fatal`~~ | DIVERGENCE | Engine | S | Exhaustion clamps to 6 but never kills; SRD = death at level 6. (Also Area 8.) **Closed by slice 800** — both exhaustion mutation paths (`ConditionApplied`'s exhaustion branch + `ExhaustionChanged`) now call a shared `markCreatureDead` helper (HP 0 + death-save failures at the kill threshold + Concentration dropped) when exhaustion lands on `EXHAUSTION_MAX`; the slice-323 instant-death reducer delegates to the same helper. `src/engine/reducers/combat.ts`. |
-| `auto-crit-reach-overgrant` | QUIRK | Engine | S | Auto-crit vs Paralyzed/Unconscious uses `attackKind === 'melee'` as the "within 5 ft" proxy → a 10-ft reach weapon auto-crits, which RAW forbids. `src/engine/plan/attack.ts:1113-1121`. |
+| ~~`auto-crit-reach-overgrant`~~ | QUIRK | Engine | S | Auto-crit vs Paralyzed/Unconscious uses `attackKind === 'melee'` as the "within 5 ft" proxy → a 10-ft reach weapon auto-crits, which RAW forbids. `src/engine/plan/attack.ts:1113-1121`. **Closed by slice 858** — within-5 is now resolved **precisely from positions** (`chebyshevDistance(attackerPos, targetPos) <= 5`) when both combatants are positioned in an active encounter, so a reach weapon used adjacent still auto-crits and one striking at 10 ft does not. **Position-less** falls back to a weapon-reach proxy: a non-reach melee weapon can only reach 5 ft (always within), but a reach (10-ft) weapon does NOT auto-crit without positions — fixing the over-grant. Mirrors the existing `chebyshevDistance` adjacency derivations (Pack Tactics / ally-adjacent). |
 | `reaction-reset-timing` | QUIRK | Engine | S | `reactionUsedThisRound` resets at round end, not at the combatant's own `TurnStarted`; edge cases (initiative swap, extra turn) refresh a beat early/late. `src/engine/reducers/encounter.ts:233-236`. |
 | `prone-cant-crawl` | QUIRK | Engine | M | Any move while Prone forces a stand-up (charges half-speed, removes the condition); no crawl modality, and crawl's +1 ft/ft cost is unmodeled. `src/engine/plan/movement.ts:225-282`. |
 | `no-hostility-model` | QUIRK | Engine | M | Ranged-in-melee disadvantage and the auto-derived Pack-Tactics/flank fact treat *any* adjacent creature as hostile (an archer next to a friendly cleric takes disadvantage). Consumer can override per-intent. `src/engine/plan/attack.ts:817-836`. |

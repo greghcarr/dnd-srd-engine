@@ -1127,29 +1127,45 @@ export const resolveAttackRollPhase = (input: ResolveAttackInput): AttackRollRes
   const naturalHit = rollResult.naturalHit;
   const naturalMiss = rollResult.naturalMiss;
   const hit = rollResult.hit;
-  // Slice 568: RAW Paralyzed / Unconscious "Any attack that hits the
-  // creature is a critical hit if the attacker is within 5 feet of
-  // the creature." The engine doesn't track positional adjacency, so
-  // melee attacks are taken as the proxy for "within 5 feet" (the
-  // common case: 5 ft melee reach). Reach weapons at 10 ft would
-  // RAW-correctly NOT auto-crit, but the engine over-grants here
-  // until positional state is modeled. Matches the existing
-  // melee-vs-incapacitated approximations elsewhere in the planner.
-  // Triggers on paralyzed (incl. held-paralyzed-active for Hold Person
-  // / Hold Monster — both compose Paralyzed in RAW), unconscious, or
-  // HP <= 0 (the synthetic-unconscious case findActorBlockingCondition
-  // also returns for).
+  // Slice 568 / 858: RAW Paralyzed / Unconscious — "Any attack that hits the
+  // creature is a critical hit if the attacker is within 5 feet of the
+  // creature." Within-5 is resolved PRECISELY from positions when both
+  // combatants are positioned in an active encounter (so a reach weapon used
+  // adjacent still auto-crits, and one striking at 10 ft does not). When the
+  // engine is position-less it falls back to a weapon-reach proxy (slice 858):
+  // a non-reach melee weapon can only strike at 5 ft, so it always counts as
+  // within 5; a reach (10-ft) weapon might be at 6-10 ft, so it does NOT
+  // auto-crit without positions. This fixes slice 568's over-grant, which took
+  // *every* melee attack as within-5 and so auto-crit a 10-ft reach strike.
+  // Fires on paralyzed (incl. held-paralyzed-active for Hold Person / Hold
+  // Monster, which compose Paralyzed in RAW), unconscious, or HP <= 0 (the
+  // synthetic-unconscious case findActorBlockingCondition also returns for).
   // Slice 611: the base crit (`usedRoll >= critThreshold`) lives in
-  // resolveAttackRoll; this re-derives the combined crit including
-  // the melee-auto-crit branch.
+  // resolveAttackRoll; this re-derives the combined crit including the
+  // auto-crit branch.
+  const attackerWithin5OfTarget = ((): boolean | undefined => {
+    if (!state.activeEncounterId) return undefined;
+    const enc = state.encounters[state.activeEncounterId];
+    if (!enc) return undefined;
+    const attackerPos = enc.combatants.find((c) => c.combatantId === input.attackerId)?.position;
+    const targetPos = enc.combatants.find((c) => c.combatantId === input.targetId)?.position;
+    if (!attackerPos || !targetPos) return undefined;
+    return chebyshevDistance(attackerPos, targetPos) <= 5;
+  })();
   const targetAutoCritsFromMelee = ((): boolean => {
     if (weaponDef.attackKind !== 'melee') return false;
-    if (target.hp.current <= 0) return true;
-    return target.appliedConditions.some(
-      (c) => c.conditionId === 'paralyzed'
-        || c.conditionId === 'held-paralyzed-active'
-        || c.conditionId === 'unconscious',
-    );
+    const targetIncapacitated =
+      target.hp.current <= 0 ||
+      target.appliedConditions.some(
+        (c) => c.conditionId === 'paralyzed'
+          || c.conditionId === 'held-paralyzed-active'
+          || c.conditionId === 'unconscious',
+      );
+    if (!targetIncapacitated) return false;
+    // Positioned: the real distance decides. Position-less: only a non-reach
+    // melee weapon guarantees the attacker is within 5 ft.
+    if (attackerWithin5OfTarget !== undefined) return attackerWithin5OfTarget;
+    return !(weaponDef.properties?.includes('reach') ?? false);
   })();
   const critical = rollResult.critical || (hit && targetAutoCritsFromMelee);
 
