@@ -11,8 +11,10 @@ export {
   getEffectiveSpeed,
   getEffectiveSpeeds,
   getEffectiveSpeedForMode,
+  computeJumpDistances,
   type GetEffectiveSpeedInput,
   type EffectiveSpeeds,
+  type JumpDistances,
 } from './speed.js';
 export type { EncumbranceResult, EncumbranceLevel } from './encumbrance.js';
 export {

@@ -9,7 +9,7 @@ import type { PendingChoice } from '../schemas/runtime/pending-choice.js';
 import type { ResolvedContent } from '../content/pack.js';
 import type { MovementMode } from '../schemas/primitives.js';
 import { collectEffectsFromCharacter, buildEffectStack } from './effect-stack.js';
-import { effectiveAbilityScore } from './ability.js';
+import { effectiveAbilityScore, abilityModifier } from './ability.js';
 import { EXHAUSTION_SPEED_PENALTY_PER_LEVEL } from '../internal/constants.js';
 
 // Slice 799 (Area 6 `armor-str-requirement-speed`): RAW equipment.md
@@ -47,6 +47,47 @@ export interface GetEffectiveSpeedInput {
   readonly itemInstances: Readonly<Record<string, ItemInstance>>;
   readonly pendingChoices?: Readonly<Record<string, PendingChoice>>;
 }
+
+export interface JumpDistances {
+  /** Long Jump with a 10-ft running start: feet up to your (effective) Strength score. */
+  readonly longJumpFeet: number;
+  /** Standing Long Jump (no run-up): half the running distance, rounded down. */
+  readonly standingLongJumpFeet: number;
+  /** High Jump with a 10-ft running start: 3 + STR modifier feet (minimum 0). */
+  readonly highJumpFeet: number;
+  /** Standing High Jump (no run-up): half the running distance, rounded down. */
+  readonly standingHighJumpFeet: number;
+}
+
+// Slice 863 — RAW (SRD 5.2.1, Long Jump / High Jump):
+//   - Long Jump: leap horizontally a number of feet up to your Strength score
+//     with a 10-ft running start; a standing Long Jump covers half that.
+//   - High Jump: leap up 3 + your Strength modifier feet (minimum 0) with a
+//     10-ft running start; a standing High Jump covers half that.
+// Each foot of jump costs a foot of movement — the consumer applies that
+// against the mover's Speed; this derive reports the distances only (the
+// engine doesn't gate movement on jump). Reads the EFFECTIVE Strength (the
+// effect stack's floor/increase + any drain), the same score the armor-speed
+// and Graze derives use, so Gauntlets of Ogre Power (STR 19) lengthen the
+// jump. Standing halves round down to whole feet.
+export const computeJumpDistances = (input: GetEffectiveSpeedInput): JumpDistances => {
+  const { character, content, itemInstances, pendingChoices } = input;
+  const effects = buildEffectStack({ character, content, itemInstances, pendingChoices });
+  const effStr = effectiveAbilityScore(
+    character.abilityScores.STR,
+    effects.effectiveAbilityScoreFloor('STR')?.value,
+    effects.effectiveAbilityScoreIncrease('STR'),
+    character.abilityDrain?.STR,
+  );
+  const longJumpFeet = Math.max(0, effStr);
+  const highJumpFeet = Math.max(0, 3 + abilityModifier(effStr));
+  return {
+    longJumpFeet,
+    standingLongJumpFeet: Math.floor(longJumpFeet / 2),
+    highJumpFeet,
+    standingHighJumpFeet: Math.floor(highJumpFeet / 2),
+  };
+};
 
 // RAW walk-speed floor when neither an explicit override nor a
 // species / statblock walk speed is available.
