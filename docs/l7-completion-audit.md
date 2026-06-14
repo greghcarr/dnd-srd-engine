@@ -18,12 +18,12 @@
 
 ## Rollup
 
-Current state — open vs. closed rows, with the open count's severity split (BLOCKER / DIVERGENCE / QUIRK) in the next column. Updated through slice 849. **Areas 1 and 7 are fully closed.** A row is not a slice: several rows fan out into multiple slices (e.g. the `drain-undead-arms` lineage → slices 832/834/835), so the open count is a floor on remaining engine slices, not an exact count.
+Current state — open vs. closed rows, with the open count's severity split (BLOCKER / DIVERGENCE / QUIRK) in the next column. Updated through slice 850. **Areas 1 and 7 are fully closed.** A row is not a slice: several rows fan out into multiple slices (e.g. the `drain-undead-arms` lineage → slices 832/834/835), so the open count is a floor on remaining engine slices, not an exact count.
 
 | Area | Open | Closed | Open B/D/Q | Owner of open work | Status |
 |---|---|---|---|---|---|
 | 1. Edition drift | 0 | 4 | — | — | ✅ **fully closed** |
-| 2. Spell mechanics (L0-4) | 16 | 8 | 0 / 11 / 5 | Engine | open — largest engine block |
+| 2. Spell mechanics (L0-4) | 15 | 9 | 0 / 11 / 4 | Engine | open — largest engine block |
 | 3. Targeting / AoE seam | 13 | 1 | 0 / 6 / 7 | Seam + Consumer | open — consumer-correctness frontier |
 | 4. Core combat correctness | 5 | 6 | 0 / 0 / 5 | Engine | open — divergence-free (quirks only) |
 | 5. Build & leveling validation | 5 | 6 | 0 / 1 / 4 | Engine | open |
@@ -31,7 +31,7 @@ Current state — open vs. closed rows, with the open count's severity split (BL
 | 7. Monster runtime (DM side) | 0 | 21 | — | — | ✅ **fully closed** |
 | 8. Exploration / non-combat | 13 | 1 | 0 / 3 / 10 | Engine | open |
 | 9. Consumer duties & docs | 8 | 0 | 0 / 3 / 5 | Consumer + Docs | hand-off — not engine slices |
-| **Total** | **65** | **51** | **0 / 25 / 40** | — | 116 rows |
+| **Total** | **64** | **52** | **0 / 25 / 39** | — | 116 rows |
 
 **Recommended order:** The structural blockers are all closed (~~`aoe-shape-coverage`~~ 786–787, ~~`no-actions-field`~~ 788, ~~`multiattack-unpopulated`~~ 789–792, ~~`no-hit-die-spend-planner`~~ 785, ~~`background-ability-bonus`~~), and Areas 1 + 7 are done. Remaining engine work by leverage: **Area 2** (spell mechanical arms — 20, the largest block) and **Area 8** (the exploration pillar — 13), then the smaller Area 4 / 5 / 6 divergence-and-quirk cleanups and the engine half of Area 3. Consumer items (Area 9 + the consumer half of Area 3) bundle into a hand-off note for the dnd-web session.
 
@@ -91,7 +91,7 @@ A level-7 caster's whole repertoire. "Cast does nothing" and "missing a defining
 | ~~`chill-touch-no-anti-heal`~~ | QUIRK | Engine | S | Missing "target can't regain HP until end of caster's next turn." **Closed by slice 797** — new `chill-touched-no-heal` condition (BlockHealing, autoExpiry { afterRounds 1, turnEnd }) via `conditionOnHit`. |
 | `shocking-grasp-no-oa-denial` | QUIRK | Engine | M | Missing "target can't make Opportunity Attacks until the start of its next turn." Deferred from the slice-797 cantrip-rider sweep: unlike the slow / anti-heal riders, there is **no** "prevent opportunity attacks" effect primitive (the `isOpportunityAttack` fact only *gates* other arms; nothing suppresses the bearer's OA reaction). Needs a new effect kind + a gate in the OA reaction planner — so M, not S. |
 | `chromatic-orb-no-leap` | QUIRK | Engine | M | Missing the leap-to-new-target-on-matching-d8s arm (distinct from Sorcerous Burst's explode). |
-| `blindness-deafness-no-choice-no-saveends` | QUIRK | Engine | M | Hardwired to Blinded (no Deafened choice); the shared `blinded` condition has `recurringSave:null`, so the end-of-turn CON save to end never fires. |
+| ~~`blindness-deafness-no-choice-no-saveends`~~ | QUIRK | Engine | M | Hardwired to Blinded (no Deafened choice); the shared `blinded` condition has `recurringSave:null`, so the end-of-turn CON save to end never fires. **Closed by slice 850** — content-only, reusing three shipped primitives: the CON save mechanic swapped its hardwired `conditionOnFail: 'blinded'` for `casterChoosesVariant` (the Command shape) over two new spell-only variant conditions — `blindness-deafness-blinded` / `blindness-deafness-deafened` — each carrying the base Blinded/Deafened effects directly (so the shared conditions stay save-less for Blinded-from-a-gaze) plus a `recurringSave { CON, turnEnd, onSuccess: removeCondition }` with no `fixedDC` (→ resolves the caster's spell DC from `sourceCharacterId`, the Hold Person path) and `autoExpiry { 10 rounds, turnEnd }` as the 1-minute cap. The consumer ticks `tickRecurringSave` at the target's turn-end; a success ends the spell. The auto-fail sight-check arm stays the same deferred gap as base `blinded`; the upcast "+1 target/slot" is a target-count rule on the targeting seam (Area 3). |
 | `l4-locate-creature` | QUIRK | Engine/Consumer | M | Directional sense unmodeled (leans divination/DM). `spell-coverage.test.ts:317`. |
 | `l4-hallucinatory-terrain` | QUIRK | Engine/Consumer | M | Terrain illusion unmodeled (leans narrative). `spell-coverage.test.ts:316`. |
 

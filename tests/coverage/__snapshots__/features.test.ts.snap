@@ -164,6 +164,8 @@ exports[`feature-coverage matrix: conditions > wired conditions catalog is stabl
   "blade-warded-active",
   "blessed",
   "blinded",
+  "blindness-deafness-blinded",
+  "blindness-deafness-deafened",
   "blurred-active",
   "boots-of-speed-active",
   "bulls-strength-active",

@@ -170,7 +170,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'speak-with-animals': { kind: 'skip', reason: 'ritual, narrative only' },
   'unseen-servant': { kind: 'summon' },
   // PHB 2024 L2 spells with wired mechanics
-  'blindness-deafness': { kind: 'save' },
+  'blindness-deafness': { kind: 'save', casterChoice: { kind: 'variant', value: 'blindness' } },
   'flame-blade': { kind: 'attack' },
   'heat-metal': { kind: 'save' },
   'invisibility': { kind: 'buff', conditionId: 'invisible' },
