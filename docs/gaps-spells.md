@@ -26,14 +26,14 @@ A prior version of this doc tracked the **full PHB 2024 spell list** as its deno
 
 The remaining mechanical gap fragments across ~20 small primitives; there is no single large lever left (the persistent-damage-zone family already shipped via `aura-damage` / `movement-damage`). The clusters worth a focused slice, roughly by payoff:
 
-- **Cross-plane travel / long-range teleport** (~11 remaining): blink, banishment, etherealness, plane-shift, teleport, word-of-recall, transport-via-plants, tree-stride, astral-projection, gate, maze. The cleanest in-combat teleport, **dimension-door**, shipped in slice 342 (`planDimensionDoor`); the rest are mostly DM / consumer-side (long-range / cross-plane positioning the engine doesn't model).
+- **Cross-plane travel / long-range teleport** (~10 remaining): blink, etherealness, plane-shift, teleport, word-of-recall, transport-via-plants, tree-stride, astral-projection, gate, maze. The cleanest in-combat teleport, **dimension-door**, shipped in slice 342 (`planDimensionDoor`); **banishment**'s in-combat arm wired in slice 852 (CHA save → Incapacitated demiplane, concentration-bound); the rest are mostly DM / consumer-side (long-range / cross-plane positioning the engine doesn't model).
 - **HP-threshold tier effect** (2 remaining): divine-word, power-word-heal. The `hp-threshold` mechanic shipped in slice 338 (power-word-kill: destroy / 12d12 psychic) and gained a `condition` arm in slice 339 (power-word-stun: Stunned at or below 150 HP with a recurring CON save, else Speed 0). The remaining two need a multi-threshold tiered variant (divine-word) and a heal + multi-condition-remove arm (power-word-heal).
 - **Non-damage area zones** (~5 remaining): zone-of-truth, tiny-hut, wind-wall, guardian-of-faith, compulsion. The slice-495 `zone` primitive wired the positioned-area record for darkness + silence (+ fog-cloud), so the engine now tracks where those zones are; the remaining five need their specific in-zone effect (truth compulsion, ward, deflection) on top of the positioned record.
 - **Beyond-image illusion** (~5): seeming, mislead, project-image, programmed-illusion, mirage-arcane.
 - **Multi-damage AoE** (3 remaining): prismatic-spray, meteor-swarm, prismatic-wall. The save mechanic gained an `additionalDamage` array in slice 341 (flame-strike: fire + radiant); the remaining three also need multi-AoE / RNG-damage-table shapes on top of multi-type.
 - **Terrain shaping** (~4 remaining): hallucinatory-terrain, passwall, wall-of-stone, mirage-arcane (mostly consumer-side; the engine models no positions). Move Earth gained the slice-495 `zone` positioned-area record (the engine tracks the reshapeable 40-ft cube); the actual reshape stays consumer-side.
 - **On-hit smite rider via `castSpell`** (1 remaining): shining-smite. The unconditional-AddDamage path landed in slice 444 via the existing `buff` mechanic + `OnEvent`/`consumeOnTrigger` infrastructure (canonical user: **divine-smite** at L1, with a base 2d8 radiant rider and a Fiend/Undead-gated +1d8 rider on the same condition). Ensnaring Strike closed in slice 503 by composing the existing `save` mechanic (with the new `largeCreatureAdvantage` field) and `recurring` mechanic (with the new `extraDicePerSlotLevel`) — the "Bonus Action, immediately after hitting" cast-trigger timing is consumer-managed (call castSpell after observing AttackRolled.hit), as is the Athletics-action escape. **shining-smite** still needs a concurrent concentration buff (the "always-illuminate-target" aura that runs in parallel to the on-hit rider). Divine Smite's upcast (+1d8 per slot above L1) stays deferred until the buff mechanic gains slot-level-aware variant selection — L1 Paladins only have L1 slots, so the deviation only matters from L3+ paladin onward.
-- **Multi-target movement-restriction / force cage** (3): resilient-sphere, forcecage, wall-of-force.
+- **Multi-target movement-restriction / force cage** (2): forcecage, wall-of-force. (**resilient-sphere** wired in slice 851 — unwilling-target DEX save → an impervious sphere with total damage immunity.)
 - **Advanced / cross-plane summon** (~5): summon-dragon (needs the Draconic Spirit statblock), conjure-fey, planar-binding, planar-ally, create-undead.
 - **Controllable spell-construct (action menu)** (3): arcane-hand, arcane-sword, animate-objects.
 
@@ -97,19 +97,17 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 **Narrative (10):** create-food-and-water, daylight, meld-into-stone, nondetection, plant-growth, sending, speak-with-dead, speak-with-plants, tongues, water-walk.
 
-## Level 4 (34 in pack): 18 wired, 6 narrative, 10 deferred
+## Level 4 (34 in pack): 20 wired, 6 narrative, 8 deferred
 
-**Wired, cast-time (13):** blight, charm-monster, confusion, conjure-minor-elementals, conjure-woodland-beings, death-ward, fire-shield, freedom-of-movement, greater-invisibility, ice-storm, phantasmal-killer, stoneskin, vitriolic-sphere.
+**Wired, cast-time (15):** banishment (slice 852: CHA save → `banished-active` (RAW Incapacitated, engine-coded via ACTION_BLOCKING_CONDITIONS), concentration-bound so it lifts when the spell ends), blight, charm-monster, confusion, conjure-minor-elementals, conjure-woodland-beings, death-ward, fire-shield, freedom-of-movement, greater-invisibility, ice-storm, phantasmal-killer, resilient-sphere (slice 851: unwilling-target DEX save via the slice-849 `unwillingSave` buff arm → `resilient-sphere-enclosed` with `GrantImmunity` all), stoneskin, vitriolic-sphere.
 
 **Wired, zone-tick (2):** black-tentacles (DEX save 3d6 + restrained `aura-damage`), wall-of-fire (DEX save 5d8 `aura-damage`).
 
 **Wired, planner (3):** arcane-eye, dimension-door (`planDimensionDoor`: action teleport up to 500 ft + optional willing passenger; slice 342), polymorph.
 
-**Deferred (10):**
-- **cross-plane travel:** banishment.
+**Deferred (8):**
 - **non-damage area zone + delayed expiration:** guardian-of-faith.
 - **recurring-save area mechanic:** compulsion.
-- **multi-target movement-restriction (force cage):** resilient-sphere.
 - **sub-floor health mechanic:** aura-of-life.
 - **alarm + delayed-attack sentry:** faithful-hound.
 - **domination distinct from Charmed:** dominate-beast.
