@@ -5,8 +5,9 @@ import type { RNG } from '../../rng/index.js';
 import { newEventId, newAppliedConditionId } from '../../ids.js';
 import { nowIso } from '../../internal/clock.js';
 import { invariant } from '../../internal/invariants.js';
-import { abilityModifier, proficiencyBonus } from '../../derive/ability.js';
-import { computeTotalLevel } from '../../schemas/runtime/character.js';
+import { abilityModifier, proficiencyBonus, effectiveAbilityScore } from '../../derive/ability.js';
+import { computeTotalLevel, type Character } from '../../schemas/runtime/character.js';
+import { buildEffectStack } from '../../derive/effect-stack.js';
 import type { ULID } from '../ids-utils.js';
 import type { WeaponMastery } from '../../schemas/primitives.js';
 import type { WeaponMasteryActivatedEvent } from '../../schemas/events/weapon-mastery.js';
@@ -25,10 +26,33 @@ import { applyAll } from '../apply.js';
 const UNARMED_DC_BASE = 8;
 const PUSH_DISTANCE_FEET = 10;
 
-const masterySaveDC = (character: { abilityScores: { STR: number }; classes: Array<{ level: number }> }): number =>
+// Slice 857: the EFFECTIVE Strength modifier — base score lifted by the
+// effect stack's ability-score floor (Gauntlets of Ogre Power / Belt of Giant
+// Strength → STR 19/21/…) and post-snapshot increases (background ASI, etc.),
+// the same derivation the attack planner uses for to-hit / damage. Graze
+// ("damage equal to the ability modifier you used") and the weapon-mastery
+// save DC must read this, not the raw snapshot STR. Every in-scope Graze
+// weapon (Greatsword, Greataxe) is Heavy / non-Finesse, so the ability used is
+// always STR.
+const effectiveStrMod = (attacker: Character, state: CampaignState, content: ResolvedContent): number => {
+  const effects = buildEffectStack({
+    character: attacker,
+    content,
+    itemInstances: state.itemInstances,
+    pendingChoices: state.pendingChoices,
+  });
+  const effectiveStr = effectiveAbilityScore(
+    attacker.abilityScores.STR,
+    effects.effectiveAbilityScoreFloor('STR')?.value,
+    effects.effectiveAbilityScoreIncrease('STR'),
+  );
+  return abilityModifier(effectiveStr);
+};
+
+const masterySaveDC = (attacker: Character, state: CampaignState, content: ResolvedContent): number =>
   UNARMED_DC_BASE +
-  abilityModifier(character.abilityScores.STR) +
-  proficiencyBonus(computeTotalLevel(character as never));
+  effectiveStrMod(attacker, state, content) +
+  proficiencyBonus(computeTotalLevel(attacker));
 
 const recordMasteryEvent = (
   mastery: WeaponMastery,
@@ -218,7 +242,7 @@ export const planWeaponMastery = (
       } satisfies ConditionAppliedEvent);
       break;
     case 'Topple': {
-      const dc = masterySaveDC(attacker);
+      const dc = masterySaveDC(attacker, state, content);
       // Slice 853: route the target's CON save through the shared
       // rollSaveAgainstDC primitive instead of a raw `abilityModifier(CON)`.
       // The old hand-rolled save silently skipped CON-save *proficiency*,
@@ -300,7 +324,9 @@ export const planWeaponMastery = (
     }
     case 'Graze': {
       const damageType = weapon.damageType;
-      const grazeAmount = Math.max(0, abilityModifier(attacker.abilityScores.STR));
+      // RAW: "the target takes damage equal to the ability modifier you used."
+      // Read the EFFECTIVE STR mod (slice 857), not the raw snapshot score.
+      const grazeAmount = Math.max(0, effectiveStrMod(attacker, state, content));
       if (grazeAmount > 0) {
         const grazeDamageId = newEventId() as ULID;
         // Slice 113: Graze damage now flows through the mitigation
