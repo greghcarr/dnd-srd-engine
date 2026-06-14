@@ -51,6 +51,13 @@ const ACTION_BLOCKING_CONDITIONS: ReadonlySet<string> = new Set([
   // end of its next turn" phase before the recurring save escalates the
   // target to Unconscious; it RAW-includes Incapacitated.
   'sleep-drowsy-active',
+  // `banished-active` (Banishment, slice 852): a creature that fails the CHA
+  // save is "transported to a harmless demiplane ... While there, the target
+  // has the Incapacitated condition." Concentration-bound (lifts when the
+  // spell ends → the target returns). The full removal from the scene /
+  // untargetability is consumer/positional; the engine models the
+  // RAW-stated Incapacitated.
+  'banished-active',
 ]);
 
 /**

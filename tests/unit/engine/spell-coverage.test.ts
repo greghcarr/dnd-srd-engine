@@ -299,7 +299,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   // PHB 2024 L4 spells shipped schema-only; see docs/starter-pack-gaps.md.
   'arcane-eye': { kind: 'skip', reason: 'has dedicated planArcaneEye (places a mobile Sensor entity with darkvision 30; caster moves it on a bonus action via planMoveSensor)' },
   'aura-of-life': { kind: 'skip', reason: 'paladin aura that holds allies above half-HP-floor + revives at 0 HP; sub-floor health mechanic not modeled' },
-  'banishment': { kind: 'skip', reason: 'CHA save banishes target to another plane; cross-plane travel + return-on-concentration-drop not modeled' },
+  'banishment': { kind: 'save' },
   'black-tentacles': { kind: 'aura-damage', castingClass: 'wizard', slotLevel: 4, expectsSave: true, expectsDamage: true },
   'compulsion': { kind: 'skip', reason: 'forced movement on WIS save with recurring re-save; recurring-save area mechanic not modeled' },
   'confusion': { kind: 'save' },

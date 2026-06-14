@@ -18,12 +18,12 @@
 
 ## Rollup
 
-Current state — open vs. closed rows, with the open count's severity split (BLOCKER / DIVERGENCE / QUIRK) in the next column. Updated through slice 851. **Areas 1 and 7 are fully closed.** A row is not a slice: several rows fan out into multiple slices (e.g. the `drain-undead-arms` lineage → slices 832/834/835), so the open count is a floor on remaining engine slices, not an exact count.
+Current state — open vs. closed rows, with the open count's severity split (BLOCKER / DIVERGENCE / QUIRK) in the next column. Updated through slice 852. **Areas 1 and 7 are fully closed.** A row is not a slice: several rows fan out into multiple slices (e.g. the `drain-undead-arms` lineage → slices 832/834/835), so the open count is a floor on remaining engine slices, not an exact count.
 
 | Area | Open | Closed | Open B/D/Q | Owner of open work | Status |
 |---|---|---|---|---|---|
 | 1. Edition drift | 0 | 4 | — | — | ✅ **fully closed** |
-| 2. Spell mechanics (L0-4) | 14 | 10 | 0 / 10 / 4 | Engine | open — largest engine block |
+| 2. Spell mechanics (L0-4) | 13 | 11 | 0 / 9 / 4 | Engine | open — largest engine block |
 | 3. Targeting / AoE seam | 13 | 1 | 0 / 6 / 7 | Seam + Consumer | open — consumer-correctness frontier |
 | 4. Core combat correctness | 5 | 6 | 0 / 0 / 5 | Engine | open — divergence-free (quirks only) |
 | 5. Build & leveling validation | 5 | 6 | 0 / 1 / 4 | Engine | open |
@@ -31,7 +31,7 @@ Current state — open vs. closed rows, with the open count's severity split (BL
 | 7. Monster runtime (DM side) | 0 | 21 | — | — | ✅ **fully closed** |
 | 8. Exploration / non-combat | 13 | 1 | 0 / 3 / 10 | Engine | open |
 | 9. Consumer duties & docs | 8 | 0 | 0 / 3 / 5 | Consumer + Docs | hand-off — not engine slices |
-| **Total** | **63** | **53** | **0 / 24 / 39** | — | 116 rows |
+| **Total** | **62** | **54** | **0 / 23 / 39** | — | 116 rows |
 
 **Recommended order:** The structural blockers are all closed (~~`aoe-shape-coverage`~~ 786–787, ~~`no-actions-field`~~ 788, ~~`multiattack-unpopulated`~~ 789–792, ~~`no-hit-die-spend-planner`~~ 785, ~~`background-ability-bonus`~~), and Areas 1 + 7 are done. Remaining engine work by leverage: **Area 2** (spell mechanical arms — 20, the largest block) and **Area 8** (the exploration pillar — 13), then the smaller Area 4 / 5 / 6 divergence-and-quirk cleanups and the engine half of Area 3. Consumer items (Area 9 + the consumer half of Area 3) bundle into a hand-off note for the dnd-web session.
 
@@ -60,7 +60,7 @@ A level-7 caster's whole repertoire. "Cast does nothing" and "missing a defining
 
 | ID | Sev | Owner | Fix | Finding |
 |---|---|---|---|---|
-| `l4-banishment` | DIVERGENCE | Engine | M | CHA save → banish; cast emits no save, target stays. `tests/unit/engine/spell-coverage.test.ts:302`. |
+| ~~`l4-banishment`~~ | DIVERGENCE | Engine | M | CHA save → banish; cast emits no save, target stays. `tests/unit/engine/spell-coverage.test.ts:302`. **Closed by slice 852** — wired as `{ save CHA, conditionOnFail: banished-active }` (concentration). RAW's only mechanical hook is "the target has the Incapacitated condition," so the new `banished-active` carries `effects: []` and the action-block is engine-coded by adding its id to `ACTION_BLOCKING_CONDITIONS` (the held-paralyzed-active / sleep-drowsy-active path). It's concentration-bound (the save mechanic stamps `sourceEffectInstanceId`), so it lifts when the caster's Concentration ends — the target returns. autoExpiry { 10 rounds } caps the 1 minute. Deferred (consumer/positional/narrative): the demiplane removal/untargetability (engine models only the Incapacitated), the reappear-placement, the Aberration/Celestial/Elemental/Fey/Fiend "doesn't return after 1 min" plane-transport arm, and the upcast "+1 target/slot" (targeting seam). |
 | `l4-dominate-beast` | DIVERGENCE | Engine | M | WIS save → control; no save/condition emitted. `spell-coverage.test.ts:310`. |
 | `l4-compulsion` | DIVERGENCE | Engine | M | WIS save → forced move each turn; nothing emitted. `spell-coverage.test.ts:304`. |
 | `l4-guardian-of-faith` | DIVERGENCE | Engine | M | Summoned guardian dealing 20 radiant (DEX half) to 60-total; nothing summoned. `spell-coverage.test.ts:315`. |

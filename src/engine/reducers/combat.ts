@@ -51,6 +51,10 @@ const INCAPACITATING_CONDITIONS: ReadonlySet<string> = new Set([
   // Slice 783: Sleep's Incapacitated phase — becoming drowsy ends the
   // bearer's own Concentration, in parity with ACTION_BLOCKING_CONDITIONS.
   'sleep-drowsy-active',
+  // Slice 852: Banishment's Incapacitated effect — a banished creature loses
+  // its own Concentration (RAW Incapacitated), in parity with
+  // ACTION_BLOCKING_CONDITIONS.
+  'banished-active',
 ]);
 
 const requireCharacter = (state: Draft<CampaignState>, id: string): Draft<Character> => {

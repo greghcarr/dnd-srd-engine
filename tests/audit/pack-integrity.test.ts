@@ -483,6 +483,7 @@ describe('pack integrity: wired spells do not apply effect-less conditions', () 
     // (Slice 847 wired hideous-laughter-active's Prone effects directly, so it
     // now carries mechanical effects and is no longer effect-less. Removed.)
     'sleep-drowsy-active', // slice 783: Sleep's Incapacitated phase — action-blocking (ACTION_BLOCKING_CONDITIONS) + escalating recurringSave (-> unconscious); Incapacitated is an engine-coded base condition
+    'banished-active', // slice 852: Banishment's failed-save effect — action-blocking (ACTION_BLOCKING_CONDITIONS); the RAW-stated Incapacitated is engine-coded, the demiplane removal is consumer/positional
     'cursed-inert-active', // slice 368: recurringSave { onFail: 'dodge' } drives it (save-or-Dodge); the mechanic is the recurring save, not the effects array
     'resisted', // slice 369: consumer-invoked planConsumeResistance rolls the 1d4 reduction (mirrors Absorb Elements); the marker just says Resistance is active
     'addled', // slice 380: Open Hand Technique (Addle); the opportunity-attack planner reads the id to bar OAs (the "can't make Opportunity Attacks" restriction isn't an effect primitive)
