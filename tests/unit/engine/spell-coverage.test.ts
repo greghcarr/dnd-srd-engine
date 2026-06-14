@@ -307,7 +307,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'death-ward': { kind: 'buff', conditionId: 'death-ward-active' },
   'dimension-door': { kind: 'skip', reason: 'has dedicated planDimensionDoor (action teleport up to 500 ft + optional willing passenger, not planCastSpell)' },
   'divination': { kind: 'skip', reason: 'cleric ritual divination; DM-resolution primitive not modeled' },
-  'dominate-beast': { kind: 'skip', reason: 'WIS save → controlled-mind; domination semantics distinct from Charmed not modeled' },
+  'dominate-beast': { kind: 'skip', reason: 'wired (slice 869): WIS save -> charmed (Concentration), gated to Beast targets via the save mechanic targetCreatureType filter, with conditionRepeatsSaveOnDamage stamping the per-instance damage re-save. The generic harness targets are Humanoids (skipped by the Beast filter), so the dedicated slice-869 test exercises it with a real Beast.' },
   'fabricate': { kind: 'skip', reason: '10-minute creation ritual; crafting / material-transformation primitive not modeled' },
   'faithful-hound': { kind: 'skip', reason: 'placed sentry that barks + attacks on intruders; alarm + delayed attack pattern not modeled' },
   'fire-shield': { kind: 'buff', conditionId: 'fire-shield-warm-active', casterChoice: { kind: 'variant', value: 'warm' } },

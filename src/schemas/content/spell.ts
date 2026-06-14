@@ -179,6 +179,17 @@ const SpellSaveMechanicSchema = z.object({
   // spell ends"). Documented RAW deviation: the engine's endsOnDamage
   // fires on ANY positive damage, not just caster-side damage.
   conditionEndsOnDamage: z.boolean().optional(),
+  // Slice 869: stamp a slice-388 per-instance recurring save (this mechanic's
+  // `ability` + the caster's spell save DC, resolved at cast time) onto the
+  // `conditionOnFail` condition, so the condition carries a repeat save the
+  // consumer can tick. RAW (Dominate Beast): "Whenever the target takes
+  // damage, it repeats the save, ending the spell on itself on a success." The
+  // *trigger* is consumer-driven — the engine doesn't fire it; the consumer
+  // calls `tickRecurringSave` when the bearer takes damage, and the per-
+  // instance path rolls the baked DC and removes the condition on a success.
+  // Distinct from `conditionEndsOnDamage` (which auto-ends on ANY damage with
+  // no save). Opt-in so other save spells are unaffected.
+  conditionRepeatsSaveOnDamage: z.boolean().optional(),
   // Slice 783: Sleep's "creatures that don't sleep, such as elves, or that
   // have Immunity to the Exhaustion condition automatically succeed." When
   // set, a target auto-succeeds (no save rolled, no condition) if it is immune

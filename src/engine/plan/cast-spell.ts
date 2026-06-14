@@ -1235,6 +1235,13 @@ const planSaveMechanic = (
           causedByEventId: saveEvent.id,
           // Slice 500: Animal Friendship's "ends if damaged" arm.
           ...(mechanic.conditionEndsOnDamage === true ? { endsOnDamage: true } : {}),
+          // Slice 869: Dominate Beast's "repeats the save on damage" arm —
+          // stamp the slice-388 per-instance recurring save (this mechanic's
+          // ability + the spell DC just computed) so the consumer can tick a
+          // damage-triggered repeat save that ends the condition on a success.
+          ...(mechanic.conditionRepeatsSaveOnDamage === true
+            ? { recurringSaveDC: dcResult.total, recurringSaveAbility: mechanic.ability }
+            : {}),
           // Slice 783: bind the condition to the caster's concentration (when
           // any) so it clears on a drop, and so the recurring-save escalation
           // can propagate the link to the escalated condition (Sleep).
