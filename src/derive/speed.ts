@@ -10,6 +10,7 @@ import type { ResolvedContent } from '../content/pack.js';
 import type { MovementMode } from '../schemas/primitives.js';
 import { collectEffectsFromCharacter, buildEffectStack } from './effect-stack.js';
 import { effectiveAbilityScore, abilityModifier } from './ability.js';
+import { computeEncumbrance } from './encumbrance.js';
 import { EXHAUSTION_SPEED_PENALTY_PER_LEVEL } from '../internal/constants.js';
 
 // Slice 799 (Area 6 `armor-str-requirement-speed`): RAW equipment.md
@@ -47,6 +48,33 @@ export interface GetEffectiveSpeedInput {
   readonly itemInstances: Readonly<Record<string, ItemInstance>>;
   readonly pendingChoices?: Readonly<Record<string, PendingChoice>>;
 }
+
+// Slice 866 (Area 8 `over-capacity-speed-5`): RAW (SRD 5.2.1, rules-glossary
+// "Carrying Capacity"): "While dragging, lifting, or pushing weight in excess
+// of the maximum weight you can carry, your Speed can be no more than 5 feet."
+// When the carried inventory exceeds the creature's carry maximum (size × STR
+// × 15, slice 865), every Speed is capped at 5 ft — the cap reads "your Speed"
+// (general), so it applies to walk and the non-walk modes alike. The cap only
+// LOWERS Speed: a zero-set (Grappled / Restrained) already returned 0 above,
+// and a faster natural Speed is clamped down, never raised. Cheap early-out —
+// an empty inventory can't be over capacity, so the common (combat) path never
+// sums weights.
+//
+// Deferred: Boots of Striding and Springing RAW exempt the wearer ("your Speed
+// isn't reduced by you carrying weight in excess of your carrying capacity"),
+// but the item ships inert (`effects: []`), so there is no wired path to exempt
+// yet — its full wiring (the Speed-30 floor + this + the Heavy-Armor-penalty
+// exemption + the 10-ft jump) is a separate content slice. Same precedent as
+// the slice-799 Heavy-Armor Strength penalty, which the inert Boots likewise
+// don't yet exempt.
+const OVER_CAPACITY_SPEED_CAP = 5;
+const overCapacitySpeedCap = (input: GetEffectiveSpeedInput): number | undefined => {
+  const { character, content, itemInstances } = input;
+  if (character.inventory.length === 0) return undefined;
+  return computeEncumbrance({ character, itemInstances, content }).overCapacity
+    ? OVER_CAPACITY_SPEED_CAP
+    : undefined;
+};
 
 export interface JumpDistances {
   /** Long Jump with a 10-ft running start: feet up to your (effective) Strength score. */
@@ -203,7 +231,12 @@ export const getEffectiveSpeedForMode = (
   const exhaustionPenalty = character.exhaustion > 0
     ? EXHAUSTION_SPEED_PENALTY_PER_LEVEL * character.exhaustion
     : 0;
-  return Math.max(0, scaled + exhaustionPenalty);
+  const uncapped = Math.max(0, scaled + exhaustionPenalty);
+  // Slice 866: the over-capacity cap is the last word — it clamps any
+  // surviving non-zero Speed (including a `set` override like Phantom Steed)
+  // down to 5 ft when the creature is hauling more than it can carry.
+  const cap = overCapacitySpeedCap(input);
+  return cap !== undefined ? Math.min(uncapped, cap) : uncapped;
 };
 
 /**
