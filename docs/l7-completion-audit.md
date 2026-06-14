@@ -18,12 +18,12 @@
 
 ## Rollup
 
-Current state — open vs. closed rows, with the open count's severity split (BLOCKER / DIVERGENCE / QUIRK) in the next column. Updated through slice 850. **Areas 1 and 7 are fully closed.** A row is not a slice: several rows fan out into multiple slices (e.g. the `drain-undead-arms` lineage → slices 832/834/835), so the open count is a floor on remaining engine slices, not an exact count.
+Current state — open vs. closed rows, with the open count's severity split (BLOCKER / DIVERGENCE / QUIRK) in the next column. Updated through slice 851. **Areas 1 and 7 are fully closed.** A row is not a slice: several rows fan out into multiple slices (e.g. the `drain-undead-arms` lineage → slices 832/834/835), so the open count is a floor on remaining engine slices, not an exact count.
 
 | Area | Open | Closed | Open B/D/Q | Owner of open work | Status |
 |---|---|---|---|---|---|
 | 1. Edition drift | 0 | 4 | — | — | ✅ **fully closed** |
-| 2. Spell mechanics (L0-4) | 15 | 9 | 0 / 11 / 4 | Engine | open — largest engine block |
+| 2. Spell mechanics (L0-4) | 14 | 10 | 0 / 10 / 4 | Engine | open — largest engine block |
 | 3. Targeting / AoE seam | 13 | 1 | 0 / 6 / 7 | Seam + Consumer | open — consumer-correctness frontier |
 | 4. Core combat correctness | 5 | 6 | 0 / 0 / 5 | Engine | open — divergence-free (quirks only) |
 | 5. Build & leveling validation | 5 | 6 | 0 / 1 / 4 | Engine | open |
@@ -31,7 +31,7 @@ Current state — open vs. closed rows, with the open count's severity split (BL
 | 7. Monster runtime (DM side) | 0 | 21 | — | — | ✅ **fully closed** |
 | 8. Exploration / non-combat | 13 | 1 | 0 / 3 / 10 | Engine | open |
 | 9. Consumer duties & docs | 8 | 0 | 0 / 3 / 5 | Consumer + Docs | hand-off — not engine slices |
-| **Total** | **64** | **52** | **0 / 25 / 39** | — | 116 rows |
+| **Total** | **63** | **53** | **0 / 24 / 39** | — | 116 rows |
 
 **Recommended order:** The structural blockers are all closed (~~`aoe-shape-coverage`~~ 786–787, ~~`no-actions-field`~~ 788, ~~`multiattack-unpopulated`~~ 789–792, ~~`no-hit-die-spend-planner`~~ 785, ~~`background-ability-bonus`~~), and Areas 1 + 7 are done. Remaining engine work by leverage: **Area 2** (spell mechanical arms — 20, the largest block) and **Area 8** (the exploration pillar — 13), then the smaller Area 4 / 5 / 6 divergence-and-quirk cleanups and the engine half of Area 3. Consumer items (Area 9 + the consumer half of Area 3) bundle into a hand-off note for the dnd-web session.
 
@@ -65,7 +65,7 @@ A level-7 caster's whole repertoire. "Cast does nothing" and "missing a defining
 | `l4-compulsion` | DIVERGENCE | Engine | M | WIS save → forced move each turn; nothing emitted. `spell-coverage.test.ts:304`. |
 | `l4-guardian-of-faith` | DIVERGENCE | Engine | M | Summoned guardian dealing 20 radiant (DEX half) to 60-total; nothing summoned. `spell-coverage.test.ts:315`. |
 | `l4-aura-of-life` | DIVERGENCE | Engine | M | 30-ft emanation: necrotic resistance + 0-HP allies regain 1 HP; no aura. `spell-coverage.test.ts:301`. |
-| `l4-resilient-sphere` | DIVERGENCE | Engine | M | DEX save → impervious sphere; no save/condition. `spell-coverage.test.ts:319`. |
+| ~~`l4-resilient-sphere`~~ | DIVERGENCE | Engine | M | DEX save → impervious sphere; no save/condition. `spell-coverage.test.ts:319`. **Closed by slice 851** — content-only, reusing two shipped primitives: the slice-849 unwilling-save-on-buff (a `buff` mechanic with `unwillingSave { DEX }` — a willing target is enclosed with no save, an unwilling one rolls DEX vs the caster's spell DC) applying the new `resilient-sphere-enclosed` condition, which carries `GrantImmunity { damageType: 'all' }` (the testable arm: the trapped creature takes 0 from any source) + concentration-binding + `autoExpiry { 10 rounds }` as the 1-minute cap. Deferred (positional / narrative, consumer-owned): the reciprocal "can't damage outside" arm (no inside/outside without positions), the seal vs incoming non-damage effects, roll-at-half-speed, and the Disintegrate special case. |
 | `l4-faithful-hound` | DIVERGENCE | Engine | M | Invisible watchdog + 4d8 bite vs adjacent hostiles; nothing. `spell-coverage.test.ts:312`. |
 | `l4-giant-insect` | DIVERGENCE | Engine | L | Transforms vermin into controlled giant versions; nothing. `spell-coverage.test.ts:314`. |
 

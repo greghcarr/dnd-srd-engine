@@ -316,7 +316,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'hallucinatory-terrain': { kind: 'skip', reason: 'large-area illusion; terrain primitive not modeled' },
   'locate-creature': { kind: 'skip', reason: 'divination locator; sensor / scrying primitive not modeled' },
   'private-sanctum': { kind: 'skip', reason: 'large-area ward against detection/sound/teleport; area-warding primitive not modeled' },
-  'resilient-sphere': { kind: 'skip', reason: 'forced cage around target on DEX save; multi-target movement-restriction primitive not modeled' },
+  'resilient-sphere': { kind: 'buff', conditionId: 'resilient-sphere-enclosed' },
   'secret-chest': { kind: 'skip', reason: 'extradimensional storage utility; ethereal-stash primitive not modeled' },
   'stone-shape': { kind: 'skip', reason: 'utility shaping of stone; terrain primitive not modeled' },
   'stoneskin': { kind: 'buff', conditionId: 'stoneskin-active' },
