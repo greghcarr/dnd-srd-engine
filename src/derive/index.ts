@@ -84,4 +84,5 @@ export {
 export { coveredCells, type AreaOfEffectSpec } from './aoe.js';
 export { validateBackgroundAbilityIncrease } from './background-asi.js';
 export { validateMulticlass, MULTICLASS_MIN_ABILITY, type ValidateMulticlassOptions } from './multiclass-prereq.js';
+export { validateAttunement, MAX_ATTUNED_ITEMS, type AttunementValidation } from './attunement-prereq.js';
 export { runtimeMultiattackFromStatblock } from './multiattack.js';

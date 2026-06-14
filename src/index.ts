@@ -443,6 +443,8 @@ export {
   validateBackgroundAbilityIncrease,
   validateMulticlass,
   MULTICLASS_MIN_ABILITY,
+  validateAttunement,
+  MAX_ATTUNED_ITEMS,
   runtimeMultiattackFromStatblock,
   getEffectiveFeatIds,
 } from './derive/index.js';
@@ -459,6 +461,7 @@ export type {
   JumpDistances,
   EncumbranceResult,
   EncumbranceLevel,
+  AttunementValidation,
   SaveResult,
   SpellDCResult,
   SpellSlotsResult,
