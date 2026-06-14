@@ -6,11 +6,11 @@
 
 **Goblin Cutter** joined (fighter 1, 12/12 HP).
 
-**Goblin Boss** STR save: d20(2) + 1 = 3 vs DC 15 -> failure.
+**Goblin Boss** STR save: d20(2) + 3 (+1 STR-mod, +2 proficiency) = 5 vs DC 15 -> failure.
 
 **Goblin Boss** is now Grappled.
 
-**Goblin Cutter** STR save: d20(6) + -1 = 5 vs DC 15 -> failure.
+**Goblin Cutter** STR save: d20(6) + 1 (-1 STR-mod, +2 proficiency) = 7 vs DC 15 -> failure.
 
 **Goblin Cutter** is now Prone.
 

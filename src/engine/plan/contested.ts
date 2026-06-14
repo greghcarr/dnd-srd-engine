@@ -3,7 +3,7 @@ import type { ResolvedContent } from '../../content/pack.js';
 import type { Event } from '../../schemas/events/index.js';
 import type { RNG } from '../../rng/index.js';
 import { rollDie } from '../../rng/dice.js';
-import { applyHalflingLuckFromFlag, applyHalflingLuckForCharacter } from './_halfling-luck.js';
+import { applyHalflingLuckFromFlag } from './_halfling-luck.js';
 import { newEventId, newAppliedConditionId } from '../../ids.js';
 import { D20_SIDES } from '../../internal/constants.js';
 import { nowIso } from '../../internal/clock.js';
@@ -15,6 +15,7 @@ import { computeAbilityCheck } from '../../derive/ability-check.js';
 import { creatureSize } from '../../derive/creature-size.js';
 import { SIZES } from '../../schemas/primitives.js';
 import { assertActorCanAct } from './_actor-state.js';
+import { rollSaveAgainstDC } from './_save-roll.js';
 import type { ULID } from '../ids-utils.js';
 import type {
   ActionEconomyConsumedEvent,
@@ -22,7 +23,7 @@ import type {
 import type {
   ConditionAppliedEvent,
 } from '../../schemas/events/combat.js';
-import type { SaveRolledEvent, AbilityCheckRolledEvent } from '../../schemas/events/checks.js';
+import type { AbilityCheckRolledEvent } from '../../schemas/events/checks.js';
 import type { CombatantMovedEvent } from '../../schemas/events/movement.js';
 
 const UNARMED_DC_BASE = 8;
@@ -117,29 +118,28 @@ export const planGrapple = (
   const at = intent.at ?? nowIso();
   const ability = intent.targetAbility ?? 'STR';
   const dc = unarmedSaveDC(attacker);
-  const rolls: number[] = [rollDie(D20_SIDES, rng)];
-  // Slice 543: Halfling Luck on contested target save.
-  const d20 = applyHalflingLuckForCharacter(rolls[0]!, intent.targetId, state, content, rolls, rng);
-  const bonus = abilityModifier(target.abilityScores[ability]);
-  const total = d20 + bonus;
-  const success = total >= dc;
-  const events: Event[] = [];
-  const consume = consumeActionIfEncountered(state, intent.attackerId, at);
-  if (consume !== undefined) events.push(consume);
-  events.push({
-    id: newEventId() as ULID,
-    at,
-    type: 'SaveRolled',
+  // Slice 855: route the target's save through the shared rollSaveAgainstDC
+  // primitive so it honors save proficiency, Bless/Bane and other bonus dice,
+  // advantage/disadvantage, Magic Resistance, and the auto-fail — the same fix
+  // slice 853 (Topple) / 854 (Open Hand) made. The old raw `abilityModifier`
+  // roll skipped all of them. sourceIsMagical is false: an Unarmed Strike
+  // grapple is a nonmagical effect. (Halfling Luck folds into the primitive.)
+  const saveResult = rollSaveAgainstDC({
+    state,
+    content,
     targetId: intent.targetId,
     ability,
     dc,
-    d20: [d20],
-    used: 'none',
-    bonus,
-    total,
-    success,
-  } satisfies SaveRolledEvent);
-  if (!success) {
+    sourceIsMagical: false,
+    rng,
+    at,
+  });
+  invariant(saveResult !== undefined, `Grapple target ${intent.targetId} not found`);
+  const events: Event[] = [];
+  const consume = consumeActionIfEncountered(state, intent.attackerId, at);
+  if (consume !== undefined) events.push(consume);
+  events.push(saveResult.event);
+  if (!saveResult.success) {
     events.push({
       id: newEventId() as ULID,
       at,
@@ -177,29 +177,25 @@ export const planShove = (
   assertTargetNotTooLarge(content, attacker, target, 'shove');
   const at = intent.at ?? nowIso();
   const dc = unarmedSaveDC(attacker);
-  const rolls: number[] = [rollDie(D20_SIDES, rng)];
-  // Slice 543: Halfling Luck on contested target STR save.
-  const d20 = applyHalflingLuckForCharacter(rolls[0]!, intent.targetId, state, content, rolls, rng);
-  const bonus = abilityModifier(target.abilityScores.STR);
-  const total = d20 + bonus;
-  const success = total >= dc;
-  const events: Event[] = [];
-  const consume = consumeActionIfEncountered(state, intent.attackerId, at);
-  if (consume !== undefined) events.push(consume);
-  events.push({
-    id: newEventId() as ULID,
-    at,
-    type: 'SaveRolled',
+  // Slice 855: route the target's STR save through the shared rollSaveAgainstDC
+  // primitive (see planGrapple) — proficiency, Bless/Bane, advantage, Magic
+  // Resistance, auto-fail, Halfling Luck. sourceIsMagical false (nonmagical).
+  const saveResult = rollSaveAgainstDC({
+    state,
+    content,
     targetId: intent.targetId,
     ability: 'STR',
     dc,
-    d20: [d20],
-    used: 'none',
-    bonus,
-    total,
-    success,
-  } satisfies SaveRolledEvent);
-  if (!success) {
+    sourceIsMagical: false,
+    rng,
+    at,
+  });
+  invariant(saveResult !== undefined, `Shove target ${intent.targetId} not found`);
+  const events: Event[] = [];
+  const consume = consumeActionIfEncountered(state, intent.attackerId, at);
+  if (consume !== undefined) events.push(consume);
+  events.push(saveResult.event);
+  if (!saveResult.success) {
     if (intent.mode === 'prone') {
       events.push({
         id: newEventId() as ULID,
