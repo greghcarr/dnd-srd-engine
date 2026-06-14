@@ -37,16 +37,20 @@ import { nowIso } from '../../internal/clock.js';
 import { invariant } from '../../internal/invariants.js';
 import type { ULID } from '../ids-utils.js';
 import { assertActorCanAct, getEffectiveSpeed, findActorBlockingCondition } from './_actor-state.js';
+import { getEffectiveSpeedForMode } from '../../derive/speed.js';
 import { bresenhamCells, movementCostAt } from '../../derive/terrain.js';
 import { findPath } from '../../derive/pathing.js';
 import { DEFAULT_CELL_SIZE_FEET } from '../../schemas/runtime/location.js';
 
-// Slice 489: per-move movement-modality marker. Default 'walk' preserves
-// pre-489 behavior. Currently load-bearing only for Flyby OA suppression
-// (Hippogriff): when the mover is flying out of an enemy's reach, the
-// trait skips the Opportunity Attack provocation. Other modes ('climb',
-// 'swim') are accepted for future-proofing but don't yet drive behavior.
-export type MovementMode = 'walk' | 'fly' | 'climb' | 'swim';
+// Slice 489 / 867: per-move movement-modality marker. Default 'walk'.
+// Load-bearing for: Flyby OA suppression ('fly' — the Hippogriff skips the
+// Opportunity Attack provocation when it flies out of an enemy's reach) and
+// the slice-867 movement-cost surcharges — 'climb' / 'swim' / 'crawl' each
+// cost 1 extra foot per foot of movement (RAW Climbing / Swimming /
+// Crawling), waived for 'climb'/'swim' when the mover has the matching
+// Climb / Swim Speed. 'crawl' also keeps the mover Prone (the RAW
+// alternative to standing up).
+export type MovementMode = 'walk' | 'fly' | 'climb' | 'swim' | 'crawl';
 
 export interface MoveIntent {
   readonly type: 'Move';
@@ -118,6 +122,38 @@ const characterWalkSpeed = (
   });
 };
 
+// Slice 867 — the Climbing / Swimming / Crawling movement-cost surcharge, in
+// feet. RAW (rules-glossary "Climbing" / "Swimming" / "Crawling"): "each foot
+// of movement costs 1 extra foot (2 extra feet in Difficult Terrain)." The
+// Difficult-Terrain doubling is already folded into the path cost the caller
+// passes as the base, so a flat +1 per GEOMETRIC foot reproduces the RAW total
+// (normal 1+1 = 2/ft, difficult 2+1 = 3/ft). Climb and Swim waive the cost
+// when the mover has the matching Climb / Swim Speed ("you ignore this extra
+// cost if you have a Climb Speed and use it to climb"); Crawling has no waiver.
+// Walk / fly add nothing.
+const movementCostSurcharge = (
+  mode: MovementMode,
+  geometricFeet: number,
+  character: Character | undefined,
+  content: ResolvedContent,
+  state: CampaignState,
+): number => {
+  if (mode !== 'climb' && mode !== 'swim' && mode !== 'crawl') return 0;
+  if ((mode === 'climb' || mode === 'swim') && character !== undefined) {
+    const matchingSpeed = getEffectiveSpeedForMode(
+      {
+        character,
+        content,
+        itemInstances: state.itemInstances,
+        pendingChoices: state.pendingChoices,
+      },
+      mode,
+    );
+    if (matchingSpeed > 0) return 0;
+  }
+  return geometricFeet;
+};
+
 export const planMove = (
   state: CampaignState,
   content: ResolvedContent,
@@ -181,6 +217,11 @@ export const planMove = (
     locationId !== undefined ? state.locations[locationId] : undefined;
   const map = location?.map;
   let distance: number;
+  // Geometric feet actually traversed (used for the slice-867 climb/swim/
+  // crawl surcharge), distinct from `distance` which folds in Difficult-
+  // Terrain cost. One path step = one cell = `cellSize` feet (8-neighbour
+  // Chebyshev), so the geometric length is (steps) × cellSize.
+  let geometricFeet: number;
   if (map !== undefined) {
     // Collect other-combatant positions in the active encounter as
     // occupied cells (the path planner refuses to route through
@@ -211,8 +252,11 @@ export const planMove = (
       );
     }
     distance = pathResult.costFeet;
+    const cellSize = map.cellSizeFeet ?? DEFAULT_CELL_SIZE_FEET;
+    geometricFeet = Math.max(0, pathResult.path.length - 1) * cellSize;
   } else {
     distance = chebyshevDistance(combatant.position, intent.to);
+    geometricFeet = distance;
   }
   const baseSpeed = characterWalkSpeed(state, content, intent.combatantId);
   if (baseSpeed === 0) {
@@ -222,21 +266,29 @@ export const planMove = (
   }
   const maxThisTurn = combatant.turnUsage.dashed ? baseSpeed * 2 : baseSpeed;
   const remaining = maxThisTurn - combatant.turnUsage.feetMovedThisTurn;
+  const mode: MovementMode = intent.movementMode ?? 'walk';
   // RAW PHB ch.1 "Prone → Standing Up": "Standing up takes more
   // effort; doing so costs an amount of movement equal to half your
   // speed." The engine treats a Move while Prone as an implicit
   // stand-up-then-walk: half-speed surcharge added to the move's cost,
   // ConditionRemoved(prone) emitted before CombatantMoved so the
-  // condition is gone for any downstream geometry checks.
+  // condition is gone for any downstream geometry checks. Slice 867: the
+  // RAW alternative is to Crawl (movementMode 'crawl') — stay Prone and pay
+  // the +1 ft/ft crawl surcharge instead of standing up.
   const isProne = character?.appliedConditions.some((c) => c.conditionId === 'prone') ?? false;
-  const standUpCost = isProne ? Math.floor(baseSpeed / 2) : 0;
-  const totalCost = distance + standUpCost;
+  const isCrawling = mode === 'crawl';
+  const standUpCost = isProne && !isCrawling ? Math.floor(baseSpeed / 2) : 0;
+  // Slice 867: the climb / swim / crawl +1 ft/ft surcharge (see
+  // `movementCostSurcharge`). Zero for walk / fly and for a climber/swimmer
+  // who has the matching Climb / Swim Speed.
+  const traversalSurcharge = movementCostSurcharge(mode, geometricFeet, character, content, state);
+  const totalCost = distance + standUpCost + traversalSurcharge;
   if (totalCost > remaining) {
-    const detail = isProne
-      ? `${distance}ft move + ${standUpCost}ft stand-up`
-      : `${distance}ft`;
+    const parts = [`${distance}ft move`];
+    if (standUpCost > 0) parts.push(`${standUpCost}ft stand-up`);
+    if (traversalSurcharge > 0) parts.push(`${traversalSurcharge}ft ${mode} surcharge`);
     throw new Error(
-      `Move (${detail}) exceeds remaining movement (${remaining}ft of ${maxThisTurn}ft)`,
+      `Move (${parts.join(' + ')}) exceeds remaining movement (${remaining}ft of ${maxThisTurn}ft)`,
     );
   }
   // RAW 2024 PHB "Moving Around Other Creatures": you can pass through
@@ -263,7 +315,9 @@ export const planMove = (
 
   const at = intent.at ?? nowIso();
   const events: Event[] = [];
-  if (isProne) {
+  // Stand up out of Prone for a normal move; a Crawl (slice 867) keeps the
+  // mover Prone (it paid the crawl surcharge instead of the stand-up cost).
+  if (isProne && !isCrawling) {
     events.push({
       id: newEventId() as ULID,
       at,
@@ -280,10 +334,10 @@ export const planMove = (
     combatantId: intent.combatantId,
     fromPosition: { ...combatant.position },
     toPosition: { ...intent.to },
-    // Charge the stand-up overhead against the move's feetTraveled so
-    // the CombatantMoved reducer drains feetMovedThisTurn by the full
-    // RAW cost. The actual travel distance is `distance`; the prone
-    // stand-up surcharge bumps it up to the total movement spent.
+    // Charge the full movement cost against feetTraveled so the
+    // CombatantMoved reducer drains feetMovedThisTurn correctly. The base
+    // travel is `distance`; the Prone stand-up cost and the slice-867
+    // climb/swim/crawl surcharge bump it up to the total movement spent.
     feetTraveled: totalCost,
   };
   events.push(moved);
