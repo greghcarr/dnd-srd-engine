@@ -18,7 +18,7 @@
 
 ## Rollup
 
-Current state — open vs. closed rows, with the open count's severity split (BLOCKER / DIVERGENCE / QUIRK) in the next column. Updated through slice 861. **Areas 1 and 7 are fully closed.** A row is not a slice: several rows fan out into multiple slices (e.g. the `drain-undead-arms` lineage → slices 832/834/835), so the open count is a floor on remaining engine slices, not an exact count.
+Current state — open vs. closed rows, with the open count's severity split (BLOCKER / DIVERGENCE / QUIRK) in the next column. Updated through slice 862. **Areas 1 and 7 are fully closed.** A row is not a slice: several rows fan out into multiple slices (e.g. the `drain-undead-arms` lineage → slices 832/834/835), so the open count is a floor on remaining engine slices, not an exact count.
 
 | Area | Open | Closed | Open B/D/Q | Owner of open work | Status |
 |---|---|---|---|---|---|
@@ -29,9 +29,9 @@ Current state — open vs. closed rows, with the open count's severity split (BL
 | 5. Build & leveling validation | 4 | 7 | 0 / 1 / 3 | Engine | open |
 | 6. Base equipment mechanics | 2 | 7 | 0 / 1 / 1 | Engine | open |
 | 7. Monster runtime (DM side) | 0 | 21 | — | — | ✅ **fully closed** |
-| 8. Exploration / non-combat | 12 | 2 | 0 / 2 / 10 | Engine | open |
+| 8. Exploration / non-combat | 11 | 3 | 0 / 2 / 9 | Engine | open |
 | 9. Consumer duties & docs | 8 | 0 | 0 / 3 / 5 | Consumer + Docs | hand-off — not engine slices |
-| **Total** | **56** | **61** | **0 / 22 / 34** | — | 117 rows |
+| **Total** | **55** | **62** | **0 / 22 / 33** | — | 117 rows |
 
 **Recommended order:** The structural blockers are all closed (~~`aoe-shape-coverage`~~ 786–787, ~~`no-actions-field`~~ 788, ~~`multiattack-unpopulated`~~ 789–792, ~~`no-hit-die-spend-planner`~~ 785, ~~`background-ability-bonus`~~), and Areas 1 + 7 are done. Remaining engine work by leverage: **Area 2** (spell mechanical arms — 13 open, still the largest block) and **Area 8** (the exploration pillar — 13), then the engine half of Area 3 and the residual Area 4 / 5 / 6 quirks. The Area-2 frontier is now the **L4 spell block** (summons `l4-guardian-of-faith` / `l4-faithful-hound`, auras `l4-aura-of-life`, charm/forced-movement `l4-dominate-beast` / `l4-compulsion`) plus two **damage-pipeline primitives** (`enlarge-reduce-no-damage-rider`, `acid-arrow-no-delayed-or-miss`) — the cheap save/condition/buff arms are spent. The slices-849–858 run closed the unwilling-save-on-buff primitive (reused by Resilient Sphere), Blindness/Deafness, Banishment, the whole raw-mod-save-bypass bug class (Topple / Open Hand / Grapple-Shove), and the Graze / auto-crit-reach quirks. Consumer items (Area 9 + the consumer half of Area 3) bundle into a hand-off note for the dnd-web session.
 
@@ -228,7 +228,7 @@ Cross-ref: `lightlevel-packtactics-underfire` (Sunlight Sensitivity / Pack Tacti
 | `no-suffocation` | QUIRK | Engine | M | No holding-breath / suffocation → exhaustion mechanic. |
 | `no-environmental-hazards` | QUIRK | Engine | M | Burning / Dehydration / Malnutrition / extreme cold-heat unmodeled. |
 | `long-rest-no-24h-lockout` | QUIRK | Engine | M | No once-per-~24h cadence (rest advances no clock). `src/engine/plan/rest.ts:138-200`. |
-| `rest-no-min-1hp` | QUIRK | Engine | S | A 0-HP/dying character can long-rest to full (RAW needs ≥ 1 HP to start). `src/engine/reducers/rest.ts:119-122`. |
+| ~~`rest-no-min-1hp`~~ | QUIRK | Engine | S | A 0-HP/dying character can long-rest to full (RAW needs ≥ 1 HP to start). `src/engine/reducers/rest.ts:119-122`. **Closed by slice 862** — `planLongRest` now throws if any participant is below 1 HP (RAW: "To start a Long Rest, you must have at least 1 Hit Point"), naming the offending creature; it must regain ≥1 HP first (a heal, or the stable-creature 1-HP-after-1d4-hours recovery). Explicit failure over the prior silent rest-to-full. (Gate lives in the planner, not the reducer the row cited.) |
 | `no-group-check-helper` | QUIRK | Consumer | S | No group-check aggregation helper (consumer math over per-character checks). |
 
 Cross-ref: `long-rest-half-hd` is the Area 1 headline.

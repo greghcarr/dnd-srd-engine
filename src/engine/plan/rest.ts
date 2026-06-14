@@ -150,6 +150,19 @@ export const planLongRest = (
   const content: ResolvedContent | undefined = maybeIntent !== undefined
     ? (contentOrIntent as ResolvedContent)
     : undefined;
+  // Slice 862: RAW (Long Rest) — "To start a Long Rest, you must have at
+  // least 1 Hit Point." A creature at 0 HP (dying, or stable-but-unconscious)
+  // can't begin a Long Rest; it must regain at least 1 HP first (a heal, or
+  // the stable-creature 1-HP-after-1d4-hours recovery). Surface the violation
+  // explicitly rather than silently resting a downed creature to full.
+  for (const participantId of intent.participantIds) {
+    const participant = state.characters[participantId];
+    if (participant !== undefined && participant.hp.current < 1) {
+      throw new Error(
+        `${participant.name} cannot start a Long Rest at 0 Hit Points (RAW requires at least 1 Hit Point to start a Long Rest)`,
+      );
+    }
+  }
   const at = intent.at ?? nowIso();
   const expectedDurationMinutes = state.settings.grittyRest
     ? LONG_REST_GRITTY_MINUTES
