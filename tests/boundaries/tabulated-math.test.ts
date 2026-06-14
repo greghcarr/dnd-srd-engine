@@ -21,7 +21,7 @@ import {
   PROFICIENCY_BONUS_LEVEL_MAX,
 } from '../../src/derive/ability.js';
 import { computeSpellSlots, spellSlotsForLevel } from '../../src/derive/spell-slots.js';
-import { computeCarryingCapacity } from '../../src/derive/encumbrance.js';
+import { computeCarryingCapacity } from '../../src/derive/carrying-capacity.js';
 import { computeSavingThrow } from '../../src/derive/save.js';
 import { CharacterSchema, type Character } from '../../src/schemas/runtime/character.js';
 import { TEST_CONTENT } from '../fixtures/index.js';
@@ -250,7 +250,7 @@ describe('carrying capacity by Strength (PHB 2024, pounds)', () => {
     const expected = str * 15;
     it(`STR ${str} → ${expected} lb`, () => {
       const char = buildChar([{ classId: 'fighter', level: 1 }], { STR: str });
-      expect(computeCarryingCapacity(char)).toBe(expected);
+      expect(computeCarryingCapacity(char, TEST_CONTENT).capacity).toBe(expected);
     });
   }
 });

@@ -588,7 +588,6 @@ exports[`public API contract: src/index.ts > source-level exports (runtime + typ
   "EncounterStartedEventSchema",
   "EncounterStatusSchema",
   "EncounterView",
-  "EncumbranceLevel",
   "EncumbranceResult",
   "EndEncounterIntent",
   "Engine",

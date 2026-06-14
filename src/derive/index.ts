@@ -16,7 +16,7 @@ export {
   type EffectiveSpeeds,
   type JumpDistances,
 } from './speed.js';
-export type { EncumbranceResult, EncumbranceLevel } from './encumbrance.js';
+export type { EncumbranceResult } from './encumbrance.js';
 export {
   computeAC,
   type ACResult,

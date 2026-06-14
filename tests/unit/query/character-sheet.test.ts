@@ -262,8 +262,8 @@ describe('slice 417: buildCharacterSheet inventory', () => {
       content: TEST_CONTENT,
     });
     expect(sheet.inventory.items).toEqual([]);
-    expect(sheet.inventory.encumbrance.maxCarryingCapacity).toBe(16 * 15);
-    expect(sheet.inventory.encumbrance.level).toBe('unencumbered');
+    expect(sheet.inventory.encumbrance.carryCapacity).toBe(16 * 15);
+    expect(sheet.inventory.encumbrance.overCapacity).toBe(false);
   });
 
   it('lists a carried item with quantity and no equipped slot', () => {

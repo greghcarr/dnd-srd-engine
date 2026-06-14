@@ -460,7 +460,6 @@ export type {
   EffectiveSpeeds,
   JumpDistances,
   EncumbranceResult,
-  EncumbranceLevel,
   AttunementValidation,
   SaveResult,
   SpellDCResult,

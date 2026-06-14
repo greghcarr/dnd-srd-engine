@@ -25,10 +25,31 @@ import type { Character } from '../schemas/runtime/character.js';
 import type { ResolvedContent } from '../content/pack.js';
 
 const STRENGTH_TO_CAPACITY_LB = 15;
-const POWERFUL_BUILD_MULTIPLIER = 2;
+const PUSH_DRAG_LIFT_MULTIPLIER = 2;
 const PETRIFIED_WEIGHT_MULTIPLIER = 10;
 const POWERFUL_BUILD_SPECIES_IDS: ReadonlySet<string> = new Set(['goliath']);
 const PETRIFIED_CONDITION_ID = 'petrified';
+
+// Slice 865 — RAW (SRD 5.2.1, Carrying Capacity): "Your size and Strength
+// score determine the maximum weight ... that you can carry" — Small/Medium
+// = STR × 15, Tiny = STR × 7.5, Large = × 30, Huge = × 60, Gargantuan = × 120
+// (i.e. the per-size multiplier of the STR×15 base below). Drag/Lift/Push is
+// double the carry value.
+const SIZE_CARRY_FACTOR: Readonly<Record<string, number>> = {
+  tiny: 0.5,
+  small: 1,
+  medium: 1,
+  large: 2,
+  huge: 4,
+  gargantuan: 8,
+};
+const SIZE_ORDER = ['tiny', 'small', 'medium', 'large', 'huge', 'gargantuan'] as const;
+// Powerful Build (Goliath) — "You count as one size larger when determining
+// your carrying capacity and the weight you can push, drag, or lift."
+const oneSizeLarger = (size: string): string => {
+  const idx = SIZE_ORDER.indexOf(size as (typeof SIZE_ORDER)[number]);
+  return idx >= 0 && idx < SIZE_ORDER.length - 1 ? SIZE_ORDER[idx + 1]! : size;
+};
 
 export interface CarryingCapacityBreakdownEntry {
   readonly source: string;
@@ -36,7 +57,10 @@ export interface CarryingCapacityBreakdownEntry {
 }
 
 export interface CarryingCapacityResult {
+  /** Maximum weight (lb) the creature can carry: STR × 15 × its size factor. */
   readonly capacity: number;
+  /** Maximum weight (lb) it can drag, lift, or push: double the carry value. */
+  readonly pushDragLift: number;
   readonly breakdown: ReadonlyArray<CarryingCapacityBreakdownEntry>;
 }
 
@@ -56,27 +80,32 @@ const hasPowerfulBuild = (character: Character): boolean =>
 const isPetrified = (character: Character): boolean =>
   character.appliedConditions.some((c) => c.conditionId === PETRIFIED_CONDITION_ID);
 
-// Returns the character's carrying capacity in pounds, with a
-// breakdown of contributing factors. Consumer-callable for sheet
-// display; the engine doesn't itself gate movement on load.
+// Returns the character's carrying capacity in pounds (size-scaled, slice
+// 865), with the matching push/drag/lift maximum and a breakdown of the
+// contributing factors. Consumer-callable for sheet display; the over-
+// capacity Speed cap is applied in the speed derive (slice 866).
 export const computeCarryingCapacity = (
   character: Character,
-  _content: ResolvedContent,
+  content: ResolvedContent,
 ): CarryingCapacityResult => {
   const base = character.abilityScores.STR * STRENGTH_TO_CAPACITY_LB;
+  const baseSize = (
+    character.sizeOverride ?? content.species.get(character.speciesId)?.size ?? 'medium'
+  ).toLowerCase();
+  const powerful = hasPowerfulBuild(character);
+  const effectiveSize = powerful ? oneSizeLarger(baseSize) : baseSize;
+  const factor = SIZE_CARRY_FACTOR[effectiveSize] ?? 1;
+  const capacity = base * factor;
   const breakdown: CarryingCapacityBreakdownEntry[] = [
     { source: `STR ${character.abilityScores.STR} × ${STRENGTH_TO_CAPACITY_LB}`, value: base },
   ];
-  let capacity = base;
-  if (hasPowerfulBuild(character)) {
-    const bonus = base * (POWERFUL_BUILD_MULTIPLIER - 1);
+  if (factor !== 1) {
     breakdown.push({
-      source: `Powerful Build (×${POWERFUL_BUILD_MULTIPLIER})`,
-      value: bonus,
+      source: powerful ? `Powerful Build (×${factor})` : `${baseSize} (×${factor})`,
+      value: base * (factor - 1),
     });
-    capacity += bonus;
   }
-  return { capacity, breakdown };
+  return { capacity, pushDragLift: capacity * PUSH_DRAG_LIFT_MULTIPLIER, breakdown };
 };
 
 // Returns the character's effective weight in pounds. Base weight is
