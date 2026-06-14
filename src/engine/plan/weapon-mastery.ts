@@ -2,10 +2,7 @@ import type { CampaignState } from '../../schemas/runtime/campaign.js';
 import type { ResolvedContent } from '../../content/pack.js';
 import type { Event } from '../../schemas/events/index.js';
 import type { RNG } from '../../rng/index.js';
-import { rollDie } from '../../rng/dice.js';
-import { applyHalflingLuckForCharacter } from './_halfling-luck.js';
 import { newEventId, newAppliedConditionId } from '../../ids.js';
-import { D20_SIDES } from '../../internal/constants.js';
 import { nowIso } from '../../internal/clock.js';
 import { invariant } from '../../internal/invariants.js';
 import { abilityModifier, proficiencyBonus } from '../../derive/ability.js';
@@ -15,8 +12,8 @@ import type { WeaponMastery } from '../../schemas/primitives.js';
 import type { WeaponMasteryActivatedEvent } from '../../schemas/events/weapon-mastery.js';
 import type { ConditionAppliedEvent, DamageAppliedEvent } from '../../schemas/events/combat.js';
 import type { CombatantMovedEvent } from '../../schemas/events/movement.js';
-import type { SaveRolledEvent } from '../../schemas/events/checks.js';
 import { planConcentrationOnDamage } from './concentration.js';
+import { rollSaveAgainstDC } from './_save-roll.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { isMagicWeaponAttack } from '../../derive/magicality.js';
@@ -222,34 +219,37 @@ export const planWeaponMastery = (
       break;
     case 'Topple': {
       const dc = masterySaveDC(attacker);
-      const rolls: number[] = [rollDie(D20_SIDES, rng)];
-      // Slice 543: Halfling Luck on Topple target CON save.
-      const d20 = applyHalflingLuckForCharacter(rolls[0]!, intent.targetId, state, content, rolls, rng);
-      const conBonus = abilityModifier(target.abilityScores.CON);
-      const total = d20 + conBonus;
-      const success = total >= dc;
-      events.push({
-        id: newEventId() as ULID,
-        at,
-        type: 'SaveRolled',
+      // Slice 853: route the target's CON save through the shared
+      // rollSaveAgainstDC primitive instead of a raw `abilityModifier(CON)`.
+      // The old hand-rolled save silently skipped CON-save *proficiency*,
+      // Bless/Bane and other save bonus dice, advantage/disadvantage, Magic
+      // Resistance, and the Paralyzed/Stunned/Unconscious auto-fail — all of
+      // which the standard derivation applies. (Halfling Luck, previously
+      // hand-applied here in slice 543, is also handled inside the primitive.)
+      // sourceIsMagical is false: Topple is a nonmagical weapon property, so a
+      // creature with Magic Resistance does NOT get Advantage against it.
+      const saveResult = rollSaveAgainstDC({
+        state,
+        content,
         targetId: intent.targetId,
         ability: 'CON',
         dc,
-        d20: rolls,
-        used: 'none',
-        bonus: conBonus,
-        total,
-        success,
-      } satisfies SaveRolledEvent);
-      if (!success) {
-        events.push({
-          id: newEventId() as ULID,
-          at,
-          type: 'ConditionApplied',
-          targetId: intent.targetId,
-          conditionId: 'prone',
-          appliedConditionId: newAppliedConditionId(),
-        } satisfies ConditionAppliedEvent);
+        sourceIsMagical: false,
+        rng,
+        at,
+      });
+      if (saveResult !== undefined) {
+        events.push(saveResult.event);
+        if (!saveResult.success) {
+          events.push({
+            id: newEventId() as ULID,
+            at,
+            type: 'ConditionApplied',
+            targetId: intent.targetId,
+            conditionId: 'prone',
+            appliedConditionId: newAppliedConditionId(),
+          } satisfies ConditionAppliedEvent);
+        }
       }
       break;
     }

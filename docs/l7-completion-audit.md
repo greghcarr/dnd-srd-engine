@@ -18,20 +18,20 @@
 
 ## Rollup
 
-Current state — open vs. closed rows, with the open count's severity split (BLOCKER / DIVERGENCE / QUIRK) in the next column. Updated through slice 852. **Areas 1 and 7 are fully closed.** A row is not a slice: several rows fan out into multiple slices (e.g. the `drain-undead-arms` lineage → slices 832/834/835), so the open count is a floor on remaining engine slices, not an exact count.
+Current state — open vs. closed rows, with the open count's severity split (BLOCKER / DIVERGENCE / QUIRK) in the next column. Updated through slice 853. **Areas 1 and 7 are fully closed.** A row is not a slice: several rows fan out into multiple slices (e.g. the `drain-undead-arms` lineage → slices 832/834/835), so the open count is a floor on remaining engine slices, not an exact count.
 
 | Area | Open | Closed | Open B/D/Q | Owner of open work | Status |
 |---|---|---|---|---|---|
 | 1. Edition drift | 0 | 4 | — | — | ✅ **fully closed** |
 | 2. Spell mechanics (L0-4) | 13 | 11 | 0 / 9 / 4 | Engine | open — largest engine block |
 | 3. Targeting / AoE seam | 13 | 1 | 0 / 6 / 7 | Seam + Consumer | open — consumer-correctness frontier |
-| 4. Core combat correctness | 5 | 6 | 0 / 0 / 5 | Engine | open — divergence-free (quirks only) |
+| 4. Core combat correctness | 6 | 6 | 0 / 0 / 6 | Engine | open — divergence-free (quirks only) |
 | 5. Build & leveling validation | 5 | 6 | 0 / 1 / 4 | Engine | open |
-| 6. Base equipment mechanics | 5 | 4 | 0 / 1 / 4 | Engine | open |
+| 6. Base equipment mechanics | 4 | 5 | 0 / 1 / 3 | Engine | open |
 | 7. Monster runtime (DM side) | 0 | 21 | — | — | ✅ **fully closed** |
 | 8. Exploration / non-combat | 13 | 1 | 0 / 3 / 10 | Engine | open |
 | 9. Consumer duties & docs | 8 | 0 | 0 / 3 / 5 | Consumer + Docs | hand-off — not engine slices |
-| **Total** | **62** | **54** | **0 / 23 / 39** | — | 116 rows |
+| **Total** | **62** | **55** | **0 / 23 / 39** | — | 117 rows |
 
 **Recommended order:** The structural blockers are all closed (~~`aoe-shape-coverage`~~ 786–787, ~~`no-actions-field`~~ 788, ~~`multiattack-unpopulated`~~ 789–792, ~~`no-hit-die-spend-planner`~~ 785, ~~`background-ability-bonus`~~), and Areas 1 + 7 are done. Remaining engine work by leverage: **Area 2** (spell mechanical arms — 20, the largest block) and **Area 8** (the exploration pillar — 13), then the smaller Area 4 / 5 / 6 divergence-and-quirk cleanups and the engine half of Area 3. Consumer items (Area 9 + the consumer half of Area 3) bundle into a hand-off note for the dnd-web session.
 
@@ -137,6 +137,7 @@ The combat loop itself, independent of specific spells/items. (Engine targets SR
 | `prone-cant-crawl` | QUIRK | Engine | M | Any move while Prone forces a stand-up (charges half-speed, removes the condition); no crawl modality, and crawl's +1 ft/ft cost is unmodeled. `src/engine/plan/movement.ts:225-282`. |
 | `no-hostility-model` | QUIRK | Engine | M | Ranged-in-melee disadvantage and the auto-derived Pack-Tactics/flank fact treat *any* adjacent creature as hostile (an archer next to a friendly cleric takes disadvantage). Consumer can override per-intent. `src/engine/plan/attack.ts:817-836`. |
 | `frightened-single-source-positional` | QUIRK | Engine | S | "Can't move closer to the fear source" enforced only for a single positioned source; positionless / multi-source / sourceless fear isn't constrained. `src/engine/plan/movement.ts:142-163`. |
+| `hand-rolled-saves-bypass-stack` | QUIRK | Engine | M | Pattern-check sibling of `topple-save-bypasses-effect-stack` (closed by slice 853, which fixed the canonical Topple case). Two more target-save sites still hand-roll the save with a raw `abilityModifier(...)`, bypassing `computeSavingThrow` — so they skip save **proficiency**, Bless/Bane bonus dice, advantage/disadvantage, Magic Resistance, and the auto-fail: the Monk's **Open Hand Technique** (Flurry of Blows Prone/Push STR-or-DEX save) `src/engine/plan/open-hand-technique.ts:47`, and the 2024 **Grapple / Shove** STR-or-DEX saves `src/engine/plan/contested.ts:123,183`. Each should route through `rollSaveAgainstDC` the same way Topple now does; split out (not folded into 853) because both carry their own unit tests + golden transcripts that need regen-with-inspection. |
 
 ---
 
@@ -171,7 +172,7 @@ Every character uses weapons/armor, so base-equipment bugs are high-frequency.
 | ~~`armor-str-requirement-speed`~~ | DIVERGENCE | Engine | M | `strRequirement` (chain 13 / splint+plate 15) is never read; under-STR heavy-armor wearers keep full speed (RAW -10 ft). **Closed by slice 799** — `getEffectiveSpeedForMode` applies a -10 walk-speed penalty when the equipped armor's `strRequirement` exceeds the wearer's EFFECTIVE STR (so a STR ASI / Gauntlets of Ogre Power count); folded into the natural base (Haste doubles the reduced speed), walk-mode only, stacks with exhaustion. `src/derive/speed.ts`. |
 | `ammunition-not-consumed` | DIVERGENCE | Engine | M | Firing an Ammunition-property weapon doesn't consume or require ammo (no recover-half). `src/engine/plan/attack.ts`. |
 | ~~`untrained-armor-penalty`~~ | DIVERGENCE | Engine | M | `armorProficiencies` is unread: wearing untrained armor imposes no STR/DEX-disadvantage / no-cast penalty, and a shield grants +2 AC without training. **Closed by slice 804** — new `derive/armor-training.ts` (`isArmorTrained` / `wearsUntrainedBodyArmor` / `wieldsUntrainedShield`, resolved over class `armorProficiencies` + effect-stack `GrantProficiency`); the STR/DEX disadvantage applies at all three D20 sites (ability-check, save, attack), the no-cast gate in `planCastSpell`, and the shield-AC gate in `computeAC`. `src/derive/armor-training.ts`. |
-| `topple-save-bypasses-effect-stack` | QUIRK | Engine | M | Topple's CON save is a raw ability mod, bypassing `computeSavingThrow` → Bless/Bane/save-advantage don't apply. `src/engine/plan/weapon-mastery.ts:224-243`. |
+| ~~`topple-save-bypasses-effect-stack`~~ | QUIRK | Engine | M | Topple's CON save is a raw ability mod, bypassing `computeSavingThrow` → Bless/Bane/save-advantage don't apply. `src/engine/plan/weapon-mastery.ts:224-243`. **Closed by slice 853** — the target's CON save now routes through the shared `rollSaveAgainstDC` primitive, so it honors CON-save **proficiency** (previously skipped entirely), Bless/Bane + other bonus dice, advantage/disadvantage, Magic Resistance, and the Paralyzed/Stunned auto-fail; `sourceIsMagical: false` (a nonmagical weapon property). The hand-rolled Halfling Luck folds into the primitive. **Pattern-check found two siblings** of the same raw-mod-save bypass → tracked as `hand-rolled-saves-bypass-stack` in Area 4. |
 | `graze-hardcodes-str` | QUIRK | Engine | S | Graze damage hardcodes base STR; RAW is "the ability modifier you used" and should read the effective score. `src/engine/plan/weapon-mastery.ts:303`. |
 | `attune-prereq-not-validated` | QUIRK | Engine | S | The 3-item limit is enforced, but `attunementCondition` (class/species) and `requiresAttunement` aren't — any class can attune a class-locked item. `src/engine/reducers/inventory.ts:65-81`. |
 | `offhand-not-different-weapon` | QUIRK | Engine | S | Off-hand TWF checks the weapon is Light but not that it differs from the main hand. `src/engine/plan/offhand-attack.ts:78-79`. |
