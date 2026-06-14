@@ -3,10 +3,8 @@ import type { ResolvedContent } from '../../content/pack.js';
 import type { Character } from '../../schemas/runtime/character.js';
 import type { Event } from '../../schemas/events/index.js';
 import type { RNG } from '../../rng/index.js';
-import { rollDie } from '../../rng/dice.js';
-import { applyHalflingLuckForCharacter } from './_halfling-luck.js';
 import { newEventId, newAppliedConditionId } from '../../ids.js';
-import { D20_SIDES } from '../../internal/constants.js';
+import { rollSaveAgainstDC } from './_save-roll.js';
 import { abilityModifier, proficiencyBonus } from '../../derive/ability.js';
 import { pushDestination } from '../../derive/pathing.js';
 import { computeTotalLevel } from '../../schemas/runtime/character.js';
@@ -34,35 +32,33 @@ const monkSaveDC = (monk: Character): number =>
 const rollSave = (
   ability: 'STR' | 'DEX',
   targetId: string,
-  target: Character,
   dc: number,
   rng: RNG,
   at: string,
   state: CampaignState,
   content: ResolvedContent,
 ): { event: SaveRolledEvent; success: boolean } => {
-  const rolls: number[] = [rollDie(D20_SIDES, rng)];
-  // Slice 543: Halfling Luck on Open Hand Technique target save.
-  const d20 = applyHalflingLuckForCharacter(rolls[0]!, targetId, state, content, rolls, rng);
-  const bonus = abilityModifier(target.abilityScores[ability]);
-  const total = d20 + bonus;
-  const success = total >= dc;
-  return {
-    success,
-    event: {
-      id: newEventId() as ULID,
-      at,
-      type: 'SaveRolled',
-      targetId,
-      ability,
-      dc,
-      d20: rolls,
-      used: 'none',
-      bonus,
-      total,
-      success,
-    },
-  };
+  // Slice 854: route through the shared rollSaveAgainstDC primitive so the
+  // target's save honors save proficiency, Bless/Bane and other bonus dice,
+  // advantage/disadvantage, Magic Resistance, and the Paralyzed/Stunned
+  // auto-fail — all of which the old raw `abilityModifier(...)` roll skipped.
+  // sourceIsMagical is false: Open Hand Technique is a Monk martial feature,
+  // not a magical effect. (Halfling Luck, hand-applied here in slice 543, is
+  // handled inside the primitive.) Sibling of the Topple fix (slice 853).
+  const result = rollSaveAgainstDC({
+    state,
+    content,
+    targetId,
+    ability,
+    dc,
+    sourceIsMagical: false,
+    rng,
+    at,
+  });
+  if (result === undefined) {
+    throw new Error(`Open Hand Technique target ${targetId} not found`);
+  }
+  return result;
 };
 
 const applyConditionEvent = (targetId: string, conditionId: string, at: string): ConditionAppliedEvent => ({
@@ -107,12 +103,12 @@ export const applyOpenHandTechnique = (input: OpenHandTechniqueInput): ReadonlyA
   const dc = monkSaveDC(monk);
 
   if (technique === 'topple') {
-    const { event, success } = rollSave('DEX', targetId, target, dc, rng, at, state, content);
+    const { event, success } = rollSave('DEX', targetId, dc, rng, at, state, content);
     return success ? [event] : [event, applyConditionEvent(targetId, PRONE_CONDITION_ID, at)];
   }
 
   // Push: Strength save, then a straight-away shove on a failure.
-  const { event, success } = rollSave('STR', targetId, target, dc, rng, at, state, content);
+  const { event, success } = rollSave('STR', targetId, dc, rng, at, state, content);
   if (success) return [event];
 
   const encounter = state.activeEncounterId !== undefined ? state.encounters[state.activeEncounterId] : undefined;
