@@ -118,6 +118,12 @@ export const computeSpellSlots = (
       if (progression?.type === 'third' && onlyOneFullOrHalfClass.level < 3) {
         effectiveLevel = 0;
       }
+      // NB: there is intentionally NO half-caster level-1 guard here. In SRD
+      // 5.2.1 (2024) Paladins and Rangers gain the Spellcasting feature at
+      // *Level 1* (the table grants 2 first-level slots) — the 2014 "starts
+      // at level 2" rule was removed. See the `half-caster-l1-slot` row in
+      // docs/l7-completion-audit.md (resolved NOT A BUG, slice 856) and the
+      // slice-564 / slice-574 L1 spell-slot guards.
     }
     if (effectiveLevel > 0 && effectiveLevel <= FULL_CASTER_SLOTS.length) {
       const row = FULL_CASTER_SLOTS[effectiveLevel - 1];
