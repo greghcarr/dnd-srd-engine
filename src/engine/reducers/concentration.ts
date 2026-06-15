@@ -4,6 +4,7 @@ import type {
   ConcentrationBrokenEvent,
   ConcentrationStartedEvent,
   SpellEffectStartedEvent,
+  AuraDamageBudgetSpentEvent,
 } from '../../schemas/events/concentration.js';
 import { invariant } from '../../internal/invariants.js';
 
@@ -78,7 +79,24 @@ export const applySpellEffectStarted = (
     ...(event.slotLevel !== undefined ? { slotLevel: event.slotLevel } : {}),
     startedAtEventId: event.id,
     ...(event.zone !== undefined ? { zone: event.zone } : {}),
+    // Slice 873: initial cumulative-damage budget (Guardian of Faith's 60).
+    ...(event.auraDamageBudgetRemaining !== undefined
+      ? { auraDamageBudgetRemaining: event.auraDamageBudgetRemaining }
+      : {}),
   };
+};
+
+// Slice 873: a budgeted aura-damage tick spent part of its budget. Subtract
+// from the EffectInstance's remaining budget (clamped at 0). The effect itself
+// is deleted by the ConcentrationBroken the tick planner emits alongside this
+// when the budget is exhausted; this reducer only updates the counter.
+export const applyAuraDamageBudgetSpent = (
+  state: Draft<CampaignState>,
+  event: AuraDamageBudgetSpentEvent,
+): void => {
+  const effect = state.effectInstances[event.effectInstanceId];
+  if (effect === undefined || effect.auraDamageBudgetRemaining === undefined) return;
+  effect.auraDamageBudgetRemaining = Math.max(0, effect.auraDamageBudgetRemaining - event.amount);
 };
 
 /**

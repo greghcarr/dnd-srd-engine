@@ -52,8 +52,23 @@ export const SpellEffectStartedEventSchema = EventEnvelopeSchema.extend({
   durationMinutes: z.number().int().min(0).optional(),
   slotLevel: z.number().int().min(0).optional(),
   zone: ZoneSchema.optional(),
+  // Slice 873: initial cumulative-damage budget for a budgeted `aura-damage`
+  // mechanic (Guardian of Faith's 60). Copied onto the EffectInstance as
+  // `auraDamageBudgetRemaining`.
+  auraDamageBudgetRemaining: z.number().int().min(1).optional(),
 });
 export type SpellEffectStartedEvent = z.infer<typeof SpellEffectStartedEventSchema>;
+
+// Slice 873: a budgeted aura-damage tick spent part of its cumulative-damage
+// budget. The reducer subtracts `amount` from the EffectInstance's
+// `auraDamageBudgetRemaining`; `planTickAura` emits a ConcentrationBroken
+// ('used') alongside this when the budget reaches 0 (the aura vanishes).
+export const AuraDamageBudgetSpentEventSchema = EventEnvelopeSchema.extend({
+  type: z.literal('AuraDamageBudgetSpent'),
+  effectInstanceId: ULIDSchema,
+  amount: z.number().int().min(0),
+});
+export type AuraDamageBudgetSpentEvent = z.infer<typeof AuraDamageBudgetSpentEventSchema>;
 
 export const ConcentrationBrokenReasonSchema = z.enum([
   'failedSave',

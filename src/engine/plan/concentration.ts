@@ -346,6 +346,11 @@ export interface TickAuraIntent {
   // aura's position / existence is consumer-managed, as for every aura.
   readonly spellId?: string;
   readonly slotLevel?: number;
+  // Slice 873: tick a specific non-concentration EffectInstance — a budgeted
+  // aura (Guardian of Faith) needs its effect to read + decrement the
+  // cumulative-damage budget. Takes precedence over `spellId`; the spell +
+  // slot are read from the effect.
+  readonly effectInstanceId?: string;
   readonly at?: string;
 }
 
@@ -367,12 +372,21 @@ export const planTickAura = (
 ): ReadonlyArray<Event> => {
   const caster = state.characters[intent.casterId];
   if (!caster) throw new Error(`Unknown caster ${intent.casterId}`);
-  // Slice 872: a non-concentration aura is ticked by `spellId` (no effect
-  // instance); a concentration aura reads its spell from the active
-  // concentration effect. `effect` stays undefined on the non-conc path.
+  // Resolve the aura's EffectInstance + spell. Three shapes:
+  //   - effectInstanceId (slice 873): a budgeted non-concentration aura
+  //     (Guardian of Faith) — the effect holds the cumulative-damage budget.
+  //   - spellId (slice 872): a stateless non-concentration aura (Faithful
+  //     Hound, Grease) — no effect instance.
+  //   - neither: a concentration aura (Spirit Guardians) — read the caster's
+  //     active concentration effect.
   let effect: (typeof state.effectInstances)[string] | undefined;
   let spell;
-  if (intent.spellId !== undefined) {
+  if (intent.effectInstanceId !== undefined) {
+    effect = state.effectInstances[intent.effectInstanceId];
+    if (!effect) throw new Error(`EffectInstance ${intent.effectInstanceId} not found`);
+    spell = content.spells.get(effect.spellId);
+    if (!spell) throw new Error(`Spell ${effect.spellId} not found in content`);
+  } else if (intent.spellId !== undefined) {
     spell = content.spells.get(intent.spellId);
     if (!spell) throw new Error(`Spell ${intent.spellId} not found in content`);
   } else {
@@ -416,6 +430,9 @@ export const planTickAura = (
   });
 
   const events: Event[] = [];
+  // Slice 873: total damage dealt this tick, charged against the aura's
+  // cumulative-damage budget (Guardian of Faith) after the loop.
+  let budgetSpent = 0;
   for (const aura of auras) {
   for (const targetId of intent.targetIds) {
     const target = state.characters[targetId];
@@ -516,6 +533,8 @@ export const planTickAura = (
           sourceCharacterId: intent.casterId as ULID,
           source: spell.id,
         });
+        // Slice 873: the budgeted aura "deals" the post-mitigation total.
+        budgetSpent += intercept.components.reduce((s, c) => s + c.amount, 0);
         events.push(...intercept.extraEvents);
         // Slice 612: per-target aura damage now triggers a concentration
         // check on the target (a hostile caster's Spirit Guardians can
@@ -564,6 +583,30 @@ export const planTickAura = (
       }
     }
   }
+  }
+  // Slice 873: charge the damage dealt this tick against the aura's cumulative
+  // budget (Guardian of Faith). When it's exhausted, the aura vanishes — end
+  // the EffectInstance via the shared ConcentrationBroken cleanup ('used': its
+  // resource is spent), which `clearConcentrationEffect` handles for a
+  // non-concentration effect too.
+  if (effect?.auraDamageBudgetRemaining !== undefined && budgetSpent > 0) {
+    events.push({
+      id: newEventId() as ULID,
+      at,
+      type: 'AuraDamageBudgetSpent',
+      effectInstanceId: effect.id,
+      amount: budgetSpent,
+    });
+    if (budgetSpent >= effect.auraDamageBudgetRemaining) {
+      events.push({
+        id: newEventId() as ULID,
+        at,
+        type: 'ConcentrationBroken',
+        effectInstanceId: effect.id,
+        casterId: effect.casterId,
+        reason: 'used',
+      });
+    }
   }
   return events;
 };

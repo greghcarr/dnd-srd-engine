@@ -56,5 +56,10 @@ export const EffectInstanceSchema = z.object({
   // zone. Removed automatically when concentration breaks (the parent
   // EffectInstance is deleted).
   zone: ZoneSchema.optional(),
+  // Slice 873: remaining cumulative-damage budget for an `aura-damage`
+  // mechanic that carries `damageBudget` (Guardian of Faith's 60). Initialized
+  // at cast from the mechanic; `planTickAura` decrements it by the damage dealt
+  // each tick and ends the effect (the guardian vanishes) when it reaches 0.
+  auraDamageBudgetRemaining: z.number().int().optional(),
 });
 export type EffectInstance = z.infer<typeof EffectInstanceSchema>;

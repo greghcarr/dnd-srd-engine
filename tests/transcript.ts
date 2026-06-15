@@ -380,6 +380,8 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       const spell = spellName(content, event.spellId);
       return `**${caster}**'s ${spell} takes effect.`;
     }
+    case 'AuraDamageBudgetSpent':
+      return `_(aura deals ${event.amount} toward its damage budget)_`;
     case 'TriggerFired':
       return `_(${event.triggerId.split(':').slice(1).join(':')} triggers for ${characterName(stateBefore, event.characterId)})_`;
     case 'ActionEconomyConsumed':

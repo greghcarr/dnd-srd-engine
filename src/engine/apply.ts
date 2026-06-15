@@ -79,6 +79,7 @@ import {
   applyConcentrationBroken,
   applyConcentrationStarted,
   applySpellEffectStarted,
+  applyAuraDamageBudgetSpent,
 } from './reducers/concentration.js';
 import { applyTriggerFired } from './reducers/triggers.js';
 import {
@@ -380,6 +381,9 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
         break;
       case 'SpellEffectStarted':
         applySpellEffectStarted(draft, event);
+        break;
+      case 'AuraDamageBudgetSpent':
+        applyAuraDamageBudgetSpent(draft, event);
         break;
       case 'TriggerFired':
         applyTriggerFired(draft, event);

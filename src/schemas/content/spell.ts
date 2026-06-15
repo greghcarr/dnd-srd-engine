@@ -420,6 +420,14 @@ const SpellAuraDamageMechanicSchema = z.object({
   extraDicePerSlotLevel: z.number().int().min(0).optional(),
   conditionOnFail: z.string().optional(),
   trigger: AuraTriggerSchema.optional(),
+  // Slice 873: a cumulative-damage budget — the aura vanishes once it has dealt
+  // this total (RAW Guardian of Faith: "The guardian vanishes when it has dealt
+  // a total of 60 damage"). Tracked on the spell's EffectInstance as
+  // `auraDamageBudgetRemaining`; `planTickAura` decrements it by the damage
+  // dealt each tick and ends the effect when it's exhausted. Only meaningful
+  // for a spell that creates an EffectInstance at cast (a non-concentration
+  // budgeted aura emits SpellEffectStarted); unbudgeted auras are unaffected.
+  damageBudget: z.number().int().min(1).optional(),
 });
 
 // Creates a controllable companion ("summon") under the caster's

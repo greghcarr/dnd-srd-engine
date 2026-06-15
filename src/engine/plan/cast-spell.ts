@@ -2716,6 +2716,14 @@ export const planCastSpell = (
   // slice 495) and the non-concentration path (SpellEffectStarted,
   // slice 665).
   const hasZoneMechanic = spell.mechanicalEffects.some((m) => m.kind === 'zone');
+  // Slice 873: a non-concentration aura-damage mechanic with a cumulative-
+  // damage budget (Guardian of Faith) needs an EffectInstance to hold the
+  // remaining budget across ticks. Unbudgeted auras (Grease, Faithful Hound)
+  // stay effect-less — they're ticked by spellId (slice 872).
+  const budgetedAura = spell.mechanicalEffects.find(
+    (m): m is Extract<typeof m, { kind: 'aura-damage' }> =>
+      m.kind === 'aura-damage' && m.damageBudget !== undefined,
+  );
   let zoneField: { shape: 'sphere' | 'cube' | 'cylinder' | 'line' | 'cone'; size: number; center: { x: number; y: number } } | undefined;
   if (hasZoneMechanic) {
     if (spell.targeting === undefined) {
@@ -2766,14 +2774,16 @@ export const planCastSpell = (
       ...(zoneField !== undefined ? { zone: zoneField } : {}),
     };
     events.push(started);
-  } else if (hasZoneMechanic) {
+  } else if (hasZoneMechanic || budgetedAura !== undefined) {
     // Slice 665: non-concentration zone-bearing spell (Zone of
     // Truth, Tiny Hut). Allocate an EffectInstance via
     // SpellEffectStarted so the zone persists in state with its
     // listed wall-clock duration (cleaned up by
     // planExpireSpellDurations + the same ConcentrationBroken
     // cleanup event). The caster's concentration slot is NOT
-    // claimed.
+    // claimed. Slice 873: a budgeted aura-damage spell (Guardian of
+    // Faith) takes the same path so its EffectInstance holds the
+    // cumulative-damage budget that `planTickAura` decrements.
     const durationMinutes = parseSpellDurationMinutes(spell.duration);
     const spellEffectStarted: SpellEffectStartedEvent = {
       id: newEventId() as ULID,
@@ -2788,6 +2798,9 @@ export const planCastSpell = (
       slotLevel: intent.slotLevel,
       causedByEventId: declared.id,
       ...(zoneField !== undefined ? { zone: zoneField } : {}),
+      ...(budgetedAura?.damageBudget !== undefined
+        ? { auraDamageBudgetRemaining: budgetedAura.damageBudget }
+        : {}),
     };
     events.push(spellEffectStarted);
   }

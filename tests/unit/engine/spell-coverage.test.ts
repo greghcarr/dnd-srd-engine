@@ -316,7 +316,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'faithful-hound': { kind: 'aura-damage', castingClass: 'wizard', slotLevel: 4, expectsSave: true, expectsDamage: true, nonConcentration: true },
   'fire-shield': { kind: 'buff', conditionId: 'fire-shield-warm-active', casterChoice: { kind: 'variant', value: 'warm' } },
   'giant-insect': { kind: 'skip', reason: 'transforms ordinary insects into giant variants; transformation handler for non-self targets not modeled' },
-  'guardian-of-faith': { kind: 'skip', reason: 'summoned guardian that radiates damage in a 10ft area; area-effect mechanic + delayed expiration not modeled' },
+  'guardian-of-faith': { kind: 'aura-damage', castingClass: 'cleric', slotLevel: 4, expectsSave: true, expectsDamage: true, nonConcentration: true },
   'hallucinatory-terrain': { kind: 'skip', reason: 'large-area illusion; terrain primitive not modeled' },
   'locate-creature': { kind: 'skip', reason: 'divination locator; sensor / scrying primitive not modeled' },
   'private-sanctum': { kind: 'skip', reason: 'large-area ward against detection/sound/teleport; area-warding primitive not modeled' },

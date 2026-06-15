@@ -97,16 +97,15 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 **Narrative (10):** create-food-and-water, daylight, meld-into-stone, nondetection, plant-growth, sending, speak-with-dead, speak-with-plants, tongues, water-walk.
 
-## Level 4 (34 in pack): 24 wired, 6 narrative, 4 deferred
+## Level 4 (34 in pack): 25 wired, 6 narrative, 3 deferred
 
 **Wired, cast-time (18):** aura-of-life (slice 871: `buff` applying `aura-of-life-active` (concentration) → `GrantResistance{necrotic}` + the new `recurringHeal{1, onlyAtZeroHp}` primitive — the 0-HP-ally revive the consumer ticks via `tickRecurringHeal`; the HP-max-can't-be-reduced arm + aura membership are deferred/consumer), banishment (slice 852: CHA save → `banished-active` (RAW Incapacitated, engine-coded via ACTION_BLOCKING_CONDITIONS), concentration-bound so it lifts when the spell ends), blight, charm-monster, compulsion (slice 870: multi-target WIS save → the shared `charmed`, concentration-bound; the Bonus-Action forced-movement direction + its coupled "re-save after moving" are one deferred positional/consumer arm), confusion, conjure-minor-elementals, conjure-woodland-beings, death-ward, dominate-beast (slice 869: Beast-gated WIS save → the shared `charmed` (so the slice-807 can't-attack-the-charmer / social-advantage arms apply), concentration-bound, + the new `conditionRepeatsSaveOnDamage` stamping a per-instance WIS re-save vs the caster's DC for the damage-triggered repeat save; telepathic control deferred to the DM/consumer), fire-shield, freedom-of-movement, greater-invisibility, ice-storm, phantasmal-killer, resilient-sphere (slice 851: unwilling-target DEX save via the slice-849 `unwillingSave` buff arm → `resilient-sphere-enclosed` with `GrantImmunity` all), stoneskin, vitriolic-sphere.
 
-**Wired, zone-tick (3):** black-tentacles (DEX save 3d6 + restrained `aura-damage`), faithful-hound (slice 872: the hound's bite is a 5-ft DEX-save 4d8-Force `aura-damage` ticked at the caster's turn-start; **non-concentration** — `tickAura` now ticks by `spellId` with no concentration effect; the invisible-watchdog / bark-alarm / placement arms stay consumer/narrative), wall-of-fire (DEX save 5d8 `aura-damage`).
+**Wired, zone-tick (4):** black-tentacles (DEX save 3d6 + restrained `aura-damage`), faithful-hound (slice 872: the hound's bite is a 5-ft DEX-save 4d8-Force `aura-damage` ticked at the caster's turn-start; **non-concentration** — `tickAura` now ticks by `spellId` with no concentration effect; the invisible-watchdog / bark-alarm / placement arms stay consumer/narrative), guardian-of-faith (slice 873: a 10-ft DEX-save 20-radiant-half `aura-damage` with the new **damage-budget** primitive — `damageBudget: 60` held on the spell's EffectInstance as `auraDamageBudgetRemaining`, decremented each tick by the damage dealt; the guardian vanishes (`ConcentrationBroken('used')`) once it's spent 60; ticked by `effectInstanceId`. Positioning / invulnerability stay consumer-managed), wall-of-fire (DEX save 5d8 `aura-damage`).
 
 **Wired, planner (3):** arcane-eye, dimension-door (`planDimensionDoor`: action teleport up to 500 ft + optional willing passenger; slice 342), polymorph.
 
-**Deferred (4):**
-- **non-damage area zone + delayed expiration:** guardian-of-faith.
+**Deferred (3):**
 - **transformation handler (non-self target):** giant-insect.
 - **sensor / scrying locator:** locate-creature.
 - **terrain primitive:** hallucinatory-terrain.
