@@ -301,7 +301,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'aura-of-life': { kind: 'skip', reason: 'paladin aura that holds allies above half-HP-floor + revives at 0 HP; sub-floor health mechanic not modeled' },
   'banishment': { kind: 'save' },
   'black-tentacles': { kind: 'aura-damage', castingClass: 'wizard', slotLevel: 4, expectsSave: true, expectsDamage: true },
-  'compulsion': { kind: 'skip', reason: 'forced movement on WIS save with recurring re-save; recurring-save area mechanic not modeled' },
+  'compulsion': { kind: 'save' },
   'confusion': { kind: 'save' },
   'control-water': { kind: 'skip', reason: 'water-shape utility; terrain primitive not modeled' },
   'death-ward': { kind: 'buff', conditionId: 'death-ward-active' },

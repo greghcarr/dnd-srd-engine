@@ -97,17 +97,16 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 **Narrative (10):** create-food-and-water, daylight, meld-into-stone, nondetection, plant-growth, sending, speak-with-dead, speak-with-plants, tongues, water-walk.
 
-## Level 4 (34 in pack): 21 wired, 6 narrative, 7 deferred
+## Level 4 (34 in pack): 22 wired, 6 narrative, 6 deferred
 
-**Wired, cast-time (16):** banishment (slice 852: CHA save → `banished-active` (RAW Incapacitated, engine-coded via ACTION_BLOCKING_CONDITIONS), concentration-bound so it lifts when the spell ends), blight, charm-monster, confusion, conjure-minor-elementals, conjure-woodland-beings, death-ward, dominate-beast (slice 869: Beast-gated WIS save → the shared `charmed` (so the slice-807 can't-attack-the-charmer / social-advantage arms apply), concentration-bound, + the new `conditionRepeatsSaveOnDamage` stamping a per-instance WIS re-save vs the caster's DC for the damage-triggered repeat save; telepathic control deferred to the DM/consumer), fire-shield, freedom-of-movement, greater-invisibility, ice-storm, phantasmal-killer, resilient-sphere (slice 851: unwilling-target DEX save via the slice-849 `unwillingSave` buff arm → `resilient-sphere-enclosed` with `GrantImmunity` all), stoneskin, vitriolic-sphere.
+**Wired, cast-time (17):** banishment (slice 852: CHA save → `banished-active` (RAW Incapacitated, engine-coded via ACTION_BLOCKING_CONDITIONS), concentration-bound so it lifts when the spell ends), blight, charm-monster, compulsion (slice 870: multi-target WIS save → the shared `charmed`, concentration-bound; the Bonus-Action forced-movement direction + its coupled "re-save after moving" are one deferred positional/consumer arm), confusion, conjure-minor-elementals, conjure-woodland-beings, death-ward, dominate-beast (slice 869: Beast-gated WIS save → the shared `charmed` (so the slice-807 can't-attack-the-charmer / social-advantage arms apply), concentration-bound, + the new `conditionRepeatsSaveOnDamage` stamping a per-instance WIS re-save vs the caster's DC for the damage-triggered repeat save; telepathic control deferred to the DM/consumer), fire-shield, freedom-of-movement, greater-invisibility, ice-storm, phantasmal-killer, resilient-sphere (slice 851: unwilling-target DEX save via the slice-849 `unwillingSave` buff arm → `resilient-sphere-enclosed` with `GrantImmunity` all), stoneskin, vitriolic-sphere.
 
 **Wired, zone-tick (2):** black-tentacles (DEX save 3d6 + restrained `aura-damage`), wall-of-fire (DEX save 5d8 `aura-damage`).
 
 **Wired, planner (3):** arcane-eye, dimension-door (`planDimensionDoor`: action teleport up to 500 ft + optional willing passenger; slice 342), polymorph.
 
-**Deferred (7):**
+**Deferred (6):**
 - **non-damage area zone + delayed expiration:** guardian-of-faith.
-- **recurring-save area mechanic:** compulsion.
 - **sub-floor health mechanic:** aura-of-life.
 - **alarm + delayed-attack sentry:** faithful-hound.
 - **transformation handler (non-self target):** giant-insect.
