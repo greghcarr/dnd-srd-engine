@@ -298,7 +298,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'phantasmal-killer': { kind: 'save' },
   // PHB 2024 L4 spells shipped schema-only; see docs/starter-pack-gaps.md.
   'arcane-eye': { kind: 'skip', reason: 'has dedicated planArcaneEye (places a mobile Sensor entity with darkvision 30; caster moves it on a bonus action via planMoveSensor)' },
-  'aura-of-life': { kind: 'skip', reason: 'paladin aura that holds allies above half-HP-floor + revives at 0 HP; sub-floor health mechanic not modeled' },
+  'aura-of-life': { kind: 'buff', conditionId: 'aura-of-life-active' },
   'banishment': { kind: 'save' },
   'black-tentacles': { kind: 'aura-damage', castingClass: 'wizard', slotLevel: 4, expectsSave: true, expectsDamage: true },
   'compulsion': { kind: 'save' },

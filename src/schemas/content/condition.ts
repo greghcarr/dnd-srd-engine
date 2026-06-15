@@ -87,6 +87,22 @@ export const RecurringDamageSchema = z.object({
 });
 export type RecurringDamage = z.infer<typeof RecurringDamageSchema>;
 
+// Slice 871: recurring HEALING at the bearer's turn boundary — the heal mirror
+// of `recurringDamage`. The consumer calls `engine.plan.tickRecurringHeal` at
+// the indicated trigger for any condition that declares `recurringHeal`. RAW
+// user: Aura of Life ("If an ally with 0 Hit Points starts its turn in the
+// aura, that ally regains 1 Hit Point"), so `onlyAtZeroHp` gates the heal to a
+// downed bearer. Like `recurringDamage`, the engine doesn't track turn moments
+// — this is metadata the consumer reads to drive the tick; the condition's
+// `autoExpiry` / concentration link bounds the duration. A flat `amount` (not
+// dice): the only RAW user heals a fixed 1 HP.
+export const RecurringHealSchema = z.object({
+  amount: z.number().int().min(1),
+  trigger: z.enum(['turnStart', 'turnEnd']).default('turnStart'),
+  onlyAtZeroHp: z.boolean().optional(),
+});
+export type RecurringHeal = z.infer<typeof RecurringHealSchema>;
+
 // Declarative auto-expiry metadata. When a planner that applies this
 // condition runs inside an active encounter, it stamps `expiresOnRound`
 // (= currentRound + afterRounds) and `expiryTrigger` on the emitted
@@ -151,6 +167,7 @@ export const ConditionSchema = z.object({
     .default([]),
   recurringSave: RecurringSaveSchema.optional(),
   recurringDamage: RecurringDamageSchema.optional(),
+  recurringHeal: RecurringHealSchema.optional(),
   autoExpiry: AutoExpirySchema.optional(),
   category: ConditionCategorySchema.optional(),
   // "Next attack roll" one-shot conditions (weapon-mastery Sap / Vex):

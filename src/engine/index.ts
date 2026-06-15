@@ -53,6 +53,7 @@ import {
   planTickRecurring,
   planTickRecurringSave,
   planTickRecurringDamage,
+  planTickRecurringHeal,
   planOpportunityAttack,
   planMove,
   planDash,
@@ -342,6 +343,7 @@ import {
   type TickRecurringIntent,
   type TickRecurringSaveIntent,
   type TickRecurringDamageIntent,
+  type TickRecurringHealIntent,
 } from './plan/index.js';
 import { newCampaignId, newEventId, newAppliedConditionId, newEffectInstanceId } from '../ids.js';
 import { nowIso } from '../internal/clock.js';
@@ -561,6 +563,7 @@ export interface Engine {
     tickRecurring(state: CampaignState, intent: Omit<TickRecurringIntent, 'type'>): PlanResult;
     tickRecurringSave(state: CampaignState, intent: Omit<TickRecurringSaveIntent, 'type'>): PlanResult;
     tickRecurringDamage(state: CampaignState, intent: Omit<TickRecurringDamageIntent, 'type'>): PlanResult;
+    tickRecurringHeal(state: CampaignState, intent: Omit<TickRecurringHealIntent, 'type'>): PlanResult;
     move(state: CampaignState, intent: Omit<MoveIntent, 'type'>): PlanResult;
     dash(state: CampaignState, intent: Omit<DashIntent, 'type'>): PlanResult;
     disengage(state: CampaignState, intent: Omit<DisengageIntent, 'type'>): PlanResult;
@@ -1058,6 +1061,14 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
       return {
         events: planTickRecurringDamage(state, content, rng, {
           type: 'TickRecurringDamage',
+          ...intent,
+        }),
+      };
+    },
+    tickRecurringHeal(state, intent) {
+      return {
+        events: planTickRecurringHeal(state, content, {
+          type: 'TickRecurringHeal',
           ...intent,
         }),
       };

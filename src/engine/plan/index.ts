@@ -90,6 +90,10 @@ export {
   type TickRecurringDamageIntent,
 } from './recurring-damage.js';
 export {
+  planTickRecurringHeal,
+  type TickRecurringHealIntent,
+} from './recurring-heal.js';
+export {
   planMove,
   planDash,
   planDisengage,
