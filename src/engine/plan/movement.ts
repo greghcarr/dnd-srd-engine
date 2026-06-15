@@ -177,29 +177,31 @@ export const planMove = (
     );
   }
   // RAW Appendix "Frightened": "while frightened by a source, you
-  // can't willingly move closer to the source of your fear." If the
-  // mover carries a Frightened condition with a sourceCharacterId set,
-  // and the destination is closer (Chebyshev) to that source than the
-  // current position, reject the move.
+  // can't willingly move closer to the source of your fear." Slice 878:
+  // a creature can be Frightened by MORE THAN ONE source at once, and the
+  // restriction applies to each. Check EVERY Frightened condition that
+  // names a positioned source (was a single `.find()` pre-878, so a move
+  // toward a second fear source slipped through); reject if the
+  // destination is closer (Chebyshev) to any of them. A sourceless /
+  // positionless Frightened (a gaze with no `sourceCharacterId`, or a
+  // source off the map) imposes no movement constraint — RAW's "the
+  // source" needs a known location, a consumer/positional concern.
   if (character !== undefined) {
-    const frightenedBy = character.appliedConditions.find(
-      (c) => c.conditionId === 'frightened' && c.sourceCharacterId !== undefined,
-    );
-    if (frightenedBy?.sourceCharacterId !== undefined) {
-      const sourceCb = state.encounters[encounterId]?.combatants.find(
-        (c) => c.combatantId === frightenedBy.sourceCharacterId,
+    const encounterCombatants = state.encounters[encounterId]?.combatants;
+    for (const fright of character.appliedConditions) {
+      if (fright.conditionId !== 'frightened' || fright.sourceCharacterId === undefined) continue;
+      const sourceCb = encounterCombatants?.find(
+        (c) => c.combatantId === fright.sourceCharacterId,
       );
-      if (sourceCb?.position !== undefined) {
-        const before = chebyshevDistance(combatant.position, sourceCb.position);
-        const after = chebyshevDistance(intent.to, sourceCb.position);
-        if (after < before) {
-          const sourceName =
-            state.characters[frightenedBy.sourceCharacterId]?.name ??
-            frightenedBy.sourceCharacterId;
-          throw new Error(
-            `${character.name} is Frightened by ${sourceName} and cannot move closer to them`,
-          );
-        }
+      if (sourceCb?.position === undefined) continue;
+      const before = chebyshevDistance(combatant.position, sourceCb.position);
+      const after = chebyshevDistance(intent.to, sourceCb.position);
+      if (after < before) {
+        const sourceName =
+          state.characters[fright.sourceCharacterId]?.name ?? fright.sourceCharacterId;
+        throw new Error(
+          `${character.name} is Frightened by ${sourceName} and cannot move closer to them`,
+        );
       }
     }
   }

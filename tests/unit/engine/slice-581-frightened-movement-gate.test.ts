@@ -140,8 +140,15 @@ describe('Frightened movement-gate behavior (slice 581 — audit-clarification)'
     );
     // The block contains a comment block referencing RAW + a
     // chebyshevDistance comparison on the Frightened source's position.
+    // Slice 878 rewrote the gate from a single `.find()` into a loop over
+    // EVERY Frightened source (multi-source fear), so the condition match is
+    // now a `!== 'frightened'` continue-guard rather than an `=== 'frightened'`
+    // find predicate — pin whichever form is present so the smoke check
+    // survives the refactor while still asserting the block exists.
     expect(src.includes('RAW Appendix "Frightened"') || src.includes('Frightened: ')).toBe(true);
-    expect(src.includes("conditionId === 'frightened'")).toBe(true);
+    expect(
+      src.includes("conditionId === 'frightened'") || src.includes("conditionId !== 'frightened'"),
+    ).toBe(true);
     expect(src.includes('chebyshevDistance(combatant.position, sourceCb.position)')).toBe(true);
   });
 });

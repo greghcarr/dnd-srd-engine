@@ -194,8 +194,15 @@ export const applyConditionApplied = (
     if (character.exhaustion >= EXHAUSTION_MAX) markCreatureDead(state, character);
     return;
   }
+  // Slice 878: Frightened stacks per fear source — a creature can be
+  // Frightened by several creatures at once, each imposing its own "can't move
+  // closer to the source" restriction (enforced per-source in planMove). So a
+  // second Frightened from a DIFFERENT source is a distinct condition; every
+  // other condition (and a same-source re-application) still dedupes by id.
   const existing = character.appliedConditions.find(
-    (c) => c.conditionId === event.conditionId,
+    (c) =>
+      c.conditionId === event.conditionId &&
+      (c.conditionId !== 'frightened' || c.sourceCharacterId === event.sourceCharacterId),
   );
   if (existing) return;
   // Use the triggering event id as the applied-condition id when none was supplied.
