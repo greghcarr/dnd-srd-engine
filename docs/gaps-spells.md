@@ -57,7 +57,7 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 **Wired, cast-time (37):** animal-friendship (slice 500: WIS save -> Charmed, gated to Beast targets via the save mechanic's `targetCreatureType` filter + `conditionEndsOnDamage`), bane, bless, burning-hands, charm-person, chromatic-orb, color-spray, command, cure-wounds, dissonant-whispers, divine-favor, divine-smite (`buff` -> `divine-smite-active` with two melee-hit OnEvent riders: unconditional 2d8 radiant + a Fiend/Undead-gated +1d8 radiant, both `consumeOnTrigger`; slice 444), ensnaring-strike (slice 503: two-mechanic — STR save -> Restrained (Large+ creatures get advantage via the new `largeCreatureAdvantage` flag) + per-turn 1d6 piercing recurring damage with +1d6/slot upcast via the new `extraDicePerSlotLevel` field on `recurring`; ticked by the consumer via `tickRecurring`), faerie-fire, false-life, feather-fall, find-familiar, goodberry (slice 499: `create-item` mechanic — mints 10 single-use `goodberry` Heal-1 consumables into the caster's inventory), guiding-bolt, healing-word, hellish-rebuke, heroism, hex, hideous-laughter, ice-knife (slice 497: two-mechanic — ranged spell attack 1d10 piercing vs the primary via `targetScope: 'first'`, then a DEX-save 2d6 cold burst, +1d6/slot, vs the primary + splash), inflict-wounds, longstrider, mage-armor, magic-missile, protection-from-evil-and-good, ray-of-sickness, sanctuary, searing-smite, shield-of-faith, sleep, thunderwave, unseen-servant.
 
-**Wired, zone-tick (2):** entangle, grease (STR / DEX save to restrained / prone on enter; `aura-damage` condition-only variant, fires via `tickAura`).
+**Wired, zone-tick (2):** entangle, grease (STR / DEX save to restrained / prone on enter; `aura-damage` condition-only variant — **non-concentration**, so its `tickAura` only became usable in slice 872's non-concentration-aura path).
 
 **Wired, planner (4):** hunters-mark, identify, shield, silent-image.
 
@@ -97,17 +97,16 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 **Narrative (10):** create-food-and-water, daylight, meld-into-stone, nondetection, plant-growth, sending, speak-with-dead, speak-with-plants, tongues, water-walk.
 
-## Level 4 (34 in pack): 23 wired, 6 narrative, 5 deferred
+## Level 4 (34 in pack): 24 wired, 6 narrative, 4 deferred
 
 **Wired, cast-time (18):** aura-of-life (slice 871: `buff` applying `aura-of-life-active` (concentration) → `GrantResistance{necrotic}` + the new `recurringHeal{1, onlyAtZeroHp}` primitive — the 0-HP-ally revive the consumer ticks via `tickRecurringHeal`; the HP-max-can't-be-reduced arm + aura membership are deferred/consumer), banishment (slice 852: CHA save → `banished-active` (RAW Incapacitated, engine-coded via ACTION_BLOCKING_CONDITIONS), concentration-bound so it lifts when the spell ends), blight, charm-monster, compulsion (slice 870: multi-target WIS save → the shared `charmed`, concentration-bound; the Bonus-Action forced-movement direction + its coupled "re-save after moving" are one deferred positional/consumer arm), confusion, conjure-minor-elementals, conjure-woodland-beings, death-ward, dominate-beast (slice 869: Beast-gated WIS save → the shared `charmed` (so the slice-807 can't-attack-the-charmer / social-advantage arms apply), concentration-bound, + the new `conditionRepeatsSaveOnDamage` stamping a per-instance WIS re-save vs the caster's DC for the damage-triggered repeat save; telepathic control deferred to the DM/consumer), fire-shield, freedom-of-movement, greater-invisibility, ice-storm, phantasmal-killer, resilient-sphere (slice 851: unwilling-target DEX save via the slice-849 `unwillingSave` buff arm → `resilient-sphere-enclosed` with `GrantImmunity` all), stoneskin, vitriolic-sphere.
 
-**Wired, zone-tick (2):** black-tentacles (DEX save 3d6 + restrained `aura-damage`), wall-of-fire (DEX save 5d8 `aura-damage`).
+**Wired, zone-tick (3):** black-tentacles (DEX save 3d6 + restrained `aura-damage`), faithful-hound (slice 872: the hound's bite is a 5-ft DEX-save 4d8-Force `aura-damage` ticked at the caster's turn-start; **non-concentration** — `tickAura` now ticks by `spellId` with no concentration effect; the invisible-watchdog / bark-alarm / placement arms stay consumer/narrative), wall-of-fire (DEX save 5d8 `aura-damage`).
 
 **Wired, planner (3):** arcane-eye, dimension-door (`planDimensionDoor`: action teleport up to 500 ft + optional willing passenger; slice 342), polymorph.
 
-**Deferred (5):**
+**Deferred (4):**
 - **non-damage area zone + delayed expiration:** guardian-of-faith.
-- **alarm + delayed-attack sentry:** faithful-hound.
 - **transformation handler (non-self target):** giant-insect.
 - **sensor / scrying locator:** locate-creature.
 - **terrain primitive:** hallucinatory-terrain.

@@ -337,6 +337,15 @@ export interface TickAuraIntent {
   // legacy mechanics fire — triggered mechanics need an explicit
   // intent.trigger to activate.
   readonly trigger?: AuraTrigger;
+  // Slice 872: NON-concentration aura. A concentration aura (Spirit
+  // Guardians) is resolved from the caster's active concentration effect;
+  // a non-concentration one (Faithful Hound's per-turn bite, Grease's
+  // prone area) has no concentration slot, so the consumer names the
+  // `spellId` (+ optional `slotLevel`, default the spell's level) directly.
+  // The engine needs no persistent effect instance to roll the tick — the
+  // aura's position / existence is consumer-managed, as for every aura.
+  readonly spellId?: string;
+  readonly slotLevel?: number;
   readonly at?: string;
 }
 
@@ -358,14 +367,24 @@ export const planTickAura = (
 ): ReadonlyArray<Event> => {
   const caster = state.characters[intent.casterId];
   if (!caster) throw new Error(`Unknown caster ${intent.casterId}`);
-  const effectId = caster.concentrationEffectId;
-  if (effectId === undefined) {
-    throw new Error('Caster has no active concentration');
+  // Slice 872: a non-concentration aura is ticked by `spellId` (no effect
+  // instance); a concentration aura reads its spell from the active
+  // concentration effect. `effect` stays undefined on the non-conc path.
+  let effect: (typeof state.effectInstances)[string] | undefined;
+  let spell;
+  if (intent.spellId !== undefined) {
+    spell = content.spells.get(intent.spellId);
+    if (!spell) throw new Error(`Spell ${intent.spellId} not found in content`);
+  } else {
+    const effectId = caster.concentrationEffectId;
+    if (effectId === undefined) {
+      throw new Error('Caster has no active concentration (pass spellId to tick a non-concentration aura)');
+    }
+    effect = state.effectInstances[effectId];
+    if (!effect) throw new Error('Caster concentration effect not found');
+    spell = content.spells.get(effect.spellId);
+    if (!spell) throw new Error(`Spell ${effect.spellId} not found in content`);
   }
-  const effect = state.effectInstances[effectId];
-  if (!effect) throw new Error('Caster concentration effect not found');
-  const spell = content.spells.get(effect.spellId);
-  if (!spell) throw new Error(`Spell ${effect.spellId} not found in content`);
   // Pick every aura-damage mechanic whose trigger matches the intent.
   // Legacy mechanics (no trigger set) fire on every call. Triggered
   // mechanics fire only when intent.trigger matches their own trigger
@@ -383,7 +402,7 @@ export const planTickAura = (
     throw new Error(`Spell ${spell.id} has no aura-damage mechanic matching trigger`);
   }
 
-  const slotLevel = effect.slotLevel ?? spell.level;
+  const slotLevel = effect?.slotLevel ?? intent.slotLevel ?? spell.level;
   const slotsAboveBase = Math.max(0, slotLevel - spell.level);
   const at = intent.at ?? nowIso();
 
@@ -439,8 +458,12 @@ export const planTickAura = (
       events.push(saveEvent);
       saveCausedById = saveEvent.id;
     }
-    const causedByEventId: ULID =
-      saveCausedById ?? (effect.startedAtEventId as ULID);
+    // Slice 872: a non-concentration aura has no effect instance to source
+    // the link from; a no-save aura then leaves it unlinked (DamageApplied's
+    // causedByEventId is optional). Faithful Hound always rolls a save, so
+    // `saveCausedById` is set on its path.
+    const causedByEventId: ULID | undefined =
+      saveCausedById ?? (effect?.startedAtEventId as ULID | undefined);
 
     // Roll the damage once per target (per-target rolling is the RAW
     // for per-turn aura ticks — Spirit Guardians says "the creature
@@ -489,7 +512,7 @@ export const planTickAura = (
           type: 'DamageApplied',
           targetId: targetId as ULID,
           components: intercept.components,
-          causedByEventId,
+          ...(causedByEventId !== undefined ? { causedByEventId } : {}),
           sourceCharacterId: intent.casterId as ULID,
           source: spell.id,
         });
@@ -536,7 +559,7 @@ export const planTickAura = (
           targetId: targetId as ULID,
           conditionId: aura.conditionOnFail,
           appliedConditionId: newAppliedConditionId(),
-          causedByEventId,
+          ...(causedByEventId !== undefined ? { causedByEventId } : {}),
         });
       }
     }

@@ -57,6 +57,10 @@ type Expectation =
       slotLevel: number;
       expectsSave: boolean;
       expectsDamage: boolean;
+      // Slice 872: a NON-concentration aura (Faithful Hound, Grease). Its cast
+      // emits no ConcentrationStarted; the tick is driven by `tickAura` with an
+      // explicit `spellId` (no concentration effect to read the spell from).
+      nonConcentration?: boolean;
     }
   | { kind: 'skip'; reason: string };
 
@@ -155,7 +159,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'find-familiar': { kind: 'summon' },
   'fog-cloud': { kind: 'zone' },
   'goodberry': { kind: 'create-item', minItems: 10 },
-  'grease': { kind: 'skip', reason: 'non-concentration aura: planTickAura requires the caster\'s concentration effect, but Grease ends without concentration (RAW 1-minute duration with no concentration). An "on-enter zone" planner that fires the save on a consumer-supplied entry event is the proper RAW shape; deferred.' },
+  'grease': { kind: 'aura-damage', castingClass: 'wizard', slotLevel: 1, expectsSave: true, expectsDamage: false, nonConcentration: true },
   'heroism': { kind: 'buff', conditionId: 'heroic-active' },
   'hex': { kind: 'buff', conditionId: 'hexed-STR-active', casterChoice: { kind: 'variant', value: 'STR' } },
   'hunters-mark': { kind: 'skip', reason: 'has dedicated planHuntersMark (concentration mark, not planCastSpell)' },
@@ -309,7 +313,7 @@ const SPELL_EXPECTATIONS: Record<string, Expectation> = {
   'divination': { kind: 'skip', reason: 'cleric ritual divination; DM-resolution primitive not modeled' },
   'dominate-beast': { kind: 'skip', reason: 'wired (slice 869): WIS save -> charmed (Concentration), gated to Beast targets via the save mechanic targetCreatureType filter, with conditionRepeatsSaveOnDamage stamping the per-instance damage re-save. The generic harness targets are Humanoids (skipped by the Beast filter), so the dedicated slice-869 test exercises it with a real Beast.' },
   'fabricate': { kind: 'skip', reason: '10-minute creation ritual; crafting / material-transformation primitive not modeled' },
-  'faithful-hound': { kind: 'skip', reason: 'placed sentry that barks + attacks on intruders; alarm + delayed attack pattern not modeled' },
+  'faithful-hound': { kind: 'aura-damage', castingClass: 'wizard', slotLevel: 4, expectsSave: true, expectsDamage: true, nonConcentration: true },
   'fire-shield': { kind: 'buff', conditionId: 'fire-shield-warm-active', casterChoice: { kind: 'variant', value: 'warm' } },
   'giant-insect': { kind: 'skip', reason: 'transforms ordinary insects into giant variants; transformation handler for non-self targets not modeled' },
   'guardian-of-faith': { kind: 'skip', reason: 'summoned guardian that radiates damage in a 10ft area; area-effect mechanic + delayed expiration not modeled' },
@@ -556,16 +560,26 @@ describe('spell coverage: each shipped spell emits the expected event kinds when
         const castTypes = castEvents.map((e) => e.type);
         expect(castTypes).toContain('SpellCastDeclared');
         expect(castTypes).toContain('SpellSlotConsumed');
-        expect(castTypes).toContain('ConcentrationStarted');
+        // A concentration aura claims the concentration slot at cast; a
+        // non-concentration one (slice 872) emits no ConcentrationStarted.
+        if (expectation.nonConcentration === true) {
+          expect(castTypes).not.toContain('ConcentrationStarted');
+        } else {
+          expect(castTypes).toContain('ConcentrationStarted');
+        }
         // Damage / save / condition events fire only on the tick, not
         // on cast.
         expect(castTypes).not.toContain('SaveRolled');
         expect(castTypes).not.toContain('DamageApplied');
         campaign = commit(campaign, castEvents);
-        // Now tick the aura against the target.
+        // Now tick the aura against the target. A non-concentration aura is
+        // ticked by spellId (no concentration effect to read it from).
         const tickEvents = engine.plan.tickAura(campaign.state, {
           casterId: caster.id,
           targetIds: [target.id],
+          ...(expectation.nonConcentration === true
+            ? { spellId, slotLevel: expectation.slotLevel }
+            : {}),
         }).events as ReadonlyArray<Event>;
         const tickTypes = tickEvents.map((e) => e.type);
         if (expectation.expectsSave) {

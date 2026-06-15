@@ -168,7 +168,7 @@ At a glance:
 
 - **Engine architecture**: 100%. Locked.
 - **Effect-primitive vocabulary**: the majority of the planned primitives are shipped (69 primitives + `Custom` escape hatch in `EFFECT_KINDS`); the queue of remaining primitives is enumerated in [docs/starter-pack-gaps.md](docs/starter-pack-gaps.md).
-- **Classes / species / backgrounds / feats / conditions / spells / monsters / magic items**: SRD 5.2.1 catalog complete in every category. Spell mechanical wiring ~63% (214/339 wired, 68 narrative, 57 schema-only; the 12 non-SRD wired spells moved to the phb-2024-extras pack in slice 402); magic-item mechanical wiring roughly a third (~91/258, after single-base magic weapons/armor were re-modeled into the weapon/armor categories in slices 315-317); consumables roughly two thirds (~45/69).
+- **Classes / species / backgrounds / feats / conditions / spells / monsters / magic items**: SRD 5.2.1 catalog complete in every category. Spell mechanical wiring ~63% (215/339 wired, 68 narrative, 56 schema-only; the 12 non-SRD wired spells moved to the phb-2024-extras pack in slice 402); magic-item mechanical wiring roughly a third (~91/258, after single-base magic weapons/armor were re-modeled into the weapon/armor categories in slices 315-317); consumables roughly two thirds (~45/69).
 - **Variant rules**: `grittyRest` + `heroPoints` enforce; `sanity` + `massCombat` toggle but don't enforce.
 
 For the full coverage table, per-category breakdown, known gaps (engine, content, test infrastructure), and severity ranking, see **[docs/status.md](docs/status.md)**.
