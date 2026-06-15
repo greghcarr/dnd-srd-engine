@@ -52,7 +52,7 @@ const buildCampaignWith = (character: Character) => {
 };
 
 describe('Slow Fall (Monk L4)', () => {
-  it('a Monk L4 reduces 30ft falling damage to 0 (avg 11, reduction 20)', () => {
+  it('a Monk L4 reduces 30ft falling damage to 0 (3d6 max 18 < reduction 20)', () => {
     const monk = buildMonk(4);
     const { engine, campaign } = buildCampaignWith(monk);
     const events = engine.plan.falling(campaign.state, {
@@ -60,23 +60,40 @@ describe('Slow Fall (Monk L4)', () => {
       distanceFeet: 30,
       useSlowFall: true,
     }).events;
-    // 3 dice × avg 3.5 = 10.5 → 11; reduction 5×4=20; net 0 → no
-    // DamageApplied is emitted. Out of encounter, no reaction event.
+    // Slice 882: damage is now ROLLED (3d6, max 18); the 5×4=20 reduction
+    // clamps any roll to 0 → no DamageApplied. Out of encounter, no reaction
+    // event either, so the whole plan is empty for any seed.
     expect(events).toEqual([]);
   });
 
-  it('a Monk L8 reduces 100ft falling damage from 35 to 0 (cap 5×8=40)', () => {
+  it('a Monk L8 reduces a 60ft fall to 0 (6d6 max 36 < cap 5×8=40)', () => {
     const monk = buildMonk(8);
     const { engine, campaign } = buildCampaignWith(monk);
     const events = engine.plan.falling(campaign.state, {
       characterId: monk.id,
-      distanceFeet: 100,
+      distanceFeet: 60,
       useSlowFall: true,
     }).events;
+    // 6d6 (max 36) is always below the L8 cap of 40 → 0 for any roll. (L4's
+    // 20 reduction could NOT zero this fall, so the level-scaled cap shows.)
     expect(events).toEqual([]);
   });
 
-  it('a Monk L4 falling 200ft takes reduced damage (70 raw, 20 reduction = 50)', () => {
+  it('a Monk L4 falling 200ft takes the rolled 20d6 minus the 20 reduction', () => {
+    // Roll-agnostic: a fresh seed-0 campaign WITHOUT Slow Fall rolls the same
+    // 20d6 (dice are drawn first, before the reduction / concentration check),
+    // so the Slow-Fall total is exactly that raw minus 5×4=20 (20d6 >= 20, so
+    // the reduction never clamps to 0 here). No bludgeoning resistance → no
+    // mitigation in between.
+    const monkNoSlow = buildMonk(4);
+    const noSlow = buildCampaignWith(monkNoSlow);
+    const rawEvents = noSlow.engine.plan.falling(noSlow.campaign.state, {
+      characterId: monkNoSlow.id,
+      distanceFeet: 200,
+    }).events;
+    const rawDamage = (rawEvents.find((e) => e.type === 'DamageApplied') as DamageAppliedEvent)
+      .components.reduce((sum, c) => sum + c.amount, 0);
+
     const monk = buildMonk(4);
     const { engine, campaign } = buildCampaignWith(monk);
     const events = engine.plan.falling(campaign.state, {
@@ -87,8 +104,10 @@ describe('Slow Fall (Monk L4)', () => {
     const damageApplied = events.find((e) => e.type === 'DamageApplied') as DamageAppliedEvent | undefined;
     expect(damageApplied).toBeDefined();
     const totalDamage = damageApplied!.components.reduce((sum, c) => sum + c.amount, 0);
-    // 20d6 avg = 70 raw; reduction 5×4=20; net 50.
-    expect(totalDamage).toBe(50);
+    expect(totalDamage).toBe(rawDamage - 20);
+    // Sanity: 20d6 lands in [20, 120], so the reduced total is in [0, 100].
+    expect(totalDamage).toBeGreaterThanOrEqual(0);
+    expect(totalDamage).toBeLessThanOrEqual(100);
   });
 
   it('a Monk L4 without useSlowFall takes full falling damage', () => {

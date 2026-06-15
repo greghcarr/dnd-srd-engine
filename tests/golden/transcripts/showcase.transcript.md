@@ -326,7 +326,7 @@ Door "Iron portcullis" added at Stoneheart Caverns (5,2), locked.
 
 Door "Iron portcullis" is now open by **Vex**.
 
-**Vex** takes 7 damage from falling 20 ft (7 bludgeoning). (HP 38 -> 31)
+**Vex** takes 4 damage from falling 20 ft (4 bludgeoning). (HP 38 -> 34)
 
 **Vex** is now Prone.
 
@@ -346,11 +346,11 @@ _(Vex consumes action)_
 
 _(Vex consumes attack)_
 
-**Vex** attacks **Slag the Ogre**: d20(6) + 7 = 13 vs AC 11 -> hit.
+**Vex** attacks **Slag the Ogre**: d20(4) + 7 = 11 vs AC 11 -> hit.
 
-Damage rolled: 1d4=[2]+4 piercing.
+Damage rolled: 1d4=[4]+4 piercing.
 
-**Slag the Ogre** takes 6 damage from **Vex** (6 piercing). (HP 68 -> 62)
+**Slag the Ogre** takes 8 damage from **Vex** (8 piercing). (HP 68 -> 60)
 
 End of Vex's turn.
 
@@ -360,11 +360,11 @@ _(Alyx consumes action)_
 
 _(Alyx consumes attack)_
 
-**Alyx** attacks **Slag the Ogre**: d20(4) + 7 = 11 vs AC 11 -> hit.
+**Alyx** attacks **Slag the Ogre**: d20(17) + 7 = 24 vs AC 11 -> hit.
 
-Damage rolled: 1d8=[7]+4 slashing.
+Damage rolled: 1d8=[6]+4 slashing.
 
-**Slag the Ogre** takes 11 damage from **Alyx** (11 slashing). (HP 62 -> 51)
+**Slag the Ogre** takes 10 damage from **Alyx** (10 slashing). (HP 60 -> 50)
 
 End of Alyx's turn.
 
@@ -388,21 +388,17 @@ End of Brother Cassius's turn.
 
 Damage rolled (critical, doubled dice): 2d8=[7,8,6,6]+4 bludgeoning.
 
-**Vex** takes 31 damage from **Slag the Ogre** (31 bludgeoning). (HP 31 -> 0)
+**Vex** takes 34 damage from **Slag the Ogre** (34 bludgeoning). (HP 34 -> 0)
 
 _(Slag the Ogre consumes action)_
 
-**Slag the Ogre** attacks **Alyx**: d20(17) + 6 = 23 vs AC 12 -> hit.
-
-Damage rolled: 2d8=[6,1]+4 bludgeoning.
-
-**Alyx** takes 11 damage from **Slag the Ogre** (11 bludgeoning). (HP 168 -> 157)
+**Slag the Ogre** attacks **Alyx**: d20(2) + 6 = 8 vs AC 12 -> miss.
 
 **Slag the Ogre** attacks **Alyx**: d20(17) + 6 = 23 vs AC 12 -> hit.
 
 Damage rolled: 2d8=[8,1]+4 bludgeoning.
 
-**Alyx** takes 13 damage from **Slag the Ogre** (13 bludgeoning). (HP 157 -> 144)
+**Alyx** takes 13 damage from **Slag the Ogre** (13 bludgeoning). (HP 168 -> 155)
 
 End of Slag the Ogre's turn.
 
@@ -418,7 +414,7 @@ End of Vex's turn.
 
 ### Round 2: Alyx's turn
 
-**Slag the Ogre** takes 25 damage from **Alyx** (25 bludgeoning). (HP 51 -> 26)
+**Slag the Ogre** takes 25 damage from **Alyx** (25 bludgeoning). (HP 50 -> 25)
 
 End of Alyx's turn.
 
@@ -426,7 +422,7 @@ End of Alyx's turn.
 
 Wand of Magic Missiles loses 2 charge(s) by **Mira** for Magic Missile (3rd level).
 
-**Slag the Ogre** takes 20 damage from **Mira** (20 force). (HP 26 -> 6)
+**Slag the Ogre** takes 20 damage from **Mira** (20 force). (HP 25 -> 5)
 
 ## Encounter ends: victory.
 

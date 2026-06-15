@@ -6,6 +6,10 @@ Per-slice detail lives in [docs/changelog/slice-NNN.md](docs/changelog/) — the
 
 ## Unreleased
 
+**Feat (slice 882): falling damage is rolled, not averaged — closes `falling-averaged-not-rolled`**
+RAW (Falling): 1d6 Bludgeoning per 10 ft fallen, max 20d6 — **rolled**. `planFalling` substituted the fixed average (`round(dice×3.5)`), the lone averaged damage source in the engine. The planner already received the plan/commit `rng` (for the Concentration check), so the fix is local: a new `rollFallingDamage` rolls `1d6` per 10 ft (cap 20d6) via `rollDie(6, rng, 'damage')` — deterministic under replay, varies by seed; a sub-10-ft fall returns before drawing RNG (byte-identical). Slow Fall still subtracts `5×monk level` from the rolled total. New 5-test slice-882 (bounds, seed variance, the 20d6 cap, determinism, the no-dice case); the slow-fall test's three exact-average assertions became roll-aware (the 200-ft case compares a same-seed no-Slow-Fall roll to prove the −20 reduction). Regenerated the `s14-environmental` + `showcase` goldens (the fall damage + the downstream RNG-stream shift). No count change. `tsc` clean; `test:fast` (657 files, 4901 passed); doc-counts/size/links green.
+Detail: [slice-882.md](docs/changelog/slice-882.md).
+
 **Docs (slice 881): CHANGELOG eviction — archive Unreleased pointers 843-848**
 The live CHANGELOG reached 58.3 KB (the `doc-size` audit ceiling is 60 KB), so the oldest six Unreleased pointers (slices 843-848) were evicted to a new per-cohort archive [docs/changelog/archive-slices-843-848.md](docs/changelog/archive-slices-843-848.md) — the slice-812 release-eviction pattern applied to un-tagged pointers, same as the 837-842 eviction in slice 874. The live "Earlier Unreleased slices" pointer block extended to 778-848 (+ the new archive link); the [changelog README](docs/changelog/README.md) cohort index updated. Each evicted slice's full `slice-NNN.md` detail is untouched. Restores ~8 KB of headroom (back to ~50 KB). Doc-only; `doc-size` + `doc-links` green.
 Detail: [slice-881.md](docs/changelog/slice-881.md).

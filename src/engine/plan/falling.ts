@@ -13,9 +13,10 @@ import type { Character } from '../../schemas/runtime/character.js';
 import type { ItemInstance } from '../../schemas/runtime/item-instance.js';
 import type { RNG } from '../../rng/index.js';
 import { collectEffectsFromCharacter } from '../../derive/effect-stack.js';
+import { rollDie } from '../../rng/dice.js';
 
 const FALLING_FEET_PER_DIE = 10;
-const FALLING_DIE_AVERAGE = 3.5;
+const FALLING_DIE_SIDES = 6;
 const FALLING_MAX_DICE = 20;
 const SLOW_FALL_MIN_MONK_LEVEL = 4;
 const SLOW_FALL_FEET_REDUCED_PER_MONK_LEVEL = 5;
@@ -37,9 +38,16 @@ export interface FallingIntent {
 const fallingDieCount = (distanceFeet: number): number =>
   Math.min(FALLING_MAX_DICE, Math.floor(distanceFeet / FALLING_FEET_PER_DIE));
 
-const expectedFallingDamage = (distanceFeet: number): number => {
+// Slice 882: RAW (rules-glossary "Falling") — "the creature takes 1d6
+// Bludgeoning damage for every 10 feet it fell, to a maximum of 20d6." The
+// engine previously substituted the average (round(dice × 3.5)); now it rolls
+// the dice through the plan/commit RNG (deterministic under replay capture),
+// so a fall reads like every other damage roll.
+const rollFallingDamage = (distanceFeet: number, rng: RNG): number => {
   const dice = fallingDieCount(distanceFeet);
-  return Math.round(dice * FALLING_DIE_AVERAGE);
+  let total = 0;
+  for (let i = 0; i < dice; i += 1) total += rollDie(FALLING_DIE_SIDES, rng, 'damage');
+  return total;
 };
 
 const monkLevel = (character: Character): number => {
@@ -68,8 +76,12 @@ export const planFalling = (
     throw new Error('Falling distance must be non-negative');
   }
   if (hasFallingProtection(character, content, state.itemInstances)) return [];
-  let rawDamage = expectedFallingDamage(intent.distanceFeet);
-  if (rawDamage <= 0) return [];
+  // Zero-distance / sub-10-ft falls roll no dice; bail before drawing RNG so
+  // a no-op fall stays byte-identical. (With at least one die, the rolled
+  // total is always >= 1, so the only path to zero damage is the Slow Fall
+  // reduction handled below.)
+  if (fallingDieCount(intent.distanceFeet) <= 0) return [];
+  let rawDamage = rollFallingDamage(intent.distanceFeet, rng);
 
   let slowFallReactionConsumed: ActionEconomyConsumedEvent | undefined;
   if (intent.useSlowFall === true) {
