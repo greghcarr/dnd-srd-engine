@@ -1849,7 +1849,7 @@
       "concentration": false,
       "ritual": false,
       "classes": ["wizard", "sorcerer"],
-      "mechanicalEffects": [{ "kind": "attack", "attackKind": "melee", "damageDice": "1d8", "damageType": "lightning", "cantripScalingDice": "1d8" }]
+      "mechanicalEffects": [{ "kind": "attack", "attackKind": "melee", "damageDice": "1d8", "damageType": "lightning", "cantripScalingDice": "1d8", "conditionOnHit": "shocking-grasped" }]
     },
     {
       "id": "guidance",
@@ -9177,6 +9177,15 @@
       "id": "addled",
       "name": "Addled",
       "description": "The target can't make Opportunity Attacks until the start of its next turn.' The opportunity-attack planner rejects an OA from an Addled reactor. Modeled like Dodging's 'until the start of your next turn' window via endsOn turnEnd (self); the creature ticks the expiry.", "engineNotes": "RAW (Monk Open Hand Technique, Addle option): 'The target can't make Opportunity Attacks until the start of its next turn.' The opportunity-attack planner rejects an OA from an Addled reactor. Modeled like Dodging's 'until the start of your next turn' window via endsOn turnEnd (self); the consumer ticks the expiry. The 'can't make Opportunity Attacks' restriction isn't expressible as an effect primitive (it gates the OA planner, not a roll), so this is an engine-read marker with effects [] (in pack-integrity's EFFECT_LESS_OK allowlist).",
+      "stackable": false,
+      "endsOn": [{ "kind": "turnEnd", "ownerId": "self" }],
+      "effects": []
+    },
+    {
+      "id": "shocking-grasped",
+      "name": "Shocking-Grasped",
+      "description": "The target can't make Opportunity Attacks until the start of its next turn.",
+      "engineNotes": "Slice 876 — Shocking Grasp's on-hit rider. RAW: 'it can't make Opportunity Attacks until the start of its next turn.' Mirrors `addled` (Monk Open Hand 'Addle'): the OA emission (planMove) and resolution (planOpportunityAttack) both read the id to bar the bearer's OAs; modeled like Dodge's window via endsOn turnEnd(self), the consumer ticks the expiry. The 'can't make Opportunity Attacks' restriction isn't an effect primitive (it gates the OA planner, not a roll), so this is an engine-read marker with effects [] (in pack-integrity's EFFECT_LESS_OK allowlist).",
       "stackable": false,
       "endsOn": [{ "kind": "turnEnd", "ownerId": "self" }],
       "effects": []

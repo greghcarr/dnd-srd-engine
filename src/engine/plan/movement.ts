@@ -36,7 +36,7 @@ import { newEventId } from '../../ids.js';
 import { nowIso } from '../../internal/clock.js';
 import { invariant } from '../../internal/invariants.js';
 import type { ULID } from '../ids-utils.js';
-import { assertActorCanAct, getEffectiveSpeed, findActorBlockingCondition } from './_actor-state.js';
+import { assertActorCanAct, getEffectiveSpeed, cannotMakeOpportunityAttack } from './_actor-state.js';
 import { getEffectiveSpeedForMode } from '../../derive/speed.js';
 import { bresenhamCells, movementCostAt } from '../../derive/terrain.js';
 import { findPath } from '../../derive/pathing.js';
@@ -404,8 +404,9 @@ export const planMove = (
         if (!wasInReach || stillInReach) continue;
         // Unconscious / Incapacitated / Stunned / Paralyzed / Petrified
         // creatures can't take reactions (reactorChar resolved above for
-        // reach lookup).
-        if (!reactorChar || findActorBlockingCondition(reactorChar) !== undefined) continue;
+        // reach lookup); slice 876: a Shocking-Grasped creature can't make
+        // Opportunity Attacks specifically (it can still take other reactions).
+        if (!reactorChar || cannotMakeOpportunityAttack(reactorChar)) continue;
         // Reaction already spent this round → no opportunity.
         if (other.turnUsage.reactionUsedThisRound) continue;
         const oa: OpportunityAvailableEvent = {

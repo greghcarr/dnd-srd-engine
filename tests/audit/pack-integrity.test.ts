@@ -487,6 +487,7 @@ describe('pack integrity: wired spells do not apply effect-less conditions', () 
     'cursed-inert-active', // slice 368: recurringSave { onFail: 'dodge' } drives it (save-or-Dodge); the mechanic is the recurring save, not the effects array
     'resisted', // slice 369: consumer-invoked planConsumeResistance rolls the 1d4 reduction (mirrors Absorb Elements); the marker just says Resistance is active
     'addled', // slice 380: Open Hand Technique (Addle); the opportunity-attack planner reads the id to bar OAs (the "can't make Opportunity Attacks" restriction isn't an effect primitive)
+    'shocking-grasped', // slice 876: Shocking Grasp's on-hit OA-denial; same engine-read-marker shape as `addled` (the OA emission + resolution read the id to bar OAs)
     'expeditious-retreat-active', // slice 521: marker condition read by planExpeditiousRetreatDash to gate the per-turn Bonus-Action-Dash arm (the BA-Dash isn't an effect primitive)
     'phantasmal-force-active', // slice 667: marker for planTickRecurring (per-turn 1d6 psychic damage). The disbelieve-on-INT-investigation arm is consumer-driven.
     'dragons-breath-acid-active', // slice 669: marker for planExhaleDragonsBreath (caster picks damage type at cast). The buffed creature uses its action to exhale; the planner reads the variant marker.

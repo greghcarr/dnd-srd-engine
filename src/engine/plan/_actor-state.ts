@@ -60,6 +60,23 @@ const ACTION_BLOCKING_CONDITIONS: ReadonlySet<string> = new Set([
   'banished-active',
 ]);
 
+// Slice 876: conditions that prevent the bearer from making Opportunity
+// Attacks but do NOT otherwise incapacitate it (it can still act on its turn
+// and take other reactions). RAW users: Monk Open Hand "Addle" (`addled`,
+// slice 380) and Shocking Grasp (`shocking-grasped` — "it can't make
+// Opportunity Attacks until the start of its next turn"). Action-blocking
+// conditions already suppress every reaction via `findActorBlockingCondition`,
+// so this set carries only the OA-specific shapes. (`addled` was previously
+// only checked in the OA resolution; including it here also suppresses it in
+// the OA *emission*, so an Addled creature is no longer even offered an OA.)
+const OA_PREVENTING_CONDITIONS: ReadonlySet<string> = new Set(['addled', 'shocking-grasped']);
+
+/** True if the character can't make an Opportunity Attack right now (an
+ * OA-preventing condition like Shocking Grasp, or any action-blocker). */
+export const cannotMakeOpportunityAttack = (character: Character): boolean =>
+  findActorBlockingCondition(character) !== undefined
+  || character.appliedConditions.some((c) => OA_PREVENTING_CONDITIONS.has(c.conditionId));
+
 /**
  * Returns the id of the first action-blocking condition the character
  * carries, or `'unconscious'` (synthetic) if their HP has dropped to 0,

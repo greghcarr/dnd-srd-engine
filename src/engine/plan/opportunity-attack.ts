@@ -11,6 +11,9 @@ import type { ULID } from '../ids-utils.js';
 // Monk Open Hand Technique (Addle) marks a creature unable to make
 // Opportunity Attacks until its next turn.
 const ADDLED_CONDITION_ID = 'addled';
+// Slice 876: Shocking Grasp bars Opportunity Attacks until the start of the
+// target's next turn (the same OA-only restriction as Addle).
+const SHOCKING_GRASPED_CONDITION_ID = 'shocking-grasped';
 
 export interface OpportunityAttackIntent {
   readonly type: 'OpportunityAttack';
@@ -56,6 +59,9 @@ export const planOpportunityAttack = (
 
   if (reactor.appliedConditions.some((c) => c.conditionId === ADDLED_CONDITION_ID)) {
     throw new Error(`${reactor.name} is Addled and cannot make Opportunity Attacks`);
+  }
+  if (reactor.appliedConditions.some((c) => c.conditionId === SHOCKING_GRASPED_CONDITION_ID)) {
+    throw new Error(`${reactor.name} is Shocking-Grasped and cannot make Opportunity Attacks`);
   }
 
   const eligibility = findReactor(state, intent.reactorId);
