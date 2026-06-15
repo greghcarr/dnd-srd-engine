@@ -218,6 +218,7 @@ export class EffectAccumulator {
   // the reroll-on-natural-1 mechanic.
   private halflingLuckFlag: boolean = false;
   private halvesStrengthWeaponDamageFlag: boolean = false;
+  private weaponDamageDeltaList: { dice: string; mode: 'add' | 'subtract' }[] = [];
   private deathSaveAdvantageFlag: boolean = false;
   // Slice 542: Heroic Inspiration on Long Rest presence marker.
   // Read by planLongRest to auto-grant Heroic Inspiration to
@@ -947,6 +948,15 @@ export class EffectAccumulator {
   hasHalvesStrengthWeaponDamage(): boolean {
     return this.halvesStrengthWeaponDamageFlag;
   }
+  // Slice 875: Enlarge/Reduce ±1d4 to the bearer's own weapon damage. Read by
+  // planAttack, applied to the weapon's base damage total (a `subtract` floors
+  // the component at 1). Multiple deltas accumulate (rare, but well-defined).
+  addWeaponDamageDelta(dice: string, mode: 'add' | 'subtract'): void {
+    this.weaponDamageDeltaList.push({ dice, mode });
+  }
+  weaponDamageDeltas(): ReadonlyArray<{ dice: string; mode: 'add' | 'subtract' }> {
+    return this.weaponDamageDeltaList;
+  }
   // Slice 679: marker — bearer's death saves roll with advantage.
   // RAW user: Beacon of Hope.
   markDeathSaveAdvantage(): void {
@@ -1283,6 +1293,9 @@ export const applyEffectToBuilder = (
       return;
     case 'HalvesStrengthWeaponDamage':
       acc.markHalvesStrengthWeaponDamage();
+      return;
+    case 'WeaponDamageDelta':
+      acc.addWeaponDamageDelta(effect.dice, effect.mode);
       return;
     case 'GrantDeathSaveAdvantage':
       acc.markDeathSaveAdvantage();

@@ -1550,8 +1550,28 @@ export const resolveAttackDamage = (ctx: RollContext): ReadonlyArray<Event> => {
     attackerEffects.hasHalvesStrengthWeaponDamage() && damageAbility === 'STR'
       ? Math.floor(Math.max(0, rawDamageTotal) / 2)
       : rawDamageTotal;
+  // Slice 875: Enlarge/Reduce ±1d4 to the bearer's OWN weapon damage, of the
+  // weapon's own damage type. RAW: Enlarge "deal an extra 1d4 damage on a hit";
+  // Reduce "deal 1d4 less damage on a hit (this can't reduce the damage below
+  // 1)". Rolled here (deterministic on replay; the loop is empty — and so
+  // draws no RNG — for a normal-size attacker, keeping every existing attack
+  // byte-identical), folded into the weapon component. The delta dice are NOT
+  // crit-doubled (a minor deferral); a reduction floors the component at 1.
+  let sizeDelta = 0;
+  let sizeReduces = false;
+  for (const d of attackerEffects.weaponDamageDeltas()) {
+    const parsedDelta = parseDiceExpression(d.dice);
+    let rolled = parsedDelta.modifier;
+    for (let i = 0; i < parsedDelta.count; i += 1) rolled += rollDie(parsedDelta.die, rng, 'damage');
+    if (d.mode === 'add') sizeDelta += rolled;
+    else {
+      sizeDelta -= rolled;
+      sizeReduces = true;
+    }
+  }
+  const weaponComponentAmount = Math.max(sizeReduces ? 1 : 0, damageTotal + sizeDelta);
   const rawComponents: { amount: number; type: typeof weaponDef.damageType }[] = [
-    { amount: Math.max(0, damageTotal), type: effectiveDamageType },
+    { amount: weaponComponentAmount, type: effectiveDamageType },
   ];
   if (extraDamageRoll !== undefined) {
     const extraTotal = extraDamageRoll.rolls.reduce((s, v) => s + v, 0) + extraDamageRoll.modifier;

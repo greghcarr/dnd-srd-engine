@@ -10,7 +10,7 @@ These shapes are not up for debate as part of a contribution. If you think one n
 
 - **Event-sourced.** State changes are events. `apply(state, event) -> state` is pure.
 - **Plan/commit split.** `engine.plan(state, intent)` is the only place RNG is consumed; resolution events carry baked rolls. `apply()` never touches RNG. Replays read baked rolls.
-- **Effect primitives.** Features are described via a fixed vocabulary of effect primitives (the authoritative list is `EFFECT_KINDS` in [../src/schemas/effects.ts](../src/schemas/effects.ts); currently 69 primitives plus the `Custom` escape hatch). Wild Shape, Polymorph, Wish, and similar drop to code handlers (the `CustomEffect` escape hatch).
+- **Effect primitives.** Features are described via a fixed vocabulary of effect primitives (the authoritative list is `EFFECT_KINDS` in [../src/schemas/effects.ts](../src/schemas/effects.ts); currently 70 primitives plus the `Custom` escape hatch). Wild Shape, Polymorph, Wish, and similar drop to code handlers (the `CustomEffect` escape hatch).
 - **Branded IDs + ULIDs.** Per-kind branded string types (`CharacterId`, `SpellId`, `ItemDefinitionId` versus `ItemInstanceId`, etc.) backed by ULIDs.
 - **Normalized state.** Entities live in `Record<Id, Entity>` maps under `CampaignState`, not nested arrays.
 - **Immer internally, immutable externally.** `apply()` uses Immer for clean reducers; output is frozen.

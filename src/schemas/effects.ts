@@ -427,6 +427,14 @@ export type Effect =
   // through unhalved. RAW reading scoped to the weapon's damage
   // line, not every damage source the attack triggers.
   | { kind: 'HalvesStrengthWeaponDamage' }
+  // Slice 875: the bearer's own weapon / Unarmed Strike attacks deal an
+  // extra (`add`) or reduced (`subtract`) `dice` of damage on a hit, of the
+  // weapon's own damage type — RAW Enlarge/Reduce ("attacks with its enlarged
+  // weapons or Unarmed Strikes deal an extra 1d4 damage on a hit" / "deal 1d4
+  // less damage on a hit (this can't reduce the damage below 1)"). Applied to
+  // the weapon's base damage in the attack planner (the `HalvesStrengthWeapon
+  // Damage` precedent); a `subtract` floors the weapon component at 1.
+  | { kind: 'WeaponDamageDelta'; dice: DiceExpression; mode: 'add' | 'subtract' }
   // Slice 679: marker — bearer's death saving throws are rolled
   // with advantage. RAW user: Beacon of Hope ("It has Advantage
   // on Wisdom saving throws and Death Saving Throws"). Read by
@@ -959,6 +967,11 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       kind: z.literal('HalvesStrengthWeaponDamage'),
     }),
     z.object({
+      kind: z.literal('WeaponDamageDelta'),
+      dice: DiceExpressionSchema,
+      mode: z.enum(['add', 'subtract']),
+    }),
+    z.object({
       kind: z.literal('GrantDeathSaveAdvantage'),
     }),
     z.object({
@@ -1110,6 +1123,7 @@ export const EFFECT_KINDS = [
   'GrantAbilitySubstitution',
   'GrantHalflingLuck',
   'HalvesStrengthWeaponDamage',
+  'WeaponDamageDelta',
   'GrantDeathSaveAdvantage',
   'GrantHeroicInspirationOnLongRest',
   'GrantAdvantageToAttackers',

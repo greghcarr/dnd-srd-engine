@@ -10276,23 +10276,25 @@
     {
       "id": "enlarged-active",
       "name": "Enlarged",
-      "description": "Size category increases by one (Medium → Large). Advantage on Strength checks and Strength saves.", "engineNotes": "Size category increases by one (Medium → Large). Advantage on Strength checks and Strength saves. RAW also adds 1d4 to weapon damage; that on-hit damage rider isn't modeled yet (would need a per-attack damage-die addition similar to Holy Weapon's static add, but variable). Size category itself is consumer-side flavor; the engine doesn't model sizes.",
+      "description": "Size category increases by one (Medium → Large). Advantage on Strength checks and Strength saves. The target's attacks with its enlarged weapons or Unarmed Strikes deal an extra 1d4 damage on a hit.", "engineNotes": "Slice 875 wired the +1d4 weapon-damage rider via the new WeaponDamageDelta{1d4, add} effect (applied to the bearer's own weapon/Unarmed-Strike damage in the attack planner, of the weapon's type; the delta dice aren't crit-doubled). Size category itself is consumer-side flavor; the engine doesn't model sizes.",
       "stackable": false,
       "endsOn": [],
       "effects": [
         { "kind": "SetAdvantage", "on": { "kind": "check", "ability": "STR" }, "mode": "advantage" },
-        { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "STR" }, "mode": "advantage" }
+        { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "STR" }, "mode": "advantage" },
+        { "kind": "WeaponDamageDelta", "dice": "1d4", "mode": "add" }
       ]
     },
     {
       "id": "reduced-active",
       "name": "Reduced",
-      "description": "Size category decreases by one (Medium → Small). Disadvantage on Strength checks and Strength saves.", "engineNotes": "Size category decreases by one (Medium → Small). Disadvantage on Strength checks and Strength saves. RAW also subtracts 1d4 (min 1) from weapon damage; that on-hit damage rider isn't modeled yet. Size category itself is consumer-side flavor.",
+      "description": "Size category decreases by one (Medium → Small). Disadvantage on Strength checks and Strength saves. The target's attacks with its reduced weapons or Unarmed Strikes deal 1d4 less damage on a hit (this can't reduce the damage below 1).", "engineNotes": "Slice 875 wired the −1d4 weapon-damage rider via the new WeaponDamageDelta{1d4, subtract} effect (applied to the bearer's own weapon/Unarmed-Strike damage in the attack planner, flooring the weapon component at 1 per RAW). Size category itself is consumer-side flavor.",
       "stackable": false,
       "endsOn": [],
       "effects": [
         { "kind": "SetAdvantage", "on": { "kind": "check", "ability": "STR" }, "mode": "disadvantage" },
-        { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "STR" }, "mode": "disadvantage" }
+        { "kind": "SetAdvantage", "on": { "kind": "save", "ability": "STR" }, "mode": "disadvantage" },
+        { "kind": "WeaponDamageDelta", "dice": "1d4", "mode": "subtract" }
       ]
     },
     {
