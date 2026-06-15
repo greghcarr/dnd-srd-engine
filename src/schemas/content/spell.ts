@@ -84,6 +84,14 @@ const SpellAttackMechanicSchema = z
     // `sourceEffectInstanceId` when the cast is a concentration spell,
     // so concentration-drop / save-ends mechanics clean it up.
     conditionOnHit: z.string().optional(),
+    // Slice 874: deal HALF the rolled damage on a MISS (rounded down)
+    // instead of nothing. RAW (Acid Arrow): "On a miss, the arrow
+    // splashes the target with acid for half as much of the initial
+    // damage only." Composes with the existing Potent-Cantrip half-on-
+    // miss path; `conditionOnHit` still fires only on a hit (the delayed
+    // damage doesn't land on a miss). Opt-in so other attack spells are
+    // unaffected.
+    halfDamageOnMiss: z.boolean().optional(),
     // Slice 816: does making this attack cost a separate Magic action?
     // Some Bonus-Action spells create a persistent effect on the cast and
     // then attack from it via a SEPARATE Magic action on this or a later

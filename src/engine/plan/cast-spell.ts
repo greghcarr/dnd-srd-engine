@@ -752,7 +752,11 @@ const planAttackMechanic = (
     // miss skips the target entirely.
     const potentHalfOnMiss =
       !hit && spell.level === CANTRIP_LEVEL && casterEffects.hasPotentCantrip();
-    if (!hit && !potentHalfOnMiss) continue;
+    // Slice 874: Acid Arrow's "half the initial damage on a miss". Same
+    // half-damage outcome as Potent Cantrip but mechanic-declared (any level).
+    const attackHalfOnMiss = !hit && mechanic.halfDamageOnMiss === true;
+    const halfOnMiss = potentHalfOnMiss || attackHalfOnMiss;
+    if (!hit && !halfOnMiss) continue;
 
     // Slice 666: optional on-hit condition (Ray of Enfeeblement and
     // any future attack-spell that primes an Enfeebled-shape rider on
@@ -818,7 +822,7 @@ const planAttackMechanic = (
       : [];
     const rolls = [...baseRolls, ...scalingRolls, ...explodeRolls];
     const fullDamage = rolls.reduce((s, v) => s + v, 0) + modifier + damageModifierBonus;
-    const damageTotal = potentHalfOnMiss ? halveDamage(Math.max(0, fullDamage)) : fullDamage;
+    const damageTotal = halfOnMiss ? halveDamage(Math.max(0, fullDamage)) : fullDamage;
     const damageRolled: DamageRolledEvent = {
       id: newEventId() as ULID,
       at,
