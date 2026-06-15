@@ -93,6 +93,7 @@ Predicate DSL kinds (slice 122 additions): `eq` / `gt` / `gte` for value compari
 
 - `bearerCanSeeFearSource?: boolean` (slice 276, `AttackIntent` + `ComputeAbilityCheckInput`) — Frightened LoS gate. Default-apply (predicate is `not eq false`): undefined or true fires the disadvantage; explicit `false` bypasses.
 - `targetCanSeeAttacker?: boolean` (slice 278, `AttackIntent`) — Dodge LoS gate, per-attacker. Default-apply.
+- `attackerHasHostileAdjacent?: boolean` (slice 880, `AttackIntent`) — Ranged-Attacks-in-Close-Combat hostility gate. Default-apply: undefined falls back to the conservative any-adjacent-combatant geometry; a faction-aware consumer passes `false` (only a friendly is adjacent → no disadvantage) or `true` (a hostile the engine can't see is in reach). Mirror of the Pack-Tactics `attackerHasAllyAdjacentToTarget` slot.
 - `lightLevel?: 'bright' | 'dim' | 'darkness'` (slice 279, `ComputeAbilityCheckInput`) — ambient-light gate (Cloak of the Bat Stealth). Opt-in: predicates require a specific value, undefined produces no match.
 - `sense?: 'sight' | 'hearing' | 'smell' | 'touch' | 'taste'` (slice 263, `ComputeAbilityCheckInput`) — in-fiction sense gate (Eyes of the Eagle sight-only Perception). Opt-in.
 - `athleticsSubAction?: 'climb' | 'swim' | 'jump' | 'grapple' | 'shove'` (slice 274, `ComputeAbilityCheckInput`) — Athletics sub-action gate (Gloves of Swimming and Climbing). Opt-in.

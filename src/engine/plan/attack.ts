@@ -289,6 +289,21 @@ export interface AttackIntent {
   // bearer must explicitly receive `true` to gain the benefit.
   // Strict-RAW: never grants more advantage than the consumer signals.
   readonly attackerHasAllyAdjacentToTarget?: boolean;
+  // Slice 880: consumer-supplied per-attack hostility fact for "Ranged
+  // Attacks in Close Combat". RAW: a ranged attack has Disadvantage if a
+  // HOSTILE creature who isn't Incapacitated is within 5 ft of the attacker.
+  // The engine has no hostility model, so the position-derived fallback treats
+  // ANY adjacent non-incapacitated combatant as a threat (an archer next to a
+  // friendly cleric would take disadvantage). A hostility-aware consumer
+  // answers the predicate directly here:
+  //   true  -> a hostile creature is within 5 ft (disadvantage applies).
+  //   false -> no hostile creature within 5 ft (no disadvantage, even with a
+  //            friendly adjacent — the hostility-model fix).
+  //   undefined -> consumer didn't specify; fall back to the conservative
+  //                any-adjacent geometry (prior behavior). Default-apply,
+  //                mirroring `attackerHasAllyAdjacentToTarget`'s
+  //                `consumer ?? positionDerived` resolution.
+  readonly attackerHasHostileAdjacent?: boolean;
   // Slice 451: consumer-supplied ambient light at the attacker's tile,
   // for monster traits that gate on light (Kobold Warrior's Sunlight
   // Sensitivity: "While in sunlight, the kobold has Disadvantage on
@@ -449,6 +464,9 @@ export interface ResolveAttackInput {
   // Slice 445: consumer-supplied fact for monster Pack Tactics. See
   // doc comment on AttackIntent.attackerHasAllyAdjacentToTarget above.
   readonly attackerHasAllyAdjacentToTarget?: boolean;
+  // Slice 880: consumer-supplied hostility fact for Ranged Attacks in Close
+  // Combat. See doc comment on AttackIntent.attackerHasHostileAdjacent above.
+  readonly attackerHasHostileAdjacent?: boolean;
   // Slice 451: consumer-supplied ambient light for Sunlight Sensitivity.
   // See doc comment on AttackIntent.lightLevel above.
   readonly lightLevel?: 'bright' | 'dim' | 'darkness';
@@ -810,12 +828,13 @@ export const resolveAttackRollPhase = (input: ResolveAttackInput): AttackRollRes
     return cb?.turnUsage.steadyAimActive === true;
   })();
   // RAW PHB ch.1 "Ranged Attacks in Close Combat": ranged attacks have
-  // disadvantage if a hostile creature who isn't Incapacitated is
+  // disadvantage if a HOSTILE creature who isn't Incapacitated is
   // within 5 ft of the attacker. The engine has no hostility model, so
-  // treat any other living, non-incapacitated combatant within reach
-  // as a threat. Out-of-encounter / unpositioned: no disadvantage
-  // imposed (matches the rest of the planner's geometry-aware checks).
-  const rangedInMelee = ((): boolean => {
+  // the position-derived fallback conservatively treats any other living,
+  // non-incapacitated combatant within reach as a threat. Out-of-encounter /
+  // unpositioned: no disadvantage imposed (matches the rest of the planner's
+  // geometry-aware checks).
+  const positionDerivedRangedInMelee = ((): boolean => {
     if (weaponDef.attackKind !== 'ranged') return false;
     if (!state.activeEncounterId) return false;
     const enc = state.encounters[state.activeEncounterId];
@@ -835,6 +854,20 @@ export const resolveAttackRollPhase = (input: ResolveAttackInput): AttackRollRes
       return chebyshevDistance(attackerPos, otherPos) <= 5;
     });
   })();
+  // Slice 880 (`no-hostility-model` close): a hostility-aware consumer can
+  // override the geometry-only fallback per intent. `attackerHasHostileAdjacent`
+  // answers the RAW predicate directly ("is a hostile, non-incapacitated
+  // creature within 5 ft of me"), so an archer standing next to a friendly
+  // cleric (false) takes no disadvantage, while one next to a hidden foe the
+  // engine can't see (true) does. Undefined falls back to the conservative
+  // any-adjacent geometry — current behavior, byte-unchanged. The mirror of
+  // the Pack Tactics `attackerHasAllyAdjacentToTarget ?? positionDerived` seam.
+  // Only ranged attacks can be in-melee-disadvantaged, so the override is inert
+  // for melee (the fallback already returned false).
+  const rangedInMelee =
+    weaponDef.attackKind === 'ranged'
+      ? input.attackerHasHostileAdjacent ?? positionDerivedRangedInMelee
+      : false;
   // Attacker-side effect stack. Carries per-source advantage entries
   // (Bestow Curse's `cursed-attacks-active` records a
   // `SetAdvantageVsSource` keyed on the cursor's id; the attack
@@ -2029,6 +2062,9 @@ export const planAttackRoll = (
       : {}),
     ...(intent.attackerHasAllyAdjacentToTarget !== undefined
       ? { attackerHasAllyAdjacentToTarget: intent.attackerHasAllyAdjacentToTarget }
+      : {}),
+    ...(intent.attackerHasHostileAdjacent !== undefined
+      ? { attackerHasHostileAdjacent: intent.attackerHasHostileAdjacent }
       : {}),
     ...(intent.lightLevel !== undefined ? { lightLevel: intent.lightLevel } : {}),
     ...(intent.cunningStrike !== undefined ? { cunningStrike: intent.cunningStrike } : {}),
