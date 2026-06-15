@@ -193,6 +193,17 @@ export const applyTurnStarted = (
   active.turnUsage.stunningStrikeUsedThisTurn = false;
   active.turnUsage.savageAttackerUsedThisTurn = false;
   active.turnUsage.noProvokeMovementUpToFeet = 0;
+  // Slice 879: a Reaction recharges at the start of the combatant's OWN
+  // turn. RAW (rules-glossary "Reaction"): "Once you take a Reaction, you
+  // can't take another one until the start of your next turn." The flag is
+  // named `reactionUsedThisRound` for historical reasons, but the reset is
+  // per-turn, not per-round — resetting it here (rather than at RoundEnded)
+  // keeps a creature's reaction spent through the rest of the round until its
+  // next turn begins, and naturally follows initiative swaps / extra turns
+  // (an extra turn carries its own TurnStarted). Every combatant gets exactly
+  // one TurnStarted per round (RoundEnded's invariant requires all to have
+  // acted), so dropping the round-end reset can't strand a stale `true`.
+  active.turnUsage.reactionUsedThisRound = false;
   // Slice 806: a fresh turn restores the one-spell-slot-per-turn budget.
   active.turnUsage.spellSlotExpendedThisTurn = false;
   // Slice 572: a readied action expires at the start of the next
@@ -239,7 +250,10 @@ export const applyRoundEnded = (
   );
   for (const combatant of encounter.combatants) {
     combatant.hasActedThisRound = false;
-    combatant.turnUsage.reactionUsedThisRound = false;
+    // Slice 879: the Reaction reset moved to `applyTurnStarted` (RAW: a
+    // Reaction recharges at "the start of your next turn", not at round end).
+    // Resetting here refreshed a spent reaction a beat too early for any
+    // combatant whose next turn isn't first in the new round.
   }
   encounter.round += 1;
   encounter.activeIndex = 0;

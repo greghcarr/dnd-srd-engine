@@ -12,7 +12,9 @@
 //  - `combatant.turnUsage.attacksMadeThisTurn ≥ 0`
 //  - `combatant.turnUsage.feetMovedThisTurn ≤ speed * 2` (dash cap)
 //  - `combatant.turnUsage.feetMovedThisTurn` resets to 0 on a turn boundary
-//  - `combatant.turnUsage.reactionUsedThisRound` resets to false on a round boundary
+//  - `combatant.turnUsage.reactionUsedThisRound` resets to false at the start of
+//     the combatant's own turn (slice 879 — RAW "until the start of your next
+//     turn", not a round boundary)
 //  - `character.hp.current ≤ character.hp.max + character.hp.maxBonus`
 //
 // The "legal action" picker uses a deterministic per-seed PRNG so the

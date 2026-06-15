@@ -162,7 +162,12 @@ describe('ActionEconomyConsumed reducer', () => {
     expect(combatant?.turnUsage.attacksMadeThisTurn).toBe(0);
   });
 
-  it('RoundEnded resets reactionUsedThisRound for everyone', () => {
+  it('a spent Reaction persists through RoundEnded and recharges at the combatant own next TurnStarted (slice 879)', () => {
+    // RAW (rules-glossary "Reaction"): "Once you take a Reaction, you can't
+    // take another one until the start of your next turn." Pre-879 the engine
+    // reset every combatant's reaction at RoundEnded — a beat too early for a
+    // combatant whose next turn isn't first in the new round. Now the reset is
+    // per-turn, in applyTurnStarted.
     const { state, encounterId, aId, bId } = seedActiveEncounter();
     let s = apply(state, {
       id: eventId(),
@@ -178,7 +183,15 @@ describe('ActionEconomyConsumed reducer', () => {
       { id: eventId(), at: isoTimestamp(), type: 'TurnEnded', encounterId, combatantId: bId, round: 1 } satisfies TurnEndedEvent,
       { id: eventId(), at: isoTimestamp(), type: 'RoundEnded', encounterId, round: 1 } satisfies RoundEndedEvent,
     ]);
-    const combatantA = s.encounters[encounterId]?.combatants.find((c) => c.combatantId === aId);
-    expect(combatantA?.turnUsage.reactionUsedThisRound).toBe(false);
+    // Across the round boundary A's reaction is STILL spent — it hasn't had
+    // its next turn yet.
+    const afterRound = s.encounters[encounterId]?.combatants.find((c) => c.combatantId === aId);
+    expect(afterRound?.turnUsage.reactionUsedThisRound).toBe(true);
+    // A's round-2 turn starts -> the reaction recharges.
+    s = apply(s, {
+      id: eventId(), at: isoTimestamp(), type: 'TurnStarted', encounterId, combatantId: aId, round: 2,
+    } satisfies TurnStartedEvent);
+    const afterOwnTurn = s.encounters[encounterId]?.combatants.find((c) => c.combatantId === aId);
+    expect(afterOwnTurn?.turnUsage.reactionUsedThisRound).toBe(false);
   });
 });
