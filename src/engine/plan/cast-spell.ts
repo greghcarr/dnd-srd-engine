@@ -59,7 +59,7 @@ import { getCreatureType } from '../../derive/creature-type.js';
 import { creatureSize, isLargeOrLarger } from '../../derive/creature-size.js';
 import { rollSaveBonusDice } from './_bonus-dice.js';
 import { abilityModifier } from '../../derive/ability.js';
-import { resolveAttack } from './attack.js';
+import { resolveAttack, coverDexSaveBonus, type CoverKind } from './attack.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { applyAll } from '../apply.js';
@@ -178,6 +178,17 @@ export interface CastSpellIntent {
   // Ids not listed are treated as willing → no save, buff applies. Ids
   // here that aren't among `targetIds` are simply ignored.
   readonly unwillingTargetIds?: ReadonlyArray<string>;
+  // Slice 885: per-target Cover for a spell's saving throw. RAW (Cover):
+  // "A target with Half Cover has a +2 bonus to AC and Dexterity saving
+  // throws. A target with Three-Quarters Cover has a +5 bonus." Single-target
+  // save sites already honor cover via `rollSaveAgainstDC` (slice 550), but an
+  // AoE / spell save (Fireball, Burning Hands, ...) had no cover channel — a
+  // creature behind half cover got no +2 Dex save vs the blast. The engine
+  // doesn't model positions, so the consumer supplies each affected target's
+  // cover (a positional fact, the seam like `lightLevel` / `aim`). Only Dex
+  // saves are affected; other abilities ignore cover. Targets absent from the
+  // map are treated as no cover (current behavior, byte-unchanged).
+  readonly coverByTargetId?: Readonly<Record<string, CoverKind>>;
   readonly at?: string;
 }
 
@@ -1101,7 +1112,20 @@ const planSaveMechanic = (
     // Slice 331: per-roll save bonus dice (Bless +1d4 / Bane -1d4) on the
     // target's save against this spell.
     const saveBonus = rollSaveBonusDice(saveDerivation.bonusDice, rng);
-    const bonus = saveDerivation.total + saveBonus.total;
+    // Slice 885: per-target Cover bonus on a Dex save (the AoE mirror of the
+    // single-target `rollSaveAgainstDC` cover path, slice 550). Other save
+    // abilities ignore cover. `coverByTargetId` is consumer-supplied (positions
+    // are consumer state); absent → no cover (byte-unchanged).
+    // Slice 885: Sacred Flame (and any mechanic with `saveIgnoresCover`)
+    // grants no Cover benefit per its RAW clause.
+    const cover = mechanic.saveIgnoresCover === true ? undefined : intent.coverByTargetId?.[targetId];
+    const coverBonus = mechanic.ability === 'DEX' && cover !== undefined
+      ? coverDexSaveBonus(cover)
+      : 0;
+    const coverBreakdown = coverBonus > 0
+      ? [{ source: `cover (${cover!})`, value: coverBonus }]
+      : [];
+    const bonus = saveDerivation.total + saveBonus.total + coverBonus;
     const total = usedD20 + bonus;
     const success = total >= dcResult.total;
     const saveEvent: SaveRolledEvent = {
@@ -1117,7 +1141,7 @@ const planSaveMechanic = (
       total,
       success,
       causedByEventId: declaredEventId as ULID,
-      breakdown: [...saveDerivation.breakdown, ...saveBonus.breakdown],
+      breakdown: [...saveDerivation.breakdown, ...saveBonus.breakdown, ...coverBreakdown],
     };
     events.push(saveEvent);
 
@@ -1521,6 +1545,13 @@ const planBuffMechanic = (
         rng,
         at,
         causedByEventId: declaredEventId,
+        // Slice 885: thread per-target cover uniformly. `rollSaveAgainstDC`
+        // only applies it to Dex saves, so this is inert for the current
+        // CON-only unwilling saves (Enlarge/Reduce) but future-proofs a Dex
+        // unwilling-save buff.
+        ...(intent.coverByTargetId?.[targetId] !== undefined
+          ? { cover: intent.coverByTargetId[targetId] }
+          : {}),
       });
       if (saveResult !== undefined) {
         events.push(saveResult.event);

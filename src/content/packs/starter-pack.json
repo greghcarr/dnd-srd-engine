@@ -1804,7 +1804,7 @@
       "concentration": false,
       "ritual": false,
       "classes": ["cleric"],
-      "mechanicalEffects": [{ "kind": "save", "ability": "DEX", "damageDice": "1d8", "damageType": "radiant", "cantripScalingDice": "1d8" }]
+      "mechanicalEffects": [{ "kind": "save", "ability": "DEX", "damageDice": "1d8", "damageType": "radiant", "cantripScalingDice": "1d8", "saveIgnoresCover": true }]
     },
     {
       "id": "eldritch-blast",

@@ -137,6 +137,12 @@ const SpellSaveMechanicSchema = z.object({
   // damage) and `additionalDamage`. Defaults to the historical
   // save-gates-damage behavior when unset.
   damageIgnoresSave: z.boolean().optional(),
+  // Slice 885: the target gains NO benefit from Cover on this save. RAW
+  // exception — Sacred Flame: "The target gains no benefit from Half Cover or
+  // Three-Quarters Cover for this save." The cast applies the slice-885 Dex
+  // cover bonus (`coverByTargetId`) to every Dex save EXCEPT a mechanic with
+  // this flag set. Defaults to false (cover applies, the general rule).
+  saveIgnoresCover: z.boolean().optional(),
   // Slice 341: additional damage components of a *different* type,
   // applied in the same save (Flame Strike: 5d6 Fire + 5d6 Radiant).
   // Each is rolled once for the spell (AOE), receives the same
