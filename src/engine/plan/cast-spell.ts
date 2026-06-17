@@ -178,6 +178,14 @@ export interface CastSpellIntent {
   // Ids not listed are treated as willing → no save, buff applies. Ids
   // here that aren't among `targetIds` are simply ignored.
   readonly unwillingTargetIds?: ReadonlyArray<string>;
+  // Slice 895: Chromatic Orb's leap targets, in order. When the primary (or a
+  // prior leap) attack HITS and its base damage dice show 2+ equal values, the
+  // orb leaps to the next entry here — a new attack + damage roll against it.
+  // Consumer-supplied because the leap target is "of your choice within 30 ft"
+  // (a positional fact the engine doesn't own). Capped at `slotLevel` leaps and
+  // each creature once; entries beyond the budget / already-targeted are
+  // skipped. Ignored for spells without `leapsOnMatchingDamageDice`.
+  readonly leapTargetIds?: ReadonlyArray<string>;
   // Slice 885: per-target Cover for a spell's saving throw. RAW (Cover):
   // "A target with Half Cover has a +2 bonus to AC and Dexterity saving
   // throws. A target with Three-Quarters Cover has a +5 bonus." Single-target
@@ -557,7 +565,26 @@ const planAttackMechanic = (
   const attackTargetIds = mechanic.targetScope === 'first'
     ? intent.targetIds.slice(0, 1)
     : intent.targetIds;
-  for (const targetId of attackTargetIds) {
+  // Slice 895: Chromatic Orb's leap processes targets from a QUEUE rather than
+  // a fixed list — a hit with 2+ matching base damage dice appends the next
+  // consumer-named leap target (within budget). With `leapsOnMatchingDamageDice`
+  // off the queue is exactly `attackTargetIds` (no appends ever), so every
+  // other attack spell is byte-unchanged. Each creature is processed at most
+  // once (RAW "a creature can be targeted only once by each casting").
+  const targetQueue: string[] = [...attackTargetIds];
+  const targetedThisCast = new Set<string>();
+  const leapTargetIds = intent.leapTargetIds ?? [];
+  const maxLeaps = mechanic.leapsOnMatchingDamageDice === true ? intent.slotLevel : 0;
+  let leapsUsed = 0;
+  let nextLeapIdx = 0;
+  while (targetQueue.length > 0) {
+    const targetId = targetQueue.shift()!;
+    // Track creatures hit this cast so a Chromatic Orb leap never targets the
+    // same creature twice (RAW). NOT a dedup of the base targets — a multi-beam
+    // attack (Eldritch Blast) fires several beams at the SAME target, so the
+    // base `attackTargetIds` may legitimately repeat a target; only leap-target
+    // SELECTION below consults this set.
+    targetedThisCast.add(targetId);
     const target = state.characters[targetId];
     if (!target) continue;
     const targetAC = computeAC({
@@ -905,6 +932,32 @@ const planAttackMechanic = (
         at,
       }),
     );
+    // Slice 895: Chromatic Orb leap. RAW: a HIT whose d8s show 2+ equal values
+    // makes the orb leap to a new target (consumer-named, within 30 ft) for a
+    // fresh attack + damage roll, up to `slotLevel` leaps, each creature once.
+    // `baseRolls` are the d8s (the 3d8 + any upcast d8s); cantrip-scaling /
+    // exploding dice aren't part of "the d8s" per RAW (chromatic-orb has
+    // neither). Only fires on a hit — the damage path above already `continue`d
+    // on a miss before rolling damage.
+    if (
+      hit
+      && mechanic.leapsOnMatchingDamageDice === true
+      && leapsUsed < maxLeaps
+      && new Set(baseRolls).size < baseRolls.length
+    ) {
+      // Advance to the next leap target that hasn't already been hit this cast.
+      while (
+        nextLeapIdx < leapTargetIds.length
+        && targetedThisCast.has(leapTargetIds[nextLeapIdx]!)
+      ) {
+        nextLeapIdx += 1;
+      }
+      if (nextLeapIdx < leapTargetIds.length) {
+        targetQueue.push(leapTargetIds[nextLeapIdx]!);
+        nextLeapIdx += 1;
+        leapsUsed += 1;
+      }
+    }
   }
   return events;
 };

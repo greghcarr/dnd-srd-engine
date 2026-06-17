@@ -92,6 +92,18 @@ const SpellAttackMechanicSchema = z
     // damage doesn't land on a miss). Opt-in so other attack spells are
     // unaffected.
     halfDamageOnMiss: z.boolean().optional(),
+    // Slice 895: Chromatic Orb's leap. RAW: "If you roll the same number on
+    // two or more of the d8s, the orb leaps to a different target of your
+    // choice within 30 feet of the target. Make an attack roll against the new
+    // target, and make a new damage roll. The orb can't leap again unless you
+    // cast the spell with a level 2+ spell slot" — and (upcast) "the orb can
+    // leap a maximum number of times equal to the level of the slot expended,
+    // and a creature can be targeted only once by each casting." When set: a
+    // HIT whose base damage dice contain 2+ equal values leaps to the next
+    // `CastSpellIntent.leapTargetIds` entry (consumer-supplied, within 30 ft —
+    // a positional/consumer fact) — a new attack + damage roll there. Capped at
+    // `slotLevel` leaps; each creature targeted at most once. Opt-in.
+    leapsOnMatchingDamageDice: z.boolean().optional(),
     // Slice 816: does making this attack cost a separate Magic action?
     // Some Bonus-Action spells create a persistent effect on the cast and
     // then attack from it via a SEPARATE Magic action on this or a later
