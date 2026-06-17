@@ -99,6 +99,10 @@ const LONG_REST_STANDARD_MINUTES = 60 * 8;
 // long rest = a week of downtime.
 const SHORT_REST_GRITTY_MINUTES = 60 * 8;
 const LONG_REST_GRITTY_MINUTES = 60 * 24 * 7;
+// SRD 5.2.1 (rules-glossary "Long Rest"): "After you finish a Long Rest, you
+// must wait at least 16 hours before starting another one." (The 2014 rule was
+// a 24-hour-period cap; this is the 2024 cadence.)
+const LONG_REST_CADENCE_LOCKOUT_MINUTES = 16 * 60;
 
 export const planShortRest = (
   state: CampaignState,
@@ -161,6 +165,30 @@ export const planLongRest = (
       throw new Error(
         `${participant.name} cannot start a Long Rest at 0 Hit Points (RAW requires at least 1 Hit Point to start a Long Rest)`,
       );
+    }
+  }
+  // Slice 898: SRD 16-hour Long Rest cadence — "After you finish a Long Rest,
+  // you must wait at least 16 hours before starting another one." Opt-in
+  // (settings.enforceLongRestCadence), because the rule is measured on the
+  // consumer's in-game clock (inGameTime, advanced via InGameTimeAdvanced):
+  // the engine records each rest's completion time (applyLongRestEnded) and
+  // here rejects a new rest until 16 in-game hours have elapsed since a
+  // participant's last one. The consumer owns advancing inGameTime across the
+  // rest's own duration; with cadence off the gate is inert (byte-unchanged).
+  if (state.settings.enforceLongRestCadence) {
+    const now = state.inGameTime.totalMinutes;
+    for (const participantId of intent.participantIds) {
+      const participant = state.characters[participantId];
+      if (participant === undefined) continue;
+      const lastEnd = state.lastLongRestEndMinutesByCharacter[participantId];
+      if (lastEnd === undefined) continue;
+      const elapsed = now - lastEnd;
+      if (elapsed < LONG_REST_CADENCE_LOCKOUT_MINUTES) {
+        const waitMinutes = LONG_REST_CADENCE_LOCKOUT_MINUTES - elapsed;
+        throw new Error(
+          `${participant.name} cannot start another Long Rest yet (SRD: wait at least 16 hours after finishing one; ${Math.ceil(waitMinutes / 60)} more in-game hour(s) required)`,
+        );
+      }
     }
   }
   const at = intent.at ?? nowIso();

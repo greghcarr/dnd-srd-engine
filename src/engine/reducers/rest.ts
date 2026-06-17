@@ -116,6 +116,11 @@ export const applyLongRestEnded = (
   for (const id of session.participantIds) {
     const character = state.characters[id];
     if (!character) continue;
+    // Slice 898: record this rest's completion in the consumer's in-game clock
+    // for the SRD 16-hour cadence gate (planLongRest, gated on
+    // settings.enforceLongRestCadence). Always recorded — cheap, and the gate
+    // only consults it when cadence enforcement is on.
+    state.lastLongRestEndMinutesByCharacter[id] = state.inGameTime.totalMinutes;
     character.hp.current = character.hp.max;
     character.hp.temp = 0;
     character.deathSaves.successes = 0;

@@ -9,6 +9,7 @@ export const CampaignSettingsChangedEventSchema = EventEnvelopeSchema.extend({
   sanity: z.boolean().optional(),
   massCombat: z.boolean().optional(),
   feaCharacterFlaws: z.boolean().optional(),
+  enforceLongRestCadence: z.boolean().optional(),
   customHouserulesAdd: z.array(z.string()).optional(),
   customHouserulesRemove: z.array(z.string()).optional(),
 });

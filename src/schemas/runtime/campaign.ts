@@ -54,6 +54,11 @@ export const CampaignStateSchema = z.object({
     )
     .default([]),
   inGameTime: InGameTimeSchema.default({ totalMinutes: 0 }),
+  // Slice 898: per-character in-game time (minutes) at which that character last
+  // finished a Long Rest. Written by `applyLongRestEnded`, read by the
+  // `enforceLongRestCadence` gate in `planLongRest` (SRD 16-hour cadence). A
+  // character with no entry has never long-rested under cadence tracking.
+  lastLongRestEndMinutesByCharacter: z.record(ULIDSchema, z.number().int().min(0)).default({}),
   activeSessionId: ULIDSchema.optional(),
   activeShortRest: z
     .object({
@@ -96,5 +101,6 @@ export const emptyCampaignState = (): CampaignState => ({
   settings: defaultCampaignSettings(),
   milestones: [],
   inGameTime: { totalMinutes: 0 },
+  lastLongRestEndMinutesByCharacter: {},
   version: 0,
 });

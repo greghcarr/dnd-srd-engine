@@ -17,6 +17,7 @@ export const applyCampaignSettingsChanged = (
   if (event.sanity !== undefined) s.sanity = event.sanity;
   if (event.massCombat !== undefined) s.massCombat = event.massCombat;
   if (event.feaCharacterFlaws !== undefined) s.feaCharacterFlaws = event.feaCharacterFlaws;
+  if (event.enforceLongRestCadence !== undefined) s.enforceLongRestCadence = event.enforceLongRestCadence;
   if (event.customHouserulesAdd !== undefined) {
     for (const r of event.customHouserulesAdd) {
       if (!s.customHouserules.includes(r)) s.customHouserules.push(r);
