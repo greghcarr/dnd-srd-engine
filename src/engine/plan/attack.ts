@@ -276,7 +276,25 @@ export interface AttackIntent {
   //   false -> target CANNOT see attacker (RAW bypass; no disadvantage).
   //   undefined -> consumer didn't specify; default-apply (same as
   //                true). Predicate is `not eq value:false`.
+  // Slice 886: this fact now ALSO drives the general Unseen-Attacker
+  // ADVANTAGE arm — RAW (Unseen Attackers and Targets): "When a creature
+  // can't see you, you have Advantage on attack rolls against it." So
+  // `false` both bypasses Dodge AND grants this attacker Advantage (opt-in:
+  // undefined / true → no advantage). Cancelled by Elusive like any
+  // advantage source.
   readonly targetCanSeeAttacker?: boolean;
+  // Slice 886: the other half of the general Unseen rule. RAW (Unseen
+  // Attackers and Targets): "When you make an attack roll against a target
+  // you can't see, you have Disadvantage on the roll." The engine modeled
+  // this only via the Invisible condition; this fact generalizes it to
+  // darkness / heavy obscurement / Blinded. The engine doesn't model line of
+  // sight, so the consumer supplies it:
+  //   false     -> attacker CANNOT see the target → Disadvantage.
+  //   true / undefined -> attacker can see (or unspecified) → no disadvantage
+  //                       (opt-in; existing attacks are byte-unchanged).
+  // A consumer whose attacker has blindsight/tremorsense/truesight against a
+  // hidden target passes `true` (it effectively "sees" for attack purposes).
+  readonly attackerCanSeeTarget?: boolean;
   // Slice 445: consumer-supplied per-attack fact for monster Pack
   // Tactics. RAW (SRD 5.2.1, every Pack Tactics user): "The wolf has
   // Advantage on an attack roll against a creature if at least one of
@@ -458,9 +476,13 @@ export interface ResolveAttackInput {
   // Slice 276: consumer-supplied LoS fact for Frightened. See doc
   // comment on AttackIntent.bearerCanSeeFearSource above.
   readonly bearerCanSeeFearSource?: boolean;
-  // Slice 278: consumer-supplied LoS fact for Dodge. See doc comment
-  // on AttackIntent.targetCanSeeAttacker above.
+  // Slice 278: consumer-supplied LoS fact for Dodge + (slice 886) the
+  // Unseen-Attacker advantage arm. See doc comment on
+  // AttackIntent.targetCanSeeAttacker above.
   readonly targetCanSeeAttacker?: boolean;
+  // Slice 886: consumer-supplied LoS fact for the Unseen-Attacker
+  // disadvantage arm. See doc comment on AttackIntent.attackerCanSeeTarget.
+  readonly attackerCanSeeTarget?: boolean;
   // Slice 445: consumer-supplied fact for monster Pack Tactics. See
   // doc comment on AttackIntent.attackerHasAllyAdjacentToTarget above.
   readonly attackerHasAllyAdjacentToTarget?: boolean;
@@ -1064,11 +1086,21 @@ export const resolveAttackRollPhase = (input: ResolveAttackInput): AttackRollRes
   // lack training with gives Disadvantage on any D20 Test involving STR or
   // DEX, which includes a weapon attack roll (it uses a STR or DEX mod).
   const attackerInUntrainedArmor = wearsUntrainedBodyArmor(attacker, content, state.itemInstances, attackerEffects);
+  // Slice 886: the general Unseen-Attacker / Unseen-Target rule (RAW "Unseen
+  // Attackers and Targets"), generalizing what the Invisible condition models
+  // for one specific case. Opt-in consumer LoS facts (the engine doesn't model
+  // sight): `attackerCanSeeTarget === false` → the attacker can't see the
+  // target → Disadvantage; `targetCanSeeAttacker === false` → the target can't
+  // see the attacker → Advantage. Both fold into the same 2024 cancellation as
+  // every other source (so mutual blindness nets to no-adv/no-disadv).
+  const attackerCannotSeeTarget = input.attackerCanSeeTarget === false;
+  const targetCannotSeeAttacker = input.targetCanSeeAttacker === false;
   const targetImposesDisadvantage =
     targetEffects.imposesDisadvantageOnAttackers(attackerFacts)
     || rangedInMelee
     || heavyWeaponBelowThreshold
     || attackerInUntrainedArmor
+    || attackerCannotSeeTarget
     || attackerVsTargetAdvantage.disadvantage
     || attackerVsMarkedTargetAdvantage.disadvantage
     || attackerSelfAdvantage.disadvantage;
@@ -1084,6 +1116,7 @@ export const resolveAttackRollPhase = (input: ResolveAttackInput): AttackRollRes
       targetGrantsAdvantage
       || attackerRecklessAdvantage
       || attackerSteadyAimAdvantage
+      || targetCannotSeeAttacker
       || attackerVsTargetAdvantage.advantage
       || attackerVsMarkedTargetAdvantage.advantage
       || attackerSelfAdvantage.advantage
@@ -2059,6 +2092,9 @@ export const planAttackRoll = (
       : {}),
     ...(intent.targetCanSeeAttacker !== undefined
       ? { targetCanSeeAttacker: intent.targetCanSeeAttacker }
+      : {}),
+    ...(intent.attackerCanSeeTarget !== undefined
+      ? { attackerCanSeeTarget: intent.attackerCanSeeTarget }
       : {}),
     ...(intent.attackerHasAllyAdjacentToTarget !== undefined
       ? { attackerHasAllyAdjacentToTarget: intent.attackerHasAllyAdjacentToTarget }

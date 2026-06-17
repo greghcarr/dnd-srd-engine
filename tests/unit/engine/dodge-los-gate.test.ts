@@ -132,7 +132,7 @@ describe('slice 278: Dodge ImposeDisadvantageOnAttackers gates on per-attacker L
     expect(attack.d20).toHaveLength(2);
   });
 
-  it('attacker attacking dodging target with targetCanSeeAttacker=false rolls with NO disadvantage (RAW LoS bypass)', () => {
+  it('attacker attacking dodging target with targetCanSeeAttacker=false bypasses Dodge AND gains Unseen-Attacker advantage (slice 886)', () => {
     const swordId = newItemInstanceId();
     const dodger = buildFighter('Dodger', swordId);
     const attacker = buildFighter('Attacker', swordId);
@@ -145,8 +145,11 @@ describe('slice 278: Dodge ImposeDisadvantageOnAttackers gates on per-attacker L
         targetCanSeeAttacker: false,
       }).events,
     );
-    expect(attack.used).toBe('none');
-    expect(attack.d20).toHaveLength(1);
+    // Dodge's disadvantage doesn't apply (the dodger can't see the attacker),
+    // AND the general Unseen-Attacker rule grants Advantage ("when a creature
+    // can't see you, you have Advantage"). Pre-886 this read 'none'.
+    expect(attack.used).toBe('advantage');
+    expect(attack.d20).toHaveLength(2);
   });
 
   it('attacker attacking non-dodging target has no disadvantage regardless of LoS fact', () => {
