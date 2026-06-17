@@ -97,7 +97,7 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 **Narrative (10):** create-food-and-water, daylight, meld-into-stone, nondetection, plant-growth, sending, speak-with-dead, speak-with-plants, tongues, water-walk.
 
-## Level 4 (34 in pack): 25 wired, 6 narrative, 3 deferred
+## Level 4 (34 in pack): 26 wired, 6 narrative, 2 deferred
 
 **Wired, cast-time (18):** aura-of-life (slice 871: `buff` applying `aura-of-life-active` (concentration) → `GrantResistance{necrotic}` + the new `recurringHeal{1, onlyAtZeroHp}` primitive — the 0-HP-ally revive the consumer ticks via `tickRecurringHeal`; the HP-max-can't-be-reduced arm + aura membership are deferred/consumer), banishment (slice 852: CHA save → `banished-active` (RAW Incapacitated, engine-coded via ACTION_BLOCKING_CONDITIONS), concentration-bound so it lifts when the spell ends), blight, charm-monster, compulsion (slice 870: multi-target WIS save → the shared `charmed`, concentration-bound; the Bonus-Action forced-movement direction + its coupled "re-save after moving" are one deferred positional/consumer arm), confusion, conjure-minor-elementals, conjure-woodland-beings, death-ward, dominate-beast (slice 869: Beast-gated WIS save → the shared `charmed` (so the slice-807 can't-attack-the-charmer / social-advantage arms apply), concentration-bound, + the new `conditionRepeatsSaveOnDamage` stamping a per-instance WIS re-save vs the caster's DC for the damage-triggered repeat save; telepathic control deferred to the DM/consumer), fire-shield, freedom-of-movement, greater-invisibility, ice-storm, phantasmal-killer, resilient-sphere (slice 851: unwilling-target DEX save via the slice-849 `unwillingSave` buff arm → `resilient-sphere-enclosed` with `GrantImmunity` all), stoneskin, vitriolic-sphere.
 
@@ -105,10 +105,11 @@ The long tail (composite-buff conditions, domination-distinct-from-charmed, recu
 
 **Wired, planner (3):** arcane-eye, dimension-door (`planDimensionDoor`: action teleport up to 500 ft + optional willing passenger; slice 342), polymorph.
 
-**Deferred (3):**
-- **transformation handler (non-self target):** giant-insect.
-- **sensor / scrying locator:** locate-creature.
-- **terrain primitive:** hallucinatory-terrain.
+**Wired, summon (1):** giant-insect (slice 894: the 2024 SRD is a Conjuration **summon** — not the 2014 "transform vermin" — so it wires as a `summon` mechanic reusing the shipped primitive: AC 11+level (15 at L4), HP 30 (+10/slot above 4), Speed 40, concentration-bound. The form choice + the form-specific attacks (Poison Jab / Web Bolt / Venomous Spew) are consumer-driven, as for every summon).
+
+**Deferred (2):**
+- **sensor / scrying locator:** locate-creature (out of engine scope — directional divination over world geography; confirmed NOT-A-BUG in slice 892).
+- **terrain primitive:** hallucinatory-terrain (out of engine scope — terrain illusion is DM-narrative; confirmed NOT-A-BUG in slice 892).
 
 **Narrative (6):** control-water, divination, fabricate, private-sanctum, secret-chest, stone-shape.
 
