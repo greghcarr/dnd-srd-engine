@@ -31,6 +31,21 @@ const isSlowedBySpell = (state: Draft<CampaignState>, characterId: string): bool
   return character.appliedConditions.some((c) => c.conditionId === SLOWED_BY_SPELL_CONDITION_ID);
 };
 
+// Slice 893: RAW Confusion ("that target can't take Bonus Actions or
+// Reactions"). Enforced here at consumption time, the same shape as the Slow
+// gate above — Confusion is the only RAW user, so the condition id is
+// hardcoded. (The per-turn 1d10 behavior table that gates the ACTION is rolled
+// + surfaced by engine.plan.rollConfusionBehavior and executed by the consumer,
+// since its outcomes are positional — a forced move in a random direction or a
+// melee attack on a random creature in reach.)
+const CONFUSED_CONDITION_ID = 'confused-active';
+
+const isConfused = (state: Draft<CampaignState>, characterId: string): boolean => {
+  const character = state.characters[characterId];
+  if (!character) return false;
+  return character.appliedConditions.some((c) => c.conditionId === CONFUSED_CONDITION_ID);
+};
+
 export const resetActionForActionSurgeIfApplicable = (
   state: Draft<CampaignState>,
   event: ResourceSpentEvent,
@@ -59,6 +74,7 @@ export const applyActionEconomyConsumed = (
   // turn, not both; no Reactions). Check the slowed-by-spell marker
   // on the combatant before applying the consume.
   const slowed = isSlowedBySpell(state, event.combatantId);
+  const confused = isConfused(state, event.combatantId);
   switch (event.kind) {
     case 'action':
       invariant(!combatant.turnUsage.actionUsed, 'Action already used this turn');
@@ -77,6 +93,7 @@ export const applyActionEconomyConsumed = (
         !slowed || !combatant.turnUsage.actionUsed,
         'Slowed (Slow spell): cannot use Bonus Action when an Action has already been used this turn',
       );
+      invariant(!confused, 'Confused (Confusion spell): cannot take Bonus Actions');
       combatant.turnUsage.bonusActionUsed = true;
       break;
     case 'reaction':
@@ -88,6 +105,7 @@ export const applyActionEconomyConsumed = (
         !slowed,
         'Slowed (Slow spell): cannot use Reactions',
       );
+      invariant(!confused, 'Confused (Confusion spell): cannot take Reactions');
       combatant.turnUsage.reactionUsedThisRound = true;
       break;
     case 'attack':

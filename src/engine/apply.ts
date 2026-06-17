@@ -253,6 +253,11 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
       case 'SuffocationExhaustionChanged':
         applySuffocationExhaustionChanged(draft, event);
         break;
+      case 'ConfusionBehaviorRolled':
+        // Slice 893: notification-only — surfaces the per-turn Confusion
+        // behavior roll so the consumer can execute it (positional move /
+        // forced melee / nothing / normal). No engine state changes.
+        break;
       case 'DeathSaveRolled':
         applyDeathSaveRolled(draft, event);
         break;

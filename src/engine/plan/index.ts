@@ -209,6 +209,7 @@ export {
   type RecoverFromBreathIntent,
 } from './suffocation.js';
 export { planRecoverAmmunition, type RecoverAmmunitionIntent } from './ammunition.js';
+export { planRollConfusionBehavior, type RollConfusionBehaviorIntent } from './confusion.js';
 export { coverACBonus, COVER_KINDS, type CoverKind } from './attack.js';
 export {
   planGrapple,

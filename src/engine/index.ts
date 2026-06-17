@@ -136,6 +136,7 @@ import {
   planTickSuffocation,
   planRecoverFromBreath,
   planRecoverAmmunition,
+  planRollConfusionBehavior,
   planGrapple,
   planShove,
   planHide,
@@ -329,6 +330,7 @@ import {
   type TickSuffocationIntent,
   type RecoverFromBreathIntent,
   type RecoverAmmunitionIntent,
+  type RollConfusionBehaviorIntent,
   type CreateEncounterIntent,
   type PlaceCombatantIntent,
   type RollInitiativeIntent,
@@ -664,6 +666,10 @@ export interface Engine {
     /** Slice 891: after a fight, recover floor(spent/2) pieces of the named
      * ammunition stack (RAW Ammunition "recover half"). Consumer-driven. */
     recoverAmmunition(state: CampaignState, intent: Omit<RecoverAmmunitionIntent, 'type'>): PlanResult;
+    /** Slice 893: roll the per-turn Confusion 1d10 behavior for a confused
+     * creature (RAW), surfacing the bucket for the consumer to execute.
+     * Consumer-driven (called at the confused creature's turn-start). */
+    rollConfusionBehavior(state: CampaignState, intent: Omit<RollConfusionBehaviorIntent, 'type'>): PlanResult;
     grapple(state: CampaignState, intent: Omit<GrappleIntent, 'type'>): PlanResult;
     shove(state: CampaignState, intent: Omit<ShoveIntent, 'type'>): PlanResult;
     hide(state: CampaignState, intent: Omit<HideIntent, 'type'>): PlanResult;
@@ -1336,6 +1342,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     recoverAmmunition(state, intent) {
       return { events: planRecoverAmmunition(state, { type: 'RecoverAmmunition', ...intent }) };
+    },
+    rollConfusionBehavior(state, intent) {
+      return { events: planRollConfusionBehavior(state, rng, { type: 'RollConfusionBehavior', ...intent }) };
     },
     grapple(state, intent) {
       return { events: planGrapple(state, content, rng, { type: 'Grapple', ...intent }) };

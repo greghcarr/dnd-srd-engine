@@ -176,6 +176,25 @@ export const SuffocationExhaustionChangedEventSchema = EventEnvelopeSchema.exten
 });
 export type SuffocationExhaustionChangedEvent = z.infer<typeof SuffocationExhaustionChangedEventSchema>;
 
+// Slice 893: the per-turn Confusion behavior roll. RAW (Confusion): a confused
+// creature "must roll 1d10 at the start of each of its turns to determine its
+// behavior." The engine rolls the d10 (deterministic / replayable) and surfaces
+// the resulting bucket; the consumer executes the (positional) behavior:
+//   `random-move`  (d10 1)    — no action; uses all movement in `direction` (a
+//                               1d4: north/east/south/west).
+//   `do-nothing`   (d10 2-6)  — no move, no action.
+//   `melee-random` (d10 7-8)  — no move; one melee attack on a random creature
+//                               in reach (or nothing if none).
+//   `normal`       (d10 9-10) — acts normally.
+export const ConfusionBehaviorRolledEventSchema = EventEnvelopeSchema.extend({
+  type: z.literal('ConfusionBehaviorRolled'),
+  targetId: ULIDSchema,
+  d10: z.number().int().min(1).max(10),
+  behavior: z.enum(['random-move', 'do-nothing', 'melee-random', 'normal']),
+  direction: z.enum(['north', 'east', 'south', 'west']).optional(),
+});
+export type ConfusionBehaviorRolledEvent = z.infer<typeof ConfusionBehaviorRolledEventSchema>;
+
 export const DeathSaveRolledEventSchema = EventEnvelopeSchema.extend({
   type: z.literal('DeathSaveRolled'),
   targetId: ULIDSchema,

@@ -10202,7 +10202,8 @@
     {
       "id": "confused-active",
       "name": "Confused",
-      "description": "The target rolls on the Confusion behavior table at the start of each of its turns and acts per that result. The behavior table itself is not modeled (would need a planner-level action overrider). What IS wired is the end-of-turn Wisdom save against the caster's spell DC; on success the spell ends on the target.",
+      "description": "The target can't take Bonus Actions or Reactions, and rolls on the Confusion behavior table at the start of each of its turns.",
+      "engineNotes": "Slice 893 — confused-active now wires the full RAW: (1) effects:[] but the 'can't take Bonus Actions or Reactions' arm is engine-coded in the action-economy reducer (the Slow-spell pattern, keyed off this condition id); (2) the per-turn 1d10 behavior table is rolled by engine.plan.rollConfusionBehavior (emitting ConfusionBehaviorRolled with the bucket: random-move/do-nothing/melee-random/normal, + a 1d4 direction on a 1) — the consumer executes the positional outcome (forced move / forced melee on a random in-reach creature) and respects the action-gate; (3) the end-of-turn WIS recurringSave vs the caster's spell DC ends the spell on a success. Applied by confusion's save mechanic (concentration). effects:[] is correct — the behavior is engine-coded + consumer-executed, not effect-stack contributions.",
       "stackable": false,
       "endsOn": [],
       "effects": [],

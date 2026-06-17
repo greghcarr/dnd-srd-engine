@@ -125,6 +125,10 @@ const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
   // the ammunition you used"). Consumer-driven (it passes the spent count), not
   // a turn-dispatched intent — expenditure itself rides the attack's tail.
   'recoverAmmunition',
+  // Confusion behavior roll (slice 893): consumer-driven — rolled at the start of
+  // each confused creature's turn; surfaces the 1d10 behavior bucket the consumer
+  // executes (the positional move / forced melee / nothing / normal).
+  'rollConfusionBehavior',
   // Stirge Blood Drain (slice 490): drain fires at the stirge's turn-start
   // (consumer-driven, mirrors tickRecurringSave); detachStirge is an
   // action invoked by the target or an adjacent ally to remove the
