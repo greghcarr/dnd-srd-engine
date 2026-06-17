@@ -42,6 +42,7 @@ export const buildSpawnedCharacter = (
     hp: { current: hpCurrent, max: hpMax, temp: 0, maxBonus: 0 },
     deathSaves: { successes: 0, failures: 0, stable: false },
     exhaustion: 0,
+    suffocationExhaustionLevels: 0,
     speedFeet: statblock.speed.walk ?? 30,
     armorClass: statblock.ac,
     inventory: [],

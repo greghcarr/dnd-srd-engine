@@ -159,6 +159,23 @@ export const ExhaustionChangedEventSchema = EventEnvelopeSchema.extend({
 });
 export type ExhaustionChangedEvent = z.infer<typeof ExhaustionChangedEventSchema>;
 
+// Slice 887: Suffocation Exhaustion. RAW (rules-glossary "Suffocation"): a
+// suffocating creature "gains 1 Exhaustion level at the end of each of its
+// turns. When a creature can breathe again, it removes all levels of
+// Exhaustion it gained from suffocating." This event changes `exhaustion`
+// like `ExhaustionChanged` AND records the delta against the reversible
+// `suffocationExhaustionLevels` counter (`suffocationDelta`: +1 on a tick,
+// the negative accrued total on recovery), so a recovery undoes exactly the
+// suffocation-sourced levels and nothing else.
+export const SuffocationExhaustionChangedEventSchema = EventEnvelopeSchema.extend({
+  type: z.literal('SuffocationExhaustionChanged'),
+  targetId: ULIDSchema,
+  fromLevel: z.number().int().min(0).max(6),
+  toLevel: z.number().int().min(0).max(6),
+  suffocationDelta: z.number().int(),
+});
+export type SuffocationExhaustionChangedEvent = z.infer<typeof SuffocationExhaustionChangedEventSchema>;
+
 export const DeathSaveRolledEventSchema = EventEnvelopeSchema.extend({
   type: z.literal('DeathSaveRolled'),
   targetId: ULIDSchema,

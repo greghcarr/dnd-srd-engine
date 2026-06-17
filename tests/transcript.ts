@@ -229,6 +229,8 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       return `**${characterName(stateBefore, event.creatureId)}** takes a Legendary Action: ${event.actionName}.`;
     case 'ExhaustionChanged':
       return `**${characterName(stateBefore, event.targetId)}** exhaustion ${event.fromLevel} -> ${event.toLevel}.`;
+    case 'SuffocationExhaustionChanged':
+      return `**${characterName(stateBefore, event.targetId)}** ${event.suffocationDelta >= 0 ? 'suffocates' : 'breathes again'}: exhaustion ${event.fromLevel} -> ${event.toLevel}.`;
     case 'DeathSaveRolled': {
       const verdict = event.critical ? 'critical success!' : event.success ? 'success' : 'failure';
       return `**${characterName(stateBefore, event.targetId)}** death save: d20(${event.d20}) -> ${verdict}.`;

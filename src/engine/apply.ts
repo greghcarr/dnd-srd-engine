@@ -12,6 +12,7 @@ import {
   applyDamageApplied,
   applyDeathSaveRolled,
   applyExhaustionChanged,
+  applySuffocationExhaustionChanged,
   applyHealed,
   applyStabilized,
   applyCreatureDestroyed,
@@ -247,6 +248,9 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
         break;
       case 'ExhaustionChanged':
         applyExhaustionChanged(draft, event);
+        break;
+      case 'SuffocationExhaustionChanged':
+        applySuffocationExhaustionChanged(draft, event);
         break;
       case 'DeathSaveRolled':
         applyDeathSaveRolled(draft, event);

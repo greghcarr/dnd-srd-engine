@@ -164,6 +164,17 @@ export const CharacterSchema = z.object({
   hp: HPSchema,
   deathSaves: DeathSavesSchema.default({ successes: 0, failures: 0, stable: false }),
   exhaustion: ExhaustionLevelSchema.default(0),
+  // Slice 887: Exhaustion levels accrued specifically from Suffocation, so
+  // they can be undone when the creature breathes again. RAW (rules-glossary
+  // "Suffocation", 2024): while out of breath / choking a creature "gains 1
+  // Exhaustion level at the end of each of its turns. When a creature can
+  // breathe again, it removes all levels of Exhaustion it gained from
+  // suffocating." This counter is the engine's accounting of that reversible
+  // subset (the rest of `exhaustion` — from other sources — is untouched on
+  // recovery). The "is it suffocating" trigger + the 1+CON-min breath-hold
+  // are the consumer's environmental model. Additive default; old saves load
+  // clean.
+  suffocationExhaustionLevels: z.number().int().min(0).default(0),
   // Slice 542: Heroic Inspiration (RAW: "You can have only one
   // Heroic Inspiration at a time"). Boolean rather than count.
   // Granted on Long Rest by features with the GrantHeroic

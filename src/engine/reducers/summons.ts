@@ -46,6 +46,7 @@ export const applyCompanionSummoned = (
     hp: { current: event.hp, max: event.hp, temp: 0, maxBonus: 0 },
     deathSaves: { successes: 0, failures: 0, stable: false },
     exhaustion: 0,
+    suffocationExhaustionLevels: 0,
     speedFeet: event.speedFeet,
     armorClass: event.ac,
     inventory: [],

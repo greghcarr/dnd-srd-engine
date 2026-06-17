@@ -202,6 +202,12 @@ export { planEquip, type EquipIntent } from './inventory.js';
 export { planOffHandAttack, type OffHandAttackIntent } from './offhand-attack.js';
 export { planMultiattack, type MultiattackIntent } from './multiattack.js';
 export { planFalling, type FallingIntent } from './falling.js';
+export {
+  planTickSuffocation,
+  planRecoverFromBreath,
+  type TickSuffocationIntent,
+  type RecoverFromBreathIntent,
+} from './suffocation.js';
 export { coverACBonus, COVER_KINDS, type CoverKind } from './attack.js';
 export {
   planGrapple,

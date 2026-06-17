@@ -11,6 +11,7 @@ import type {
   DamageAppliedEvent,
   DeathSaveRolledEvent,
   ExhaustionChangedEvent,
+  SuffocationExhaustionChangedEvent,
   HealedEvent,
   HPMaxBonusChangedEvent,
   StabilizedEvent,
@@ -320,6 +321,28 @@ export const applyExhaustionChanged = (
   // Slice 800: RAW "You die if your Exhaustion level is 6" — the same
   // lethal threshold the ConditionApplied path enforces, so an
   // ExhaustionChanged that lands on 6 also kills.
+  if (character.exhaustion >= EXHAUSTION_MAX) markCreatureDead(state, character);
+};
+
+// Slice 887: Suffocation Exhaustion. Mirrors applyExhaustionChanged for the
+// `exhaustion` level (with the same from-level invariant + lethal-at-6 kill),
+// and additionally maintains the reversible `suffocationExhaustionLevels`
+// counter so a recovery (negative delta) undoes exactly the suffocation-
+// sourced levels and nothing else. The counter floors at 0.
+export const applySuffocationExhaustionChanged = (
+  state: Draft<CampaignState>,
+  event: SuffocationExhaustionChangedEvent,
+): void => {
+  const character = requireCharacter(state, event.targetId);
+  invariant(
+    character.exhaustion === event.fromLevel,
+    `Exhaustion mismatch on ${event.targetId}: expected ${event.fromLevel}, was ${character.exhaustion}`,
+  );
+  character.exhaustion = event.toLevel;
+  character.suffocationExhaustionLevels = Math.max(
+    0,
+    character.suffocationExhaustionLevels + event.suffocationDelta,
+  );
   if (character.exhaustion >= EXHAUSTION_MAX) markCreatureDead(state, character);
 };
 

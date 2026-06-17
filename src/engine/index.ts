@@ -133,6 +133,8 @@ import {
   planOffHandAttack,
   planMultiattack,
   planFalling,
+  planTickSuffocation,
+  planRecoverFromBreath,
   planGrapple,
   planShove,
   planHide,
@@ -323,6 +325,8 @@ import {
   type OffHandAttackIntent,
   type MultiattackIntent,
   type FallingIntent,
+  type TickSuffocationIntent,
+  type RecoverFromBreathIntent,
   type CreateEncounterIntent,
   type PlaceCombatantIntent,
   type RollInitiativeIntent,
@@ -648,6 +652,13 @@ export interface Engine {
     offHandAttack(state: CampaignState, intent: Omit<OffHandAttackIntent, 'type'>): PlanResult;
     multiattack(state: CampaignState, intent: Omit<MultiattackIntent, 'type'>): PlanResult;
     falling(state: CampaignState, intent: Omit<FallingIntent, 'type'>): PlanResult;
+    /** Slice 887: one end-of-turn Suffocation tick (+1 Exhaustion level,
+     * recorded against the reversible suffocation counter). Consumer calls
+     * this at the end of each turn a creature can't breathe. */
+    tickSuffocation(state: CampaignState, intent: Omit<TickSuffocationIntent, 'type'>): PlanResult;
+    /** Slice 887: breathing resumes — removes exactly the Exhaustion levels
+     * accrued from suffocating, leaving other Exhaustion intact. */
+    recoverFromBreath(state: CampaignState, intent: Omit<RecoverFromBreathIntent, 'type'>): PlanResult;
     grapple(state: CampaignState, intent: Omit<GrappleIntent, 'type'>): PlanResult;
     shove(state: CampaignState, intent: Omit<ShoveIntent, 'type'>): PlanResult;
     hide(state: CampaignState, intent: Omit<HideIntent, 'type'>): PlanResult;
@@ -1311,6 +1322,12 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     falling(state, intent) {
       return { events: planFalling(state, content, rng, { type: 'Falling', ...intent }) };
+    },
+    tickSuffocation(state, intent) {
+      return { events: planTickSuffocation(state, { type: 'TickSuffocation', ...intent }) };
+    },
+    recoverFromBreath(state, intent) {
+      return { events: planRecoverFromBreath(state, { type: 'RecoverFromBreath', ...intent }) };
     },
     grapple(state, intent) {
       return { events: planGrapple(state, content, rng, { type: 'Grapple', ...intent }) };
