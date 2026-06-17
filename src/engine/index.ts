@@ -367,6 +367,7 @@ import type {
   CastableSpell,
   LegalSpellTargets,
 } from '../query/affordances.js';
+import type { CoverKind } from './plan/attack.js';
 import {
   bonusActions as queryBonusActions,
   bonusActionTargets as queryBonusActionTargets,
@@ -776,6 +777,7 @@ export interface Engine {
       encounterId: string,
       combatantId: string,
       action: AffordanceActionId,
+      coverByTargetId?: Readonly<Record<string, CoverKind>>,
     ): ReadonlyArray<TargetCandidate>;
     castableSpells(state: CampaignState, characterId: string): ReadonlyArray<CastableSpell>;
     legalSpellTargets(
@@ -1521,8 +1523,8 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     availableActions(state, encounterId, combatantId) {
       return affordances.availableActions(state, content, encounterId, combatantId);
     },
-    legalTargets(state, encounterId, combatantId, action) {
-      return affordances.legalTargets(state, content, encounterId, combatantId, action);
+    legalTargets(state, encounterId, combatantId, action, coverByTargetId) {
+      return affordances.legalTargets(state, content, encounterId, combatantId, action, coverByTargetId);
     },
     castableSpells(state, characterId) {
       return affordances.castableSpells(state, content, characterId);

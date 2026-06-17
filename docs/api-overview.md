@@ -202,7 +202,7 @@ buildEncounterView(state, content, encounterId); // -> EncounterView | undefined
 engine.query.legalMoveDestinations(state, encounterId, combatantId); // -> MoveDestination[]  ({ position (feet), costFeet, path })
 engine.query.actionEconomy(state, encounterId, combatantId);          // -> ActionEconomyView | undefined
 engine.query.availableActions(state, encounterId, combatantId);       // -> AvailableAction[]  ({ action, enabled, reason? })
-engine.query.legalTargets(state, encounterId, combatantId, 'attack'); // -> TargetCandidate[]  (in reach + LoS, nearest first)
+engine.query.legalTargets(state, encounterId, combatantId, 'attack', coverByTargetId?); // -> TargetCandidate[]  (in reach + LoS, nearest first; slice 899: optional consumer cover map drops 'total'-cover targets)
 engine.query.castableSpells(state, characterId);                      // -> CastableSpell[]
 engine.query.legalSpellTargets(state, encounterId, casterId, spellId, slotLevel); // -> LegalSpellTargets
 engine.query.creaturesInSpellArea(state, encounterId, casterId, spellId, aim);     // -> string[]  (slice 786: the cone/sphere/line/cube/cylinder/emanation rasterizer — combatant ids the template covers + with line of effect; aim in feet)

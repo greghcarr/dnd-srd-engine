@@ -32,6 +32,9 @@ import { cantripExtraDice } from '../schemas/content/spell.js';
 // The same precondition check the planners throw on (assertActorCanAct),
 // but returning the blocking-condition id instead of throwing.
 import { findActorBlockingCondition } from '../engine/plan/_actor-state.js';
+// CoverKind: mirror the attack planner's `cover === 'total'` rejection at the
+// affordance layer so legalTargets doesn't surface a dead-end target.
+import type { CoverKind } from '../engine/plan/attack.js';
 // parseSpellRange / enforceableSpellRangeFeet: the same range parser +
 // gate-distance the cast-spell spatial gate uses.
 import { parseSpellRange, enforceableSpellRangeFeet } from '../engine/plan/_spatial-gates.js';
@@ -295,6 +298,13 @@ export const legalTargets = (
   encounterId: string,
   combatantId: string,
   action: AffordanceActionId,
+  // Slice 899: optional consumer cover map (the same per-target judgment the
+  // consumer passes on the AttackIntent — the engine doesn't derive cover,
+  // `cover-not-derived`). A target the consumer marks 'total' is dropped here,
+  // mirroring the attack planner's `cover === 'total'` rejection so the UI
+  // never offers a target the planner would reject. Omitted → no cover filter
+  // (byte-unchanged).
+  coverByTargetId?: Readonly<Record<string, CoverKind>>,
 ): ReadonlyArray<TargetCandidate> => {
   // Only Attack has targets among the milestone intents; Dash /
   // Disengage / Dodge / Move are self-scoped.
@@ -305,8 +315,18 @@ export const legalTargets = (
   const attacker = state.characters[combatantId];
   if (self === undefined || attacker === undefined) return [];
 
+  // A target behind Total Cover can't be targeted directly (RAW Cover); the
+  // attack planner throws on it, so drop it from the affordance list too.
+  // Applies in both positionless and positioned modes (cover is the consumer's
+  // judgment, independent of whether the engine has a map).
+  const hasTotalCover = (targetId: string): boolean =>
+    coverByTargetId?.[targetId] === 'total';
+
   const others = encounter.combatants.filter(
-    (c) => c.combatantId !== combatantId && !isDefeated(state, c.combatantId),
+    (c) =>
+      c.combatantId !== combatantId &&
+      !isDefeated(state, c.combatantId) &&
+      !hasTotalCover(c.combatantId),
   );
 
   // Positionless mode (no map / no positions): every living other

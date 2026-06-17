@@ -401,3 +401,63 @@ describe('slice 705: affordance queries (engine.query.*)', () => {
     });
   });
 });
+
+// Slice 899: `legaltargets-surfaces-total-cover`. The attack planner rejects a
+// target the consumer marks with Total Cover ("has total cover and cannot be
+// targeted"), but `legalTargets` didn't mirror that — so the UI surfaced a
+// dead-end "valid" target. legalTargets now accepts the same consumer cover map
+// and drops 'total'-cover candidates (cover is consumer-supplied — the engine
+// doesn't derive it, `cover-not-derived`).
+describe('slice 899: legalTargets honors consumer-supplied Total Cover', () => {
+  it('drops a target the consumer marks as Total Cover (positioned), but keeps it when cover omitted', () => {
+    const sword = makeItemInstance('longsword');
+    const pc = buildFighter('Striker', [sword.id]);
+    const foe = buildFighter('Covered');
+    const s = setupCombat([pc, foe], buildOpenMap, [{ x: 0, y: 0 }, { x: 5, y: 0 }], [sword]);
+    // Omitted cover → the in-reach foe is a legal target (prior behavior).
+    expect(
+      s.engine.query.legalTargets(s.campaign.state, s.encounterId, pc.id, 'attack').map((t) => t.combatantId),
+    ).toContain(foe.id);
+    // Marked Total Cover → dropped, mirroring the planner's rejection.
+    expect(
+      s.engine.query
+        .legalTargets(s.campaign.state, s.encounterId, pc.id, 'attack', { [foe.id]: 'total' })
+        .map((t) => t.combatantId),
+    ).not.toContain(foe.id);
+    // Cross-check: the planner does reject that exact attack.
+    expect(() =>
+      s.engine.plan.attack(s.campaign.state, {
+        attackerId: pc.id, targetId: foe.id, weaponInstanceId: sword.id, cover: 'total',
+      }),
+    ).toThrow(/total cover/i);
+  });
+
+  it('keeps a target with partial (half / three-quarters) cover — only Total Cover blocks targeting', () => {
+    const sword = makeItemInstance('longsword');
+    const pc = buildFighter('Striker', [sword.id]);
+    const foe = buildFighter('Behind');
+    const s = setupCombat([pc, foe], buildOpenMap, [{ x: 0, y: 0 }, { x: 5, y: 0 }], [sword]);
+    for (const cover of ['half', 'three-quarters'] as const) {
+      expect(
+        s.engine.query
+          .legalTargets(s.campaign.state, s.encounterId, pc.id, 'attack', { [foe.id]: cover })
+          .map((t) => t.combatantId),
+      ).toContain(foe.id);
+    }
+  });
+
+  it('drops a Total-Cover target in positionless mode too (cover is map-independent)', () => {
+    const pc = buildFighter('Striker');
+    const foe = buildFighter('Covered');
+    // No map builder / no positions → positionless mode.
+    const s = setupCombat([pc, foe], null, [undefined, undefined]);
+    expect(
+      s.engine.query.legalTargets(s.campaign.state, s.encounterId, pc.id, 'attack').map((t) => t.combatantId),
+    ).toContain(foe.id);
+    expect(
+      s.engine.query
+        .legalTargets(s.campaign.state, s.encounterId, pc.id, 'attack', { [foe.id]: 'total' })
+        .map((t) => t.combatantId),
+    ).not.toContain(foe.id);
+  });
+});
