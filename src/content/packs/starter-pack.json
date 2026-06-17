@@ -9285,6 +9285,16 @@
       "autoExpiry": { "afterRounds": 1, "trigger": "turnEnd", "expirySourceFromBearer": true }
     },
     {
+      "id": "burning",
+      "name": "Burning",
+      "description": "On fire: takes 1d4 Fire damage at the start of each of its turns until the fire is put out.",
+      "engineNotes": "Slice 888 — the RAW 2024 'Burning' Hazard (rules-glossary): 'A burning creature or object takes 1d4 Fire damage at the start of each of its turns.' Carries recurringDamage{1d4 fire, turnStart}; the consumer applies this condition when something catches fire and ticks engine.plan.tickRecurringDamage at the bearer's turn-start. NO autoExpiry — it persists until extinguished (RAW: give yourself Prone and roll on the ground as an Action, or be doused / submerged), which the consumer models by removing the condition (the rolling/dousing action is narrative). effects:[] — the recurringDamage is the whole behavior. A generic hazard marker (not one of the 15 RAW conditions), distinct from the spell-specific *-burning riders.",
+      "stackable": false,
+      "endsOn": [],
+      "effects": [],
+      "recurringDamage": { "dice": "1d4", "damageType": "fire", "trigger": "turnStart" }
+    },
+    {
       "id": "aura-of-life-active",
       "name": "Aura of Life",
       "description": "While in the aura, you have Resistance to Necrotic damage, and if you have 0 Hit Points at the start of your turn you regain 1 Hit Point.",
