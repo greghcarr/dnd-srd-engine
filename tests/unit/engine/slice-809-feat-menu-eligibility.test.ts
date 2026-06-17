@@ -7,8 +7,8 @@
 // machine-checkable form (the free-text `prerequisites` is display-only).
 //
 // Arm 2 (injecting Fighting-Style feats for classes with the Fighting
-// Style feature) is tracked separately — it needs feature-detection +
-// de-dup machinery the content doesn't yet model.
+// Style feature, de-duped against styles already owned) is closed by
+// slice 897 — see slice-897-fighting-style-feat-menu.test.ts.
 
 import { describe, expect, it } from 'vitest';
 import { createEngine } from '../../../src/engine/index.js';

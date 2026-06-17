@@ -15,9 +15,71 @@ import { abilityModifier, effectiveAbilityScore } from '../../derive/ability.js'
 import { nowIso } from '../../internal/clock.js';
 import type { ULID } from '../ids-utils.js';
 import type { Effect } from '../../schemas/effects.js';
+import type { Character } from '../../schemas/runtime/character.js';
 import { expandGrantFeatEffects, buildEffectStack } from '../../derive/effect-stack.js';
 
 const HP_AVERAGE_BY_DIE: Record<number, number> = { 6: 4, 8: 5, 10: 6, 12: 7 };
+
+// Slice 897: Fighting Style feats at the L4+ feat menu. RAW: the Fighting Style
+// feats (Archery, Defense, Great Weapon Fighting, Two-Weapon Fighting) list
+// "the Fighting Style feature" as their prerequisite, so a class that has that
+// feature (Fighter L1, Paladin/Ranger L2 — feature id `fighting-style-{class}`)
+// can take one at an Ability Score Improvement, but "you can't take the same
+// Fighting Style twice."
+const FIGHTING_STYLE_PREFIX = 'fighting-style-';
+
+const hasFightingStyleFeature = (character: Character, content: ResolvedContent): boolean => {
+  for (const enrollment of character.classes) {
+    const cls = content.classes.get(enrollment.classId);
+    if (!cls) continue;
+    for (let level = 1; level <= enrollment.level; level += 1) {
+      // The class FEATURE id is `fighting-style-{class}`; the Fighting Style
+      // FEATS live in `content.feats`, not the level table, so this prefix
+      // match only catches the feature.
+      if (cls.levelTable[String(level)]?.features.some((f) => f.id.startsWith(FIGHTING_STYLE_PREFIX))) {
+        return true;
+      }
+    }
+  }
+  return false;
+};
+
+// The Fighting Styles the character already has — from the resolved
+// `fighting-style-{class}` feature choice and from any Fighting Style feat
+// already taken — so the same style isn't offered twice. A feat id is
+// `fighting-style-{style}`; the feature-choice option id is the bare `{style}`.
+const ownedFightingStyles = (character: Character, state: CampaignState): ReadonlySet<string> => {
+  const styles = new Set<string>();
+  for (const choice of Object.values(state.pendingChoices)) {
+    if (choice.forCharacterId !== character.id) continue;
+    if (choice.promptKey === undefined || !choice.promptKey.startsWith(FIGHTING_STYLE_PREFIX)) continue;
+    for (const opt of choice.resolution?.selectedOptionIds ?? []) styles.add(opt);
+  }
+  for (const featId of character.featsTaken ?? []) {
+    if (featId.startsWith(FIGHTING_STYLE_PREFIX)) styles.add(featId.slice(FIGHTING_STYLE_PREFIX.length));
+  }
+  return styles;
+};
+
+const eligibleFightingStyleFeatOptions = (
+  character: Character,
+  content: ResolvedContent,
+  state: CampaignState,
+): Array<{ readonly id: string; readonly label: string; readonly effects: Effect[] }> => {
+  const owned = ownedFightingStyles(character, state);
+  const options: Array<{ id: string; label: string; effects: Effect[] }> = [];
+  for (const feat of content.feats.values()) {
+    if (feat.category !== 'fighting-style') continue;
+    const style = feat.id.startsWith(FIGHTING_STYLE_PREFIX)
+      ? feat.id.slice(FIGHTING_STYLE_PREFIX.length)
+      : feat.id;
+    if (owned.has(style)) continue;
+    options.push({ id: feat.id, label: feat.name, effects: [{ kind: 'GrantFeat', featId: feat.id }] });
+  }
+  // Deterministic order — `content.feats` iteration order isn't pack-stable.
+  options.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  return options;
+};
 
 export interface LevelUpIntent {
   readonly type: 'LevelUp';
@@ -105,6 +167,17 @@ export const planLevelUp = (
     for (const feature of newLevelEntry.features) {
       for (const effect of feature.effects) {
         if (effect.kind === 'OfferChoice' && effect.when !== 'onLongRest') {
+          // Slice 897: an Ability Score Improvement feat menu (an OfferChoice
+          // with at least one GrantFeat option — "an ASI or a feat") also
+          // offers the Fighting Style feats to a character that has the
+          // Fighting Style feature and hasn't already taken that style.
+          const isFeatMenu = effect.options.some(
+            (o) => o.effects.some((e) => e.kind === 'GrantFeat'),
+          );
+          const fightingStyleOptions =
+            isFeatMenu && hasFightingStyleFeature(character, content)
+              ? eligibleFightingStyleFeatOptions(character, content, state)
+              : [];
           const choice: ChoiceRequiredEvent = {
             id: newEventId() as ULID,
             at,
@@ -113,11 +186,14 @@ export const planLevelUp = (
             characterId: intent.characterId,
             promptKey: effect.choiceId,
             prompt: effect.prompt,
-            options: effect.options.filter(optionEligible).map((o) => ({
-              id: o.id,
-              label: o.label,
-              effects: o.effects as Effect[],
-            })),
+            options: [
+              ...effect.options.filter(optionEligible).map((o) => ({
+                id: o.id,
+                label: o.label,
+                effects: o.effects as Effect[],
+              })),
+              ...fightingStyleOptions,
+            ],
             oneOf: effect.oneOf,
             causedByEventId: levelUp.id,
           };

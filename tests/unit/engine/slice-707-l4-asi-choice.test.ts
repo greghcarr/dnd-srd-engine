@@ -65,7 +65,17 @@ describe('slice 707: L4 Ability Score Improvement choice (Fighter, end to end)',
     );
     expect(featChoice, 'no ASI/feat ChoiceRequired on the 3→4 level-up').toBeDefined();
     expect(featChoice!.oneOf).toBe(1);
-    expect(featChoice!.options.map((o) => o.id)).toEqual(['ability-score-improvement', 'grappler']);
+    // Slice 897: a Fighter has the Fighting Style feature, so the L4 feat menu
+    // also offers the four Fighting Style feats (sorted by id, after the
+    // general feats) — none yet owned by this fresh L3 Fighter.
+    expect(featChoice!.options.map((o) => o.id)).toEqual([
+      'ability-score-improvement',
+      'grappler',
+      'fighting-style-archery',
+      'fighting-style-defense',
+      'fighting-style-great-weapon',
+      'fighting-style-two-weapon',
+    ]);
   });
 
   it('picking ASI → +2 to one ability → STR raises the derived STR save by 1', () => {
