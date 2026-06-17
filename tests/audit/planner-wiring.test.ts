@@ -121,6 +121,10 @@ const EXCLUDED_FROM_DISPATCH: ReadonlySet<string> = new Set([
   // undoes them when it can. The "is it suffocating" trigger is the consumer's
   // environmental model, so neither is a turn-dispatched player intent.
   'tickSuffocation', 'recoverFromBreath',
+  // Ammunition recovery (slice 891): a post-fight downtime action ("recover half
+  // the ammunition you used"). Consumer-driven (it passes the spent count), not
+  // a turn-dispatched intent — expenditure itself rides the attack's tail.
+  'recoverAmmunition',
   // Stirge Blood Drain (slice 490): drain fires at the stirge's turn-start
   // (consumer-driven, mirrors tickRecurringSave); detachStirge is an
   // action invoked by the target or an adjacent ally to remove the

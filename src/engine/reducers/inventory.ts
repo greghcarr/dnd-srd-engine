@@ -6,6 +6,7 @@ import type {
   ItemBuffAppliedEvent,
   ItemBuffRemovedEvent,
   ItemConsumedEvent,
+  AmmunitionQuantityChangedEvent,
   ItemDestroyedEvent,
   ItemEquippedEvent,
   ItemTimeBudgetConsumedEvent,
@@ -144,6 +145,27 @@ export const applyItemConsumed = (
   invariant(character !== undefined, `Character ${event.characterId} not found`);
   character.inventory = character.inventory.filter((id) => id !== event.instanceId);
   delete state.itemInstances[event.instanceId];
+};
+
+// Slice 891: add `delta` to an ammunition stack's quantity (expend −1 on a
+// shot; recover +floor(spent/2) after a fight). The stack retires (instance
+// removed from `itemInstances` + the bearer's inventory) when its quantity
+// reaches 0, since `ItemInstance.quantity` is min-1.
+export const applyAmmunitionQuantityChanged = (
+  state: Draft<CampaignState>,
+  event: AmmunitionQuantityChangedEvent,
+): void => {
+  const character = state.characters[event.characterId];
+  invariant(character !== undefined, `Character ${event.characterId} not found`);
+  const instance = state.itemInstances[event.instanceId];
+  invariant(instance !== undefined, `Ammunition instance ${event.instanceId} not found`);
+  const newQuantity = instance.quantity + event.delta;
+  if (newQuantity <= 0) {
+    character.inventory = character.inventory.filter((id) => id !== event.instanceId);
+    delete state.itemInstances[event.instanceId];
+  } else {
+    instance.quantity = newQuantity;
+  }
 };
 
 // Slice 240. Sanity check for the activate-as-action path: the

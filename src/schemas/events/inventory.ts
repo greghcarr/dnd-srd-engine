@@ -90,6 +90,21 @@ export const ItemConsumedEventSchema = EventEnvelopeSchema.extend({
 });
 export type ItemConsumedEvent = z.infer<typeof ItemConsumedEventSchema>;
 
+// Slice 891: Ammunition expended on a ranged attack (`delta: -1`) or recovered
+// after a fight (`delta: +floor(spent/2)`, RAW "recover half the ammunition you
+// used"). The reducer adds `delta` to the named stack's `quantity`; the stack
+// retires (instance removed) when its quantity reaches 0. Unlike ItemConsumed
+// (which retires the whole instance), this decrements a stack — you fire one
+// arrow from a quiver of 20, leaving 19.
+export const AmmunitionQuantityChangedEventSchema = EventEnvelopeSchema.extend({
+  type: z.literal('AmmunitionQuantityChanged'),
+  characterId: ULIDSchema,
+  instanceId: ULIDSchema,
+  definitionId: z.string(),
+  delta: z.number().int(),
+});
+export type AmmunitionQuantityChangedEvent = z.infer<typeof AmmunitionQuantityChangedEventSchema>;
+
 // Slice 240: a magic item is used by a character (activate-as-action
 // shape). Unlike ItemConsumed, the instance persists after use; this
 // event is a journal marker for the use, after the planner has

@@ -440,6 +440,12 @@ const formatEvent = (event: Event, ctx: FormatterContext): string => {
       const target = event.targetId === event.characterId ? consumer : targetName;
       return `**${consumer}** consumed ${item}${target !== consumer ? ` (on ${target})` : ''}.`;
     }
+    case 'AmmunitionQuantityChanged': {
+      const who = characterName(stateBefore, event.characterId);
+      const ammo = content.items.get(event.definitionId)?.name ?? event.definitionId;
+      const verb = event.delta < 0 ? `expends ${-event.delta}` : `recovers ${event.delta}`;
+      return `**${who}** ${verb} ${ammo}.`;
+    }
     case 'ItemUsed': {
       const user = characterName(stateBefore, event.characterId);
       const targetName = characterName(stateBefore, event.targetId);

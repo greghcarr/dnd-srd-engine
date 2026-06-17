@@ -135,6 +135,7 @@ import {
   planFalling,
   planTickSuffocation,
   planRecoverFromBreath,
+  planRecoverAmmunition,
   planGrapple,
   planShove,
   planHide,
@@ -327,6 +328,7 @@ import {
   type FallingIntent,
   type TickSuffocationIntent,
   type RecoverFromBreathIntent,
+  type RecoverAmmunitionIntent,
   type CreateEncounterIntent,
   type PlaceCombatantIntent,
   type RollInitiativeIntent,
@@ -659,6 +661,9 @@ export interface Engine {
     /** Slice 887: breathing resumes — removes exactly the Exhaustion levels
      * accrued from suffocating, leaving other Exhaustion intact. */
     recoverFromBreath(state: CampaignState, intent: Omit<RecoverFromBreathIntent, 'type'>): PlanResult;
+    /** Slice 891: after a fight, recover floor(spent/2) pieces of the named
+     * ammunition stack (RAW Ammunition "recover half"). Consumer-driven. */
+    recoverAmmunition(state: CampaignState, intent: Omit<RecoverAmmunitionIntent, 'type'>): PlanResult;
     grapple(state: CampaignState, intent: Omit<GrappleIntent, 'type'>): PlanResult;
     shove(state: CampaignState, intent: Omit<ShoveIntent, 'type'>): PlanResult;
     hide(state: CampaignState, intent: Omit<HideIntent, 'type'>): PlanResult;
@@ -1328,6 +1333,9 @@ export const createEngine = (opts: CreateEngineOptions): Engine => {
     },
     recoverFromBreath(state, intent) {
       return { events: planRecoverFromBreath(state, { type: 'RecoverFromBreath', ...intent }) };
+    },
+    recoverAmmunition(state, intent) {
+      return { events: planRecoverAmmunition(state, { type: 'RecoverAmmunition', ...intent }) };
     },
     grapple(state, intent) {
       return { events: planGrapple(state, content, rng, { type: 'Grapple', ...intent }) };

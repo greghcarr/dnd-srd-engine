@@ -239,6 +239,18 @@ export interface AttackIntent {
   readonly weaponInstanceId: string;
   readonly advantage?: 'advantage' | 'disadvantage' | 'none';
   readonly cover?: CoverKind;
+  // Slice 891: the ammunition stack this attack expends. RAW (Ammunition
+  // property): "You can use a weapon that has the Ammunition property to make a
+  // ranged attack only if you have ammunition to fire from it. ... Each attack
+  // expends one piece of ammunition." When the weapon has the `ammunition`
+  // property and this names an `ItemInstance`, the attack decrements that
+  // stack's `quantity` by 1 (an `AmmunitionQuantityChanged` event on the
+  // handle's `tail`); the stack retires when it hits 0, so a later shot with a
+  // depleted/absent stack throws ("no ammunition"). Opt-in: when omitted, the
+  // engine doesn't track or require ammo (the consumer owns ammo inventory),
+  // so existing ranged attacks are byte-unchanged. The ammo-type-matches-weapon
+  // check + the free-hand-to-load rule stay consumer-owned.
+  readonly ammunitionInstanceId?: string;
   readonly at?: string;
   // Slice 276: consumer-supplied bearer-side perception fact for the
   // Frightened LoS gate. RAW (SRD 5.2.1 Frightened): "Disadvantage on
@@ -2126,6 +2138,32 @@ export const planAttackRoll = (
       encounterId: encounter.id,
       combatantId: intent.attackerId,
       weaponInstanceId: intent.weaponInstanceId,
+    });
+  }
+  // Slice 891: a ranged weapon with the Ammunition property expends one piece
+  // of ammunition per shot when the consumer names the stack. RAW: "make a
+  // ranged attack only if you have ammunition" — a depleted stack has been
+  // retired, so its id no longer resolves and this throws. Opt-in: no
+  // ammunitionInstanceId → no ammo tracked/required (byte-unchanged).
+  const weaponUsesAmmunition =
+    weaponDef?.itemKind === 'weapon' &&
+    weaponDef.attackKind === 'ranged' &&
+    weaponDef.properties.includes('ammunition');
+  if (weaponUsesAmmunition && intent.ammunitionInstanceId !== undefined) {
+    const ammo = state.itemInstances[intent.ammunitionInstanceId];
+    if (ammo === undefined) {
+      throw new Error(
+        `${attacker?.name ?? intent.attackerId} has no ammunition to fire ${weaponDef?.name ?? 'this weapon'}`,
+      );
+    }
+    tail.push({
+      id: newEventId() as ULID,
+      at,
+      type: 'AmmunitionQuantityChanged',
+      characterId: intent.attackerId as ULID,
+      instanceId: intent.ammunitionInstanceId as ULID,
+      definitionId: ammo.definitionId,
+      delta: -1,
     });
   }
   return {

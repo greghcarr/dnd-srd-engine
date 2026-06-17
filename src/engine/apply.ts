@@ -52,6 +52,7 @@ import {
   applyItemBuffApplied,
   applyItemBuffRemoved,
   applyItemConsumed,
+  applyAmmunitionQuantityChanged,
   applyItemDestroyed,
   applyItemEquipped,
   applyItemTimeBudgetConsumed,
@@ -453,6 +454,9 @@ export const apply = (state: CampaignState, event: Event): CampaignState =>
         break;
       case 'ItemConsumed':
         applyItemConsumed(draft, event);
+        break;
+      case 'AmmunitionQuantityChanged':
+        applyAmmunitionQuantityChanged(draft, event);
         break;
       case 'ItemUsed':
         applyItemUsed(draft, event);
