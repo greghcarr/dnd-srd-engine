@@ -24,9 +24,15 @@ export const isArmorTrained = (
   content: ResolvedContent,
   effects: EffectAccumulator,
 ): boolean => {
-  for (const enrollment of character.classes) {
+  // Slice 890: the origin class (index 0 — the class chosen at creation)
+  // grants its full armor training; multiclass entries (index 1+) grant only
+  // their reduced `multiclassProficiencies.armor` set (RAW 2024 "As a
+  // Multiclass Character").
+  for (const [i, enrollment] of character.classes.entries()) {
     const cls = content.classes.get(enrollment.classId);
-    if (cls?.armorProficiencies.includes(category)) return true;
+    if (cls === undefined) continue;
+    const profs = i === 0 ? cls.armorProficiencies : cls.multiclassProficiencies.armor;
+    if (profs.includes(category)) return true;
   }
   return effects.proficiencyLevel('armor', category) !== 'none';
 };

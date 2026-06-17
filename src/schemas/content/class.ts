@@ -50,6 +50,23 @@ export const ClassSchema = z.object({
   armorProficiencies: z.array(z.string()).default([]),
   weaponProficiencies: z.array(z.string()).default([]),
   toolProficiencies: z.array(z.string()).default([]),
+  // Slice 890: the REDUCED proficiencies a character gains when this class is
+  // taken as a MULTICLASS entry (not their origin class). RAW 2024 ("As a
+  // Multiclass Character", per class) grants only a subset of the full
+  // proficiencies above — e.g. multiclassing into Fighter grants Martial
+  // weapons + Light/Medium armor + Shields (NOT Heavy), and NO saving-throw
+  // proficiencies (those come only from the origin class). The origin class is
+  // `character.classes[0]` (the consumer orders the array so the first entry is
+  // the class chosen at creation); entries 1+ use this reduced set. Skill /
+  // tool / instrument choices granted on multiclass entry stay consumer-
+  // resolved at build time (like the origin class's skill choices), so only
+  // armor + weapon tokens live here.
+  multiclassProficiencies: z
+    .object({
+      armor: z.array(z.string()).default([]),
+      weapon: z.array(z.string()).default([]),
+    })
+    .default({ armor: [], weapon: [] }),
   skillChoices: z
     .object({
       choices: z.number().int().min(0),

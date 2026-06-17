@@ -86,11 +86,14 @@ export interface ComputeSaveInput {
 }
 
 const isSaveProficient = (character: Character, ability: AbilityScore, content: ResolvedContent): boolean => {
-  for (const enrollment of character.classes) {
-    const cls = content.classes.get(enrollment.classId);
-    if (cls?.savingThrowProficiencies.includes(ability)) return true;
-  }
-  return false;
+  // Slice 890: RAW 2024 — saving-throw proficiencies come ONLY from the origin
+  // class (the class chosen at creation; `character.classes[0]`). Multiclassing
+  // grants no save proficiencies ("As a Multiclass Character" lists none), so a
+  // Wizard 1 / Fighter 1 has INT/WIS saves only, not STR/CON.
+  const origin = character.classes[0];
+  if (origin === undefined) return false;
+  const cls = content.classes.get(origin.classId);
+  return cls?.savingThrowProficiencies.includes(ability) ?? false;
 };
 
 export const computeSavingThrow = (input: ComputeSaveInput): SaveResult => {

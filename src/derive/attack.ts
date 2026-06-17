@@ -105,10 +105,15 @@ export const isWeaponProficient = (
   weapon: Weapon,
   content: ResolvedContent,
 ): boolean => {
-  for (const enrollment of character.classes) {
+  // Slice 890: the origin class (index 0) grants its full weapon proficiency;
+  // multiclass entries (index 1+) grant only their reduced
+  // `multiclassProficiencies.weapon` set (RAW 2024 "As a Multiclass
+  // Character").
+  for (const [i, enrollment] of character.classes.entries()) {
     const cls = content.classes.get(enrollment.classId);
     if (!cls) continue;
-    for (const token of cls.weaponProficiencies) {
+    const tokens = i === 0 ? cls.weaponProficiencies : cls.multiclassProficiencies.weapon;
+    for (const token of tokens) {
       if (token === weapon.id) return true;
       if (token === weapon.category) return true;
       if (token === 'all') return true;
