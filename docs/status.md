@@ -105,7 +105,7 @@ The property tests in [tests/property/](../tests/property) fuzz the engine acros
 
 | Generator | Severity | What it would exercise |
 |---|---|---|
-| Encounters with terrain | ⚪ | The combat-sequence test uses a bare grid; the engine also supports difficult / impassable / water cells, doors (open / closed / locked), and line-of-sight via Bresenham. A terrain generator would fuzz `terrainAt`, `movementCostFor`, `hasLineOfSight`, `hasLineOfEffect` against random maps. |
+| Encounters with terrain | ⚪ | The combat-sequence test uses a bare grid; the engine also supports difficult / impassable / water cells, doors (open / closed / locked), and corner-aware line-of-sight / line-of-effect (slice 901: origin-as-point, target-as-space, with a wall-seam rule). A terrain generator would fuzz `terrainAt`, `movementCostFor`, `hasLineOfSight`, `hasLineOfEffect` against random maps. |
 | Mounted combat | ⚪ | `Mounted` / `Dismounted` / vehicle entities and the planners around them (mounted attack rules, controlled vs independent mounts, vehicle damage). Untouched by current property tests. |
 | Level-up flows | ⚪ | Random `LevelUp` intents producing valid `PendingChoice` chains, then random `ChoiceResolved` to clear them. Would fuzz the level-up planner + `applyLevelUpResolved` + the choice-resolution interactions. |
 | Downtime / crafting sequences | ⚪ | The downtime planners (Slice 27) are tested via targeted fixtures only. A random-multi-day-downtime generator would fuzz the crafting / training / activity-resolution loop. |
