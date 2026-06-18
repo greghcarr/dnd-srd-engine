@@ -237,7 +237,7 @@ Cross-ref: `long-rest-half-hd` is the Area 1 headline.
 
 ## Area 9 — Consumer (dnd-web) duties & doc reconciliation
 
-Engine support is sufficient (or by-design out of scope); these route to the dnd-web session as a hand-off, except the doc fix.
+Engine support is sufficient (or by-design out of scope); these route to the dnd-web session as a hand-off, except the two engine-side residuals (`engine-scope-encumbrance-doc`, `verify-reaction-registry-l1-7`). The prioritized, wiring-status-verified task list is **[consumer-handoff-dnd-web.md](consumer-handoff-dnd-web.md)** — a 2026-06-18 survey of the dnd-web checkout confirmed `consumer-populate-positions`, `consumer-reaction-recentevents`, and `reaction-economy-sequencing` are **already wired**; the live consumer gaps are light level, cover, AoE `aim`, and the sight facts.
 
 | ID | Sev | Owner | Fix | Finding |
 |---|---|---|---|---|
@@ -246,7 +246,7 @@ Engine support is sufficient (or by-design out of scope); these route to the dnd
 | `consumer-supply-cover` | DIVERGENCE | Consumer | — | Classify and pass cover per attack/save (engine doesn't derive it). |
 | `consumer-reaction-recentevents` | QUIRK | Consumer | — | Pass `recentEvents` so Deflect Attacks / Countercharm correlate. |
 | `consumer-scene-state-authority` | QUIRK | Consumer | — | The consumer's scene model is the sole authority for light/cover/positions (not in any engine view model). |
-| `consumer-aoe-geometry` | QUIRK | Consumer | — | Until `aoe-shape-coverage` ships an engine helper, the consumer's cone/sphere/line rasterizer is the source of truth (and the divergence risk). |
+| `consumer-aoe-geometry` | QUIRK | Consumer | — | **Stale — engine helper shipped.** `aoe-shape-coverage` closed at slices 786/787: the engine now owns AoE membership via the `coveredCells` rasterizer + the opt-in `CastSpellIntent.aim` (corner-aware line of effect since slice 901). The hand-off item is for dnd-web to **adopt `aim`** rather than trust hand-picked `targetIds`. [consumer-handoff-dnd-web.md](consumer-handoff-dnd-web.md). |
 | `engine-scope-encumbrance-doc` | QUIRK | Docs | S | [engine-scope.md](engine-scope.md) says encumbrance is "not modeled," but two derivations exist and one feeds the sheet — reconcile (and align with the Area 8 fixes). |
 | `verify-reaction-registry-l1-7` | QUIRK `[verify]` | Engine | S | Confirm the `reactionsForTrigger` registry covers the reactions an L1-7 expert expects (e.g. Hellish Rebuke) or document them as event-stream-only. |
 
