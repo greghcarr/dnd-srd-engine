@@ -59,7 +59,7 @@ import { getCreatureType } from '../../derive/creature-type.js';
 import { creatureSize, isLargeOrLarger } from '../../derive/creature-size.js';
 import { rollSaveBonusDice } from './_bonus-dice.js';
 import { abilityModifier } from '../../derive/ability.js';
-import { resolveAttack, coverDexSaveBonus, type CoverKind } from './attack.js';
+import { resolveAttack, coverDexSaveBonus, COVER_KINDS, assertEnumInput, type CoverKind } from './attack.js';
 import { mitigateDamage } from '../../derive/damage-mitigation.js';
 import { interceptFatalDamage } from '../../derive/fatal-damage-intercept.js';
 import { applyAll } from '../apply.js';
@@ -2232,6 +2232,15 @@ export const planCastSpell = (
   const character = state.characters[rawIntent.characterId];
   if (!character) throw new Error(`Unknown character ${rawIntent.characterId}`);
   assertActorCanAct(character, 'cast a spell');
+  // Slice 900: validate the consumer-supplied per-target cover enum up front,
+  // so a malformed value fails loudly instead of silently producing the wrong
+  // save bonus (`input-validation-silent-trust`). Mirrors the AttackIntent
+  // enum checks; only well-formedness — cover derivation stays consumer-owned.
+  if (rawIntent.coverByTargetId !== undefined) {
+    for (const [targetId, cover] of Object.entries(rawIntent.coverByTargetId)) {
+      assertEnumInput(cover, COVER_KINDS, `cover for target ${targetId}`);
+    }
+  }
   const spell = content.spells.get(rawIntent.spellId);
   if (!spell) throw new Error(`Unknown spell ${rawIntent.spellId}`);
   // Slice 804: RAW Armor Training — "you can't cast spells" while wearing

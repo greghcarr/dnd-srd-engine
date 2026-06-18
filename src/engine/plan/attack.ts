@@ -209,6 +209,27 @@ export const tryBuildDeflectedAttack = (
 export const COVER_KINDS = ['none', 'half', 'three-quarters', 'total'] as const;
 export type CoverKind = (typeof COVER_KINDS)[number];
 
+// Slice 900: the consumer-supplied combat enums on an AttackIntent. The
+// engine combines these with its own derivations, so a malformed value
+// (a JS consumer or a deserialized intent passing a typo) would slip past
+// the type system and silently degrade — `advantage: 'adv'` reads as
+// neither advantage nor disadvantage → a straight roll, a silent wrong
+// result. `assertEnumInput` rejects an out-of-set value up front, the same
+// visible-failure contract the single-target gates already give (the L7
+// audit `input-validation-silent-trust` row).
+export const ATTACK_ADVANTAGE_KINDS = ['none', 'advantage', 'disadvantage'] as const;
+export const LIGHT_LEVELS = ['bright', 'dim', 'darkness'] as const;
+
+export const assertEnumInput = (
+  value: string | undefined,
+  allowed: readonly string[],
+  label: string,
+): void => {
+  if (value !== undefined && !allowed.includes(value)) {
+    throw new Error(`Invalid ${label} "${value}" — expected one of: ${allowed.join(', ')}`);
+  }
+};
+
 const HALF_COVER_AC_BONUS = 2;
 const THREE_QUARTERS_COVER_AC_BONUS = 5;
 
@@ -2034,6 +2055,13 @@ export const planAttackRoll = (
   rng: RNG,
   intent: AttackIntent,
 ): { readonly events: ReadonlyArray<Event>; readonly roll: AttackRollHandle } => {
+  // Slice 900: validate the consumer-supplied combat enums before any work,
+  // so a malformed value fails loudly instead of silently degrading
+  // (`input-validation-silent-trust`). Positions / cover derivation stay
+  // consumer-owned (their own audit rows); this only checks well-formedness.
+  assertEnumInput(intent.advantage, ATTACK_ADVANTAGE_KINDS, 'advantage');
+  assertEnumInput(intent.cover, COVER_KINDS, 'cover');
+  assertEnumInput(intent.lightLevel, LIGHT_LEVELS, 'lightLevel');
   const attacker = state.characters[intent.attackerId];
   if (attacker) assertActorCanAct(attacker, 'Attack');
   // RAW Appendix "Charmed": "the charmed creature can't attack the
