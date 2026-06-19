@@ -60,10 +60,12 @@ The engine now surfaces the Goliath **Storm's Thunder** reaction via `reactionsF
 
 ---
 
-## Not dnd-web's job (engine-side residuals)
+## Not dnd-web's job (engine-side residuals — both now closed)
 
-- `engine-scope-encumbrance-doc` (Docs) — reconcile [engine-scope.md](engine-scope.md)'s "encumbrance not modeled" line with the encumbrance/carry derivations that now exist. (Engine-repo task.)
-- `verify-reaction-registry-l1-7` — **closed (slice 904).** The verification surfaced one real engine gap (Storm's Thunder, now wired) and confirmed the reaction-cast spells are by-design event-stream-only. See the new dnd-web follow-up in gap #7 below.
+Both engine-repo residuals are done, so **every remaining open audit row is consumer work**:
+
+- `verify-reaction-registry-l1-7` — **closed (slice 904).** Surfaced one real engine gap (Storm's Thunder, now wired) and confirmed the reaction-cast spells are by-design event-stream-only. Created the small dnd-web follow-up in gap #7 above.
+- `engine-scope-encumbrance-doc` — **closed (slice 905).** [engine-scope.md](engine-scope.md) now describes the carry/encumbrance derivations under "What the engine tracks."
 
 ---
 
