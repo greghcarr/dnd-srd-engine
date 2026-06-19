@@ -55,14 +55,15 @@ These audit rows are **satisfied** by the current dnd-web code; listed so the dn
 ### 6. Group ability checks — NEW AFFORDANCE
 No engine helper exists (`no-group-check-helper`, owner Consumer): the SRD group check ("if at least half the group succeeds, the group succeeds") is consumer math over the per-character checks the engine already resolves. This also needs ability checks surfaced as a player action in your UI (today only the AI and the engine's own death saves roll checks). Audit row: `no-group-check-helper`.
 
+### 7. Storm's Thunder reaction dispatch — LOW (new in slice 904)
+The engine now surfaces the Goliath **Storm's Thunder** reaction via `reactionsForTrigger` (it was wired as a planner long ago but never discoverable). Your `src/game/reaction-dispatch.ts` switch handles `StonesEndurance` but not `StormsThunder`, so a Storm's Thunder Goliath's reaction currently falls to the no-op `default` (no typecheck break — `CorrelatedReaction` is a `ReturnType`, and the default is graceful — just no effect). Add a `case 'StormsThunder': return { events: engine.plan.stormsThunder(state, intent).events, prevented: false };` (mirroring the `StonesEndurance` case). The planner already exists.
+
 ---
 
 ## Not dnd-web's job (engine-side residuals)
 
-Two open Area-9 rows are **engine-repo** tasks, not consumer work — they stay here:
-
-- `engine-scope-encumbrance-doc` (Docs) — reconcile [engine-scope.md](engine-scope.md)'s "encumbrance not modeled" line with the encumbrance/carry derivations that now exist.
-- `verify-reaction-registry-l1-7` (Engine `[verify]`) — confirm `reactionsForTrigger` covers every L1–7 reaction an expert expects (e.g. Hellish Rebuke), or document the event-stream-only ones.
+- `engine-scope-encumbrance-doc` (Docs) — reconcile [engine-scope.md](engine-scope.md)'s "encumbrance not modeled" line with the encumbrance/carry derivations that now exist. (Engine-repo task.)
+- `verify-reaction-registry-l1-7` — **closed (slice 904).** The verification surfaced one real engine gap (Storm's Thunder, now wired) and confirmed the reaction-cast spells are by-design event-stream-only. See the new dnd-web follow-up in gap #7 below.
 
 ---
 

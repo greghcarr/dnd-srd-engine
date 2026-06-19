@@ -19,11 +19,21 @@
 // drift. Applicability reuses the proven decision predicates in
 // src/ai/reactions.ts (the same logic the combat-fuzz reaction layer uses).
 //
-// Coverage (complete): Shield, Cutting Words, Uncanny Dodge, Counterspell
-// (763), Stone's Endurance + Protection (765), Opportunity Attack (766),
-// Deflect Attacks + Countercharm (767) — across the attack-roll / damage /
+// Coverage: Shield, Cutting Words, Uncanny Dodge, Counterspell (763), Stone's
+// Endurance + Protection (765), Opportunity Attack (766), Deflect Attacks +
+// Countercharm (767), monster Parry (831), and Storm's Thunder (904, the
+// Goliath sibling of Stone's Endurance) — across the attack-roll / damage /
 // spell-cast / leaves-reach / condition-applied triggers, each planner-faithful
 // (its owns/correlate matches what the planner accepts, verified by dispatch).
+//
+// NOT in the registry, BY DESIGN: reaction-CAST spells (Hellish Rebuke, Feather
+// Fall). Those are cast through `engine.plan.castSpell` when their trigger
+// fires, so the consumer drives the timing — there is no standing "feature" to
+// enumerate, and Feather Fall's "a creature falls" trigger isn't even a combat
+// ReactionTriggerKind. Shield and Counterspell ARE surfaced because they have
+// dedicated reaction planners (+ decision predicates) the engine auto-suggests.
+// (Confirmed against the L1-7 SRD reaction inventory — audit `verify-reaction-
+// registry-l1-7`, slice 904.)
 // Deflect Attacks (damage trigger) and Countercharm (condition-applied trigger)
 // need CROSS-EVENT context — the DamageApplied has no link to its attack, and
 // the SaveRolled doesn't say which condition it gated — so they scan the
@@ -43,6 +53,7 @@ import type { ShieldIntent, CounterspellIntent, UncannyDodgeIntent, ProtectionIn
 import type { ParryIntent } from '../engine/plan/parry.js';
 import type { CuttingWordsIntent } from '../engine/plan/cutting-words.js';
 import type { StonesEnduranceIntent } from '../engine/plan/stones-endurance.js';
+import type { StormsThunderIntent } from '../engine/plan/storms-thunder.js';
 import type { OpportunityAttackIntent } from '../engine/plan/opportunity-attack.js';
 import type { CombatantMovedEvent } from '../schemas/events/movement.js';
 import type { DeflectAttacksIntent } from '../engine/plan/deflect-attacks.js';
@@ -75,6 +86,10 @@ const COUNTERSPELL_SLOT_LEVEL = 3;
 const ARCANE_CLASS_IDS: ReadonlyArray<string> = ['wizard', 'sorcerer'];
 const SHIELD_SLOT_LEVEL = 1;
 const STONES_ENDURANCE_ANCESTRY = 'stones-endurance';
+const STORMS_THUNDER_ANCESTRY = 'storms-thunder';
+// Storm's Thunder retaliates against an attacker within 60 ft (RAW range;
+// consumer-gated when positionless, refined here when positions are known).
+const STORMS_THUNDER_RANGE_FEET = 60;
 // Protection reaches an ally within 5 ft (chebyshev, feet — slice 698).
 const PROTECTION_REACH_FEET = 5;
 const MELEE_REACH_FEET = 5;
@@ -116,6 +131,7 @@ export type ReactionIntent =
   | CounterspellIntent
   | ProtectionIntent
   | StonesEnduranceIntent
+  | StormsThunderIntent
   | OpportunityAttackIntent
   | DeflectAttacksIntent
   | CountercharmIntent
@@ -417,6 +433,39 @@ const REGISTRY: ReadonlyArray<ReactionDescriptor> = [
       const e = event as DamageAppliedEvent;
       if (e.targetId !== reactorId) return undefined;
       return { type: 'StonesEndurance', goliathId: reactorId, damageAmount: damageTotal(e), triggeringDamageEventId: e.id };
+    },
+  },
+  {
+    id: 'storms-thunder',
+    label: "Storm's Thunder",
+    trigger: 'damage',
+    // The Goliath's OTHER damage-triggered ancestry reaction — the sibling of
+    // Stone's Endurance. It was wired as a planner in slice 559 but, until slice
+    // 904, never surfaced here (an asymmetry: a Goliath who chose Storm's Thunder
+    // got no reaction offered on a damage event). `hasStonesEndurance` is the
+    // shared goliath-has-ancestry-uses guard; the resolved ancestry choice pins
+    // this specific option.
+    owns: (c, state) => hasStonesEndurance(c) && findGoliathAncestryChoice(c, state) === STORMS_THUNDER_ANCESTRY,
+    correlate: (reactorId, event, _reactor, state, _content, encounterId) => {
+      const e = event as DamageAppliedEvent;
+      if (e.targetId !== reactorId) return undefined; // RAW: "when you take damage"
+      // RAW: "deal 1d8 Thunder to THAT creature" — the attacker that dealt the
+      // damage. Attack damage records it as sourceCharacterId; with no known
+      // source (e.g. environmental damage) there is nobody to retaliate against.
+      const attackerId = e.sourceCharacterId;
+      if (attackerId === undefined || attackerId === reactorId) return undefined;
+      // 60 ft range is consumer-managed; refined here when positions are known
+      // (mirrors Countercharm / Protection).
+      const reactorPos = combatantPosition(state, encounterId, reactorId);
+      const attackerPos = combatantPosition(state, encounterId, attackerId);
+      if (
+        reactorPos !== undefined &&
+        attackerPos !== undefined &&
+        chebyshevDistance(reactorPos, attackerPos) > STORMS_THUNDER_RANGE_FEET
+      ) {
+        return undefined;
+      }
+      return { type: 'StormsThunder', goliathId: reactorId, attackerId, triggeringDamageEventId: e.id };
     },
   },
   {

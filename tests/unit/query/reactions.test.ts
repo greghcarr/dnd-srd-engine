@@ -227,6 +227,11 @@ const seedAncestry = (characterId: string, selected: string): [ChoiceRequiredEve
       options: [
         { id: 'stones-endurance', label: "Stone's Endurance", effects: [] },
         { id: 'clouds-jaunt', label: "Cloud's Jaunt", effects: [] },
+        // Include the selected option if it isn't one of the two above, so the
+        // ChoiceResolved is valid for any Giant Ancestry under test.
+        ...(selected === 'stones-endurance' || selected === 'clouds-jaunt'
+          ? []
+          : [{ id: selected, label: selected, effects: [] }]),
       ],
       oneOf: 1,
     } as unknown as ChoiceRequiredEvent,
@@ -279,6 +284,63 @@ describe("slice 765: Stone's Endurance (planner-faithful via resolved ancestry)"
     const dmg = { id: eventId(), at: isoTimestamp(), type: 'DamageApplied', targetId: g.id as ULID, components: [{ amount: 12, type: 'slashing' }] } as unknown as Event;
     expect(engine.query.reactionsForTrigger(campaign.state, enc.encounterId, g.id, dmg).find((r) => r.id === 'stones-endurance')).toBeUndefined();
     expect(engine.query.availableReactions(campaign.state, enc.encounterId, g.id).find((r) => r.id === 'stones-endurance')).toBeUndefined();
+  });
+});
+
+// Slice 904: Storm's Thunder — the registry-gap sibling of Stone's Endurance.
+// It had a planner (slice 559) but was never surfaced by reactionsForTrigger,
+// unlike its identical-trigger sibling. Closes audit `verify-reaction-registry-l1-7`.
+describe("slice 904: Storm's Thunder (registry-gap sibling of Stone's Endurance)", () => {
+  const damageFromAttacker = (targetId: string, attackerId: string, amount: number): Event =>
+    ({
+      id: eventId(), at: isoTimestamp(), type: 'DamageApplied',
+      targetId: targetId as ULID, components: [{ amount, type: 'slashing' }],
+      sourceCharacterId: attackerId as ULID,
+    }) as unknown as Event;
+
+  const buildStormScene = (chosen: string) => {
+    const g = goliath();
+    const foe = base({ classes: [{ classId: 'fighter', level: 1, hitDiceRemaining: 1 }] });
+    const engine = createEngine({ contentPacks: [PACK], rng: seededRNG(1) });
+    let campaign: Campaign = engine.createCampaign({ name: 'st' });
+    campaign = commit(campaign, [
+      { id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: g } satisfies CharacterCreatedEvent,
+      { id: eventId(), at: isoTimestamp(), type: 'CharacterCreated', snapshot: foe } satisfies CharacterCreatedEvent,
+      ...seedAncestry(g.id, chosen),
+    ]);
+    const enc = engine.plan.createEncounter(campaign.state, { combatantIds: [g.id, foe.id] });
+    campaign = commit(campaign, enc.events);
+    campaign = commit(campaign, engine.plan.startEncounter(campaign.state, { encounterId: enc.encounterId }).events);
+    campaign = commit(campaign, engine.plan.beginFirstTurn(campaign.state, { encounterId: enc.encounterId }).events);
+    return { engine, campaign, encounterId: enc.encounterId, g, foe };
+  };
+
+  it("a Goliath who chose Storm's Thunder is offered it on damage from an attacker; the planner accepts", () => {
+    const { engine, campaign, encounterId, g, foe } = buildStormScene('storms-thunder');
+    const dmg = damageFromAttacker(g.id, foe.id, 9);
+    const reactions = engine.query.reactionsForTrigger(campaign.state, encounterId, g.id, dmg);
+    const st = reactions.find((r) => r.id === 'storms-thunder');
+    expect(st, "Storm's Thunder not offered to a resolved Goliath").toBeDefined();
+    const intent = st!.intent;
+    if (intent.type !== 'StormsThunder') throw new Error('expected StormsThunder');
+    expect(intent.attackerId).toBe(foe.id);
+    expect(() => engine.plan.stormsThunder(campaign.state, intent)).not.toThrow();
+  });
+
+  it('is not offered without a known attacker (sourceless / environmental damage)', () => {
+    const { engine, campaign, encounterId, g } = buildStormScene('storms-thunder');
+    const dmg = damageAppliedTo(g.id, 9); // no sourceCharacterId
+    expect(
+      engine.query.reactionsForTrigger(campaign.state, encounterId, g.id, dmg).find((r) => r.id === 'storms-thunder'),
+    ).toBeUndefined();
+  });
+
+  it('a Goliath who chose a DIFFERENT ancestry is not offered it', () => {
+    const { engine, campaign, encounterId, g, foe } = buildStormScene('stones-endurance');
+    const dmg = damageFromAttacker(g.id, foe.id, 9);
+    expect(
+      engine.query.reactionsForTrigger(campaign.state, encounterId, g.id, dmg).find((r) => r.id === 'storms-thunder'),
+    ).toBeUndefined();
   });
 });
 
